@@ -1,0 +1,12 @@
+/node_modules
+/build
+/coverage
+.DS_Store
+*.local
+npm-debug.log*
+.vscode/
+.idea/
+
+# Local only: Boss Arena mod params (for comparing with vanilla) and research notes
+/data/*-boss-arena.csv
+/data/docs/

@@ -1,0 +1,54 @@
+weapon,hands,attack,step,hit,kind,motion values,status %,poise %,physical type,flat attack
+Lizard Greatsword,1h,R2,1,2,Projectile,60,100,100,pierce,
+Lizard Greatsword,1h,R2,2,2,Projectile,60,100,100,pierce,
+Lizard Greatsword,1h,Charged R2,1,2,Projectile,80,100,100,pierce,
+Lizard Greatsword,1h,Charged R2,2,2,Projectile,80,100,100,pierce,
+Lizard Greatsword,2h,R2,1,2,Projectile,60,100,100,pierce,
+Lizard Greatsword,2h,R2,2,2,Projectile,60,100,100,pierce,
+Lizard Greatsword,2h,Charged R2,1,2,Projectile,80,100,100,pierce,
+Lizard Greatsword,2h,Charged R2,2,2,Projectile,80,100,100,pierce,
+Ruins Greatsword,1h,Charged R2,1,2,AoE,55,100,100,standard,
+Ruins Greatsword,1h,Charged R2,2,2,AoE,55,100,100,standard,
+Ruins Greatsword,2h,Charged R2,1,2,AoE,55,100,100,standard,
+Ruins Greatsword,2h,Charged R2,2,2,AoE,55,100,100,standard,
+Frozen Needle,1h,R2,1,1,Projectile,105,100,100,pierce,
+Frozen Needle,1h,R2,2,1,Projectile,105,100,100,pierce,
+Frozen Needle,1h,Charged R2,1,1,Projectile,160,100,200,pierce,
+Frozen Needle,1h,Charged R2,2,1,Projectile,160,100,200,pierce,
+Frozen Needle,2h,R2,1,1,Projectile,105,100,100,pierce,
+Frozen Needle,2h,R2,2,1,Projectile,105,100,100,pierce,
+Frozen Needle,2h,Charged R2,1,1,Projectile,160,100,200,pierce,
+Frozen Needle,2h,Charged R2,2,1,Projectile,160,100,200,pierce,
+Wing of Astel,1h,R2,1,2,Projectile,magic 150,100,100,standard,
+Wing of Astel,1h,R2,2,2,Projectile,magic 150,100,100,standard,
+Wing of Astel,1h,Charged R2,1,2,Projectile,magic 150,100,100,standard,
+Wing of Astel,1h,Charged R2,1,4,Projectile,magic 150,100,100,standard,
+Wing of Astel,1h,Charged R2,2,2,Projectile,magic 150,100,100,standard,
+Wing of Astel,1h,Charged R2,2,4,Projectile,magic 150,100,100,standard,
+Wing of Astel,2h,R2,1,2,Projectile,magic 150,100,100,standard,
+Wing of Astel,2h,R2,2,2,Projectile,magic 150,100,100,standard,
+Wing of Astel,2h,Charged R2,1,2,Projectile,magic 150,100,100,standard,
+Wing of Astel,2h,Charged R2,1,4,Projectile,magic 150,100,100,standard,
+Wing of Astel,2h,Charged R2,2,2,Projectile,magic 150,100,100,standard,
+Wing of Astel,2h,Charged R2,2,4,Projectile,magic 150,100,100,standard,
+Black Steel Greathammer,1h,Guard Counter,1,2,AoE,0,0,100,strike,holy 58
+Black Steel Greathammer,2h,Guard Counter,1,2,AoE,0,0,100,strike,holy 58
+Smithscript Greathammer,1h,R2,1,2,Thrown,80,100,90,strike,
+Smithscript Greathammer,1h,Charged R2,1,3,Thrown,120,100,240,strike,
+Smithscript Greathammer,1h,Running R2,1,2,Thrown,63,100,90,strike,
+Smithscript Greathammer,2h,R2,1,2,Thrown,84,100,90,strike,
+Smithscript Greathammer,2h,Charged R2,1,3,Thrown,132,100,260,strike,
+Smithscript Greathammer,2h,Running R2,1,2,Thrown,63,100,90,strike,
+Bloodfiend's Arm,1h,R2,1,2,AoE,0,70,100,strike,fire 50
+Bloodfiend's Arm,1h,R2,2,2,AoE,0,70,100,strike,fire 50
+Bloodfiend's Arm,1h,Charged R2,1,2,AoE,0,90,100,strike,fire 60
+Bloodfiend's Arm,1h,Charged R2,2,2,AoE,0,90,100,strike,fire 60
+Bloodfiend's Arm,2h,R2,1,2,AoE,0,70,100,strike,fire 50
+Bloodfiend's Arm,2h,R2,2,2,AoE,0,70,100,strike,fire 50
+Bloodfiend's Arm,2h,Charged R2,1,2,AoE,0,90,100,strike,fire 60
+Bloodfiend's Arm,2h,Charged R2,2,2,AoE,0,90,100,strike,fire 60
+Golem Fist,1h,R2,1,2,Projectile,105,100,100,strike,
+Golem Fist,1h,Charged R2,1,2,Projectile,125,100,300,strike,
+Golem Fist,2h,R2,1,2,Projectile,105,100,100,strike,
+Golem Fist,2h,Charged R2,1,2,Projectile,78,100,160,strike,
+Golem Fist,2h,Charged R2,1,4,Projectile,78,50,160,strike,

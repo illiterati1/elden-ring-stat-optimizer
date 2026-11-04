@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Black and gold to match the app: a ring with three rising stat bars -->
+  <rect width="64" height="64" rx="12" fill="#0a0908" />
+  <circle cx="32" cy="32" r="24" fill="none" stroke="#c9a45c" stroke-width="4" />
+  <rect x="20" y="34" width="6" height="12" rx="1.5" fill="#8a6d34" />
+  <rect x="29" y="27" width="6" height="19" rx="1.5" fill="#c9a45c" />
+  <rect x="38" y="19" width="6" height="27" rx="1.5" fill="#e3c789" />
+</svg>

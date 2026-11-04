@@ -1,0 +1,962 @@
+import { useMemo } from "react";
+import {
+  Alert,
+  Button,
+  Box,
+  CircularProgress,
+  CssBaseline,
+  LinearProgress,
+  Link,
+  Stack,
+  ThemeProvider,
+  Typography,
+} from "@mui/material";
+import {
+  allAttributes,
+  AttackPowerType,
+  WeaponType,
+  type Attribute,
+  type Attributes,
+} from "../calculator/calculator.ts";
+import type { BuffEffect, BuildRequest } from "../optimizer/build.ts";
+import type { Limits } from "../optimizer/limits.ts";
+import {
+  getCharacterLevel,
+  getPlannedStats,
+  startingClasses,
+} from "../optimizer/startingClasses.ts";
+import theme from "./theme.ts";
+import useAppState, { statusSortBy } from "./useAppState.ts";
+import useWeapons from "./useWeapons.ts";
+import type { Weapon } from "../calculator/weapon.ts";
+import useBuffable, { isBuffable } from "./useBuffable.ts";
+import useBuffs, {
+  getBuffEffects,
+  isWeaponOnlyBuff,
+  getBuffKey,
+  getBuffStats,
+  getSpellScalingAttribute,
+  type Buff,
+} from "./useBuffs.ts";
+import BuffSettings from "./BuffSettings.tsx";
+import useAshes, {
+  ashAttack,
+  buffedR2Skills,
+  getAshAttack,
+  getAshAttacks,
+  getAshChoices,
+  withFollowUp,
+  type AshAttack,
+  type SkillVariant,
+} from "./useAshes.ts";
+import useMovesets, {
+  allAttacks,
+  baseAttack,
+  canTwoHand,
+  getAttackData,
+  riposteAttacks,
+  type AttackName,
+  type StepTiming,
+} from "./useMovesets.ts";
+import useAmmo, { getAmmoKey, weaponTypeAmmoClasses, withAmmo } from "./useAmmo.ts";
+import useBuildResults from "./useBuildResults.ts";
+import CharacterSettings from "./CharacterSettings.tsx";
+import BuildSettings from "./BuildSettings.tsx";
+import LimitSettings from "./LimitSettings.tsx";
+import DefenseSettings from "./DefenseSettings.tsx";
+import WeaponPicker from "./WeaponPicker.tsx";
+import ResultsTable from "./ResultsTable.tsx";
+import ValueChart from "./ValueChart.tsx";
+import { getResultStatus, sortResults } from "./results.ts";
+import { maxCharacterLevel } from "../optimizer/runes.ts";
+import {
+  compareWeaponTypes,
+  damageTypeLabels,
+  objectiveOptions,
+  statusTypes,
+  uniqueAffinityId,
+  weaponTypeLabels,
+} from "./uiUtils.ts";
+
+/** Skills that apply an enemy debuff, which is picked separately (in the enemy debuffs), by name */
+const skillDebuffs: Partial<Record<string, string>> = { "Shriek of Milos": "Shriek of Milos" };
+
+export default function App() {
+  const [appState, updateAppState] = useAppState();
+  const {
+    startingClass,
+    stats,
+    buffs: selectedBuffKeys,
+    stackTier,
+    health,
+    catalyst: catalystName,
+    catalystUpgradeLevel,
+    equipWeight,
+    upgradeLevel,
+    twoHanding,
+    showScaling,
+    showStatus,
+    showStance,
+    showStamina,
+    showDps,
+    showRequirements,
+    closedAlerts,
+    meetRequirements,
+    onlyBuffable,
+    sortBy,
+    reverse,
+    chartWeapons,
+    fastMode,
+    chartRange,
+    objective,
+    limits,
+    plannedStats,
+    defenses,
+    physicalNegation,
+    enemyArea,
+    enemyKey,
+    enemyHp,
+    criticalDamageRate,
+    enemyRipostes,
+    enemyTypes,
+    attack: savedAttack,
+    chainWeight,
+    sumChains,
+    ashOfWar: savedAshOfWar,
+    offhandWeapon: offhandWeaponName,
+    offhandUpgradeLevel,
+    offhandAffinityId,
+    offhandBuff: offhandBuffKey,
+    selectedWeapons,
+    affinityIds,
+    selectedAmmo,
+    weaponTypes,
+  } = appState;
+
+  const { weapons, loading, error } = useWeapons();
+  const ammo = useAmmo();
+  const movesets = useMovesets();
+  const ashes = useAshes();
+  const ashChoices = useMemo(() => getAshChoices(ashes), [ashes]);
+  const closeAlert = (id: string) => updateAppState({ closedAlerts: [...closedAlerts, id] });
+  // With an enemy picked, only the ripostes it can take are offered. A riposte it can't take
+  // becomes the one it can (or R1 if it can't be riposted).
+  const attackChoices = useMemo(
+    () =>
+      enemyRipostes
+        ? allAttacks.filter(
+            (attackName) => !riposteAttacks.has(attackName) || enemyRipostes.includes(attackName),
+          )
+        : allAttacks,
+    [enemyRipostes],
+  );
+  const attack =
+    riposteAttacks.has(savedAttack) && !(attackChoices as readonly string[]).includes(savedAttack)
+      ? attackChoices.find((attackName) => riposteAttacks.has(attackName)) ?? "R1"
+      : savedAttack;
+  // The enemy's HP, for damage that's a percentage of it, if known
+  const countedEnemyHp = enemyHp > 0 ? enemyHp : undefined;
+  // The saved Ash of War, or the first if it isn't one of the choices (e.g. from an earlier version)
+  const ashOfWar = ashChoices.some(({ value }) => value === savedAshOfWar)
+    ? savedAshOfWar
+    : ashChoices[0]?.value ?? "";
+  const buffable = useBuffable();
+  // Buffs give bonus stats (not counted towards level) and damage multipliers
+  const allBuffs = useBuffs();
+  const selectedBuffs = useMemo(
+    () => allBuffs.filter((buff) => selectedBuffKeys.includes(getBuffKey(buff))),
+    [allBuffs, selectedBuffKeys],
+  );
+  const bonusAttributes = useMemo(() => getBuffStats(selectedBuffs), [selectedBuffs]);
+  // Weapon buffs only apply to weapons that can be buffed (greases and spells) or can take the Ash
+  // of War (skills, which include affinities that can't be buffed, e.g. Cold), and unique skills'
+  // only to their own weapons
+  // A weapon's passive (e.g. Freyja's Greatsword's for Redmane skills) applies in either hand, so
+  // to the weapon itself too, but not twice when the off-hand weapon is the same one. Ones with a
+  // condition (e.g. the Madding Hand's, after madness nearby) are weapon effects, picked like unique
+  // buffs.
+  const passives = useMemo(
+    () =>
+      new Map(allBuffs.filter((buff) => buff.kind === "offhand").map((buff) => [buff.name, buff])),
+    [allBuffs],
+  );
+  const { buffEffects, offhandBuff, weaponBuff, weaponBuffEffects, uniqueSkills, oneHandedBuffs } =
+    useMemo(() => {
+      // Buffs for particular weapons (their own skills', e.g. Golden Tempering, and Euporia's luster
+      // tiers), together
+      const weaponBuffs = selectedBuffs.filter((buff) => buff.weapons);
+      const uniqueSkills = weaponBuffs.length
+        ? {
+            ...weaponBuffs[0],
+            weapons: weaponBuffs.reduce<NonNullable<Buff["weapons"]>>((all, buff) => {
+              for (const [name, effects] of Object.entries(buff.weapons!)) {
+                all[name] = [...(all[name] ?? []), ...effects];
+              }
+              return all;
+            }, {}),
+          }
+        : undefined;
+      // The weapon buff for other weapons (an Ash of War's, e.g. Sacred Blade, can also be some
+      // weapons' own skill's)
+      const weaponBuff = selectedBuffs.find(
+        (buff) => buff.type === "weapon" && !isWeaponOnlyBuff(buff),
+      );
+      return {
+        buffEffects: getBuffEffects(
+          selectedBuffs.filter((buff) => buff.type !== "weapon" && buff.kind !== "offhand"),
+          stackTier,
+          health,
+        ),
+        offhandBuff: selectedBuffs.find((buff) => buff.kind === "offhand"),
+        weaponBuff,
+        weaponBuffEffects: weaponBuff ? getBuffEffects([weaponBuff], stackTier, health) : [],
+        uniqueSkills,
+        oneHandedBuffs: selectedBuffs.filter((buff) => buff.oneHanded),
+      };
+    }, [selectedBuffs, stackTier, health]);
+
+  // Staves and seals for weapon buff spells that scale with them (one of each), and the chosen one
+  // if it can cast the weapon buff
+  const catalysts = useMemo(
+    () =>
+      weapons.filter(
+        (weapon, index) =>
+          (weapon.sorceryTool || weapon.incantationTool) &&
+          weapons.findIndex((other) => other.weaponName === weapon.weaponName) === index,
+      ),
+    [weapons],
+  );
+  const { catalyst, castingRequirements } = useMemo(() => {
+    const spellScaling = weaponBuff && getSpellScalingAttribute([weaponBuff]);
+    if (!spellScaling) return {};
+    const catalyst = catalysts.find(
+      (weapon) =>
+        weapon.weaponName === catalystName &&
+        (spellScaling === "int" ? weapon.sorceryTool : weapon.incantationTool),
+    );
+    // The catalyst's and spell's requirements, whichever is higher
+    const castingRequirements: Partial<Record<Attribute, number>> = {};
+    for (const requirements of [catalyst?.requirements ?? {}, weaponBuff.requirements ?? {}]) {
+      for (const [attribute, value] of Object.entries(requirements) as [Attribute, number][]) {
+        castingRequirements[attribute] = Math.max(castingRequirements[attribute] ?? 0, value);
+      }
+    }
+    return { catalyst, castingRequirements };
+  }, [catalysts, catalystName, weaponBuff]);
+
+  // The moveset data lists weapons in the game's order
+  const weaponOrder = useMemo(
+    () => new Map(Object.keys(movesets).map((weaponName, index) => [weaponName, index])),
+    [movesets],
+  );
+
+  const startAttributes = useMemo(() => {
+    const attributes = {} as Attributes;
+    for (const attribute of allAttributes) attributes[attribute] = stats[attribute];
+    return attributes;
+  }, [stats]);
+
+  // Ignore any saved selections that aren't valid weapon names
+  const validSelectedWeapons = useMemo(() => {
+    const weaponNames = new Set(weapons.map((weapon) => weapon.weaponName));
+    return selectedWeapons.filter((name) => weaponNames.has(name));
+  }, [weapons, selectedWeapons]);
+
+  // Weapons picked by name or type, for buffs only some weapons get (their own skills')
+  const pickedWeapons = useMemo(() => {
+    const types = new Set(weaponTypes);
+    return new Set([
+      ...validSelectedWeapons,
+      ...weapons
+        .filter((weapon) => types.has(weapon.weaponType))
+        .map((weapon) => weapon.weaponName),
+    ]);
+  }, [weapons, validSelectedWeapons, weaponTypes]);
+
+  // Each hit's physical damage type picks which physical negation applies. Standard is only
+  // used for a weapon without attack data.
+  const enemyDefenses = useMemo(
+    () => ({
+      ...defenses,
+      [AttackPowerType.PHYSICAL]: {
+        defense: defenses[AttackPowerType.PHYSICAL].defense,
+        negation: physicalNegation.standard,
+      },
+    }),
+    [defenses, physicalNegation],
+  );
+
+  // The optimizer starts from the planned stats, which may be above the current level (levels
+  // to gain first) or below it (a respec, freeing levels that cost no runes)
+  const startLevel = getCharacterLevel(stats);
+  const plan = useMemo(
+    () => getPlannedStats(stats, plannedStats, startingClasses[startingClass]),
+    [stats, plannedStats, startingClass],
+  );
+  const planLevel = getCharacterLevel(plan);
+  const planAttributes = useMemo(() => {
+    const attributes = {} as Attributes;
+    for (const attribute of allAttributes) attributes[attribute] = plan[attribute];
+    return attributes;
+  }, [plan]);
+
+  // A powerstance attack's off hand weapon, if one is picked: any weapon (by base name) with
+  // powerstance attacks that isn't paired, in one affinity, with an optional weapon buff
+  // Like the weapon picker: grouped by weapon type, in the game's order
+  const offhandWeaponTypes = useMemo(() => {
+    const order = (weapon: Weapon) => weaponOrder.get(weapon.weaponName) ?? Infinity;
+    return new Map(
+      weapons
+        .filter(
+          (weapon) => !weapon.paired && movesets[weapon.weaponName]?.["1h"]?.["Powerstance L1"],
+        )
+        .sort(
+          (a, b) =>
+            compareWeaponTypes(a.weaponType, b.weaponType) ||
+            order(a) - order(b) ||
+            a.weaponName.localeCompare(b.weaponName),
+        )
+        .map((weapon) => [weapon.weaponName, weaponTypeLabels.get(weapon.weaponType) ?? ""]),
+    );
+  }, [weapons, movesets, weaponOrder]);
+  const offhandWeaponChoices = useMemo(() => [...offhandWeaponTypes.keys()], [offhandWeaponTypes]);
+  const offhandVersions = useMemo(
+    () => weapons.filter((weapon) => weapon.weaponName === offhandWeaponName),
+    [weapons, offhandWeaponName],
+  );
+  const offhandAffinityChoices = useMemo(
+    () => offhandVersions.map((weapon) => weapon.affinityId),
+    [offhandVersions],
+  );
+  const offhandWeaponData =
+    offhandVersions.find((weapon) => weapon.affinityId === offhandAffinityId) ??
+    offhandVersions.find((weapon) => weapon.affinityId === 0) ??
+    offhandVersions[0];
+  // Weapon buffs it can take: greases and spells if it can be buffed, Ashes of War's if it can take
+  // the Ash of War
+  const offhandBuffChoices = useMemo(
+    () =>
+      offhandWeaponData
+        ? allBuffs.filter((buff) => {
+            if (buff.type !== "weapon" || isWeaponOnlyBuff(buff)) return false;
+            if (buff.kind !== "skill") return isBuffable(buffable, offhandWeaponData);
+            const ash = ashes.ashes.find((candidate) => candidate.name === buff.name);
+            return (
+              !!ashes.weapons[offhandWeaponData.weaponName]?.canChange &&
+              !!ash &&
+              ash.mounts.includes(offhandWeaponData.weaponType) &&
+              ash.affinities.includes(offhandWeaponData.affinityId)
+            );
+          })
+        : [],
+    [offhandWeaponData, allBuffs, buffable, ashes],
+  );
+  const offhandBuffEffects = useMemo(() => {
+    const buff = offhandBuffChoices.find((choice) => getBuffKey(choice) === offhandBuffKey);
+    return buff
+      ? getBuffEffects([buff], stackTier, health).map((effect) => ({
+          ...effect,
+          hand: "off" as const,
+        }))
+      : [];
+  }, [offhandBuffChoices, offhandBuffKey, stackTier, health]);
+
+  const requests = useMemo<BuildRequest[]>(() => {
+    const selected = new Set(validSelectedWeapons);
+    const selectedWeaponTypes = new Set(weaponTypes);
+    const selectedAffinityIds = new Set(affinityIds);
+    const { maxLevels, minGain, targetValue } = limits;
+    const levelLimit = maxLevels.enabled ? maxLevels.values[maxLevels.mode] : null;
+    const enabledLimits: Limits = {
+      // Level limits are relative to the current level, but the optimizer counts from the plan
+      maxLevels:
+        levelLimit != null && maxLevels.mode !== "runes"
+          ? Math.max(
+              0,
+              (maxLevels.mode === "absolute" ? levelLimit : startLevel + levelLimit) - planLevel,
+            )
+          : null,
+      // Fast mode only calculates where the level limit stops, so these don't apply
+      minGainPerLevel: minGain.enabled && !minGain.relative && !fastMode ? minGain.value : null,
+      minRelativeGainPerLevel:
+        minGain.enabled && minGain.relative && !fastMode ? minGain.value : null,
+      runeBudget: levelLimit != null && maxLevels.mode === "runes" ? levelLimit : null,
+      targetValue: targetValue.enabled && !fastMode ? targetValue.value : null,
+    };
+
+    const weaponsInSelection = weapons.filter(
+      ({ weaponName, weaponType, affinityId, sorceryTool, incantationTool }) => {
+        // Weapons picked by name are included in each selected affinity, or as themselves if
+        // they can't be infused
+        if (
+          selected.has(weaponName) &&
+          (affinityId === uniqueAffinityId || selectedAffinityIds.has(affinityId))
+        ) {
+          return true;
+        }
+        // Weapons of a checked type are included if their affinity (including Unique) is
+        // selected. Weapons that can cast count as staves or seals, like in the original
+        // calculator.
+        return (
+          (selectedWeaponTypes.has(weaponType) ||
+            (sorceryTool && selectedWeaponTypes.has(WeaponType.GLINTSTONE_STAFF)) ||
+            (incantationTool && selectedWeaponTypes.has(WeaponType.SACRED_SEAL))) &&
+          selectedAffinityIds.has(affinityId)
+        );
+      },
+    );
+    const visibleWeapons = onlyBuffable
+      ? weaponsInSelection.filter((weapon) => isBuffable(buffable, weapon))
+      : weaponsInSelection;
+
+    // Weapons picked by name that can't be buffed in any selected affinity are listed rather than
+    // silently left out
+    const unbuffableWeapons = onlyBuffable
+      ? validSelectedWeapons.flatMap((name) => {
+          const versions = weaponsInSelection.filter(({ weaponName }) => weaponName === name);
+          if (versions.length === 0 || versions.some((weapon) => isBuffable(buffable, weapon))) {
+            return [];
+          }
+          const unique = versions[0].affinityId === uniqueAffinityId;
+          return [
+            {
+              weapon: versions[0],
+              unavailableReason: unique ? "Can't be buffed" : "Can't be buffed in these affinities",
+            },
+          ];
+        })
+      : [];
+
+    // Ranged weapons are calculated once for each selected ammunition they can fire, and not at
+    // all without any
+    const selectedAmmoGroups = ammo.filter((group) => selectedAmmo.includes(getAmmoKey(group)));
+    const weaponsWithAmmo = visibleWeapons.flatMap(
+      (
+        weapon,
+      ): {
+        weapon: Weapon;
+        unavailableReason?: string;
+      }[] => {
+        const ammoClass = weaponTypeAmmoClasses.get(weapon.weaponType);
+        if (!ammoClass) return [{ weapon }];
+        const groups = selectedAmmoGroups.filter((group) => group.class === ammoClass);
+        return groups.length > 0
+          ? groups.map((group) => ({ weapon: withAmmo(weapon, group) }))
+          : [{ weapon, unavailableReason: "No ammunition selected" }];
+      },
+    );
+
+    // Infusable weapons picked by name with none of their affinities selected are listed (as their
+    // Standard version) rather than silently left out
+    const noAffinityWeapons = validSelectedWeapons.flatMap((name) => {
+      const infusable = weapons.filter(
+        ({ weaponName, affinityId }) => weaponName === name && affinityId !== uniqueAffinityId,
+      );
+      if (
+        infusable.length === 0 ||
+        infusable.some(({ affinityId }) => selectedAffinityIds.has(affinityId))
+      ) {
+        return [];
+      }
+      const standard = infusable.find(({ affinityId }) => affinityId === 0) ?? infusable[0];
+      return [{ weapon: standard, unavailableReason: "No affinity selected" }];
+    });
+
+    return [...weaponsWithAmmo, ...noAffinityWeapons, ...unbuffableWeapons].flatMap(
+      ({ weapon, unavailableReason }) => {
+        // The two handing setting doesn't apply to weapons that can't be two handed
+        const weaponTwoHanding =
+          twoHanding &&
+          !oneHandedBuffs.some((buff) => buff.skillOf !== weapon.weaponName) &&
+          canTwoHand(movesets, weapon, attack);
+        const uniqueSkillEffects = uniqueSkills?.weapons?.[weapon.weaponName];
+        const ashInfo =
+          weaponBuff?.kind === "skill" && ashes.ashes.find((ash) => ash.name === weaponBuff.name);
+        const weaponBuffApplies =
+          weaponBuff?.kind === "skill"
+            ? !!ashes.weapons[weapon.weaponName]?.canChange &&
+              !!ashInfo &&
+              ashInfo.mounts.includes(weapon.weaponType) &&
+              ashInfo.affinities.includes(weapon.affinityId)
+            : !!weaponBuff && isBuffable(buffable, weapon);
+        // The weapon's own motion values for the chosen attack, or its skill: each version of a
+        // fixed skill that has several (e.g. Moonveil's R1 and R2) is its own result
+        const skillAttacks: { ash?: AshAttack; variant?: SkillVariant }[] =
+          attack === ashAttack && !unavailableReason
+            ? getAshAttacks(
+                ashes,
+                movesets,
+                weapon,
+                ashOfWar,
+                weaponTwoHanding,
+                chainWeight,
+                sumChains,
+              )
+            : attack === ashAttack
+            ? [
+                {
+                  ash: getAshAttack(
+                    ashes,
+                    movesets,
+                    weapon,
+                    ashOfWar,
+                    weaponTwoHanding,
+                    chainWeight,
+                    sumChains,
+                  ),
+                },
+              ]
+            : [{ ash: undefined }];
+        // With a skill's buff picked that changes the weapon's R2s while it lasts (e.g. War Cry, or the
+        // Dark Moon Greatsword's own Moonlight Greatsword), its R2s are the skill's chains, which have
+        // the buff: its own skill's on a weapon with a fixed skill, or a picked Ash of War's the weapon
+        // can take
+        const fixedSkill = ashes.weapons[weapon.weaponName]?.skill;
+        const r2Skill =
+          uniqueSkillEffects && fixedSkill
+            ? fixedSkill
+            : weaponBuff?.kind === "skill" &&
+              weaponBuffApplies &&
+              buffedR2Skills.has(weaponBuff.name)
+            ? weaponBuff.name
+            : undefined;
+        const skillChain =
+          r2Skill && attack !== ashAttack && attack !== baseAttack
+            ? getAshAttack(
+                ashes,
+                movesets,
+                weapon,
+                withFollowUp(r2Skill, `${attack} chain`),
+                weaponTwoHanding,
+                chainWeight,
+                sumChains,
+              )
+            : undefined;
+        const uniqueSkillChain =
+          skillChain && "attack" in skillChain && skillChain.attack.chain
+            ? skillChain.attack
+            : undefined;
+        return skillAttacks.map(({ ash, variant }): BuildRequest => {
+          const chosenAttackData =
+            ash && "attack" in ash
+              ? ash.attack
+              : attack === ashAttack
+              ? undefined
+              : uniqueSkillChain ??
+                getAttackData(movesets, weapon, attack, weaponTwoHanding, chainWeight, sumChains);
+          // A skill's enemy debuff is picked separately, so it's noted when it isn't
+          const debuffName =
+            chosenAttackData?.fixedSkill && skillDebuffs[chosenAttackData.fixedSkill];
+          const attackData =
+            chosenAttackData &&
+            debuffName &&
+            !selectedBuffs.some((buff) => buff.kind === "debuff" && buff.name === debuffName)
+              ? {
+                  ...chosenAttackData,
+                  note: [
+                    chosenAttackData.note,
+                    `Doesn't count the ${debuffName} enemy debuff the skill applies: pick it in the enemy debuffs`,
+                  ]
+                    .filter(Boolean)
+                    .join(". "),
+                }
+              : chosenAttackData;
+          // The skill the attack is, if any: the chosen skill, or the one whose R2s these are
+          const attackSkill =
+            ash && "attack" in ash
+              ? ash.skill
+              : chosenAttackData && chosenAttackData === uniqueSkillChain
+              ? r2Skill
+              : undefined;
+          // A powerstance attack with an off hand weapon of the same type (not a paired weapon, which
+          // is both)
+          const offhand =
+            attack.startsWith("Powerstance") && offhandWeaponData ? offhandWeaponData : undefined;
+          const offhandMismatch =
+            !!offhand && (weapon.paired || weapon.weaponType !== offhand.weaponType);
+          const usesOffhand = !!offhand && !offhandMismatch;
+          // Weapon buffs on the main weapon only apply to its own hits then
+          const mainHand = (effects: BuffEffect[]) =>
+            usesOffhand ? effects.map((effect) => ({ ...effect, hand: "main" as const })) : effects;
+          // A weapon's own skill's buff (picked by the skill's name), or a chosen skill that puts its
+          // own weapon buff on the weapon (e.g. Sacred Blade), replaces the chosen weapon buff
+          const ownWeaponBuff = !!uniqueSkillEffects || !!attackData?.ownWeaponBuff;
+          return {
+            unavailableReason:
+              unavailableReason ??
+              (offhandMismatch ? `Doesn't powerstance with ${offhand.name}` : undefined) ??
+              (ash && "unavailableReason" in ash ? ash.unavailableReason : undefined) ??
+              (attack !== baseAttack && !attackData ? `No ${attack} for this weapon` : undefined),
+            attack: attackData,
+            physicalNegation,
+            enemyHp: countedEnemyHp,
+            criticalDamageRate,
+            enemyTypes,
+            // A weapon with a unique skill that can also be buffed (the Bonny Butchering Knife) only
+            // gets the skill's buff, since they replace each other in game
+            buffs: [
+              ...buffEffects,
+              ...getBuffEffects(
+                [
+                  ...new Set(
+                    [passives.get(weapon.weaponName), offhandBuff].filter((buff) => buff != null),
+                  ),
+                ],
+                stackTier,
+                health,
+              ),
+              ...mainHand(weaponBuffApplies && !ownWeaponBuff ? weaponBuffEffects : []),
+              // A skill attack that carries its own buff (the Moonlight Greatsword's swings) already
+              // has it
+              ...mainHand(
+                uniqueSkillEffects && !attackData?.ownWeaponBuff
+                  ? getBuffEffects(
+                      [{ ...uniqueSkills!, effects: uniqueSkillEffects }],
+                      stackTier,
+                      health,
+                    )
+                  : [],
+              ),
+              ...(usesOffhand ? offhandBuffEffects : []),
+            ],
+            ...(usesOffhand && {
+              offhand: {
+                weapon: offhand,
+                regularUpgradeLevel: offhandUpgradeLevel,
+                poiseBase: movesets[offhand.weaponName]?.poise ?? 0,
+                leftStamina: movesets[offhand.weaponName]?.timing?.["1h"]?.[
+                  attack as AttackName
+                ]?.map((step: StepTiming) => step.leftStamina ?? 0),
+              },
+            }),
+            // Unless the skill's buff is the one picked, e.g. War Cry's R2s with War Cry
+            ...(ownWeaponBuff &&
+              weaponBuffApplies &&
+              attackSkill !== weaponBuff?.name && {
+                buffNote:
+                  "Only its skill's weapon buff applies, since it replaces other weapon buffs",
+              }),
+            // A weapon buff spell needs its catalyst's and its own requirements to cast
+            ...(weaponBuffApplies &&
+              !ownWeaponBuff &&
+              castingRequirements && { catalyst, catalystUpgradeLevel, castingRequirements }),
+            equipWeight,
+            weapon,
+            regularUpgradeLevel: upgradeLevel,
+            twoHanding: weaponTwoHanding,
+            startLevel: planLevel,
+            currentLevel: startLevel,
+            attributes: planAttributes,
+            bonusAttributes,
+            objective,
+            defenses: enemyDefenses,
+            limits: enabledLimits,
+            meetRequirements,
+            fast: fastMode,
+            ...(variant && { skillVariant: variant }),
+          };
+        });
+      },
+    );
+  }, [
+    weapons,
+    validSelectedWeapons,
+    affinityIds,
+    ammo,
+    selectedAmmo,
+    movesets,
+    buffable,
+    ashes,
+    ashOfWar,
+    onlyBuffable,
+    attack,
+    chainWeight,
+    sumChains,
+    physicalNegation,
+    countedEnemyHp,
+    criticalDamageRate,
+    enemyTypes,
+    offhandWeaponData,
+    offhandUpgradeLevel,
+    offhandBuffEffects,
+    weaponTypes,
+    upgradeLevel,
+    twoHanding,
+    bonusAttributes,
+    buffEffects,
+    selectedBuffs,
+    weaponBuff,
+    weaponBuffEffects,
+    uniqueSkills,
+    oneHandedBuffs,
+    passives,
+    offhandBuff,
+    catalyst,
+    catalystUpgradeLevel,
+    castingRequirements,
+    equipWeight,
+    stackTier,
+    health,
+    objective,
+    enemyDefenses,
+    limits,
+    fastMode,
+    meetRequirements,
+    planLevel,
+    planAttributes,
+    startLevel,
+  ]);
+
+  const { results, pending } = useBuildResults(requests);
+
+  // A column for each status effect that any weapon in the table builds up
+  const statusTypesShown = useMemo(
+    () =>
+      showStatus
+        ? [...statusTypes.keys()].filter((statusType) =>
+            results.some((result) => result.applicable && getResultStatus(result)[statusType]),
+          )
+        : [],
+    [showStatus, results],
+  );
+
+  const sortedResults = useMemo(() => {
+    // Sorting by a hidden column falls back to the highest total first
+    const hidden =
+      (sortBy === "stance" && !showStance) ||
+      (sortBy === "stamina" && !showStamina) ||
+      ((sortBy === "dps" || sortBy === "poisePerSecond") && !showDps) ||
+      (sortBy.startsWith("status:") &&
+        !statusTypesShown.some((statusType) => statusSortBy(statusType) === sortBy));
+    return hidden ? sortResults(results, "total", false) : sortResults(results, sortBy, reverse);
+  }, [results, sortBy, reverse, showStance, showStamina, showDps, statusTypesShown]);
+
+  // The chart shows the weapons checked in the table, each version of a fixed skill (e.g. Moonveil's
+  // R1 and R2) as its own line
+  const chartResults = sortedResults
+    .filter((result) => result.applicable && chartWeapons.includes(result.weaponName))
+    .map((result) =>
+      result.skillVariant
+        ? { ...result, weaponName: `${result.weaponName} (${result.skillVariant.short})` }
+        : result,
+    );
+
+  // Attacks other than the base one have hits to show. They don't apply to spell scaling.
+  const attackMode = attack !== baseAttack && objective !== "spellScaling";
+  // Also show hits for the base attack when a weapon fires several, e.g. the Spread Crossbow
+  const showHits =
+    attackMode ||
+    (objective !== "spellScaling" &&
+      sortedResults.some((result) => (result.attackSteps?.flat().length ?? 0) > 1));
+  const objectiveLabel = objectiveOptions.find(([value]) => value === objective)![1];
+  // The Ash of War isn't named, since weapons with a fixed skill use their own (named by their hits)
+  const valueLabel = objectiveLabel + (attackMode && attack !== ashAttack ? ` (${attack})` : "");
+  const pointLabel = objective === "spellScaling" ? "scaling" : "damage";
+  const notApplicableLabel =
+    objective === "spellScaling"
+      ? "Not a catalyst"
+      : objective === "totalAttack"
+      ? "No damage"
+      : `No ${damageTypeLabels.get(objective as AttackPowerType)} damage`;
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Box sx={{ maxWidth: 1600, mx: "auto", px: 2, py: 3 }}>
+        <Typography variant="h1" component="h1" sx={{ mb: 0.5 }}>
+          Elden&nbsp;Ring Stat&nbsp;Optimizer
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          Enter your current stats and the weapons you're considering to see where your next levels
+          should go. Patch 1.17.
+        </Typography>
+        {!closedAlerts.includes("levels") && (
+          <Alert severity="warning" onClose={() => closeAlert("levels")} sx={{ mb: 3 }}>
+            The best allocation at each level is found separately, so levels don&apos;t necessarily
+            build on each other: one more level can move points between stats rather than just
+            adding one. A level can also have several allocations with the same best value, of which
+            only one is shown.
+          </Alert>
+        )}
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", lg: "400px 1fr" },
+            gap: 2,
+            alignItems: "start",
+          }}
+        >
+          <Stack spacing={2}>
+            <CharacterSettings
+              startingClass={startingClass}
+              stats={stats}
+              plannedStats={plannedStats}
+              onChange={updateAppState}
+            />
+            <BuildSettings
+              upgradeLevel={upgradeLevel}
+              twoHanding={twoHanding}
+              showScaling={showScaling}
+              showStatus={showStatus}
+              showStance={showStance}
+              showStamina={showStamina}
+              showDps={showDps}
+              showRequirements={showRequirements}
+              closedAlerts={closedAlerts}
+              meetRequirements={meetRequirements}
+              onlyBuffable={onlyBuffable}
+              weaponTypes={weaponTypes}
+              attack={attack}
+              chainWeight={chainWeight}
+              sumChains={sumChains}
+              hasChain={requests.some((request) => request.attack?.chain)}
+              ashOfWar={ashOfWar}
+              ashChoices={ashChoices}
+              attackChoices={attackChoices}
+              affinityIds={affinityIds}
+              ammo={ammo}
+              selectedAmmo={selectedAmmo}
+              pointLabel={pointLabel}
+              objective={objective}
+              offhandWeapon={offhandWeaponName}
+              offhandUpgradeLevel={offhandUpgradeLevel}
+              offhandAffinityId={offhandAffinityId}
+              offhandBuff={offhandBuffKey}
+              offhandWeaponChoices={offhandWeaponChoices}
+              offhandWeaponTypes={offhandWeaponTypes}
+              offhandAffinityChoices={offhandAffinityChoices}
+              offhandBuffChoices={offhandBuffChoices}
+              onChange={updateAppState}
+            />
+            <BuffSettings
+              buffs={allBuffs}
+              selectedBuffs={selectedBuffKeys}
+              stackTier={stackTier}
+              catalysts={catalysts}
+              catalyst={catalystName}
+              catalystUpgradeLevel={catalystUpgradeLevel}
+              equipWeight={equipWeight}
+              health={health}
+              leftHandWeapon={
+                attack.startsWith("Powerstance") && offhandWeaponData
+                  ? offhandWeaponData.name
+                  : null
+              }
+              pickedWeapons={pickedWeapons}
+              onChange={updateAppState}
+            />
+            <LimitSettings
+              limits={limits}
+              fastMode={fastMode}
+              pointLabel={pointLabel}
+              currentLevel={startLevel}
+              planLevel={planLevel}
+              onChange={updateAppState}
+            />
+            <DefenseSettings
+              defenses={defenses}
+              physicalNegation={physicalNegation}
+              enemyArea={enemyArea}
+              enemyKey={enemyKey}
+              enemyHp={enemyHp}
+              enemyTypes={enemyTypes}
+              onChange={updateAppState}
+            />
+            {/* Brings back any alerts the user closed */}
+            <Button
+              size="small"
+              sx={{ alignSelf: "flex-start" }}
+              disabled={closedAlerts.length === 0}
+              onClick={() => updateAppState({ closedAlerts: [] })}
+            >
+              Show all alerts
+            </Button>
+          </Stack>
+
+          <Stack spacing={2} sx={{ minWidth: 0 }}>
+            {error ? (
+              <Alert severity="error">Couldn't load weapon data: {error.message}</Alert>
+            ) : loading ? (
+              <Box display="flex" justifyContent="center" p={4}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                <WeaponPicker
+                  weapons={weapons}
+                  weaponOrder={weaponOrder}
+                  selectedWeapons={validSelectedWeapons}
+                  onSelectedWeaponsChanged={(newSelection) =>
+                    updateAppState({ selectedWeapons: newSelection })
+                  }
+                />
+                <Box>
+                  <LinearProgress sx={{ visibility: pending ? "visible" : "hidden" }} />
+                  {requests.length > 0 ? (
+                    <Stack spacing={2}>
+                      {chartResults.length > 0 && !fastMode && (
+                        <ValueChart
+                          results={chartResults}
+                          startLevel={planLevel}
+                          valueLabel={valueLabel}
+                          range={chartRange}
+                          onChange={updateAppState}
+                        />
+                      )}
+                      <ResultsTable
+                        results={sortedResults}
+                        chartWeapons={chartWeapons}
+                        chartDisabled={fastMode}
+                        startAttributes={startAttributes}
+                        valueLabel={valueLabel}
+                        pointLabel={pointLabel}
+                        notApplicableLabel={notApplicableLabel}
+                        showScaling={showScaling}
+                        statusTypes={statusTypesShown}
+                        showHits={showHits}
+                        showStance={showStance}
+                        showStamina={showStamina}
+                        showDps={showDps}
+                        showRequirements={showRequirements}
+                        sortBy={sortBy}
+                        reverse={reverse}
+                        onChange={updateAppState}
+                      />
+                    </Stack>
+                  ) : (
+                    <Typography color="text.secondary" p={2}>
+                      {validSelectedWeapons.length > 0 || weaponTypes.length > 0
+                        ? "Pick at least one affinity, or a weapon that can't be infused."
+                        : "Pick some weapons or weapon types to compare."}
+                    </Typography>
+                  )}
+                </Box>
+              </>
+            )}
+          </Stack>
+        </Box>
+
+        <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 4 }}>
+          Weapon data and damage calculations are adapted from the{" "}
+          <Link
+            href="https://github.com/ThomasJClark/elden-ring-weapon-calculator"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Elden Ring Weapon Calculator
+          </Link>
+          . Enemy data is extracted from the game files, with names cross-referenced against a{" "}
+          <Link
+            href="https://docs.google.com/spreadsheets/d/1BVwmKqB8pvuyJkSTGYOM2kAJxFMQ0jVsc6aKYz_Upes"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            community datamining spreadsheet
+          </Link>
+          . ELDEN RING is a trademark of FromSoftware.
+        </Typography>
+      </Box>
+    </ThemeProvider>
+  );
+}

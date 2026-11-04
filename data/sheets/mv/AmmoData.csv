@@ -1,0 +1,66 @@
+Type,Name,ID,attackBasePhysics,attackBaseMagic,attackBaseFire,attackBaseThunder,attackBaseDark,attackBaseStamina,saWeaponDamage,atkAttribute,atkAttribute2,weakA_DamageRate,weakB_DamageRate,weakC_DamageRate,weakD_DamageRate,Status Type,Buildup,Effect
+Arrow,Bone Arrow,50110000,42,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Bone Arrow (Fletched),50030000,42,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Magicbone Arrow,50270000,13,93,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Magicbone Arrow (Fletched),50260000,13,93,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Firebone Arrow,50140000,13,0,93,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Firebone Arrow (Fletched),50130000,13,0,93,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Lightningbone Arrow,50210000,13,0,0,93,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Lightningbone Arrow (Fletched),50200000,13,0,0,93,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Haligbone Arrow,50290000,13,0,0,0,93,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Haligbone Arrow (Fletched),50280000,13,0,0,0,93,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Poisonbone Arrow,50160000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Poison,60,Target loses ⌊MaxHP * 0.0007⌋ + 7 HP/s for 90 seconds
+Arrow,Poisonbone Arrow (Fletched),50150000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Poison,60,Target loses ⌊MaxHP * 0.0007⌋ + 7 HP/s for 90 seconds
+Arrow,Rotbone Arrow,50350000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Rot,50,Target loses ⌊MaxHP * 0.0018⌋ + 15 HP/s for 90 seconds
+Arrow,Rotbone Arrow (Fletched),50340000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Rot,50,Target loses ⌊MaxHP * 0.0018⌋ + 15 HP/s for 90 seconds
+Arrow,Bloodbone Arrow,50310000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Bleed,55,Target loses ⌊MaxHP * 0.15⌋ + 100 HP on proc
+Arrow,Bloodbone Arrow (Fletched),50300000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Bleed,55,Target loses ⌊MaxHP * 0.15⌋ + 100 HP on proc
+Arrow,Coldbone Arrow,50330000,28,13,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Frost,60,Target loses ⌊MaxHP * 0.1⌋ + 30 HP on proc; target damage negation decreased by -20% for 30 seconds
+Arrow,Coldbone Arrow (Fletched),50320000,28,13,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Frost,60,Target loses ⌊MaxHP * 0.1⌋ + 30 HP on proc; target damage negation decreased by -20% for 30 seconds
+Arrow,Sleepbone Arrow,50180000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Sleep,84,Target loses ⌊MaxFP * 0.1⌋ + 30 FP on proc
+Arrow,Sleepbone Arrow (Fletched),50170000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Sleep,84,Target loses ⌊MaxFP * 0.1⌋ + 30 FP on proc
+Arrow,Shattershard Arrow,50230000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Shattershard Arrow (Fletched),50060000,25,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Rainbow Stone Arrow,50220000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Rainbow Stone Arrow (Fletched),50080000,25,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Stormwing Bone Arrow,50190000,58,0,0,0,0,45,5,Pierce,Pierce,1,1,1,1,,,
+Arrow,Arrow,50000000,45,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Dwelling Arrow,50100000,15,95,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Fire Arrow,50010000,15,0,95,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Golden Arrow,50090000,15,0,0,0,95,5,2,Pierce,Pierce,1,1,1,1,,,
+Arrow,Serpent Arrow,50020000,30,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Poison,78,Target loses ⌊MaxHP * 0.0007⌋ + 7 HP/s for 90 seconds
+Arrow,Spiritflame Arrow,50240000,30,40,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Frost,65,Target loses ⌊MaxHP * 0.1⌋ + 30 HP on proc; target damage negation decreased by -20% for 30 seconds
+Arrow,St. Trina's Arrow,50040000,30,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Sleep,96,Target loses ⌊MaxFP * 0.1⌋ + 30 FP on proc
+Great Arrow,Bone Great Arrow,51060000,95,0,0,0,0,60,7,Pierce,Pierce,1,1,1,1,,,
+Great Arrow,Bone Great Arrow (Fletched),51050000,95,0,0,0,0,60,7,Pierce,Pierce,1,1,1,1,,,
+Great Arrow,Great Arrow,51000000,100,0,0,0,0,60,7,Pierce,Pierce,1,1,1,1,,,
+Great Arrow,Golem's Great Arrow,51010000,105,0,0,0,0,90,10,Pierce,Pierce,1,1,1,1,,,
+Great Arrow,Golem's Magic Arrow,51030000,40,125,0,0,0,60,7,Pierce,Pierce,1,1,1,1,,,
+Great Arrow,Golden Great Arrow,51020000,40,0,0,0,110,60,7,Pierce,Pierce,1,1,1,1,,,
+Great Arrow,Radahn's Spear,51040000,100,0,0,0,0,60,7,Pierce,Pierce,1.2,1,1,1,,,
+Great Arrow,Igon's Harpoon,51500000,90,0,0,0,0,60,7,Pierce,Pierce,1,1,1.15,1.3,,,
+Bolt,Bone Bolt,52090000,44,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Magicbone Bolt,52120000,18,78,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Firebone Bolt,52100000,18,0,78,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Lightningbone Bolt,52110000,18,0,0,78,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Haligbone Bolt,52130000,18,0,0,0,78,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Poisonbone Bolt,52140000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Poison,66,Target loses ⌊MaxHP * 0.0007⌋ + 7 HP/s for 90 seconds
+Bolt,Rotbone Bolt,52170000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Rot,55,Target loses ⌊MaxHP * 0.0018⌋ + 15 HP/s for 90 seconds
+Bolt,Bloodbone Bolt,52150000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Bleed,50,Target loses ⌊MaxHP * 0.15⌋ + 100 HP on proc
+Bolt,Coldbone Bolt,52160000,28,23,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Frost,65,Target loses ⌊MaxHP * 0.1⌋ + 30 HP on proc; target damage negation decreased by -20% for 30 seconds
+Bolt,Sleepbone Bolt,52180000,28,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Sleep,90,Target loses ⌊MaxFP * 0.1⌋ + 30 FP on proc
+Bolt,Bolt,52000000,50,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Lordsworn's Bolt,52080000,65,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Meteor Bolt,52050000,25,80,0,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Flaming Bolt,52190000,20,0,80,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Explosive Bolt,52060000,15,0,70,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Perfumer's Bolt,52020000,15,0,65,0,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Lightning Bolt,52010000,20,0,0,80,0,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Golden Bolt,52070000,20,0,0,0,80,5,2,Pierce,Pierce,1,1,1,1,,,
+Bolt,Black-Key Bolt,52030000,30,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Rot,60,Target loses ⌊MaxHP * 0.0018⌋ + 15 HP/s for 90 seconds
+Bolt,Burred Bolt,52040000,30,0,0,0,0,5,2,Pierce,Pierce,1,1,1,1,Bleed,65,Target loses ⌊MaxHP * 0.15⌋ + 100 HP on proc
+Greatbolt,Bone Ballista Bolt,53030000,158,0,0,0,0,70,7,Pierce,Pierce,1,1,1,1,,,
+Greatbolt,Ballista Bolt,53000000,160,0,0,0,0,70,7,Pierce,Pierce,1,1,1,1,,,
+Greatbolt,Explosive Greatbolt,53020000,50,0,150,0,0,70,7,Pierce,Pierce,1,1,1,1,,,
+Greatbolt,Lightning Greatbolt,53010000,50,0,0,150,0,70,7,Pierce,Pierce,1,1,1,1,,,
+Greatbolt,Rabbath's Greatbolt,53500000,50,150,0,0,0,70,7,Pierce,Pierce,1,1,1,1,,,

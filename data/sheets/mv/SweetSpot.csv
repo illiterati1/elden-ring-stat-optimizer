@@ -1,0 +1,8 @@
+"Sweet spot is based on frame data, not what part of the weapon you hit with; ""sweet timing"" may be a more accurate term.",,,
+When you hit a target during the active frames of a sweet spot you get 1.125x damage.,,,
+Weapon,Attack,When,Multiplier
+Nox Flowing Hammer - Flowing Form,Flowing Form [1],When fully extended in front of the player; intended to happen when spaced to hit locked-on target with the hammer head.,1.125
+Nox Flowing Hammer - Flowing Form,Flowing Form [2],When fully extended in front of the player; intended to happen when spaced to hit locked-on target with the hammer head.,1.125
+Coil Shield,Viper Bite,"When fully extended in front of the player; ends before retraction, so a late hit will not get the multiplier.",1.125
+All Flails,Non-AoW attacks,Most attacks will only lose the multiplier on late hits. A few do not have the bonus active on the first frame of the attack.,1.125
+"Flail, Chainlink Flail, Nightrider Flail",Spinning Chain,,1.15

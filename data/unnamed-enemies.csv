@@ -1,0 +1,72 @@
+model,npcParamId,placements,areas
+c0000,0,23,Jagged Peak; Murkwater Cave; Scadu Altus; Shadow Keep; Spiritcaller Cave
+c0110,1100000,6,Altus Plateau; Consecrated Snowfield; Liurnia of the Lakes; Waypoint Ruins
+c0120,1200000,9,Ancient Ruins of Rauh; Caelid; Crumbling Farum Azula; Sealed Tunnel
+c0120,1200020,3,Bellum Highway
+c0120,1200030,7,Capital Outskirts
+c0120,1200041,2,Caelid
+c0120,1200100,2,Bellum Highway; Liurnia of the Lakes
+c2150,21500052,8,Consecrated Snowfield
+c2150,21500064,11,"Nokron, Eternal City"
+c2150,21500352,4,Consecrated Snowfield
+c2150,21500452,5,Consecrated Snowfield
+c2150,21500652,6,Consecrated Snowfield
+c2276,22760020,1,Liurnia of the Lakes
+c2276,22760033,2,Capital Outskirts
+c2277,22770020,4,Liurnia of the Lakes
+c2277,22770033,16,Capital Outskirts
+c4281,42810062,3,Ainsel River Main
+c4281,42810066,3,Deeproot Depths
+c4300,0,1,Liurnia of the Lakes
+c4362,43620020,7,Bellum Highway; Liurnia of the Lakes
+c4364,43640040,1,Caelid
+c4375,43751052,3,Consecrated Snowfield
+c4380,43800012,6,Weeping Peninsula
+c4380,43800062,2,Ainsel River Main
+c4380,43800130,12,Altus Plateau; Capital Outskirts
+c4420,0,1,Liurnia of the Lakes
+c4442,44420040,11,Caelid; Swamp of Aeonia
+c5180,51800080,4,Gravesite Plain
+c5180,51800081,1,Gravesite Plain
+c5180,51800090,4,Enir-Ilim; Scadu Altus
+c5181,51810085,1,Jagged Peak
+c5181,51810089,1,Enir-Ilim
+c5181,51810099,1,Specimen Storehouse
+c5340,53400000,11,Abyssal Woods; Castle Ensis; Foot of the Jagged Peak; Scadu Altus
+c5460,54600083,14,Cerulean Coast
+c5460,54600090,10,Scadu Altus
+c5460,54600183,3,Cerulean Coast
+c5520,55200095,2,Rauh Base
+c5521,55210080,3,Gravesite Plain
+c5521,55210081,5,Gravesite Plain
+c5521,55210090,8,Scadu Altus
+c5526,55260094,4,Ancient Ruins of Rauh
+c5527,55270080,5,Gravesite Plain
+c5527,55270094,12,Ancient Ruins of Rauh
+c5680,56800081,1,Gravesite Plain
+c5690,56900090,10,Castle Ensis
+c5700,57000083,11,Cerulean Coast
+c5700,57001083,3,Cerulean Coast
+c5700,57002083,8,Cerulean Coast
+c5701,57010083,9,Cerulean Coast
+c5710,57100083,5,Cerulean Coast
+c5780,57800095,5,Rauh Base
+c5850,58500083,1,Cerulean Coast
+c5850,58500180,3,Gravesite Plain
+c5850,58500183,3,Cerulean Coast
+c5850,58500184,3,Foot of the Jagged Peak
+c5930,59300084,3,Charo's Hidden Grave
+c5930,59301084,1,Charo's Hidden Grave
+c6081,60810010,25,Limgrave
+c6081,60810012,3,Weeping Peninsula
+c6081,60810020,6,Bellum Highway
+c6081,60810030,2,Altus Plateau
+c6081,60810033,4,Altus Plateau
+c6081,60810040,6,Caelid; Swamp of Aeonia
+c6081,60810042,3,Greyoll's Dragonbarrow
+c6081,60810052,5,Consecrated Snowfield
+c6082,60820040,10,Swamp of Aeonia
+c6210,62100092,1,Scaduview
+c6220,62200092,1,Scaduview
+c6240,62400083,9,Cerulean Coast
+c6300,63000094,12,Ancient Ruins of Rauh

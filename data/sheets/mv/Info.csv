@@ -1,0 +1,63 @@
+,,,,,,,,,,,Param Defs
+,Explaining MVs,"Motion value is a term that is, as far as I've been able to find, borrowed from the Monster Hunter series. A motion value is a multiplier to the various properties of attacks represented as a percentage (100 = 100%).
+If the motion value for an attack is listed as ""X + X"" this is done to separate individual attacks made from one input. Combining values from multiple hits will give you misleading comparison values for anything relating to health damage due to the way that is calculated in Fromsoftware's games.
+e.g., if an attack has two MVs of 100 + 100, this will be less damage than a single MV of 200 in practice.
+Alternatively may be referred to as an ""atkCorrection""",,,,,,,,,
+,,,,,,,,,,,
+,Motion Value,Motion values that affect a weapon's attack power (AP/AR/Atk).,,,,,,,,,atk(Phys|Mag|Fire|Thun|Dark)Correction
+,,,,,,,,,,,
+,PvP Dmg Mult,Multipliers to damage for PvP. Most attacks on this page currently have a multiplier of 1.,,,,,,,,,finalDamageRateId - (phys|mag|fire|thun|dark)Rate
+,,,,,,,,,,,
+,Stamina Damage MVs,"Motion values that affect stamina damage of attacks; multiplied from weapon's base value listed in column C and the reinforcement multiplier.
+Reinforcement multiplier ranges from 1 (unupgraded weapon) to 2 (fully upgraded weapon) with linear steps for each upgrade level between.",,,,,,,,,AtkStamCorrection
+,,,,,,,,,,,
+,Stamina Damage - PvE,This page has the work from Stamina Damage MVs done for you; assumes max reinforcement (2x reinforcement multiplier).,,,,,,,,,
+,,,,,,,,,,,
+,Stamina Damage - PvP,"This page is the same as the above, but also includes a multiplier that was added in 1.07 exclusively for PvP interactions.",,,,,,,,,
+,,,,,,,,,,,
+,Status MVs,Motion values that affect the build-up of status applied by an attack.,,,,,,,,,statusAilmentAtkPowerCorrectRate
+,,,,,,,,,,,
+,Weapon Buff MVs,"Motion values that affect the attack power of weapon buffs applied to a weapon.
+This is entirely separate from the data on the Motion Value page.",,,,,,,,,spEffectAtkPowerCorrectRate_byPoint
+,,,,,,,,,,,
+,Poise Damage MVs,Motion values that affect the poise damage of an attack; multiplied from weapon's base value listed in column C.,,,,,,,,,AtkSuperArmorCorrection
+,,,,,,,,,,,
+,Poise Damage - PvE,This page has the work from Poise Damage MVs done for you.,,,,,,,,,
+,,,,,,,,,,,
+,Poise Damage - PvP,This page is the same as the above adjusted to line up with how poise is listed in your menu and includes a multiplier that was added in 1.07 exclusively for PvP interactions.,,,,,,,,,
+,,,,,,,,,,,
+,Stamina Cost,Lists the amount of stamina consumed by each attack.,,,,,,,,,stamina * staminaConsumptionRate
+,,,,,,,,,,,
+,Physical AtkAttribute,Lists the physical damage type of each attack; standard/strike/slash/pierce. Attack animation and in-game menu can be misleading in some cases.,,,,,,,,,atkAttribute
+,,,,,,,,,,,
+,Shield Chip,"Lists the amount of shield chip each attack has. Values are representing a percentage similar to how MVs are. If a weapon has a ""Base"" shield chip it is applied to all attacks from the weapon including Ashes of War.",,,,,,,,,GuardCutCancelRate
+,,,,,,,,,,,
+,DamageLevel - PvE,dmgLevel is what the game uses to determine the hitstun animation to put the target into. You can find more information on these hitstun animations here.,,,,,,,,,dmgLevel
+,,,,,,,,,,,
+,DamageLevel - PvP,"Hitstun specific to PvP interactions, the above link is also applicable.",,,,,,,,,"dmgLevel_vsPlayer
+auto-converted to the dmgLevel equivalent for convenience"
+,,,,,,,,,,,
+,AttackRepel,"This value is compared to guardBaseRepel or defFlickPower to determine whether or not an attack will bounce.
+guardBaseRepel does not matter in the context of PvP; the only time an attack will bounce is if the defFlickPower of an active effect on the defender is greater than the attacking value.",,,,,,,,,attackBaseRepel * guardAtkRateCorrection
+,,,,,,,,,,,
+,BaseMovesetUnique,This page is for attacks that are part of a weapon's base moveset that have important properties not displayed on the other pages,,,,,,,,,
+,,,,,,,,,,,
+,Ashes of War Attack Data,"This page has a lot of the above condensed into a single page for ashes of war. Stam Dmg MV, Poise Dmg MV, and Stamina Cost will use the base values of the weapon the ash of war is applied to.
+""Bullet"" attacks (bullets are basically attacks that are detatched from the weapon) will typically use their own base atk values for attack power, stamina damage, and poise damage that can be found after the DamageLevel column.
+Read column header notes.",,,,,,,,,
+,,,,,,,,,,,
+,Spell Attack Data,"This page has a lot of the above condensed into a single page for spells.
+In order to calculate the attack power of a spell you use the listed attack values with the catalyst's spell buff as a multiplier (sorcery/incant scaling)
+Spell buff divided by 100 = multiplier.",,,,,,,,,
+,,,,,,,,,,,
+,WeaponData,"Has some miscellaneous data for weapons.
+Read column header notes.",,,,,,,,,
+,,,,,,,,,,,
+,AttackElementCorrectParam,"Only relevant for some ashes of war. These are essentially scaling overrides that will ignore most of a weapon's scaling properties with the exception of the multiplier from affinity/reinforcement level.
+You can find the ID for an attack on its row, if the value = -1 then it does not have an override and will use the weapon's scaling properties.
+Read column header notes.",,,,,,,,,
+,,,,,,,,,,,
+,SpEffectParam,"This is where a lot of the game's ""fancy"" stuff is determined. The game has thousands of SpEffects used for a wide variety of mechanics. I've only included SpEffects that are used by weapon attacks/ashes of war to cut down on bloat.
+Read column header notes.",,,,,,,,,
+,,,,,,,,,,,
+,Previous Game Updates,Links to copies of this sheet that I've archived from past game versions.,,,,,,,,,

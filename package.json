@@ -1,0 +1,36 @@
+{
+  "name": "elden-ring-stat-calculator",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@emotion/react": "11.10.6",
+    "@emotion/styled": "11.10.6",
+    "@fontsource/cinzel": "^5.1.0",
+    "@mui/material": "5.12.2",
+    "@mui/system": "5.12.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.9.0",
+    "@types/react": "18.2.79",
+    "@types/react-dom": "18.2.25",
+    "@vitejs/plugin-react-swc": "3.7.1",
+    "prettier": "2.7.1",
+    "typescript": "5.6.3",
+    "vite": "5.4.10",
+    "vitest": "2.1.4"
+  },
+  "scripts": {
+    "start": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "trailingComma": "all"
+  }
+}
