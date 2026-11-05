@@ -10,3 +10,6 @@ npm-debug.log*
 # Local only: Boss Arena mod params (for comparing with vanilla) and research notes
 /data/*-boss-arena.csv
 /data/docs/
+
+# Python bytecode caches
+__pycache__/
