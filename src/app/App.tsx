@@ -55,8 +55,7 @@ import useMovesets, {
   canTwoHand,
   getAttackData,
   riposteAttacks,
-  type AttackName,
-  type StepTiming,
+  withOffhandRows,
 } from "./useMovesets.ts";
 import useAmmo, { getAmmoKey, weaponTypeAmmoClasses, withAmmo } from "./useAmmo.ts";
 import useBuildResults from "./useBuildResults.ts";
@@ -80,6 +79,35 @@ import {
 
 /** Skills that apply an enemy debuff, which is picked separately (in the enemy debuffs), by name */
 const skillDebuffs: Partial<Record<string, string>> = { "Shriek of Milos": "Shriek of Milos" };
+
+/**
+ * Weapons that also powerstance with another weapon type, in the left hand only or either hand
+ * (exceptions in the game; their own attack rows for it are in its data, see withOffhandRows): the
+ * Wakizashi with katanas (tested in game with an Uchigatana), the Main-gauche with thrusting swords
+ * (tested with a Rapier), and the Pickaxe, a Great Hammer with greataxes' animations
+ * (wepmotionCategory 32), with greataxes (tested with the Rusted Anchor)
+ */
+const powerstanceExceptions: { weapon: string; weaponType: WeaponType; leftHandOnly?: true }[] = [
+  { weapon: "Wakizashi", weaponType: WeaponType.KATANA, leftHandOnly: true },
+  { weapon: "Main-gauche", weaponType: WeaponType.THRUSTING_SWORD, leftHandOnly: true },
+  { weapon: "Pickaxe", weaponType: WeaponType.GREATAXE },
+];
+
+/**
+ * @returns true if a weapon in the right hand powerstances with one in the left: the same weapon
+ * type, unless it's paired, or one of the exceptions (powerstanceExceptions)
+ */
+function powerstancesWith(main: Weapon, offhand: Weapon) {
+  if (main.paired) return false;
+  return (
+    main.weaponType === offhand.weaponType ||
+    powerstanceExceptions.some(
+      ({ weapon, weaponType, leftHandOnly }) =>
+        (offhand.weaponName === weapon && main.weaponType === weaponType) ||
+        (!leftHandOnly && main.weaponName === weapon && offhand.weaponType === weaponType),
+    )
+  );
+}
 
 export default function App() {
   const [appState, updateAppState] = useAppState();
@@ -568,12 +596,11 @@ export default function App() {
               : chosenAttackData && chosenAttackData === uniqueSkillChain
               ? r2Skill
               : undefined;
-          // A powerstance attack with an off hand weapon of the same type (not a paired weapon, which
-          // is both)
+          // A powerstance attack with an off hand weapon it powerstances with (not a paired weapon,
+          // which is both)
           const offhand =
             attack.startsWith("Powerstance") && offhandWeaponData ? offhandWeaponData : undefined;
-          const offhandMismatch =
-            !!offhand && (weapon.paired || weapon.weaponType !== offhand.weaponType);
+          const offhandMismatch = !!offhand && !powerstancesWith(weapon, offhand);
           const usesOffhand = !!offhand && !offhandMismatch;
           // Weapon buffs on the main weapon only apply to its own hits then
           const mainHand = (effects: BuffEffect[]) =>
@@ -587,7 +614,11 @@ export default function App() {
               (offhandMismatch ? `Doesn't powerstance with ${offhand.name}` : undefined) ??
               (ash && "unavailableReason" in ash ? ash.unavailableReason : undefined) ??
               (attack !== baseAttack && !attackData ? `No ${attack} for this weapon` : undefined),
-            attack: attackData,
+            // The left hand weapon's hits use its own attack rows
+            attack:
+              usesOffhand && attackData
+                ? withOffhandRows(attackData, movesets, weapon.weaponName, offhand.weaponName)
+                : attackData,
             physicalNegation,
             enemyHp: countedEnemyHp,
             criticalDamageRate,
@@ -624,9 +655,6 @@ export default function App() {
                 weapon: offhand,
                 regularUpgradeLevel: offhandUpgradeLevel,
                 poiseBase: movesets[offhand.weaponName]?.poise ?? 0,
-                leftStamina: movesets[offhand.weaponName]?.timing?.["1h"]?.[
-                  attack as AttackName
-                ]?.map((step: StepTiming) => step.leftStamina ?? 0),
               },
             }),
             // Unless the skill's buff is the one picked, e.g. War Cry's R2s with War Cry

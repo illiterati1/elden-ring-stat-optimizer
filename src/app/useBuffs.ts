@@ -67,6 +67,8 @@ export interface Buff {
     /** The HP percentages it applies at: at least min, below max (e.g. Shriek of Sorrow's levels) */
     hp?: HpRange;
   })[];
+  /** For talismans, armor, and off-hand weapons, their weight (for the Blue Dancer Charm) */
+  weight?: number;
   /** For armor, which slot it goes in */
   slot?: ArmorSlot;
   /** For consumables, spells, skills, and spirit ashes, which stacking group it's in */

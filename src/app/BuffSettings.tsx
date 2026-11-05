@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import {
   Autocomplete,
   Box,
+  Button,
   Checkbox,
   FormControlLabel,
   MenuItem,
@@ -204,6 +205,11 @@ function BuffSettings({
   const byHp = selected.filter((buff) => buff.effects.some((effect) => effect.hp));
   const hpStops = getHpStops(byHp);
 
+  // The weight of the talismans, armor, and off-hand weapon picked (the weapons' own are added for
+  // each result)
+  const equippedWeight =
+    Math.round(selected.reduce((sum, buff) => sum + (buff.weight ?? 0), 0) * 100) / 100;
+
   // Buffs that shrink with equip weight (the Blue Dancer Charm)
   const byEquipWeight = selected.filter((buff) =>
     buff.effects.some((effect) => effect.byEquipWeight),
@@ -256,19 +262,31 @@ function BuffSettings({
           )}
         />
         {byEquipWeight.length > 0 && (
-          <NumberTextField
-            label="Other equip weight"
-            size="small"
-            value={equipWeight}
-            min={0}
-            step={0.1}
-            onChange={(value) => onChange({ equipWeight: value })}
-            helperText={`For ${byEquipWeight
-              .map((buff) => buff.name)
-              .join(", ")}: armor, talismans, and anything else. Each weapon's own weight${
-              leftHandWeapon ? `, and the ${leftHandWeapon}'s in the left hand,` : ""
-            } is added.`}
-          />
+          <Box display="flex" gap={1} alignItems="flex-start">
+            <NumberTextField
+              sx={{ flex: 1 }}
+              label="Other equip weight"
+              size="small"
+              value={equipWeight}
+              min={0}
+              step={0.1}
+              onChange={(value) => onChange({ equipWeight: value })}
+              helperText={`For ${byEquipWeight
+                .map((buff) => buff.name)
+                .join(", ")}: armor, talismans, and anything else. Each weapon's own weight${
+                leftHandWeapon ? `, and the ${leftHandWeapon}'s in the left hand,` : ""
+              } is added.`}
+            />
+            <Button
+              size="small"
+              variant="outlined"
+              sx={{ mt: 0.5, whiteSpace: "nowrap" }}
+              title="The talismans, armor, and off-hand weapon picked here (armor without effects isn't listed, so add its weight yourself)"
+              onClick={() => onChange({ equipWeight: equippedWeight })}
+            >
+              From equipped
+            </Button>
+          </Box>
         )}
         {hpStops.length > 0 && (
           <NumberTextField

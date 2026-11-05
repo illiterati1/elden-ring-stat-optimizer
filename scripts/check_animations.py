@@ -450,6 +450,7 @@ class Steps:
                     "index": attack_index,
                     "source": get_hit_source(atk),
                     "leftHand": hand == LEFT_HAND_SOURCE,
+                    "cost": cost,
                 }
             )
         # A mounted attack's window open from its start is the charging attack's, carried over (e.g.
@@ -520,6 +521,7 @@ def merge_hits(hits, both_fists, held_items=False):
         previous = next((other for other in reversed(merged) if joins(other)), None)
         if previous:
             previous["end"] = max(previous["end"], hit["end"])
+            previous["cost"] = previous.get("cost", 0) + hit.get("cost", 0)
             if hit["bullet"] and not previous["bullet"]:
                 previous.update(mvs=hit["mvs"], atk=hit["atk"], bullet=True)
         else:
@@ -570,6 +572,9 @@ def get_timings(steps, param, moveset):
       - stamina: what the step costs: its windows' behaviors' stamina (BehaviorParam_PC stamina)
         times the weapon's staminaConsumptionRate
       - leftStamina: how much of it the left hand's weapon's windows cost (powerstance attacks)
+      - hitStamina: for steps of more than one hit, what each of the moveset's hits costs (its
+        windows', matched by motion value, with any windows that aren't hits on the first), if they
+        can all be matched
       - sweetSpot: true if every hit's window opens in a sweet spot (SWEET_SPOT_FLAG, flails')
     Each is left out if the animation doesn't allow it (e.g. jumping attacks, which end on landing)
     """
@@ -605,6 +610,12 @@ def get_timings(steps, param, moveset):
                     timing["stamina"] = round(stamina, 2)
                 if left_stamina:
                     timing["leftStamina"] = round(left_stamina, 2)
+                matched = match_hits(attack_steps[index], merged)
+                if stamina and matched and len(matched) > 1:
+                    rate = float(param["staminaConsumptionRate"])
+                    costs = [hit.get("cost", 0) * rate for hit in matched]
+                    costs[0] += stamina - sum(costs)
+                    timing["hitStamina"] = [round(cost, 2) for cost in costs]
                 sweet_spots = steps.animations.get_sweet_spots(file_number, anim_id)
                 if sweet_spots and all(
                     any(start < hit["end"] and end > hit["start"] for start, end in sweet_spots)
@@ -617,13 +628,35 @@ def get_timings(steps, param, moveset):
     return timings
 
 
+def match_hits(step, merged):
+    """
+    @param step a moveset step's hits
+    @param merged the hits the step's windows make (Steps.get_step)
+    @returns the merged hit for each of the moveset's hits, matched by motion value (right hand hits
+    first, so equal ones split one each), or None if they don't all match
+    """
+    if len(merged) != len(step):
+        return None
+    pool = sorted(merged, key=lambda hit: hit["leftHand"])
+    matched = []
+    for hit in step:
+        motion_value = max(hit[0]) if isinstance(hit[0], list) else hit[0]
+        match = next((other for other in pool if main_mv(other["mvs"]) == motion_value), None)
+        if match is None:
+            return None
+        pool.remove(match)
+        matched.append(match)
+    return matched
+
+
 def get_left_hand_hits(steps, param, moveset):
     """
     @param steps a Steps
     @param moveset a weapon's build_moveset_data.py output
     @returns for each powerstance attack's step, which of its hits are the left hand's weapon's
     (AttackBehavior Source), matched to the moveset's hits by motion value, by attack: e.g. the
-    Longsword's powerstance L1 1's second hit. Steps that can't be matched are None.
+    Longsword's powerstance L1 1's second hit. Each is its behavior judge ID for the left hand's
+    hits, or False. Steps that can't be matched are None.
     """
     if param["wepType"] == HAND_TO_HAND_ARTS_TYPE:
         return {}
@@ -637,23 +670,34 @@ def get_left_hand_hits(steps, param, moveset):
             file_number, _, merged, _, _, _, _ = (
                 steps.get_step(param, "1h", anim_id, both_weapons=True) if anim_id else (None,) * 7
             )
-            if file_number is None or len(merged) != len(step):
-                marks.append(None)
-                continue
-            # Right hand hits first, so equal motion values split one each
-            pool = sorted(merged, key=lambda hit: hit["leftHand"])
-            step_marks = []
-            for hit in step:
-                motion_value = max(hit[0]) if isinstance(hit[0], list) else hit[0]
-                match = next((other for other in pool if main_mv(other["mvs"]) == motion_value), None)
-                if match is None:
-                    step_marks = None
-                    break
-                pool.remove(match)
-                step_marks.append(match["leftHand"])
-            marks.append(step_marks)
+            matched = match_hits(step, merged) if file_number is not None else None
+            marks.append(
+                [match["judge"] if match["leftHand"] else False for match in matched] if matched else None
+            )
         result[attack] = marks
     return result
+
+
+def get_left_hand_rows(steps, param, judges):
+    """
+    @param judges behavior judge IDs of powerstance hits with the left hand's weapon
+    @returns the weapon's own motion value, poise motion value, and stamina cost for each of the
+    judges, through its behavior variation, as { judge: [motion value, poise, stamina] }: the left
+    hand's weapon's hits use its own attack rows, e.g. a Wakizashi's L1 #1 with a katana (115, not
+    the katana's 90), and its own behaviors' stamina (times its staminaConsumptionRate)
+    """
+    rows = {}
+    variation = int(param["behaviorVariationId"])
+    rate = float(param["staminaConsumptionRate"])
+    for judge in sorted(judges):
+        atk = steps.game.attacks.get(steps.behaviors.get_attack(variation, judge))
+        if atk and any(get_motion_values(atk)):
+            rows[str(judge)] = [
+                main_mv(get_motion_values(atk)),
+                float(atk["atkSuperArmorCorrection"]),
+                round(steps.behaviors.get_stamina(variation, judge) * rate, 2),
+            ]
+    return rows
 
 
 def get_step_columns(param):

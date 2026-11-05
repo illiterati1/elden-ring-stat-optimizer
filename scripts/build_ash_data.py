@@ -809,7 +809,13 @@ SKILL_NOTES = {
 # 2012, 2243, 2315, and 2474, whole numbers of its unboosted 231 and 72 beams; with the Shard of
 # Alexander, 2690. Uncharged: 1917 and 20 poise without talismans, the swing's 829 and 15 and five
 # 206 beams (1 poise each) and a 58; with the Shard, 1835, the swing's 953 and unboosted beams)
+# Lightning Slash's projectile (300000371) is neither a skill (112) nor a Dragon Cult skill (133) in
+# game, though the data says it's both. Tested on a Lightning Longsword +25 with 99 in every stat:
+# with the Death Knight set (×1.08 for Dragon Cult skills), 1836 in all, the stomp and slash boosted
+# (137 and 1061) and the projectile not (638); with the Shard of Alexander (×1.15 for skills), 1913,
+# the same (146, 1129, and 638).
 ROW_CATEGORIES = {
+    "300000371": [],
     "600000074": [],
     "600000079": [],
     "700000071": [],

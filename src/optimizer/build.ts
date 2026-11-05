@@ -136,8 +136,6 @@ export interface BuildRequest {
     weapon: Weapon;
     regularUpgradeLevel: number;
     poiseBase: number;
-    /** The stamina its left hand hits cost in each step, from its own moveset, if known */
-    leftStamina?: number[];
   };
   /** Effects of the player's buffs (talismans, tears, etc.), applied to the hits they apply to */
   buffs?: readonly BuffEffect[];
@@ -245,6 +243,8 @@ export interface AttackDataHit {
   physicalType: PhysicalType;
   /** True for a powerstance hit with the left hand's weapon */
   leftHand?: boolean;
+  /** For a left hand hit, its behavior judge ID (useMovesets.ts's withOffhandRows) */
+  judge?: number;
   /** For a hit with an off hand weapon, its base stance (poise) damage, instead of the attack's */
   poiseBase?: number;
   /** For a hit with an off hand weapon, its status attack power, instead of the weapon's */
@@ -471,6 +471,8 @@ export interface AttackData {
   stamina?: (number | undefined)[];
   /** How much of each step's stamina its left hand hits cost (powerstance attacks), if known */
   leftStamina?: number[];
+  /** What each hit of each step costs (its attack windows'), for steps of more than one hit, if known */
+  hitStamina?: (number[] | undefined)[];
   /** How long each step takes when the attack is repeated as fast as possible, if known */
   cycleTimes?: number[];
 }
@@ -831,8 +833,9 @@ function getAttackPoisePerSecond(attack: AttackData) {
 }
 
 /**
- * @returns the stamina a hit shows: its step's on its first hit, or for a powerstance attack whose
- * left hand hits cost some of it (leftStamina), each hand's on its first hit
+ * @returns the stamina a hit shows: its own (hitStamina) if known, or else its step's on its first
+ * hit, or for a powerstance attack whose left hand hits cost some of it (leftStamina), each hand's on
+ * its first hit
  */
 function getHitStamina(
   attack: AttackData,
@@ -842,6 +845,9 @@ function getHitStamina(
 ): { stamina?: number } {
   const total = attack.stamina?.[stepIndex];
   if (total == null) return {};
+  // Each hit's own cost, where known
+  const costs = attack.hitStamina?.[stepIndex];
+  if (costs?.length === step.length) return { stamina: costs[hitIndex] };
   const left = attack.leftStamina?.[stepIndex] ?? 0;
   const hit = step[hitIndex];
   const firstOfHand = step.findIndex((other) => !!other.leftHand === !!hit.leftHand) === hitIndex;
@@ -1380,17 +1386,6 @@ export function optimizeBuild(
     attack && offhandWeapon
       ? {
           ...attack,
-          // The off hand weapon's own stamina for its hits, if known
-          ...(attack.stamina &&
-            attack.leftStamina &&
-            offhand!.leftStamina && {
-              stamina: attack.stamina.map((total, i) =>
-                total == null
-                  ? total
-                  : total - attack.leftStamina![i] + (offhand!.leftStamina![i] ?? 0),
-              ),
-              leftStamina: attack.leftStamina.map((_, i) => offhand!.leftStamina![i] ?? 0),
-            }),
           steps: attack.steps.map((step) =>
             step.map((hit) =>
               hit.leftHand

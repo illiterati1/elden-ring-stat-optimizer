@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { allDamageTypes, WeaponType, type Weapon } from "../calculator/calculator.ts";
 import { allPhysicalTypes } from "../optimizer/defense.ts";
-import type { AttackData } from "../optimizer/build.ts";
+import type { AttackData, AttackDataHit } from "../optimizer/build.ts";
 
 export const allAttacks = [
   "R1",
@@ -126,6 +126,8 @@ type MovesetHit = [
     buffMotionValue?: number;
     /** True for a powerstance hit with the left hand's weapon */
     leftHand?: boolean;
+    /** For a left hand hit, its behavior judge ID, to look up the left hand's weapon's own row */
+    judge?: number;
   }?,
 ];
 
@@ -138,6 +140,8 @@ export interface StepTiming {
   stamina?: number;
   /** How much of the step's stamina the left hand's weapon costs (powerstance attacks) */
   leftStamina?: number;
+  /** For steps of more than one hit, what each of the moveset's hits costs */
+  hitStamina?: number[];
   /** True if its hits are in a flail's sweet spot (flailSweetSpotRate) */
   sweetSpot?: true;
   next?: { attack: "R1" | "R2" | "L1"; time: number };
@@ -160,9 +164,79 @@ interface Moveset {
    * can start, and when a roll can (not used yet)
    */
   timing?: Partial<Record<"1h" | "2h", Partial<Record<AttackName, StepTiming[]>>>>;
+  /**
+   * The weapon's own motion value, poise motion value, and stamina cost for each behavior judge ID
+   * of the left hand's powerstance hits, for when it's in the left hand with another weapon
+   */
+  leftHandRows?: Record<string, [number, number, number]>;
 }
 
 export type Movesets = Record<string, Moveset>;
+
+/**
+ * @returns a powerstance attack with its left hand hits using the off hand weapon's own attack rows:
+ * the right hand weapon's animations decide the hits, but each hand's weapon has its own motion values
+ * and poise for them (e.g. a Wakizashi's L1 #1 with a katana, 115 and 80, not the katana's 90 and 40),
+ * scaled by the ratio of the two weapons' rows, and its own stamina cost for them
+ */
+export function withOffhandRows(
+  attack: AttackData,
+  movesets: Movesets,
+  mainWeaponName: string,
+  offhandWeaponName: string,
+): AttackData {
+  const mainRows = movesets[mainWeaponName]?.leftHandRows;
+  const offhandRows = movesets[offhandWeaponName]?.leftHandRows;
+  if (!mainRows || !offhandRows || mainWeaponName === offhandWeaponName) return attack;
+  const rowsOf = (hit: AttackDataHit) =>
+    hit.leftHand && hit.judge != null
+      ? { main: mainRows[hit.judge], offhand: offhandRows[hit.judge] }
+      : undefined;
+  // Rounded, so 90 × 115 / 90 is 115
+  const scale = (value: number, rate: number) => Math.round(value * rate * 1e6) / 1e6;
+  const steps = attack.steps.map((step) =>
+    step.map((hit) => {
+      const { main, offhand } = rowsOf(hit) ?? {};
+      if (!main || !offhand || !main[0]) return hit;
+      const rate = offhand[0] / main[0];
+      const poiseRate = main[1] ? offhand[1] / main[1] : 1;
+      return {
+        ...hit,
+        motionValue: scale(hit.motionValue, rate),
+        ...(hit.motionValues && {
+          motionValues: hit.motionValues.map((motionValue) => scale(motionValue, rate)),
+        }),
+        poiseMotionValue: scale(hit.poiseMotionValue, poiseRate),
+      };
+    }),
+  );
+  // Each left hand hit's stamina is the off hand weapon's for its row instead of the main weapon's
+  const staminaChange = attack.steps.map((step) =>
+    step.map((hit) => {
+      const { main, offhand } = rowsOf(hit) ?? {};
+      return main && offhand ? offhand[2] - main[2] : 0;
+    }),
+  );
+  const round = (value: number) => Math.round(value * 100) / 100;
+  const stepChange = (i: number) => staminaChange[i].reduce((sum, change) => sum + change, 0);
+  return {
+    ...attack,
+    steps,
+    ...(attack.stamina && {
+      stamina: attack.stamina.map((total, i) =>
+        total == null ? total : round(total + stepChange(i)),
+      ),
+    }),
+    ...(attack.leftStamina && {
+      leftStamina: attack.leftStamina.map((left, i) => round(left + stepChange(i))),
+    }),
+    ...(attack.hitStamina && {
+      hitStamina: attack.hitStamina.map((costs, i) =>
+        costs?.map((cost, j) => round(cost + (staminaChange[i][j] ?? 0))),
+      ),
+    }),
+  };
+}
 
 /** Weapons that are always two handed */
 const twoHandedWeaponTypes: WeaponType[] = [
@@ -242,6 +316,7 @@ export function getAttackData(
         ...(details?.categories && { categories: details.categories }),
         ...(details?.buffMotionValue != null && { buffMotionValue: details.buffMotionValue }),
         ...(details?.leftHand && { leftHand: true }),
+        ...(details?.judge != null && { judge: details.judge }),
         // A flail's weapon hits are counted at its sweet spot, where the step has one
         ...(timing?.[stepIndex]?.sweetSpot &&
           !details?.kind && { damageRates: allDamageTypes.map(() => flailSweetSpotRate) }),
@@ -264,6 +339,9 @@ export function getAttackData(
     }),
     ...(timing?.some((step) => step.leftStamina != null) && {
       leftStamina: steps.map((_, i) => timing[i]?.leftStamina ?? 0),
+    }),
+    ...(timing?.some((step) => step.hitStamina) && {
+      hitStamina: steps.map((_, i) => timing[i]?.hitStamina),
     }),
     ...(getCycleTimes(attack, timing, steps.length) && {
       cycleTimes: getCycleTimes(attack, timing, steps.length),

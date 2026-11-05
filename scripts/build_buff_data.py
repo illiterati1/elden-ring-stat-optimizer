@@ -60,6 +60,8 @@ unless an Ash of War's buff has the same name (e.g. Sacred Blade), which gets th
 Each buff can also have exclusive: keys it can't be used with another buff with, e.g. talismans of
 the same accessoryGroup, or buffs whose conditions can't hold at once.
 Spells also have requirements: the stats needed to cast them (requirementIntellect etc.), if any.
+Talismans, armor, and off-hand weapons have weight: theirs (EquipParam* weight), for the Blue Dancer
+Charm's equip weight (merged armor has the first piece's).
 """
 
 import json
@@ -272,7 +274,12 @@ CATEGORY_OVERRIDES = {"Rellana's Cameo": [1000]}
 # every stat on the training dummy: its first hit 1091 with the Head alone (1101 at ×1.05), and 1201
 # for the first hit and 3622 for all three with the Enraged Divine Beast too, the same in vanilla and
 # the Boss Arena mod. Its stats (+4 Strength and Dexterity) are right.
-DAMAGE_RATE_FITS = {"Divine Beast Head": 1.04}
+# The Dagger Talisman's effect (320900) has ×1.17 for critical hits (the same in the Boss Arena mod),
+# but they do about ×1.16 in game. Tested with 99 in every stat: a Longsword +25's backstab 1414 (1220
+# without it), +0's 407-408 (352), and a Dagger +25's 1758 (1516) on the training dummy, and a
+# Longsword +25's riposte 1911 on the Weeping Peninsula's Leonine Misbegotten (1647). ×1.16 gives
+# 1415, 408, 1758, and 1911: the first a point over, within the game's own variation (407-408).
+DAMAGE_RATE_FITS = {"Divine Beast Head": 1.04, "Dagger Talisman": 1.16}
 
 # HP percentages each of a buff's effects applies at, in order: at least min, below max. The talismans'
 # conditions (conditionHp, and the Ritual Sword Talisman's full HP) and Shriek of Sorrow's levels
@@ -612,7 +619,13 @@ def main():
         name = talisman_names.get(talisman_id)
         if name:
             # Talismans of the same group can't be worn together, e.g. the Radagon's seals
-            add("talisman", name, get_effects([row["refId"]]), exclusive=[f"talisman{row['accessoryGroup']}"])
+            add(
+                "talisman",
+                name,
+                get_effects([row["refId"]]),
+                exclusive=[f"talisman{row['accessoryGroup']}"],
+                weight=round(row["weight"], 2),
+            )
 
     # Armor, by slot
     armor_names = read_names(game_dir, "ProtectorName")
@@ -628,7 +641,7 @@ def main():
                 own=True,
             )
             if name not in EXCLUDED:
-                add("armor", name, effects, slot=slot)
+                add("armor", name, effects, slot=slot, weight=round(row["weight"], 2))
     merge_armor(buffs)
 
     # Off-hand weapons' passive effects (residentSpEffectId etc.), which apply in either hand. Ones
@@ -648,7 +661,7 @@ def main():
         if name in NOTES or name in HP_CONDITIONS:
             add("weaponEffect", name, effects, type="unique")
         else:
-            add("offhand", name, effects)
+            add("offhand", name, effects, weight=round(row["weight"], 2))
 
     # Physick tears and other consumables
     goods_names = read_names(game_dir, "GoodsName")

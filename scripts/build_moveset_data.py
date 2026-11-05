@@ -30,6 +30,10 @@ cancelled into ("R1", "R2", or "L1"), "time" }, "anyAttack": seconds until any a
 that the left hand's weapon costs (powerstance attacks), "sweetSpot": true if its hits
 are in a flail's sweet spot (×1.125 damage) }], each left out if the animation doesn't allow it (or
 costs nothing, or has no sweet spot).
+"leftHandRows" has the weapon's own motion value, poise motion value, and stamina cost for each
+behavior judge ID of the left hand's powerstance hits ({ judge: [motion value, poise, stamina] }, see
+check_animations.py's get_left_hand_rows): the left hand's weapon's hits use its own attack rows.
+Those hits have "judge".
 "oneHanded": true is added for weapons that can't be two handed (bothHandEquipable), whose two
 handed attacks are left out even if the sheet lists them.
 Each attack is a list of chain steps, each step a list of hits (more than one for multi-hit
@@ -326,8 +330,13 @@ CHAIN_LENGTHS = {"Ornamental Straight Sword": {("2h", "R1"): 4}}
 
 
 # Paired weapons' two handed attacks that get two handing's Strength bonus, tested in game, where the
-# params don't say (e.g. the Death Knight's Twin Axes' two handed R2 does 880 to the one handed 844)
-TWO_HANDED_STRENGTH_BONUS = {"Death Knight's Twin Axes": ["R2", "Charged R2", "Jumping R2", "Guard Counter"]}
+# params don't say (e.g. the Death Knight's Twin Axes' two handed R2 does 880 to the one handed 844,
+# and the Starscourge Greatsword +10's, with 99 in every stat on the training dummy, R2 1140, charged
+# R2 1530, running R2 1091, and jumping R2 1188, 1092, 1469, 1044, and 1140 without it)
+TWO_HANDED_STRENGTH_BONUS = {
+    "Death Knight's Twin Axes": ["R2", "Charged R2", "Jumping R2", "Guard Counter"],
+    "Starscourge Greatsword": ["R2", "Charged R2", "Running R2", "Jumping R2"],
+}
 
 # Clearer names for some weapons' kinds of hits than the sheet's (its "Bullet" is any attack
 # detached from the weapon)
@@ -458,7 +467,7 @@ def main():
     game_attacks = GameAttacks(project_dir)
     unique_hits = read_unique_hits(project_dir)
     # Attack timings from the animations, if they've been unpacked (see check_animations.py)
-    from check_animations import TAE_DIR, Steps, get_left_hand_hits, get_timings  # noqa: E402
+    from check_animations import TAE_DIR, Steps, get_left_hand_hits, get_left_hand_rows, get_timings  # noqa: E402
 
     timings = Steps(game_dir, project_dir) if os.path.isdir(os.path.join(game_dir, TAE_DIR)) else None
     split_count = 0
@@ -600,11 +609,29 @@ def main():
             # Powerstance hits with the left hand's weapon, for an off hand weapon of another kind
             for attack, marks in get_left_hand_hits(timings, weapons[weapon], entry).items():
                 for step, step_marks in zip(entry["1h"][attack], marks):
-                    for i, left in enumerate(step_marks or []):
-                        if left:
+                    for i, judge in enumerate(step_marks or []):
+                        if judge:
                             hit = step[i]
-                            step[i] = [*hit[:4], {**(hit[4] if len(hit) > 4 else {}), "leftHand": True}]
+                            details = {**(hit[4] if len(hit) > 4 else {}), "leftHand": True, "judge": judge}
+                            step[i] = [*hit[:4], details]
         output[weapon] = entry
+
+    # Each weapon's own rows for the left hand's powerstance hits, for when it's in the left hand
+    # with another weapon
+    if timings is not None:
+        judges = {
+            hit[4]["judge"]
+            for entry in output.values()
+            for attack, steps in entry.get("1h", {}).items()
+            for step in steps
+            for hit in step
+            if len(hit) > 4 and "judge" in hit[4]
+        }
+        for weapon, entry in output.items():
+            if weapon in weapons:
+                rows = get_left_hand_rows(timings, weapons[weapon], judges)
+                if rows:
+                    entry["leftHandRows"] = rows
 
     out_path = os.path.join(project_dir, "public", "movesets.json")
     with open(out_path, "w", encoding="utf-8") as f:

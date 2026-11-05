@@ -14,7 +14,13 @@ import { applyLimits, type Limits } from "./limits.ts";
 import { getCumulativeLevelUpCosts, getLevelUpCost } from "./runes.ts";
 import { getCharacterLevel, startingClasses } from "./startingClasses.ts";
 import { getAmmoLabel, withAmmo, type AmmoGroup } from "../app/useAmmo.ts";
-import { canTwoHand, getAttackData, type AttackChoice, type Movesets } from "../app/useMovesets.ts";
+import {
+  canTwoHand,
+  getAttackData,
+  withOffhandRows,
+  type AttackChoice,
+  type Movesets,
+} from "../app/useMovesets.ts";
 import {
   describeBuff,
   getBuffEffects,
@@ -1157,6 +1163,53 @@ describe("attacks", () => {
     expect(damage(true, "Charged R2")).toBe(1298);
   });
 
+  it("gives the Starscourge Greatsword's two handed R2s the Strength bonus", () => {
+    // Tested in game at +10 with 99 in every stat on the training dummy: R2 1140, charged R2 1530
+    // (and 1580 for the second), running R2 1091, and jumping R2 1188
+    const weapon = getWeapon("Starscourge Greatsword");
+    const firstHit = (attack: AttackChoice) =>
+      Math.floor(
+        optimizeBuild({
+          weapon,
+          regularUpgradeLevel: 25,
+          twoHanding: true,
+          startLevel: 9,
+          currentLevel: 9,
+          attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+          bonusAttributes: noBonus,
+          objective: "totalAttack",
+          defenses: Object.fromEntries(
+            allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+          ),
+          physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+          limits: { ...noLimits, maxLevels: 0 },
+          attack: getAttackData(movesets, weapon, attack, true, 0.5)!,
+        }).attackSteps![0][0].damage,
+      );
+    expect(
+      (["R2", "Charged R2", "Running R2", "Jumping R2"] as const).map((attack) => firstHit(attack)),
+    ).toEqual([1140, 1530, 1091, 1188]);
+    const charged = getAttackData(movesets, weapon, "Charged R2", true, 0.5)!;
+    expect(
+      optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: true,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: charged,
+      }).attackSteps!.map((step) => Math.floor(step[0].damage)),
+    ).toEqual([1530, 1580]);
+  });
+
   it("has four steps in the Ornamental Straight Sword's two handed R1", () => {
     // Tested in game: the sheet lists a fifth step, but there isn't one
     const weapon = getWeapon("Ornamental Straight Sword");
@@ -1354,10 +1407,10 @@ describe("attacks", () => {
     // The Axe Talisman's ×1.1 only applies to charged attacks
     expect(build("R1", effectsOf("Axe Talisman"))).toBeCloseTo(r1, 1);
     expect(build("Charged R2", effectsOf("Axe Talisman"))).toBeCloseTo(charged * 1.1, 1);
-    // The Dagger Talisman's only applies to critical hits
+    // The Dagger Talisman's only applies to critical hits (×1.16, fitted)
     expect(build("Backstab", effectsOf("Dagger Talisman"))).toBeCloseTo(
-      build("Backstab", []) * 1.17,
-      1,
+      build("Backstab", []) * 1.16,
+      0,
     );
     expect(build("R1", effectsOf("Dagger Talisman"))).toBeCloseTo(r1, 1);
     // A grease adds flat attack before defenses
@@ -4783,6 +4836,346 @@ describe("Ashes of War", () => {
     const both = steps(["Divine Beast Head", "Enraged Divine Beast"]);
     expect(both[0]).toBe(1201);
     expect(both.reduce((sum, step) => sum + step, 0)).toBe(3622);
+  });
+
+  describe("buffs confirmed in game", () => {
+    // Confirmed right in game at +25 (+10 somber) with 99 in every stat on the training dummy; the
+    // values are the calculator's
+    const allBuffs = JSON.parse(
+      readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"),
+    ).buffs as Buff[];
+    // Buffs by name, or by prefix for armor sets ("Dancer's *")
+    const buffsNamed = (names: string[]) =>
+      allBuffs.filter((buff) =>
+        names.some((name) =>
+          name.endsWith("*") ? buff.name.startsWith(name.slice(0, -1)) : buff.name === name,
+        ),
+      );
+    const steps = (
+      weaponName: string,
+      attack: AttackData,
+      names: string[],
+      {
+        twoHanding = false,
+        stackTier = 3,
+        catalyst,
+      }: { twoHanding?: boolean; stackTier?: 1 | 2 | 3; catalyst?: string } = {},
+    ) =>
+      optimizeBuild({
+        weapon: getWeapon(weaponName),
+        regularUpgradeLevel: 25,
+        twoHanding,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack,
+        buffs: getBuffEffects(buffsNamed(names), stackTier),
+        ...(catalyst && { catalyst: getWeapon(catalyst), catalystUpgradeLevel: 25 }),
+      }).attackSteps!.map((step) => step.map((hit) => Math.floor(hit.damage)));
+    const moveset = (weaponName: string, attack: AttackChoice, twoHanding = false) =>
+      getAttackData(movesets, getWeapon(weaponName), attack, twoHanding, 0.5)!;
+    const skill = (weaponName: string, ash: string, twoHanding = false) => {
+      const result = getAshAttack(ashes, movesets, getWeapon(weaponName), ash, twoHanding);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return result.attack;
+    };
+
+    it("stacks body buffs and aura buffs on the Longsword's R1", () => {
+      const firstHit = (names: string[]) =>
+        steps("Longsword", moveset("Longsword", "R1"), names)[0][0];
+      expect(firstHit([])).toBe(490);
+      // Exalted Flesh and Bloodboil Aromatic replace each other
+      expect(firstHit(["Exalted Flesh"])).toBe(588);
+      expect(firstHit(["Bloodboil Aromatic"])).toBe(637);
+      // Rallying Standard stacks with Exalted Flesh
+      expect(firstHit(["Exalted Flesh", "Rallying Standard"])).toBe(706);
+      // Millicent's Prosthesis and the Rotten Winged Sword Insignia at each successive attack tier
+      expect(
+        ([1, 2, 3] as const).map(
+          (stackTier) =>
+            steps(
+              "Longsword",
+              moveset("Longsword", "R1"),
+              ["Millicent's Prosthesis", "Rotten Winged Sword Insignia"],
+              { stackTier },
+            )[0][0],
+        ),
+      ).toEqual([540, 561, 615]);
+      // Scholar's Armament cast with an Astrologer's Staff +25
+      expect(
+        steps("Longsword", moveset("Longsword", "R1"), ["Scholar's Armament"], {
+          catalyst: "Astrologer's Staff",
+        })[0][0],
+      ).toBe(680);
+    });
+
+    it("boosts only the attacks talismans and armor are for", () => {
+      // The Claw Talisman, jump attacks
+      expect(steps("Longsword", moveset("Longsword", "Jumping R1"), [])).toEqual([[533]]);
+      expect(steps("Longsword", moveset("Longsword", "Jumping R1"), ["Claw Talisman"])).toEqual([
+        [613],
+      ]);
+      // The Twinblade Talisman, a chain's last hit
+      expect(steps("Longsword", moveset("Longsword", "R1"), ["Twinblade Talisman"]).flat()).toEqual(
+        [490, 496, 502, 508, 799],
+      );
+      // Leda's Armor and the Crossed-Trees: Lacerating for running attacks, Retaliatory for rolling
+      // and backstep ones, and Leda's Armor for both
+      const firstHits = (attack: AttackChoice) =>
+        [[], ["Leda's Armor"], ["Retaliatory Crossed-Tree"], ["Lacerating Crossed-Tree"]].map(
+          (names) => steps("Longsword", moveset("Longsword", attack), names)[0][0],
+        );
+      expect(firstHits("Running R1")).toEqual([521, 573, 521, 599]);
+      expect(firstHits("Rolling R1")).toEqual([429, 472, 502, 429]);
+      expect(firstHits("Backstep R1")).toEqual([429, 472, 502, 429]);
+      // Hoarfrost Stomp with the Shattered Stone Talisman and Divine Bird Warrior Greaves
+      expect(
+        steps("Longsword", skill("Longsword", "Hoarfrost Stomp"), [
+          "Shattered Stone Talisman",
+          "Divine Bird Warrior Greaves",
+        ]),
+      ).toEqual([[177, 565]]);
+      // Eochaid's Dancing Blade with the Dancer's set
+      expect(
+        steps("Regalia of Eochaid", skill("Regalia of Eochaid", "Eochaid's Dancing Blade"), [
+          "Dancer's *",
+        ]),
+      ).toEqual([[142, 142, 142, 142, 142, 142, 142, 507, 619]]);
+      // Glintstone Pebble with the Spellblade set
+      expect(
+        steps("Magic Longsword", skill("Magic Longsword", "Glintstone Pebble"), ["Spellblade's *"]),
+      ).toEqual([[840], [1291]]);
+    });
+
+    it("boosts fixed skills and Ashes of War with armor and off-hand buffs", () => {
+      // A fixed skill's version, by its label
+      const version = (weaponName: string, label: string) => {
+        const found = getAshAttacks(
+          ashes,
+          movesets,
+          getWeapon(weaponName),
+          "Lion's Claw",
+          false,
+        ).find(({ variant }) => variant?.label === label)!.ash;
+        if (!("attack" in found)) throw new Error(found.unavailableReason);
+        return found.attack;
+      };
+      // The Crucible set, uncharged Devonia's Vortex
+      expect(
+        steps("Devonia's Hammer", version("Devonia's Hammer", "Devonia's Vortex (Uncharged)"), [
+          "Crucible *",
+        ]),
+      ).toEqual([[437, 437, 1753]]);
+      // The Broken Gold Mask, Causality's Wrath at Tier 1
+      expect(
+        steps("Golden Order Flail", version("Golden Order Flail", "Causality's Wrath (Tier 1)"), [
+          "Broken Gold Mask",
+        ]),
+      ).toEqual([[1027]]);
+      // Freyja's Greatsword in the off hand, Savage Lion's Claw on a Longsword
+      expect(
+        steps("Longsword", skill("Longsword", "Savage Lion's Claw"), ["Freyja's Greatsword"]),
+      ).toEqual([[1138], [331, 902]]);
+    });
+
+    it("matches attack power buffs and debuffs on the Longsword", () => {
+      // The Blue Dancer Charm alone on a Longsword +0 (4.4 equip weight with the charm): its R1 143
+      const longsword = getWeapon("Longsword");
+      const r1 = optimizeBuild({
+        weapon: longsword,
+        regularUpgradeLevel: 0,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: moveset("Longsword", "R1"),
+        buffs: getBuffEffects(buffsNamed(["Blue Dancer Charm"]), 3),
+        equipWeight: 0.9,
+      }).attackSteps![0][0];
+      expect(Math.floor(r1.damage)).toBe(143);
+      // The Silver Tear Mask's ×0.95 physical attack: the R2 605
+      expect(steps("Longsword", moveset("Longsword", "R2"), ["Silver Tear Mask"])[0]).toEqual([
+        605,
+      ]);
+      // Flame of the Redmanes with Soul Stifler and a Hefty Oil Pot on the enemy, 1669, and with the
+      // Flame-Shrouding Cracked Tear alone, 1055
+      const redmanes = skill("Longsword", "Flame of the Redmanes");
+      expect(steps("Longsword", redmanes, ["Soul Stifler", "Hefty Oil Pot"])).toEqual([[1669]]);
+      expect(steps("Longsword", redmanes, ["Flame-Shrouding Cracked Tear"])).toEqual([[1055]]);
+    });
+
+    it("matches the Dagger Talisman's critical hits", () => {
+      // Tested in game: a Longsword's backstab 1414 (a point under the calculator's, within the
+      // game's own variation: 407-408 at +0) and a Dagger's 1758 on the training dummy, and a
+      // Longsword's riposte 1911 on the Weeping Peninsula's Leonine Misbegotten (×1.16, fitted)
+      expect(steps("Longsword", moveset("Longsword", "Backstab"), ["Dagger Talisman"])).toEqual([
+        [1415],
+      ]);
+      expect(steps("Dagger", moveset("Dagger", "Backstab"), ["Dagger Talisman"])).toEqual([[1758]]);
+      const riposte = optimizeBuild({
+        weapon: getWeapon("Longsword"),
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        // The Leonine Misbegotten's defenses and negation, as the enemy picker sets them
+        defenses: {
+          [AttackPowerType.PHYSICAL]: { defense: 104, negation: 0 },
+          [AttackPowerType.MAGIC]: { defense: 104, negation: 0 },
+          [AttackPowerType.FIRE]: { defense: 104, negation: 10 },
+          [AttackPowerType.LIGHTNING]: { defense: 104, negation: 10 },
+          [AttackPowerType.HOLY]: { defense: 104, negation: 20 },
+        },
+        physicalNegation: { standard: 10, slash: 0, strike: 10, pierce: 10 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: moveset("Longsword", "Riposte"),
+        buffs: getBuffEffects(buffsNamed(["Dagger Talisman"]), 3),
+      }).attackSteps![0][0];
+      expect(Math.floor(riposte.damage)).toBe(1911);
+    });
+
+    it("matches roars' R2s with the Roar Medallion on each weapon class", () => {
+      // R2 #1's total, one and two handed (Braggart's Roar's one handed R2s are the weapon's own)
+      const firstStep = (weaponName: string, roar: string, twoHanding: boolean, chain: string) =>
+        steps(
+          weaponName,
+          skill(weaponName, withFollowUp(roar, chain), twoHanding),
+          ["Roar Medallion"],
+          { twoHanding },
+        )[0].reduce((sum, damage) => sum + damage, 0);
+      const tested: [string, string, boolean, string, number][] = [
+        ["Claymore", "War Cry", false, "R2 chain", 1135],
+        ["Claymore", "War Cry", false, "Charged R2 chain", 1598],
+        ["Claymore", "War Cry", true, "R2 chain", 1323],
+        ["Claymore", "War Cry", true, "Charged R2 chain", 1808],
+        ["Claymore", "Barbaric Roar", false, "R2 chain", 1665],
+        ["Claymore", "Barbaric Roar", false, "Charged R2 chain", 2004],
+        ["Claymore", "Barbaric Roar", true, "R2 chain", 1920],
+        ["Claymore", "Barbaric Roar", true, "Charged R2 chain", 2275],
+        ["Claymore", "Braggart's Roar", true, "R2 chain", 1322],
+        ["Claymore", "Braggart's Roar", true, "Charged R2 chain", 1807],
+        ["Greatsword", "War Cry", false, "R2 chain", 1314],
+        ["Greatsword", "War Cry", false, "Charged R2 chain", 1899],
+        ["Greatsword", "War Cry", true, "R2 chain", 1448],
+        ["Greatsword", "War Cry", true, "Charged R2 chain", 2120],
+        ["Greatsword", "Barbaric Roar", false, "R2 chain", 1994],
+        ["Greatsword", "Barbaric Roar", false, "Charged R2 chain", 2384],
+        ["Greatsword", "Barbaric Roar", true, "R2 chain", 2321],
+        ["Greatsword", "Barbaric Roar", true, "Charged R2 chain", 2724],
+        ["Greatsword", "Braggart's Roar", true, "R2 chain", 1446],
+        ["Greatsword", "Braggart's Roar", true, "Charged R2 chain", 2118],
+        ["Warped Axe", "War Cry", false, "R2 chain", 1071],
+        ["Warped Axe", "War Cry", false, "Charged R2 chain", 1377],
+        ["Warped Axe", "War Cry", true, "R2 chain", 1242],
+        ["Warped Axe", "War Cry", true, "Charged R2 chain", 1573],
+        ["Warped Axe", "Barbaric Roar", false, "R2 chain", 1480],
+        ["Warped Axe", "Barbaric Roar", false, "Charged R2 chain", 1785],
+        ["Warped Axe", "Barbaric Roar", true, "R2 chain", 1776],
+        ["Warped Axe", "Barbaric Roar", true, "Charged R2 chain", 2111],
+        ["Warped Axe", "Braggart's Roar", true, "R2 chain", 1242],
+        ["Warped Axe", "Braggart's Roar", true, "Charged R2 chain", 1574],
+        ["Greataxe", "War Cry", false, "R2 chain", 1313],
+        ["Greataxe", "War Cry", false, "Charged R2 chain", 1829],
+        ["Greataxe", "War Cry", true, "R2 chain", 1532],
+        ["Greataxe", "War Cry", true, "Charged R2 chain", 2075],
+        ["Greataxe", "Barbaric Roar", false, "R2 chain", 1905],
+        ["Greataxe", "Barbaric Roar", false, "Charged R2 chain", 2284],
+        ["Greataxe", "Barbaric Roar", true, "R2 chain", 2201],
+        ["Greataxe", "Barbaric Roar", true, "Charged R2 chain", 2591],
+        ["Greataxe", "Braggart's Roar", true, "R2 chain", 1531],
+        ["Greataxe", "Braggart's Roar", true, "Charged R2 chain", 2075],
+        ["Golem Fist", "War Cry", false, "R2 chain", 861],
+        ["Golem Fist", "War Cry", false, "Charged R2 chain", 1128],
+        ["Golem Fist", "War Cry", true, "R2 chain", 1298],
+        ["Golem Fist", "War Cry", true, "Charged R2 chain", 1690],
+        ["Golem Fist", "Barbaric Roar", false, "R2 chain", 1254],
+        ["Golem Fist", "Barbaric Roar", false, "Charged R2 chain", 1529],
+        ["Golem Fist", "Barbaric Roar", true, "R2 chain", 1806],
+        ["Golem Fist", "Barbaric Roar", true, "Charged R2 chain", 1875],
+        ["Golem Fist", "Braggart's Roar", true, "R2 chain", 1296],
+        ["Golem Fist", "Braggart's Roar", true, "Charged R2 chain", 1688],
+        ["Clayman's Harpoon", "War Cry", false, "R2 chain", 957],
+        ["Clayman's Harpoon", "War Cry", false, "Charged R2 chain", 1301],
+        ["Clayman's Harpoon", "War Cry", true, "R2 chain", 1094],
+        ["Clayman's Harpoon", "War Cry", true, "Charged R2 chain", 1440],
+        ["Clayman's Harpoon", "Barbaric Roar", false, "R2 chain", 1259],
+        ["Clayman's Harpoon", "Barbaric Roar", false, "Charged R2 chain", 1549],
+        ["Clayman's Harpoon", "Barbaric Roar", true, "R2 chain", 1457],
+        ["Clayman's Harpoon", "Barbaric Roar", true, "Charged R2 chain", 1767],
+        ["Clayman's Harpoon", "Braggart's Roar", true, "R2 chain", 1091],
+        ["Clayman's Harpoon", "Braggart's Roar", true, "Charged R2 chain", 1437],
+      ];
+      for (const [weaponName, roar, twoHanding, chain, total] of tested) {
+        expect([
+          weaponName,
+          roar,
+          twoHanding,
+          chain,
+          firstStep(weaponName, roar, twoHanding, chain),
+        ]).toEqual([weaponName, roar, twoHanding, chain, total]);
+      }
+      // The Beast Claw's Barbaric Roar two handed charged R2 #1, its third hit higher (unlike Fists')
+      expect(
+        steps(
+          "Beast Claw",
+          skill("Beast Claw", withFollowUp("Barbaric Roar", "Charged R2 chain"), true),
+          ["Roar Medallion"],
+          { twoHanding: true },
+        )[0],
+      ).toEqual([573, 573, 676]);
+    });
+  });
+
+  it("boosts only Lightning Slash's stomp and slash with skill buffs", () => {
+    // Tested in game on a Lightning Longsword +25 with 99 in every stat on the training dummy, with
+    // the Death Knight set (×1.08 for Dragon Cult skills): 1836 in all, and with the Shard of
+    // Alexander (×1.15 for skills): 1913, its projectile unboosted both times
+    const allBuffs = JSON.parse(
+      readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"),
+    ).buffs as Buff[];
+    const weapon = getWeapon("Lightning Longsword");
+    const result = getAshAttack(ashes, movesets, weapon, "Lightning Slash", false);
+    if (!("attack" in result)) throw new Error(result.unavailableReason);
+    const hits = (names: string[]) =>
+      optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+        buffs: getBuffEffects(
+          allBuffs.filter((buff) => names.some((name) => buff.name.startsWith(name))),
+          1,
+        ),
+      }).attackSteps![0].map((hit) => Math.floor(hit.damage));
+    expect(hits(["Death Knight"])).toEqual([137, 1061, 638]);
+    expect(hits(["Shard of Alexander"])).toEqual([146, 1129, 638]);
   });
 
   it("matches weapon class versions of skills in game", () => {
@@ -11264,6 +11657,120 @@ describe("powerstance off hand weapons", () => {
     expect(hits("Longsword", { name: "Longsword", regularUpgradeLevel: 0 })[1][0]).toBeLessThan(
       hits("Longsword")[1][0],
     );
+  });
+
+  it("uses the left hand weapon's own attack rows", () => {
+    // The right hand weapon's animations decide the hits, but each hand's weapon has its own rows:
+    // a Wakizashi's L1 #1 with a katana is 115 (poise 80), not the katana's 90 (40). Tested in game:
+    // an Uchigatana +25 with a Wakizashi +25 in the left hand, 99 in every stat, does 464 + 551 on
+    // the training dummy, with 6.4 poise
+    const weapon = getWeapon("Uchigatana");
+    const wakizashi = getWeapon("Wakizashi");
+    const attack = withOffhandRows(
+      getAttackData(movesets, weapon, "Powerstance L1", false, 0.5)!,
+      movesets,
+      "Uchigatana",
+      "Wakizashi",
+    );
+    expect(attack.steps[0].map((hit) => [hit.motionValue, hit.leftHand ?? false])).toEqual([
+      [115, true],
+      [100, false],
+    ]);
+    const steps = optimizeBuild({
+      weapon,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      offhand: {
+        weapon: wakizashi,
+        regularUpgradeLevel: 25,
+        poiseBase: movesets["Wakizashi"]!.poise,
+      },
+      attack,
+    }).attackSteps!;
+    expect(steps[0].map((hit) => [Math.floor(hit.damage), hit.stance])).toEqual([
+      [464, 2.4],
+      [551, 4],
+    ]);
+    // A Main-gauche's in the left hand with a thrusting sword are the same as the Rapier's. Tested
+    // in game: a Rapier +25 with a Main-gauche +25, 99 in every stat, on the training dummy
+    const mainGauche = optimizeBuild({
+      weapon: getWeapon("Rapier"),
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      offhand: {
+        weapon: getWeapon("Main-gauche"),
+        regularUpgradeLevel: 25,
+        poiseBase: movesets["Main-gauche"]!.poise,
+      },
+      attack: withOffhandRows(
+        getAttackData(movesets, getWeapon("Rapier"), "Powerstance L1", false, 0.5)!,
+        movesets,
+        "Rapier",
+        "Main-gauche",
+      ),
+    }).attackSteps!;
+    expect(
+      mainGauche.map((step) => step.map((hit) => [Math.floor(hit.damage), hit.stance])),
+    ).toEqual([
+      [
+        [377, 2.4],
+        [320, 1.8],
+      ],
+      [
+        [352, 2.4],
+        [362, 2.4],
+        [393, 2.4],
+      ],
+      [
+        [315, 1.8],
+        [398, 2.4],
+      ],
+      [
+        [341, 3.6],
+        [428, 2.4],
+        [363, 3.6],
+      ],
+    ]);
+    // Each hit shows its own stamina (its attack windows'): the Rapier's 5 a swing, and the
+    // Main-gauche's own 3.3
+    expect(mainGauche.map((step) => step.map((hit) => hit.stamina))).toEqual([
+      [5, 3.3],
+      [5, 5, 5],
+      [3.3, 5],
+      [3.3, 5, 3.3],
+    ]);
+    // Weapons of the same class share rows, so only the stamina changes: a Broadsword's swings cost
+    // its own 12.36 (its staminaConsumptionRate)
+    const longsword = getAttackData(
+      movesets,
+      getWeapon("Longsword"),
+      "Powerstance L1",
+      false,
+      0.5,
+    )!;
+    const withBroadsword = withOffhandRows(longsword, movesets, "Longsword", "Broadsword");
+    expect(withBroadsword.steps).toEqual(longsword.steps);
+    expect(withBroadsword.hitStamina![0]).toEqual([12, 12.36]);
   });
 
   it("shows each hand's stamina on its own hits", () => {
