@@ -29,7 +29,8 @@ Output format:
   {
     "ashes": [{ "name": skill, "mounts": [weapon types], "affinities": [affinity IDs] }, ...],
     "weapons": { name: { "skill": skill, "canChange": bool, "types": [physical type, 2nd type],
-                         "skillRange": which of skills' animations it uses (get_skill_range) } },
+                         "skillRange": which of skills' animations it uses (get_skill_range),
+                         "staminaRate"?: its staminaConsumptionRate, if not 1 } },
     "skills": { skill: { "generic": hits, "classes": { weapon type: hits }, "unique": { weapon: hits },
                          "weaponBuff": true if it puts its own weapon buff on the weapon } }
   }
@@ -1246,14 +1247,11 @@ def hit_signature(motion_values, flat):
     return (round(motion_values[0] or max(motion_values)), tuple(round(value) for value in flat))
 
 
-def get_window_attacks(behaviors, bullets, attacks, variation, judge):
-    """
-    @returns the AtkParam_Pc rows an animation window's behavior does damage with: its attack, or
-    for a projectile, its attack and the projectiles' it creates (on hitting, or at intervals),
-    that have motion values or flat attack
-    """
+def get_window_behavior(behaviors, variation, judge):
+    """@returns an animation window's BehaviorParam_PC row: the weapon's (or its class's) own, or else
+    the skill's general one"""
     prefix = max(1, judge // 1000)
-    behavior = next(
+    return next(
         (
             behaviors[behavior_id]
             for source in dict.fromkeys([variation, variation // 100 * 100, 0])
@@ -1261,6 +1259,15 @@ def get_window_attacks(behaviors, bullets, attacks, variation, judge):
         ),
         None,
     )
+
+
+def get_window_attacks(behaviors, bullets, attacks, variation, judge):
+    """
+    @returns the AtkParam_Pc rows an animation window's behavior does damage with: its attack, or
+    for a projectile, its attack and the projectiles' it creates (on hitting, or at intervals),
+    that have motion values or flat attack
+    """
+    behavior = get_window_behavior(behaviors, variation, judge)
     if not behavior:
         return []
     atk_ids = []
@@ -1294,8 +1301,8 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets):
     @param behaviors BehaviorParam_PC rows, and bullets BulletParam rows, by ID
     @returns the version's timing, by weapon animation range (see get_skill_range; "0" is the
     default) and part ("" for the main attack, or the follow-up's label): each part's animation's
-    hits, and when it can be cancelled into another skill ("L2"), "R1", "R2", any attack, a roll,
-    or blocking, in seconds of real time (see Animations.to_real_time); a loop (a main attack of
+    hits, its stamina cost, and when it can be cancelled into another skill ("L2"), "R1", "R2", any
+    attack, a roll, or blocking, in seconds of real time (see Animations.to_real_time); a loop (a main attack of
     "Loop" hits, e.g. Wild Strikes') also has "loop", how long each pass takes, and "opening", how
     long until it starts. Each part's animation is the one whose hits (motion value and flat attack)
     match the most of its hits, in its range, or else in the default one.
@@ -1353,6 +1360,14 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets):
 
         starts = animation_hits[anim_id][1]
         timing = {"hits": [real(start) for start in starts]}
+        # Its stamina cost: its windows' behaviors' (before the weapon's staminaConsumptionRate),
+        # like attacks' (e.g. Lion's Claw's 45, matching the sheet's StaminaCost)
+        stamina = sum(
+            float((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
+            for _, _, judge, *_ in animations.get_windows(number, anim_id) or []
+        )
+        if stamina:
+            timing["stamina"] = round(stamina, 2)
         cancels = animations.get_cancels(number, anim_id)
         for name in ["L2", "R1", "R2", "anyAttack", "roll", "block"]:
             if name in cancels:
@@ -1447,6 +1462,13 @@ def main():
             "canChange": row["gemMountType"] == "2",
             # Which of a skill's animations it uses (see get_skill_timing)
             "skillRange": get_skill_range(row),
+            # Its skills' stamina costs are multiplied by this, like its attacks' (tested in game: Lion's
+            # Claw takes more on a Greatsword, 1.135, than on a Short Sword, 0.93)
+            **(
+                {"staminaRate": float(row["staminaConsumptionRate"])}
+                if float(row["staminaConsumptionRate"]) != 1
+                else {}
+            ),
             "types": [
                 PHYSICAL_TYPES[WEAPON_ATTRIBUTE_TYPES.get(int(row["atkAttribute"]), "standard")],
                 PHYSICAL_TYPES[WEAPON_ATTRIBUTE_TYPES.get(int(row["atkAttribute2"]), "standard")],

@@ -2336,7 +2336,8 @@ describe("Ashes of War", () => {
     };
     // Blood Tax: 1320 (417 + 176 + 176 + 551)
     expect(skillSteps("Blood Tax")[0].map((hit) => hit.damage)).toEqual([417, 176, 176, 551]);
-    // Bloody Slash: one hit of 1656, with 10 stance damage and 60 blood loss
+    // Bloody Slash: one hit of 1656, with 10 stance damage and 60 blood loss (and its animation's
+    // 20 stamina)
     expect(skillSteps("Bloody Slash")).toEqual([
       [
         {
@@ -2344,6 +2345,7 @@ describe("Ashes of War", () => {
           stance: 10,
           status: { [AttackPowerType.BLEED]: 60 },
           physicalType: "standard",
+          stamina: 20,
         },
       ],
     ]);
@@ -4749,6 +4751,10 @@ describe("Ashes of War", () => {
     expect(stormResult.attackDps).toBeCloseTo(
       repeatedDamage / (storm.cycleTimes![1] + storm.cycleTimes![2]),
     );
+    // Skills' stamina costs are their animations' behaviors': Lion's Claw 45, and each of Wild
+    // Strikes' loop passes 18 (9 a hit) on a Claymore
+    expect(times("Longsword", "Lion's Claw").stamina).toEqual([45]);
+    expect(times("Claymore", "Wild Strikes").stamina).toEqual([18]);
     // So does Surge of Faith (its explosion again)
     expect(times("Cranial Vessel Candlestand", "Lion's Claw").repeatFrom).toBe(1);
     // Sword Dance on a Claymore (greatswords' version): 62 frames to its first hit, 24 to its

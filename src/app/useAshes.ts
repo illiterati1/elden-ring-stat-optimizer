@@ -87,6 +87,8 @@ interface SkillPartTiming {
   anyAttack?: number;
   roll?: number;
   block?: number;
+  /** Its stamina cost (for a loop, each pass's), before the weapon's staminaRate */
+  stamina?: number;
   /** For a loop, how long each pass takes */
   loop?: number;
   /** For a loop, how long until it starts */
@@ -146,18 +148,32 @@ function getSkillStepTimes(
   });
 }
 
-/** @returns the timing parts of an attack: its step times, and cycle times if all known */
+/**
+ * @returns the timing parts of an attack: its step times, cycle times if all known, and each step's
+ * stamina cost (times the weapon's staminaRate)
+ */
 function withSkillTiming(
   hits: SkillHits,
   skillRange: number,
   parts: SkillStepPart[],
-): Pick<AttackData, "stepTimes" | "cycleTimes"> {
+  staminaRate = 1,
+): Pick<AttackData, "stepTimes" | "cycleTimes" | "stamina"> {
   const stepTimes = getSkillStepTimes(hits, skillRange, parts);
   if (!stepTimes) return {};
   const cycleTimes = stepTimes.every((step) => step.cycle != null)
     ? stepTimes.map((step) => step.cycle!)
     : undefined;
-  return { stepTimes, ...(cycleTimes && { cycleTimes }) };
+  const own = hits.timing?.[String(skillRange)] ?? {};
+  const fallback = hits.timing?.["0"] ?? {};
+  const stamina = parts.map(({ label }) => {
+    const cost = (own[label] ?? fallback[label])?.stamina;
+    return cost != null ? Math.round(cost * staminaRate * 100) / 100 : undefined;
+  });
+  return {
+    stepTimes,
+    ...(cycleTimes && { cycleTimes }),
+    ...(stamina.some((cost) => cost != null) && { stamina: stamina.map((cost) => cost ?? 0) }),
+  };
 }
 
 /**
@@ -391,6 +407,11 @@ export interface Ashes {
       types: number[];
       /** Which of a skill's animations it uses (see SkillHits timing) */
       skillRange?: number;
+      /**
+       * Its skills' stamina costs are multiplied by this (its staminaConsumptionRate), if not 1, like
+       * its attacks' (tested in game: Lion's Claw on a Greatsword and a Short Sword)
+       */
+      staminaRate?: number;
     }
   >;
   skills: Record<
@@ -734,6 +755,9 @@ export function getAshAttack(
   }
   const poiseBase = weapon.ammoPoise ?? movesets[weapon.weaponName]?.poise ?? 0;
   const skillRange = info.skillRange ?? 0;
+  // Each call's timing, with its weapon's stamina rate
+  const timingOf = (parts: SkillStepPart[]) =>
+    withSkillTiming(hits, skillRange, parts, info.staminaRate);
   // The skill's own weapon buff's flat attack (e.g. Sacred Blade's 90 holy), for the breakdown
   const skillBuff = [...hits.main, ...hits.followUps.flatMap((followUp) => followUp.hits)].find(
     ([, , , , details]) => details?.buff,
@@ -806,11 +830,7 @@ export function getAshAttack(
         // Some chains go back to a later step, not the first
         ...(chainRepeatSteps[skill] != null && { repeatFrom: chainRepeatSteps[skill]! - 1 }),
         // Each step goes on to the next with another skill
-        ...withSkillTiming(
-          hits,
-          skillRange,
-          steps.map(({ label }) => ({ label, next: "L2" as const })),
-        ),
+        ...timingOf(steps.map(({ label }) => ({ label, next: "L2" as const }))),
       },
     };
   }
@@ -850,7 +870,7 @@ export function getAshAttack(
         ...notedHit,
         ...followUpNote,
         // The skill's own animation (not a weapon attack it's added to)
-        ...(!weaponAttack && withSkillTiming(hits, skillRange, [{ label: followUp!.label }])),
+        ...(!weaponAttack && timingOf([{ label: followUp!.label }])),
       },
     };
   }
@@ -866,7 +886,7 @@ export function getAshAttack(
         ...ownBuff,
         ...notedHit,
         ...followUpNote,
-        ...withSkillTiming(hits, skillRange, [{ label: followUp.label, noRepeat: true }]),
+        ...timingOf([{ label: followUp.label, noRepeat: true }]),
       },
     };
   }
@@ -891,9 +911,7 @@ export function getAshAttack(
       ...notedHit,
       ...followUpNote,
       // The main attack goes on to the follow-up with its button
-      ...withSkillTiming(
-        hits,
-        skillRange,
+      ...timingOf(
         followUp
           ? [{ label: "", next: getFollowUpButton(followUp.label) }, { label: followUp.label }]
           : [{ label: "" }],
