@@ -160,6 +160,16 @@ function withSkillTiming(
   return { stepTimes, ...(cycleTimes && { cycleTimes }) };
 }
 
+/**
+ * Chains that go back to a later step after their last (its number), tested in game; others start
+ * over at their first (or stop, which takes the same time: their last steps can all be cancelled
+ * into the skill again)
+ */
+const chainRepeatSteps: Partial<Record<string, number>> = {
+  "Storm Blade": 2,
+  "Surge of Faith": 2,
+};
+
 /** The button a follow-up is done with, going on to it from the main attack */
 function getFollowUpButton(label: string): SkillStepPart["next"] {
   return label.startsWith("R1") ? "R1" : label.startsWith("R2") ? "R2" : "L2";
@@ -793,6 +803,8 @@ export function getAshAttack(
         // The chain has its skill's buff, which replaces other weapon buffs (War Cry's on the weapon)
         ...(buff && { ownWeaponBuff: true }),
         ...(buff?.scaling && { scalingBonus: buff.scaling }),
+        // Some chains go back to a later step, not the first
+        ...(chainRepeatSteps[skill] != null && { repeatFrom: chainRepeatSteps[skill]! - 1 }),
         // Each step goes on to the next with another skill
         ...withSkillTiming(
           hits,

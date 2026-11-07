@@ -4727,6 +4727,30 @@ describe("Ashes of War", () => {
       frames(storm.cycleTimes!.slice(0, i).reduce((sum, time) => sum + time, 0) + step.hits[0]),
     );
     expect(stormHits).toEqual([45, 105, 166]);
+    // After its last step it goes back to its second (tested in game), so the first is only done
+    // once: per second is steps 2 and 3's
+    expect(storm.repeatFrom).toBe(1);
+    const stormResult = optimizeBuild({
+      weapon: getWeapon("Longsword"),
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: storm,
+    });
+    const repeatedDamage = stormResult
+      .attackSteps!.slice(1)
+      .flat()
+      .reduce((sum, hit) => sum + hit.damage, 0);
+    expect(stormResult.attackDps).toBeCloseTo(
+      repeatedDamage / (storm.cycleTimes![1] + storm.cycleTimes![2]),
+    );
+    // So does Surge of Faith (its explosion again)
+    expect(times("Cranial Vessel Candlestand", "Lion's Claw").repeatFrom).toBe(1);
     // Sword Dance on a Claymore (greatswords' version): 62 frames to its first hit, 24 to its
     // second, and 76 to its follow-up's
     const dance = times("Claymore", withFollowUp("Sword Dance", " chain"));

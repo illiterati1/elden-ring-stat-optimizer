@@ -92,11 +92,14 @@ function formatStatus(hit: AttackResultHit, buildup: number) {
 function AttackHits({
   steps,
   stepTimes,
+  repeatFrom,
   timings,
   label,
 }: {
   steps: AttackResultHit[][];
   stepTimes?: StepTimes[];
+  /** The step the chain goes back to, if not the first */
+  repeatFrom?: number;
   timings: TooltipTimings;
   label: string;
 }) {
@@ -280,7 +283,9 @@ function AttackHits({
             {showNextChain && (
               <TableRow>
                 <TableCell sx={cellSx} colSpan={99}>
-                  Next chain at {formatSeconds(chainTime!)}
+                  {repeatFrom
+                    ? `Back to step ${repeatFrom + 1} at ${formatSeconds(chainTime!)}`
+                    : `Next chain at ${formatSeconds(chainTime!)}`}
                 </TableCell>
               </TableRow>
             )}
@@ -648,6 +653,7 @@ function ResultsTable({
                         <AttackHits
                           steps={result.attackSteps}
                           stepTimes={result.attackStepTimes}
+                          repeatFrom={result.attackRepeatFrom}
                           timings={tooltipTimings}
                           label={pointLabel === "damage" ? "Damage" : "AR"}
                         />

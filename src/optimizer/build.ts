@@ -498,6 +498,11 @@ export interface AttackData {
   cycleTimes?: number[];
   /** Each step's timing (when its hits land and it can be cancelled), if known */
   stepTimes?: StepTimes[];
+  /**
+   * The step a chain goes back to after its last (its index), if not the first: the steps before it
+   * are only done once (e.g. Storm Blade's first)
+   */
+  repeatFrom?: number;
 }
 
 /** One hit of an attack with the final stats */
@@ -572,6 +577,8 @@ export interface BuildResult {
   attackStaminaPerSecond?: number;
   /** Each step's timing of the chosen attack, if known */
   attackStepTimes?: StepTimes[];
+  /** The step the chosen attack's chain goes back to, if not the first (AttackData repeatFrom) */
+  attackRepeatFrom?: number;
   /** Status buildup per second of the chosen attack, repeated the same way as attackDps, if known */
   attackStatusPerSecond?: Partial<Record<AttackPowerType, number>>;
   /**
@@ -836,12 +843,29 @@ function getAttackStance(attack: AttackData) {
   );
 }
 
-/** An attack's damage per second repeated as fast as possible, or undefined if the timing isn't known */
-function getAttackDps(attack: AttackData, steps: AttackResultHit[][]) {
+/**
+ * @returns the steps an attack repeats (from its repeatFrom step, or all of them) and how long they
+ * take, or undefined if the timing isn't known
+ */
+function getRepeatedSteps(attack: AttackData) {
   if (!attack.cycleTimes) return undefined;
-  const time = attack.cycleTimes.reduce((sum, stepTime) => sum + stepTime, 0);
-  const damage = steps.flat().reduce((sum, hit) => sum + (hit.notCounted ? 0 : hit.damage), 0);
-  return time > 0 ? damage / time : undefined;
+  const from = attack.repeatFrom ?? 0;
+  const time = attack.cycleTimes.slice(from).reduce((sum, stepTime) => sum + stepTime, 0);
+  return time > 0 ? { from, time } : undefined;
+}
+
+/**
+ * An attack's damage per second repeated as fast as possible (the steps it repeats, see
+ * getRepeatedSteps), or undefined if the timing isn't known
+ */
+function getAttackDps(attack: AttackData, steps: AttackResultHit[][]) {
+  const repeated = getRepeatedSteps(attack);
+  if (!repeated) return undefined;
+  const damage = steps
+    .slice(repeated.from)
+    .flat()
+    .reduce((sum, hit) => sum + (hit.notCounted ? 0 : hit.damage), 0);
+  return damage / repeated.time;
 }
 
 /**
@@ -853,24 +877,24 @@ function getAttackStatusPerSecond(
   attackPower: StatusBuildup,
   hitStatusOf?: (hit: AttackDataHit) => StatusBuildup,
 ): StatusBuildup | undefined {
-  if (!attack.cycleTimes) return undefined;
-  const time = attack.cycleTimes.reduce((sum, stepTime) => sum + stepTime, 0);
-  if (time <= 0) return undefined;
+  const repeated = getRepeatedSteps(attack);
+  if (!repeated) return undefined;
   const total = getAttackStatus(
-    { ...attack, weights: attack.steps.map(() => 1) },
+    { ...attack, weights: attack.steps.map((_, i) => (i >= repeated.from ? 1 : 0)) },
     attackPower,
     hitStatusOf,
   );
   return Object.fromEntries(
-    Object.entries(total).map(([statusType, buildup]) => [statusType, buildup / time]),
+    Object.entries(total).map(([statusType, buildup]) => [statusType, buildup / repeated.time]),
   );
 }
 
 /** An attack's poise damage per second repeated as fast as possible, like getAttackDps */
 function getAttackPoisePerSecond(attack: AttackData) {
-  if (!attack.cycleTimes) return undefined;
-  const time = attack.cycleTimes.reduce((sum, stepTime) => sum + stepTime, 0);
+  const repeated = getRepeatedSteps(attack);
+  if (!repeated) return undefined;
   const poise = attack.steps
+    .slice(repeated.from)
     .flat()
     .reduce(
       (sum, hit) =>
@@ -880,7 +904,7 @@ function getAttackPoisePerSecond(attack: AttackData) {
           getTickCount(hit),
       0,
     );
-  return time > 0 ? poise / time : undefined;
+  return poise / repeated.time;
 }
 
 /**
@@ -920,11 +944,13 @@ function getAttackStamina(attack: AttackData) {
  * spends, not counting stamina recovery)
  */
 function getAttackStaminaPerSecond(attack: AttackData) {
-  const { stamina, cycleTimes } = attack;
-  if (!stamina || !cycleTimes || attack.steps.some((_, i) => stamina[i] == null)) return undefined;
-  const time = cycleTimes.reduce((sum, stepTime) => sum + stepTime, 0);
-  const total = attack.steps.reduce((sum, _, i) => sum + stamina[i]!, 0);
-  return time > 0 ? total / time : undefined;
+  const { stamina } = attack;
+  const repeated = getRepeatedSteps(attack);
+  if (!stamina || !repeated || attack.steps.some((_, i) => stamina[i] == null)) return undefined;
+  const total = attack.steps
+    .slice(repeated.from)
+    .reduce((sum, _, i) => sum + stamina[i + repeated.from]!, 0);
+  return total / repeated.time;
 }
 
 /**
@@ -1592,6 +1618,7 @@ export function optimizeBuild(
     attackPoisePerSecond: resultAttack ? getAttackPoisePerSecond(resultAttack) : undefined,
     attackStaminaPerSecond: resultAttack ? getAttackStaminaPerSecond(resultAttack) : undefined,
     attackStepTimes: resultAttack?.stepTimes,
+    ...(resultAttack?.repeatFrom && { attackRepeatFrom: resultAttack.repeatFrom }),
     attackStatusPerSecond: resultAttack
       ? getAttackStatusPerSecond(resultAttack, attackPower, hitStatusOf)
       : undefined,
