@@ -401,13 +401,21 @@ function ResultsTable({
                 <TableCell key={statusType} rowSpan={headerRows} align="right" sx={statusCellSx}>
                   {sortLabel(
                     statusSortBy(statusType),
-                    <img
-                      src={icon}
-                      alt={label}
-                      title={`${label} buildup`}
-                      width={20}
-                      height={20}
-                    />,
+                    // One element, since right-aligned sort labels reverse their children
+                    <Box component="span" display="inline-flex" alignItems="center">
+                      <img
+                        src={icon}
+                        alt={showDps ? `${label} per second` : label}
+                        title={
+                          showDps
+                            ? `${label} buildup per second, repeating the attack as fast as the game allows`
+                            : `${label} buildup`
+                        }
+                        width={20}
+                        height={20}
+                      />
+                      {showDps && "/s"}
+                    </Box>,
                     "desc",
                   )}
                 </TableCell>
@@ -563,9 +571,12 @@ function ResultsTable({
                     </TableCell>
                   )}
                   {statusColumns.map((statusType) => {
-                    const buildup = getResultStatus(result)[statusType];
-                    // Status that scales with Arcane when damage doesn't is left to the user
-                    const atMaxArcane = result.statusAtMaxArcane?.[statusType];
+                    const buildup = getResultStatus(result, showDps)[statusType];
+                    // Status that scales with Arcane when damage doesn't is left to the user (noted
+                    // per hit, not per second)
+                    const atMaxArcane = showDps
+                      ? undefined
+                      : result.statusAtMaxArcane?.[statusType];
                     return (
                       <TableCell key={statusType} align="right" sx={statusCellSx}>
                         {buildup && atMaxArcane ? (

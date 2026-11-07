@@ -545,6 +545,8 @@ export interface BuildResult {
   attackDps?: number;
   /** Poise damage per second of the chosen attack, repeated the same way as attackDps, if known */
   attackPoisePerSecond?: number;
+  /** Status buildup per second of the chosen attack, repeated the same way as attackDps, if known */
+  attackStatusPerSecond?: Partial<Record<AttackPowerType, number>>;
   /**
    * Damage over time of a percentage of the enemy's max HP (e.g. "Black flame"), not counted since
    * the enemy isn't known
@@ -813,6 +815,28 @@ function getAttackDps(attack: AttackData, steps: AttackResultHit[][]) {
   const time = attack.cycleTimes.reduce((sum, stepTime) => sum + stepTime, 0);
   const damage = steps.flat().reduce((sum, hit) => sum + (hit.notCounted ? 0 : hit.damage), 0);
   return time > 0 ? damage / time : undefined;
+}
+
+/**
+ * An attack's status buildup per second repeated as fast as possible, like getAttackDps: every
+ * step's (not weighted) over the time they take
+ */
+function getAttackStatusPerSecond(
+  attack: AttackData,
+  attackPower: StatusBuildup,
+  hitStatusOf?: (hit: AttackDataHit) => StatusBuildup,
+): StatusBuildup | undefined {
+  if (!attack.cycleTimes) return undefined;
+  const time = attack.cycleTimes.reduce((sum, stepTime) => sum + stepTime, 0);
+  if (time <= 0) return undefined;
+  const total = getAttackStatus(
+    { ...attack, weights: attack.steps.map(() => 1) },
+    attackPower,
+    hitStatusOf,
+  );
+  return Object.fromEntries(
+    Object.entries(total).map(([statusType, buildup]) => [statusType, buildup / time]),
+  );
 }
 
 /** An attack's poise damage per second repeated as fast as possible, like getAttackDps */
@@ -1527,6 +1551,9 @@ export function optimizeBuild(
     attackStamina: attack ? getAttackStamina(attack) : undefined,
     attackDps: resultAttack && attackSteps ? getAttackDps(resultAttack, attackSteps) : undefined,
     attackPoisePerSecond: resultAttack ? getAttackPoisePerSecond(resultAttack) : undefined,
+    attackStatusPerSecond: resultAttack
+      ? getAttackStatusPerSecond(resultAttack, attackPower, hitStatusOf)
+      : undefined,
     attackStatus: resultAttack
       ? getAttackStatus(resultAttack, attackPower, hitStatusOf)
       : undefined,

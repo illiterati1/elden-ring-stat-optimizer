@@ -11782,6 +11782,34 @@ describe("powerstance off hand weapons", () => {
     expect(withBroadsword.hitStamina![0]).toEqual([12, 12.36]);
   });
 
+  it("gives status buildup per second like DPS", () => {
+    // The whole chain's buildup (each step's, not weighted) over the time it takes
+    const weapon = getWeapon("Bloody Longsword");
+    const attack = getAttackData(movesets, weapon, "R1", false, 0.5)!;
+    const result = optimizeBuild({
+      weapon,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack,
+    });
+    const time = attack.cycleTimes!.reduce((sum, stepTime) => sum + stepTime, 0);
+    const blood = result
+      .attackSteps!.flat()
+      .reduce((sum, hit) => sum + (hit.status[AttackPowerType.BLEED] ?? 0), 0);
+    expect(blood).toBeGreaterThan(0);
+    expect(result.attackStatusPerSecond![AttackPowerType.BLEED]).toBeCloseTo(blood / time);
+  });
+
   it("shows each hand's stamina on its own hits", () => {
     // From the animations: each swing of the Longsword's first powerstance L1 costs 12 of its 24
     const weapon = getWeapon("Longsword");

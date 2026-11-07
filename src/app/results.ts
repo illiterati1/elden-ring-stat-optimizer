@@ -29,15 +29,19 @@ export function getAllocationAtLevel({ startLevel, allocations }: ValueCurve, le
   return allocations[Math.min(index, allocations.length - 1)];
 }
 
-/** Status buildup of the chosen attack, or the weapon's own buildup */
-export function getResultStatus(result: BuildResult) {
+/**
+ * Status buildup of the chosen attack, or the weapon's own buildup, or per second (with DPS shown),
+ * none if the attack's timing isn't known
+ */
+export function getResultStatus(result: BuildResult, perSecond = false) {
+  if (perSecond) return result.attackStatusPerSecond ?? {};
   return result.attackStatus ?? result.statusBuildup;
 }
 
 /**
  * Sort keys where a higher number comes first by default
  */
-function getSortKey(result: BuildResult, sortBy: SortBy) {
+function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
   switch (sortBy) {
     case "total":
     // Names are compared separately (sortResults)
@@ -62,11 +66,19 @@ function getSortKey(result: BuildResult, sortBy: SortBy) {
       if (sortBy.startsWith("requirement:")) {
         return -(result.requirements[sortBy.slice("requirement:".length) as Attribute] ?? 0);
       }
-      return getResultStatus(result)[+sortBy.slice("status:".length) as AttackPowerType] ?? 0;
+      return (
+        getResultStatus(result, perSecond)[+sortBy.slice("status:".length) as AttackPowerType] ?? 0
+      );
   }
 }
 
-export function sortResults(results: BuildResult[], sortBy: SortBy, reverse: boolean) {
+/** @param perSecond true to sort status by its buildup per second (with DPS shown) */
+export function sortResults(
+  results: BuildResult[],
+  sortBy: SortBy,
+  reverse: boolean,
+  perSecond = false,
+) {
   return [...results].sort((a, b) => {
     if (a.applicable !== b.applicable) return +b.applicable - +a.applicable;
     // Alphabetically, A to Z first
@@ -75,8 +87,8 @@ export function sortResults(results: BuildResult[], sortBy: SortBy, reverse: boo
       if (order) return reverse ? -order : order;
       return b.finalValue - a.finalValue;
     }
-    const keyA = getSortKey(a, sortBy);
-    const keyB = getSortKey(b, sortBy);
+    const keyA = getSortKey(a, sortBy, perSecond);
+    const keyB = getSortKey(b, sortBy, perSecond);
     if (keyA !== keyB) return reverse ? keyA - keyB : keyB - keyA;
     return b.finalValue - a.finalValue;
   });

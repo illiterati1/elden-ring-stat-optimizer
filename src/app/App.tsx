@@ -756,7 +756,9 @@ export default function App() {
       ((sortBy === "dps" || sortBy === "poisePerSecond") && !showDps) ||
       (sortBy.startsWith("status:") &&
         !statusTypesShown.some((statusType) => statusSortBy(statusType) === sortBy));
-    return hidden ? sortResults(results, "total", false) : sortResults(results, sortBy, reverse);
+    return hidden
+      ? sortResults(results, "total", false)
+      : sortResults(results, sortBy, reverse, showDps);
   }, [results, sortBy, reverse, showStance, showStamina, showDps, statusTypesShown]);
 
   // The chart shows the weapons checked in the table, each version of a fixed skill (e.g. Moonveil's
