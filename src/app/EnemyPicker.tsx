@@ -2,7 +2,12 @@ import { memo, useMemo } from "react";
 import { Alert, Autocomplete, Box, TextField, Typography } from "@mui/material";
 import { AttackPowerType } from "../calculator/calculator.ts";
 import type { AppState, UpdateAppState } from "./useAppState.ts";
-import useEnemies, { getEnemyKey, type Enemy, type EnemyArea } from "./useEnemies.ts";
+import useEnemies, {
+  getEnemyCategory,
+  getEnemyKey,
+  type Enemy,
+  type EnemyArea,
+} from "./useEnemies.ts";
 import { debug } from "./uiUtils.ts";
 
 interface Props {
@@ -27,7 +32,7 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
     const counts = new Map<string, number>();
     for (const enemy of area?.enemies ?? []) {
       const sameName = area!.enemies.filter((other) => other.name === enemy.name);
-      // Only bosses are listed, so their "[Boss]" tag is left out
+      // Only bosses are listed (or they're grouped, in debug mode), so their "[Boss]" tag is left out
       let label = enemy.name.replace(" [Boss]", "");
       if (sameName.length > 1) {
         label += ` (${enemy.hp.toLocaleString()} HP`;
@@ -115,6 +120,8 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
       <Autocomplete
         size="small"
         options={area?.enemies ?? []}
+        // In debug mode every enemy is listed, by category (in that order in the data)
+        groupBy={debug ? getEnemyCategory : undefined}
         value={enemy}
         disabled={!area}
         getOptionLabel={(option) => enemyLabels.get(option) ?? option.name}
