@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { allDamageTypes, AttackPowerType, type Weapon } from "../calculator/calculator.ts";
 import { allPhysicalTypes, type PhysicalType } from "../optimizer/defense.ts";
-import type { AttackData, AttackDataHit, HpDamage } from "../optimizer/build.ts";
-import { allAttacks, getAttackData, type AttackName, type Movesets } from "./useMovesets.ts";
+import type { AttackData, AttackDataHit, HpDamage, StepTimes } from "../optimizer/build.ts";
+import {
+  allAttacks,
+  getAttackData,
+  stepStartDelay,
+  type AttackName,
+  type Movesets,
+} from "./useMovesets.ts";
 
 /** The attack picker's choice for a weapon's skill */
 export const ashAttack = "ash";
@@ -64,6 +70,113 @@ interface SkillHits {
   weaponBuff?: boolean;
   /** A note shown with this version's results, e.g. the Wing of Astel's Nebula's */
   note?: string;
+  /**
+   * Each part's timing (the main attack's is ""), by the weapon animation range it's for
+   * (Ashes["weapons"] skillRange; "0" is the default), from the skill's animations
+   */
+  timing?: Record<string, Record<string, SkillPartTiming>>;
+}
+
+/** A skill part's timing, in seconds from when its animation starts (see build_ash_data.py) */
+interface SkillPartTiming {
+  hits: number[];
+  /** When it can be cancelled into another skill (or its chain's next step) */
+  L2?: number;
+  R1?: number;
+  R2?: number;
+  anyAttack?: number;
+  roll?: number;
+  block?: number;
+  /** For a loop, how long each pass takes */
+  loop?: number;
+  /** For a loop, how long until it starts */
+  opening?: number;
+}
+
+/**
+ * A skill's steps, for their timing: each step's part (its label, "" for the main attack), the
+ * button that goes on to the next step, and whether the attack can't be repeated on its own (a
+ * loop's follow-up)
+ */
+interface SkillStepPart {
+  label: string;
+  next?: "R1" | "R2" | "L2";
+  noRepeat?: boolean;
+}
+
+/**
+ * @returns each step's times (see getAttackData's), from a version's timing for the weapon's
+ * animation range, or undefined if any step's aren't known. A step goes on to the next with its
+ * button (or any attack), and the last step repeats with another skill (L2, or any attack). A
+ * loop's step is one pass, repeated.
+ */
+function getSkillStepTimes(
+  hits: SkillHits,
+  skillRange: number,
+  parts: SkillStepPart[],
+): StepTimes[] | undefined {
+  const own = hits.timing?.[String(skillRange)] ?? {};
+  const fallback = hits.timing?.["0"] ?? {};
+  const timings = parts.map(({ label }) => own[label] ?? fallback[label]);
+  if (!timings.length || timings.some((timing) => !timing)) return undefined;
+  return parts.map(({ next: button, noRepeat }, i) => {
+    const timing = timings[i]!;
+    if (timing.loop != null) {
+      return { lead: 0, hits: timing.hits, cycle: timing.loop };
+    }
+    const lead = stepStartDelay;
+    const last = i === parts.length - 1;
+    const nextButton = last ? "L2" : button;
+    const buttonTime = nextButton ? timing[nextButton] : undefined;
+    const next =
+      buttonTime != null && (timing.anyAttack == null || buttonTime <= timing.anyAttack)
+        ? { attack: nextButton!, time: lead + buttonTime }
+        : timing.anyAttack != null
+        ? { attack: "any attack" as const, time: lead + timing.anyAttack }
+        : undefined;
+    return {
+      lead,
+      hits: timing.hits.map((time) => lead + time),
+      ...(next && { next }),
+      ...(timing.anyAttack != null && { anyAttack: lead + timing.anyAttack }),
+      ...(timing.roll != null && { roll: lead + timing.roll }),
+      ...(timing.block != null && { block: lead + timing.block }),
+      ...(!(last && noRepeat) && next && { cycle: next.time }),
+    };
+  });
+}
+
+/** @returns the timing parts of an attack: its step times, and cycle times if all known */
+function withSkillTiming(
+  hits: SkillHits,
+  skillRange: number,
+  parts: SkillStepPart[],
+): Pick<AttackData, "stepTimes" | "cycleTimes"> {
+  const stepTimes = getSkillStepTimes(hits, skillRange, parts);
+  if (!stepTimes) return {};
+  const cycleTimes = stepTimes.every((step) => step.cycle != null)
+    ? stepTimes.map((step) => step.cycle!)
+    : undefined;
+  return { stepTimes, ...(cycleTimes && { cycleTimes }) };
+}
+
+/** The button a follow-up is done with, going on to it from the main attack */
+function getFollowUpButton(label: string): SkillStepPart["next"] {
+  return label.startsWith("R1") ? "R1" : label.startsWith("R2") ? "R2" : "L2";
+}
+
+/**
+ * @returns true for a skill whose main attack is a loop (e.g. Wild Strikes'), which is its own
+ * choice, and each of its follow-ups another on its own, since how many passes come first is up to
+ * the player
+ */
+function isLoopSkill(ashes: Ashes, skill: string) {
+  const skillData = ashes.skills[skill];
+  return [
+    skillData?.generic,
+    ...Object.values(skillData?.classes ?? {}),
+    ...Object.values(skillData?.unique ?? {}),
+  ].some((hits) => hits?.main.some((hit) => hit[4]?.kind === "Loop"));
 }
 
 /**
@@ -260,7 +373,16 @@ function isStance(ashes: Ashes, skill: string, includeUnique = false) {
 /** Ashes of War and skills, generated by scripts/build_ash_data.py */
 export interface Ashes {
   ashes: { name: string; mounts: number[]; affinities: number[] }[];
-  weapons: Record<string, { skill: string; canChange: boolean; types: number[] }>;
+  weapons: Record<
+    string,
+    {
+      skill: string;
+      canChange: boolean;
+      types: number[];
+      /** Which of a skill's animations it uses (see SkillHits timing) */
+      skillRange?: number;
+    }
+  >;
   skills: Record<
     string,
     {
@@ -330,9 +452,6 @@ const followUpOnlySkills: ReadonlySet<string> = new Set([
   "Ghostflame Call",
   "Ghostflame Ignition",
   "Shriek of Milos",
-  "Spinning Chain",
-  "Spinning Strikes",
-  "Wild Strikes",
 ]);
 
 /**
@@ -392,6 +511,16 @@ function getSkillChoices(
               label: `${name} (${followUp})`,
             }))
         : []),
+    ];
+  }
+  // A loop, and each of its follow-ups on its own
+  if (isLoopSkill(ashes, name)) {
+    return [
+      ...(builtIn ? [] : [{ value: name, label: name }]),
+      ...followUps.map((followUp) => ({
+        value: withFollowUp(name, followUp),
+        label: `${name} (${followUp} follow-up)`,
+      })),
     ];
   }
   if (isStance(ashes, name, unique)) {
@@ -594,6 +723,7 @@ export function getAshAttack(
     };
   }
   const poiseBase = weapon.ammoPoise ?? movesets[weapon.weaponName]?.poise ?? 0;
+  const skillRange = info.skillRange ?? 0;
   // The skill's own weapon buff's flat attack (e.g. Sacred Blade's 90 holy), for the breakdown
   const skillBuff = [...hits.main, ...hits.followUps.flatMap((followUp) => followUp.hits)].find(
     ([, , , , details]) => details?.buff,
@@ -663,6 +793,12 @@ export function getAshAttack(
         // The chain has its skill's buff, which replaces other weapon buffs (War Cry's on the weapon)
         ...(buff && { ownWeaponBuff: true }),
         ...(buff?.scaling && { scalingBonus: buff.scaling }),
+        // Each step goes on to the next with another skill
+        ...withSkillTiming(
+          hits,
+          skillRange,
+          steps.map(({ label }) => ({ label, next: "L2" as const })),
+        ),
       },
     };
   }
@@ -701,6 +837,24 @@ export function getAshAttack(
         ...ownBuff,
         ...notedHit,
         ...followUpNote,
+        // The skill's own animation (not a weapon attack it's added to)
+        ...(!weaponAttack && withSkillTiming(hits, skillRange, [{ label: followUp!.label }])),
+      },
+    };
+  }
+  // A loop's follow-up is on its own: how many passes come before it is up to the player
+  if (followUp && isLoopSkill(ashes, skill)) {
+    return {
+      skill,
+      attack: {
+        steps: [countedHits(followUp.hits).map(toHit)],
+        weights: [1],
+        stepLabels: [`${skill} ${followUp.label}`],
+        poiseBase,
+        ...ownBuff,
+        ...notedHit,
+        ...followUpNote,
+        ...withSkillTiming(hits, skillRange, [{ label: followUp.label, noRepeat: true }]),
       },
     };
   }
@@ -724,6 +878,14 @@ export function getAshAttack(
       ...ownBuff,
       ...notedHit,
       ...followUpNote,
+      // The main attack goes on to the follow-up with its button
+      ...withSkillTiming(
+        hits,
+        skillRange,
+        followUp
+          ? [{ label: "", next: getFollowUpButton(followUp.label) }, { label: followUp.label }]
+          : [{ label: "" }],
+      ),
     },
   };
 }

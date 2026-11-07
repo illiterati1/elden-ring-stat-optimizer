@@ -3832,7 +3832,8 @@ describe("Ashes of War", () => {
   });
 
   it("matches Spinning Strikes in game", () => {
-    // Offered only with its follow-ups
+    // A loop, offered on its own and each follow-up on its own (Ghostflame Call only with its
+    // follow-ups)
     expect(
       getAshChoices(ashes)
         .map(({ label }) => label)
@@ -3840,8 +3841,9 @@ describe("Ashes of War", () => {
     ).toEqual([
       "Ghostflame Call with R1 follow-up",
       "Ghostflame Call with R2 follow-up",
-      "Spinning Strikes with R1 follow-up",
-      "Spinning Strikes with R2 follow-up",
+      "Spinning Strikes",
+      "Spinning Strikes (R1 follow-up)",
+      "Spinning Strikes (R2 follow-up)",
     ]);
     // Tested in game on a Scythe +25 with 99 in every stat on the training dummy: the spin 717, with
     // 5.6 poise and 55 blood loss, then its R1 481 and 703, or its R2 589 and 1177
@@ -3870,14 +3872,12 @@ describe("Ashes of War", () => {
     };
     expect(build("Spinning Strikes")).toEqual([[[717, 5.6, 55]]]);
     expect(build(withFollowUp("Spinning Strikes", "R1"))).toEqual([
-      [[717, 5.6, 55]],
       [
         [481, 4, 55],
         [703, 5.5, 55],
       ],
     ]);
     expect(build(withFollowUp("Spinning Strikes", "R2"))).toEqual([
-      [[717, 5.6, 55]],
       [
         [589, 4.75, 55],
         [1177, 9, 55],
@@ -4712,21 +4712,50 @@ describe("Ashes of War", () => {
     expect(seal).toEqual({ unavailableReason: "No skill" });
   });
 
+  it("times skills from their animations", () => {
+    // Tested in game on 60 fps recordings, frames from the skill press
+    const times = (weaponName: string, choice: string) => {
+      const result = getAshAttack(ashes, movesets, getWeapon(weaponName), choice, false);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return result.attack;
+    };
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    // Storm Blade on a Longsword: the first hit 45 frames after the press, then 60 and 61 frames
+    // apart (each step goes on to the next with another skill press)
+    const storm = times("Longsword", withFollowUp("Storm Blade", " chain"));
+    const stormHits = storm.stepTimes!.map((step, i) =>
+      frames(storm.cycleTimes!.slice(0, i).reduce((sum, time) => sum + time, 0) + step.hits[0]),
+    );
+    expect(stormHits).toEqual([45, 105, 166]);
+    // Sword Dance on a Claymore (greatswords' version): 62 frames to its first hit, 24 to its
+    // second, and 76 to its follow-up's
+    const dance = times("Claymore", withFollowUp("Sword Dance", " chain"));
+    const [first, second] = dance.stepTimes!;
+    expect(first.hits.map(frames)).toEqual([62, 86]);
+    expect(frames(dance.cycleTimes![0] + second.hits[0]) - frames(first.hits[1])).toBe(76);
+    // Wild Strikes' loop, on a Claymore: a hit every 38 frames
+    const loop = times("Claymore", "Wild Strikes");
+    expect(frames(loop.cycleTimes![0])).toBe(76);
+    // Ice Spear on a Short Spear (no spears' version of its own): its thrust 32 frames after the
+    // press, and its projectile 44 later (45 and 46, as it flies)
+    expect(times("Short Spear", "Ice Spear").stepTimes![0].hits.map(frames)).toEqual([32, 76]);
+  });
+
   it("matches Wild Strikes in game", () => {
-    // Offered only with its follow-ups
+    // A loop, offered on its own and each follow-up on its own
     expect(
       getAshChoices(ashes)
         .map(({ label }) => label)
         .filter((label) => label.startsWith("Wild Strikes")),
-    ).toEqual(["Wild Strikes with R1 follow-up", "Wild Strikes with R2 follow-up"]);
-    // Tested in game on a Brick Hammer +25 with 99 in every stat on the training dummy: the swings 666
-    // and 717, then the R1 225 and 983, or the R2 219 and 1296
+    ).toEqual(["Wild Strikes", "Wild Strikes (R1 follow-up)", "Wild Strikes (R2 follow-up)"]);
+    // Tested in game on a Brick Hammer +25 with 99 in every stat on the training dummy: the loop's
+    // swings 666 and 717, the R1 225 and 983, and the R2 219 and 1296
     const build = (followUp: string, weapon = getWeapon("Brick Hammer")) => {
       const result = getAshAttack(
         ashes,
         movesets,
         weapon,
-        withFollowUp("Wild Strikes", followUp),
+        followUp ? withFollowUp("Wild Strikes", followUp) : "Wild Strikes",
         false,
       );
       if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -4747,25 +4776,15 @@ describe("Ashes of War", () => {
         attack: result.attack,
       }).attackSteps!.map((step) => step.map((hit) => hit.damage));
     };
-    expect(build("R1")).toEqual([
-      [666, 717],
-      [225, 983],
-    ]);
-    expect(build("R2")).toEqual([
-      [666, 717],
-      [219, 1296],
-    ]);
-    // Also right in game on a Quality Scimitar +25: the swings 688 and 644, then the R1 228 and
-    // 1021, or the R2 228 and 1355
+    expect(build("")).toEqual([[666, 717]]);
+    expect(build("R1")).toEqual([[225, 983]]);
+    expect(build("R2")).toEqual([[219, 1296]]);
+    // Also right in game on a Quality Scimitar +25: the swings 688 and 644, the R1 228 and 1021,
+    // and the R2 228 and 1355
     const scimitar = getWeapon("Quality Scimitar");
-    expect(build("R1", scimitar)).toEqual([
-      [688, 644],
-      [228, 1021],
-    ]);
-    expect(build("R2", scimitar)).toEqual([
-      [688, 644],
-      [228, 1355],
-    ]);
+    expect(build("", scimitar)).toEqual([[688, 644]]);
+    expect(build("R1", scimitar)).toEqual([[228, 1021]]);
+    expect(build("R2", scimitar)).toEqual([[228, 1355]]);
   });
 
   it("matches Aspects of the Crucible: Wings on each weapon class in game", () => {
@@ -7571,7 +7590,7 @@ describe("Ashes of War", () => {
   });
 
   it("matches the Ripple Blade's Wild Strikes in game", () => {
-    // Its fixed skill, with its R1 or R2 follow-up. Tested in game at +25 with 99 in every stat on the
+    // Its fixed skill: its loop, and its R1 or R2 follow-up. Tested in game at +25 with 99 in every stat on the
     // training dummy, and with Fire Grease
     const weapon = getWeapon("Ripple Blade");
     const grease = getBuffEffects(
@@ -7609,11 +7628,12 @@ describe("Ashes of War", () => {
       [767, 5],
       [720, 5],
     ];
+    // The loop and each follow-up on its own
     expect(versions([])).toEqual([
+      ["Wild Strikes", [strikes]],
       [
-        "with R1 follow-up",
+        "R1 follow-up",
         [
-          strikes,
           [
             [257, 5],
             [1123, 20],
@@ -7621,9 +7641,8 @@ describe("Ashes of War", () => {
         ],
       ],
       [
-        "with R2 follow-up",
+        "R2 follow-up",
         [
-          strikes,
           [
             [257, 5],
             [1492, 30],
@@ -7636,10 +7655,10 @@ describe("Ashes of War", () => {
       [739, 5],
     ];
     expect(versions(grease)).toEqual([
+      ["Wild Strikes", [greasedStrikes]],
       [
-        "with R1 follow-up",
+        "R1 follow-up",
         [
-          greasedStrikes,
           [
             [277, 5],
             [1143, 20],
@@ -7647,9 +7666,8 @@ describe("Ashes of War", () => {
         ],
       ],
       [
-        "with R2 follow-up",
+        "R2 follow-up",
         [
-          greasedStrikes,
           [
             [277, 5],
             [1511, 30],
@@ -8263,7 +8281,7 @@ describe("Ashes of War", () => {
         .map((hit) => Math.floor(hit.damage));
     expect(damage(spin.attack)[0]).toBe(419);
     expect(damage(getAttackData(movesets, weapon, "Backstab", false, 0.5)!)).toEqual([241, 1057]);
-    // Its R1 and R2 follow-ups, also tested in game: their two hits after the spin
+    // Its R1 and R2 follow-ups on their own, also tested in game: their two hits after the spin
     for (const [label, hits] of [
       ["R1", [450, 641]],
       ["R2", [577, 765]],
@@ -8276,7 +8294,7 @@ describe("Ashes of War", () => {
         false,
       );
       if (!("attack" in followUp)) throw new Error(followUp.unavailableReason);
-      expect(damage(followUp.attack).slice(1)).toEqual(hits);
+      expect(damage(followUp.attack)).toEqual(hits);
     }
   });
 
@@ -8330,15 +8348,14 @@ describe("Ashes of War", () => {
 
   it("offers built-in skills that aren't Ashes of War for their own weapons", () => {
     // Flails' Spinning Chain comes with weapons that take Ashes of War, so it's in the picker, for
-    // those weapons only, in alphabetical order with the Ashes of War. Only its R1 and R2 follow-ups
-    // are offered (tested in game: their numbers match), not the spin alone.
+    // those weapons only, in alphabetical order with the Ashes of War. It's a loop, so the spin and
+    // each of its R1 and R2 follow-ups (tested in game: their numbers match) are offered on their own.
     const choices = getAshChoices(ashes).map(({ value }) => value);
-    expect(choices).not.toContain("Spinning Chain");
-    const r1 = choices.indexOf(withFollowUp("Spinning Chain", "R1"));
-    expect(choices[r1 + 1]).toBe(withFollowUp("Spinning Chain", "R2"));
-    expect(choices[r1 - 1].startsWith("Spinning Chain")).toBe(false);
-    expect(choices[r1 - 1] < "Spinning Chain").toBe(true);
-    expect(choices[r1 + 2] > "Spinning Chain").toBe(true);
+    const spin = choices.indexOf("Spinning Chain");
+    expect(choices[spin + 1]).toBe(withFollowUp("Spinning Chain", "R1"));
+    expect(choices[spin + 2]).toBe(withFollowUp("Spinning Chain", "R2"));
+    expect(choices[spin - 1] < "Spinning Chain").toBe(true);
+    expect(choices[spin + 3] > "Spinning Chain").toBe(true);
     // Shield Strike is an Ash of War whose skill row is named by another's (SwordArtsParam textId),
     // so any shield can take it. Its follow-ups continue it, so it's one chain entry.
     expect(

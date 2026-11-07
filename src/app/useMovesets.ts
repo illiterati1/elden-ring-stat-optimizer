@@ -79,7 +79,7 @@ const repeatButtons: Partial<Record<AttackName, NonNullable<StepTiming["next"]>[
  * handed tapped R2 chain took 136 and 141 frames (142 with it, 138 without), about the 2.32s 50 of
  * them took by stopwatch.
  */
-const stepStartDelay = 1 / 30;
+export const stepStartDelay = 1 / 30;
 
 /**
  * Jumping attacks, from the jump press: the attack starts this long after it at the earliest (an

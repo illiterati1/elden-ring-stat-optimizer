@@ -439,7 +439,7 @@ export interface StepTimes {
   lead: number;
   hits: number[];
   /** The earliest attack it can be cancelled into (its chain's next step, or any attack) */
-  next?: { attack: "R1" | "R2" | "L1" | "any attack"; time: number };
+  next?: { attack: "R1" | "R2" | "L1" | "L2" | "any attack"; time: number };
   anyAttack?: number;
   roll?: number;
   block?: number;

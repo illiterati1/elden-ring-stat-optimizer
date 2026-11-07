@@ -28,11 +28,13 @@ Hits with "Tick" in the name are damage over time; projectile ticks have their i
 Output format:
   {
     "ashes": [{ "name": skill, "mounts": [weapon types], "affinities": [affinity IDs] }, ...],
-    "weapons": { name: { "skill": skill, "canChange": bool, "types": [physical type, 2nd type] } },
+    "weapons": { name: { "skill": skill, "canChange": bool, "types": [physical type, 2nd type],
+                         "skillRange": which of skills' animations it uses (get_skill_range) } },
     "skills": { skill: { "generic": hits, "classes": { weapon type: hits }, "unique": { weapon: hits },
                          "weaponBuff": true if it puts its own weapon buff on the weapon } }
   }
-where hits is { "main": [hit, ...], "followUps": [{ "label", "hands"?: "1h"/"2h", "hits" }] } (main
+where hits is { "main": [hit, ...], "followUps": [{ "label", "hands"?: "1h"/"2h", "hits" }],
+"timing"?: each part's timing by weapon animation range (see get_skill_timing) } (main
 is empty for skills that only do damage with follow-ups, e.g. stances like Unsheathe), and
 each hit is like build_moveset_data.py's: [motion value, status motion value, poise motion value,
 physical type, details], except physical type 4 and 5 are the weapon's own first and second types.
@@ -50,6 +52,7 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 
 sys.path.insert(0, os.path.dirname(__file__))
 from build_moveset_data import (  # noqa: E402
@@ -62,6 +65,7 @@ from build_moveset_data import (  # noqa: E402
     read_weapons,
 )
 from extract_fmg import read_fmg  # noqa: E402
+from game_attacks import get_motion_values  # noqa: E402
 
 # EquipParamGem canMountWep_* flags, by weapon type (EquipParamWeapon wepType). SpearLarge and
 # Sorcery aren't used.
@@ -1214,6 +1218,179 @@ def parse_rest(rest):
     return label, hands and hands.group(1)
 
 
+# Skills' animations are in a{600 + SwordArtsParam swordArtsTypeNew}.tae (tested in game: Storm
+# Blade, Sword Dance, Wild Strikes, and Ice Spear). Each part of a skill (its main attack, or a
+# follow-up or chain step) is an animation from 40000 (chain steps 40010, 40020, ...), with "Lacking
+# FP" versions 5 later (left out). Some weapon classes have their own, 100s apart: a weapon's
+# wepmotionOneHandId times 100 (e.g. 40200 for greatswords, tested in game: a Claymore's Sword Dance;
+# 40300 for spears), and twinblades' 42400 (a guess: Sword Dance's has the twinblade's rows), or else
+# 40000's (e.g. Ice Spear on a Short Spear, tested in game).
+SKILL_ANIMATION_FILE_BASE = 600
+SKILL_ANIMATIONS = (40000, 45000)
+LACKING_FP_ANIMATION = 5
+TWINBLADE_TYPE = 14
+TWINBLADE_SKILL_RANGE = 2400
+# AtkParam flat attack fields, by damage type
+FLAT_ATTACK_FIELDS = ["atkPhys", "atkMag", "atkFire", "atkThun", "atkDark"]
+
+
+def get_skill_range(row):
+    """@returns which of a skill's animation ranges a weapon uses (see SKILL_ANIMATION_FILE_BASE)"""
+    if int(row["wepType"]) == TWINBLADE_TYPE:
+        return TWINBLADE_SKILL_RANGE
+    return int(row["wepmotionOneHandId"]) * 100
+
+
+def hit_signature(motion_values, flat):
+    """A hit's motion value (physical, or else the largest) and flat attack, for matching"""
+    return (round(motion_values[0] or max(motion_values)), tuple(round(value) for value in flat))
+
+
+def get_window_attacks(behaviors, bullets, attacks, variation, judge):
+    """
+    @returns the AtkParam_Pc rows an animation window's behavior does damage with: its attack, or
+    for a projectile, its attack and the projectiles' it creates (on hitting, or at intervals),
+    that have motion values or flat attack
+    """
+    prefix = max(1, judge // 1000)
+    behavior = next(
+        (
+            behaviors[behavior_id]
+            for source in dict.fromkeys([variation, variation // 100 * 100, 0])
+            if (behavior_id := prefix * 100_000_000 + source * 1000 + judge % 1000) in behaviors
+        ),
+        None,
+    )
+    if not behavior:
+        return []
+    atk_ids = []
+    if behavior["refType"] == "0":
+        atk_ids.append(int(behavior["refId"]))
+    elif behavior["refType"] == "1":
+        pending = [int(behavior["refId"])]
+        seen = set()
+        while pending:
+            bullet = bullets.get(pending.pop())
+            if not bullet or int(bullet["id"]) in seen:
+                continue
+            seen.add(int(bullet["id"]))
+            atk_ids.append(int(bullet["atkId_Bullet"]))
+            pending += [int(bullet[field]) for field in ("HitBulletID", "intervalCreateBulletId") if int(bullet[field]) > 0]
+    return [
+        attacks[atk_id]
+        for atk_id in atk_ids
+        if atk_id in attacks
+        and (any(get_motion_values(attacks[atk_id])) or any(float(attacks[atk_id][field]) for field in FLAT_ATTACK_FIELDS))
+    ]
+
+
+def get_skill_timing(steps, number, variation, hits, behaviors, bullets):
+    """
+    @param steps check_animations.py's Steps
+    @param number the skill's animation file
+    @param variation the weapon's behaviorVariationId for unique weapons' skills, or its class's for
+    a class's version (0 for others)
+    @param hits a version of the skill (main and followUps)
+    @param behaviors BehaviorParam_PC rows, and bullets BulletParam rows, by ID
+    @returns the version's timing, by weapon animation range (see get_skill_range; "0" is the
+    default) and part ("" for the main attack, or the follow-up's label): each part's animation's
+    hits, and when it can be cancelled into another skill ("L2"), "R1", "R2", any attack, a roll,
+    or blocking, in seconds of real time (see Animations.to_real_time); a loop (a main attack of
+    "Loop" hits, e.g. Wild Strikes') also has "loop", how long each pass takes, and "opening", how
+    long until it starts. Each part's animation is the one whose hits (motion value and flat attack)
+    match the most of its hits, in its range, or else in the default one.
+    """
+    animations = steps.animations
+    file = animations.get_file(number)
+    if not file:
+        return None
+    # Each animation's hits' signatures and when they start
+    animation_hits = {}
+    for anim_id in file[0]:
+        if not SKILL_ANIMATIONS[0] <= anim_id < SKILL_ANIMATIONS[1] or anim_id % 10 >= LACKING_FP_ANIMATION:
+            continue
+        signatures = []
+        starts = []
+        for start, _, judge, *_ in animations.get_windows(number, anim_id) or []:
+            # The weapon's (or its class's) own rows, or else the skill's general ones
+            atks = get_window_attacks(behaviors, bullets, steps.game.attacks, variation, judge)
+            for atk in atks:
+                signatures.append(
+                    hit_signature(get_motion_values(atk), [float(atk[field]) for field in FLAT_ATTACK_FIELDS])
+                )
+            if atks:
+                starts.append(start)
+        animation_hits[anim_id] = (signatures, sorted(starts))
+
+    def range_of(anim_id):
+        return anim_id // 100 * 100 - SKILL_ANIMATIONS[0]
+
+    def part_timing(label, part_hits, skill_range):
+        wanted = Counter(
+            hit_signature(
+                hit[0] if isinstance(hit[0], list) else [hit[0]],
+                (hit[4].get("flat") if len(hit) > 4 else None) or [0] * 5,
+            )
+            for hit in part_hits
+        )
+        wanted.pop(hit_signature([0], [0] * 5), None)
+        best = None
+        for wanted_range in dict.fromkeys([skill_range, 0]):
+            for anim_id, (signatures, _) in sorted(animation_hits.items()):
+                if range_of(anim_id) != wanted_range:
+                    continue
+                score = sum((Counter(signatures) & wanted).values())
+                if score and (best is None or score > best[0]):
+                    best = (score, anim_id)
+            if best:
+                break
+        if not best:
+            return None
+        anim_id = best[1]
+
+        def real(time):
+            return round(animations.to_real_time(number, anim_id, time), 3)
+
+        starts = animation_hits[anim_id][1]
+        timing = {"hits": [real(start) for start in starts]}
+        cancels = animations.get_cancels(number, anim_id)
+        for name in ["L2", "R1", "R2", "anyAttack", "roll", "block"]:
+            if name in cancels:
+                timing[name] = real(cancels[name])
+        if any(len(hit) > 4 and hit[4].get("kind") == "Loop" for hit in part_hits) and len(starts) > 1:
+            # Evenly spaced hits, looping: each pass is as many of their gaps as hits
+            gaps = (real(starts[-1]) - real(starts[0])) / (len(starts) - 1)
+            timing["loop"] = round(gaps * len(starts), 3)
+            # Its opening: the animation before it without hits, until any attack can start (it
+            # goes on to the loop then: tested in game, Wild Strikes' first hit)
+            opening = [
+                other
+                for other, (signatures, _) in animation_hits.items()
+                if not signatures and range_of(other) == range_of(anim_id) and other < anim_id
+            ]
+            opening_cancels = animations.get_cancels(number, max(opening)) if opening else {}
+            if "anyAttack" in opening_cancels:
+                timing["opening"] = round(
+                    animations.to_real_time(number, max(opening), opening_cancels["anyAttack"]), 3
+                )
+        return timing
+
+    parts = [("", hits["main"])] if hits["main"] else []
+    parts += [(follow_up["label"], follow_up["hits"]) for follow_up in hits["followUps"]]
+    ranges = sorted({range_of(anim_id) for anim_id in animation_hits})
+    result = {}
+    for skill_range in ranges:
+        by_part = {}
+        for label, part_hits in parts:
+            timing = part_timing(label, part_hits, skill_range)
+            if timing:
+                by_part[label] = timing
+        # Only ranges with their own timings
+        if by_part and (skill_range == 0 or by_part != result.get("0")):
+            result[str(skill_range)] = by_part
+    return result
+
+
 def main():
     global PROJECT_DIR
     game_dir = sys.argv[1]
@@ -1226,10 +1403,12 @@ def main():
 
     # Skills without a name of their own use another's (SwordArtsParam textId), e.g. the Dragon
     # Halberd's Spinning Slash and Shield Strike's Ash of War
-    skill_text_ids = {
-        int(row["id"]): int(row["textId"])
-        for row in read_csv(os.path.join(project_dir, "data", "SwordArtsParam-vanilla.csv"))
-    }
+    sword_arts = read_csv(os.path.join(project_dir, "data", "SwordArtsParam-vanilla.csv"))
+    skill_text_ids = {int(row["id"]): int(row["textId"]) for row in sword_arts}
+    # Which file each skill's animations are in (see get_skill_timing)
+    skill_animation_types = {int(row["id"]): int(row["swordArtsTypeNew"]) for row in sword_arts}
+    # Each Ash of War's skill (SwordArtsParam) by its name
+    ash_skill_ids = {}
 
     # Ashes of War
     ashes = []
@@ -1239,6 +1418,7 @@ def main():
         skill = skill_names.get(skill_id) or skill_names.get(skill_text_ids.get(skill_id))
         if not name or not name.startswith(ASH_PREFIX) or not skill:
             continue
+        ash_skill_ids.setdefault(skill, skill_id)
         ashes.append(
             {
                 "name": skill,
@@ -1265,6 +1445,8 @@ def main():
         weapon_skills[name] = {
             "skill": skill,
             "canChange": row["gemMountType"] == "2",
+            # Which of a skill's animations it uses (see get_skill_timing)
+            "skillRange": get_skill_range(row),
             "types": [
                 PHYSICAL_TYPES[WEAPON_ATTRIBUTE_TYPES.get(int(row["atkAttribute"]), "standard")],
                 PHYSICAL_TYPES[WEAPON_ATTRIBUTE_TYPES.get(int(row["atkAttribute2"]), "standard")],
@@ -1843,6 +2025,50 @@ def main():
                     hit[4]["buff"] = projectile_flat if hit[4].get("kind") else weapon_flat
     for name, label in SKILL_LABELS.items():
         skills[name]["label"] = label
+
+    # Each version's timing, from its skill's animations
+    from check_animations import Steps  # noqa: E402
+
+    steps = Steps(game_dir, project_dir)
+    behavior_rows = {
+        int(row["id"]): row for row in read_csv(os.path.join(data_dir, "BehaviorParam_PC-vanilla.csv"))
+    }
+    bullet_rows = {int(row["id"]): row for row in read_csv(os.path.join(data_dir, "Bullet-vanilla.csv"))}
+    # Each weapon class's behavior variation (its weapons' share it, in 100s)
+    class_variations = {}
+    for row in weapons.values():
+        class_variations.setdefault(int(row["wepType"]), int(row["behaviorVariationId"]) // 100 * 100)
+    for name, skill in skills.items():
+        for group, key, hits in [
+            ("generic", None, skill["generic"]),
+            *(("classes", key, hits) for key, hits in skill["classes"].items()),
+            *(("unique", key, hits) for key, hits in skill["unique"].items()),
+        ]:
+            if not hits:
+                continue
+            row = weapons.get(key) if group == "unique" else None
+            skill_id = int(row["swordArtsParamId"]) if row else ash_skill_ids.get(name)
+            if skill_id not in skill_animation_types:
+                continue
+            # A class's version uses its class's behavior variation (e.g. 1400 for curved swords'
+            # Wild Strikes), a unique weapon's its own
+            variation = (
+                int(row["behaviorVariationId"])
+                if row
+                else class_variations.get(int(key), 0)
+                if group == "classes"
+                else 0
+            )
+            timing = get_skill_timing(
+                steps,
+                SKILL_ANIMATION_FILE_BASE + skill_animation_types[skill_id],
+                variation,
+                hits,
+                behavior_rows,
+                bullet_rows,
+            )
+            if timing:
+                hits["timing"] = timing
 
     for skill in skills.values():
         if skill["generic"] is None:

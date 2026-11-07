@@ -148,7 +148,9 @@ MOUNTED_CHARGED = {38100, 39100}
 ACTION_FLAG_EVENT = 0
 # L1 is either of two: 117, or 16, which powerstance chains without 117 continue on (a Dagger's
 # powerstance L1 chain, tested in game on a recording: each gap between hits within a frame).
-# Blocking is 22, and jumping (or crouching) 32 (per the user, from the animations).
+# Blocking is 22, jumping (or crouching) 32, and skills (L2) 103 and 104 (103 is a quick one, for
+# some skills; per the user, from the animations). A skill's chain continues on L2 (tested in game:
+# Storm Blade's and Sword Dance's follow-ups).
 CANCEL_FLAGS = {
     115: "R1",
     116: "R2",
@@ -158,6 +160,8 @@ CANCEL_FLAGS = {
     26: "roll",
     22: "block",
     32: "jump",
+    103: "L2",
+    104: "L2",
 }
 # The action flag marking a flail's sweet spot (×1.125 damage), at the start of most of its attacks'
 # hit windows (e.g. the Flail's R1 1: window 0.533-0.667s, flag 0.533-0.6s). Its backstabs,
