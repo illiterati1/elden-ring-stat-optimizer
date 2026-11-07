@@ -430,6 +430,27 @@ export function getHpDamage({ rate, ticks, flat = 0 }: HpDamage, enemyHp: number
   return ticks * Math.floor(rate * enemyHp + flat);
 }
 
+/**
+ * A step's timing, in seconds from when its button is pressed (in a chain, when the cancel into it
+ * opens): when its hits land, and when it can be cancelled into other actions
+ */
+export interface StepTimes {
+  /** Until its animation starts: a tapped R2's start, or else the step start delay */
+  lead: number;
+  hits: number[];
+  /** The earliest attack it can be cancelled into (its chain's next step, or any attack) */
+  next?: { attack: "R1" | "R2" | "L1" | "any attack"; time: number };
+  anyAttack?: number;
+  roll?: number;
+  block?: number;
+  /**
+   * How long the step lasts when the attack is repeated as fast as possible, if known: until the
+   * same button's next attack can start (or any attack, after a chain's last step or for attacks that
+   * can't be repeated back to back, or else the animation's end)
+   */
+  cycle?: number;
+}
+
 export interface AttackData {
   /** Each step of a chain (one for attacks that aren't chains), each with one or more hits */
   steps: AttackDataHit[][];
@@ -475,6 +496,8 @@ export interface AttackData {
   hitStamina?: (number[] | undefined)[];
   /** How long each step takes when the attack is repeated as fast as possible, if known */
   cycleTimes?: number[];
+  /** Each step's timing (when its hits land and it can be cancelled), if known */
+  stepTimes?: StepTimes[];
 }
 
 /** One hit of an attack with the final stats */
@@ -545,6 +568,10 @@ export interface BuildResult {
   attackDps?: number;
   /** Poise damage per second of the chosen attack, repeated the same way as attackDps, if known */
   attackPoisePerSecond?: number;
+  /** Stamina spent per second of the chosen attack, repeated the same way as attackDps, if known */
+  attackStaminaPerSecond?: number;
+  /** Each step's timing of the chosen attack, if known */
+  attackStepTimes?: StepTimes[];
   /** Status buildup per second of the chosen attack, repeated the same way as attackDps, if known */
   attackStatusPerSecond?: Partial<Record<AttackPowerType, number>>;
   /**
@@ -886,6 +913,18 @@ function getAttackStamina(attack: AttackData) {
   const { stamina } = attack;
   if (!stamina || attack.steps.some((_, i) => stamina[i] == null)) return undefined;
   return attack.steps.reduce((total, _, i) => total + attack.weights[i] * stamina[i]!, 0);
+}
+
+/**
+ * An attack's stamina cost per second repeated as fast as possible, like getAttackDps (what it
+ * spends, not counting stamina recovery)
+ */
+function getAttackStaminaPerSecond(attack: AttackData) {
+  const { stamina, cycleTimes } = attack;
+  if (!stamina || !cycleTimes || attack.steps.some((_, i) => stamina[i] == null)) return undefined;
+  const time = cycleTimes.reduce((sum, stepTime) => sum + stepTime, 0);
+  const total = attack.steps.reduce((sum, _, i) => sum + stamina[i]!, 0);
+  return time > 0 ? total / time : undefined;
 }
 
 /**
@@ -1551,6 +1590,8 @@ export function optimizeBuild(
     attackStamina: attack ? getAttackStamina(attack) : undefined,
     attackDps: resultAttack && attackSteps ? getAttackDps(resultAttack, attackSteps) : undefined,
     attackPoisePerSecond: resultAttack ? getAttackPoisePerSecond(resultAttack) : undefined,
+    attackStaminaPerSecond: resultAttack ? getAttackStaminaPerSecond(resultAttack) : undefined,
+    attackStepTimes: resultAttack?.stepTimes,
     attackStatusPerSecond: resultAttack
       ? getAttackStatusPerSecond(resultAttack, attackPower, hitStatusOf)
       : undefined,

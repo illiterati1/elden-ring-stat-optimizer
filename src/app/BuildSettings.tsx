@@ -34,7 +34,6 @@ interface Props {
   showStatus: AppState["showStatus"];
   showStance: AppState["showStance"];
   showStamina: AppState["showStamina"];
-  showDps: AppState["showDps"];
   showRequirements: AppState["showRequirements"];
   closedAlerts: AppState["closedAlerts"];
   meetRequirements: AppState["meetRequirements"];
@@ -109,7 +108,6 @@ function BuildSettings({
   showStatus,
   showStance,
   showStamina,
-  showDps,
   showRequirements,
   closedAlerts,
   meetRequirements,
@@ -335,17 +333,6 @@ function BuildSettings({
               size="small"
               checked={showStamina}
               onChange={(evt) => onChange({ showStamina: evt.currentTarget.checked })}
-            />
-          }
-        />
-        <FormControlLabel
-          label="Show DPS"
-          sx={{ mr: 0 }}
-          control={
-            <Checkbox
-              size="small"
-              checked={showDps}
-              onChange={(evt) => onChange({ showDps: evt.currentTarget.checked })}
             />
           }
         />

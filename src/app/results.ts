@@ -43,21 +43,21 @@ export function getResultStatus(result: BuildResult, perSecond = false) {
  */
 function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
   switch (sortBy) {
+    // Per second, the attack's damage, poise, and stamina repeated as fast as possible
     case "total":
+      return perSecond ? result.attackDps ?? -Infinity : result.finalValue;
     // Names are compared separately (sortResults)
     case "name":
       return result.finalValue;
     case "level":
       return -result.finalLevel;
     case "stance":
-      return result.attackStance ?? -Infinity;
+      return (perSecond ? result.attackPoisePerSecond : result.attackStance) ?? -Infinity;
     // The lowest stamina cost first
-    case "stamina":
-      return result.attackStamina != null ? -result.attackStamina : -Infinity;
-    case "dps":
-      return result.attackDps ?? -Infinity;
-    case "poisePerSecond":
-      return result.attackPoisePerSecond ?? -Infinity;
+    case "stamina": {
+      const stamina = perSecond ? result.attackStaminaPerSecond : result.attackStamina;
+      return stamina != null ? -stamina : -Infinity;
+    }
     default:
       if (sortBy.startsWith("scaling:")) {
         return result.scaling[sortBy.slice("scaling:".length) as Attribute] ?? 0;
@@ -72,7 +72,7 @@ function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
   }
 }
 
-/** @param perSecond true to sort status by its buildup per second (with DPS shown) */
+/** @param perSecond true to sort by per second values (damage, poise, stamina, and status) */
 export function sortResults(
   results: BuildResult[],
   sortBy: SortBy,

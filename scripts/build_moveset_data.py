@@ -21,17 +21,16 @@ from <Game>/msg/engus/item-msgbnd-dcx and item_dlc02-msgbnd-dcx, unpacked with W
 
 Output format, keyed by base weapon name:
   { "Longsword": { "poise": 5, "type": 0, "1h": { "R1": [[hit, ...], ...], ... }, "2h": { ... } } }
-"timing" has each attack step's timing from the game's animations, if <Game>/chr/c0000.anibnd.dcx has
-been unpacked (see check_animations.py's get_timings), by hands and attack like the attacks:
-[{ "start": for tapped R2s, seconds from the press until the step starts, "hits": [seconds when
-each hit's window opens], "next": { "attack": the earliest attack it can be cancelled into ("R1",
-"R2", or "L1"), "time" }, "cancels": when it can be cancelled into each of R1, R2, and L1 ({ "R1":
-time }), "anyAttack": seconds until any attack can start, "end": without it, seconds until the
-animation ends (if measured),
-"roll": seconds until a roll can start, "stamina": what the step costs, "leftStamina": how much of
-that the left hand's weapon costs (powerstance attacks), "sweetSpot": true if its hits
-are in a flail's sweet spot (×1.125 damage) }], each left out if the animation doesn't allow it (or
-costs nothing, or has no sweet spot).
+"timing" has each attack step's timing from the game's animations, if <Game>/chr/c0000.anibnd.dcx
+has been unpacked (see check_animations.py's get_timings), by hands and attack like the attacks: [{
+"start": for tapped R2s, seconds from the press until the step starts, "hits": [seconds when each
+hit's window opens], "next": { "attack": the earliest attack it can be cancelled into ("R1", "R2",
+or "L1"), "time" }, "cancels": when it can be cancelled into each of R1, R2, and L1 ({ "R1": time
+}), "anyAttack": seconds until any attack can start, "end": without it, seconds until the animation
+ends (if measured), "roll": seconds until a roll can start, "block": seconds until blocking can
+start, "stamina": what the step costs, "leftStamina": how much of that the left hand's weapon costs
+(powerstance attacks), "sweetSpot": true if its hits are in a flail's sweet spot (×1.125 damage) }],
+each left out if the animation doesn't allow it (or costs nothing, or has no sweet spot).
 "leftHandRows" has the weapon's own motion value, poise motion value, and stamina cost for each
 behavior judge ID of the left hand's powerstance hits ({ judge: [motion value, poise, stamina] }, see
 check_animations.py's get_left_hand_rows): the left hand's weapon's hits use its own attack rows.

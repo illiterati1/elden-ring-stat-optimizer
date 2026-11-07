@@ -1786,9 +1786,10 @@ describe("attacks", () => {
     const r2 = dps("R2", true);
     expect(r2.dps).toBeCloseTo(r2.damage / 2.3, 0);
     expect(r2.poisePerSecond).toBeCloseTo(r2.poise / 2.3, 1);
-    // Running attacks can't be repeated back to back
-    expect(dps("Running R1", false).dps).toBeUndefined();
-    expect(dps("Running R1", false).poisePerSecond).toBeUndefined();
+    // Attacks that can't be repeated back to back (e.g. running ones) last until any attack can
+    // start: the running R1 1.03s, and the step start delay
+    const running = dps("Running R1", false);
+    expect(running.dps).toBeCloseTo(running.damage / (1.03 + 1 / 30), 0);
   });
 
   it("gives attacks' stamina costs", () => {
@@ -11828,6 +11829,65 @@ describe("powerstance off hand weapons", () => {
     expect(chainFrames("Short Spear", "Powerstance L1", false)).toBeCloseTo(168, 0);
     expect(chainFrames("Longsword", "Powerstance L1", false)).toBeCloseTo(210, 0);
     expect(chainFrames("Longsword", "Charged R2", true)).toBeCloseTo(240, 0);
+  });
+
+  it("times each step's hits and cancels, and cuts chains short", () => {
+    const longsword = getWeapon("Longsword");
+    const r1 = getAttackData(movesets, longsword, "R1", false, 0.5)!;
+    // From the R1 1's press (the step start delay, then its animation): its hit at 0.433s, its R1
+    // cancel at 0.567s, a roll at 0.8s, and blocking at 0.9s
+    const first = r1.stepTimes![0];
+    expect(first.hits[0]).toBeCloseTo(1 / 30 + 0.433);
+    expect(first.next).toEqual({ attack: "R1", time: expect.closeTo(1 / 30 + 0.567) });
+    expect(first.roll).toBeCloseTo(1 / 30 + 0.8);
+    expect(first.block).toBeCloseTo(1 / 30 + 0.9);
+    // The last step is followed by any attack, which starts the chain again
+    expect(r1.stepTimes![4].next!.attack).toBe("any attack");
+
+    // Cut to two steps, the second ends with any attack too
+    const two = getAttackData(movesets, longsword, "R1", false, 0.5, false, { steps: 2 })!;
+    expect(two.steps).toHaveLength(2);
+    expect(two.weights[0] + two.weights[1]).toBeCloseTo(1);
+    expect(two.stepTimes![1].next!.attack).toBe("any attack");
+    expect(two.cycleTimes![1]).toBeCloseTo(1 / 30 + 0.767);
+    // Or the steps that fit a time budget, from the press until a roll can start after them: the
+    // second step's roll is at 1.37s, the third's at 2.03s
+    expect(
+      getAttackData(movesets, longsword, "R1", false, 0.5, false, { seconds: 1.6 })!.steps,
+    ).toHaveLength(2);
+    expect(
+      getAttackData(movesets, longsword, "R1", false, 0.5, false, { seconds: 2.1 })!.steps,
+    ).toHaveLength(3);
+    // At least one step
+    expect(
+      getAttackData(movesets, longsword, "R1", false, 0.5, false, { seconds: 0.1 })!.steps,
+    ).toHaveLength(1);
+
+    // Stamina per second: the chain's 60 over its 3.967s
+    const result = optimizeBuild({
+      weapon: longsword,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: r1,
+    });
+    expect(result.attackStaminaPerSecond).toBeCloseTo(60 / (3.8 + 5 / 30));
+  });
+
+  it("times jumping attacks from the jump press to after landing", () => {
+    // Tested in game on 60 fps recordings: a Rapier's one handed jumping R1 hits 36-37 frames after
+    // the jump (however early it's pressed) and lands at 53; its light landing can be rolled out of 8 frames (30 fps)
+    // later, and jumped out of (flag 32) 12
+    const jump = getAttackData(movesets, getWeapon("Rapier"), "Jumping R1", false, 0.5)!;
+    const [times] = jump.stepTimes!;
+    expect(times.hits[0] * 60).toBeCloseTo(36, 0);
+    expect(times.roll! * 60).toBeCloseTo(53 + 16, 0);
+    expect(jump.cycleTimes![0] * 60).toBeCloseTo(53 + 24, 0);
   });
 
   it("gives status buildup per second like DPS", () => {

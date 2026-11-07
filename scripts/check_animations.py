@@ -148,7 +148,17 @@ MOUNTED_CHARGED = {38100, 39100}
 ACTION_FLAG_EVENT = 0
 # L1 is either of two: 117, or 16, which powerstance chains without 117 continue on (a Dagger's
 # powerstance L1 chain, tested in game on a recording: each gap between hits within a frame).
-CANCEL_FLAGS = {115: "R1", 116: "R2", 117: "L1", 16: "L1", 4: "anyAttack", 26: "roll"}
+# Blocking is 22, and jumping (or crouching) 32 (per the user, from the animations).
+CANCEL_FLAGS = {
+    115: "R1",
+    116: "R2",
+    117: "L1",
+    16: "L1",
+    4: "anyAttack",
+    26: "roll",
+    22: "block",
+    32: "jump",
+}
 # The action flag marking a flail's sweet spot (×1.125 damage), at the start of most of its attacks'
 # hit windows (e.g. the Flail's R1 1: window 0.533-0.667s, flag 0.533-0.6s). Its backstabs,
 # ripostes, and mounted charged attacks, and Spinning Chain, don't have it (the Flail's Spinning
@@ -167,6 +177,10 @@ EARLY_JUMP_TABLE_EVENT = 300
 # at 60 fps (257.5 with the speeds, 272 without), and a Dagger's powerstance L1 chain 192 and 194.
 ANIM_SPEED_EVENT = 608
 NEXT_ATTACKS = ["R1", "R2", "L1"]
+# A jumping attack's landing is a separate animation: this many after the attack's, the lighter of
+# its landings (+42 is a slower one), e.g. the Longsword's one handed jumping R1 31030 lands in 31071
+JUMP_LANDING_OFFSET = 41
+
 # Animations' lengths in frames (30 a second), read in DS Anim Studio, by (file, animation ID): the
 # .tae files don't have them, and their events can run past the end (a138_030515's action flags to
 # 3.3s, though it's 80 frames, 2.667s). Only needed for steps that can't be cancelled into the same
@@ -653,6 +667,9 @@ def get_timings(steps, param, moveset):
       - cancels: when it can be cancelled into each of R1, R2, and L1 that it can ({ "R1": time })
       - anyAttack: when any right hand attack can start
       - roll: when a roll can start
+      - block: when blocking can start
+      - landing: for jumping attacks, when any attack, a roll, blocking, and another jump can start
+        after landing (the lighter landing, JUMP_LANDING_OFFSET)
       - end: without an any attack cancel, when the animation ends, if it's been measured
         (ANIMATION_FRAMES)
       - stamina: what the step costs: its windows' behaviors' stamina (BehaviorParam_PC stamina)
@@ -699,7 +716,7 @@ def get_timings(steps, param, moveset):
                     # Each button's own, since an R2 can be cancelled into another as early as an R1
                     # (e.g. the Broadsword's R2 2, both 1s), which next leaves out
                     timing["cancels"] = {name: round(cancels[name], 3) for _, name in sorted(next_attacks)}
-                for name in ["anyAttack", "roll"]:
+                for name in ["anyAttack", "roll", "block"]:
                     if name in cancels:
                         timing[name] = round(cancels[name], 3)
                 # Without an any attack cancel, the attack can only be repeated once it ends
@@ -707,6 +724,21 @@ def get_timings(steps, param, moveset):
                     length = steps.animations.get_length(file_number, anim_id)
                     if length is not None:
                         timing["end"] = round(real(length), 3)
+                # A jumping attack's landing recovery, from when it lands (the time in the air depends
+                # on the jump, not the animations)
+                if "Jumping" in attack:
+                    landing_id = anim_id + JUMP_LANDING_OFFSET
+                    files = [n for n in (int(param["spAtkcategory"]), int(param["wepmotionCategory"])) if n]
+                    landing_file, _ = steps.animations.find(files, landing_id)
+                    if landing_file is not None:
+                        landing_cancels = steps.animations.get_cancels(landing_file, landing_id)
+                        landing = {
+                            name: round(steps.animations.to_real_time(landing_file, landing_id, time), 3)
+                            for name, time in landing_cancels.items()
+                            if name in ("anyAttack", "roll", "block", "jump")
+                        }
+                        if landing:
+                            timing["landing"] = landing
                 if stamina:
                     timing["stamina"] = round(stamina, 2)
                 if left_stamina:

@@ -15,14 +15,14 @@ import {
   Typography,
 } from "@mui/material";
 import { allAttributes, type AttackPowerType, type Attributes } from "../calculator/calculator.ts";
-import type { AttackResultHit, BuildResult } from "../optimizer/build.ts";
+import type { AttackResultHit, BuildResult, StepTimes } from "../optimizer/build.ts";
 import { getStatLabel } from "../optimizer/startingClasses.ts";
 import { limitReasonLabels, physicalTypeLabels, statusTypes } from "./uiUtils.ts";
 import { getResultStatus } from "./results.ts";
 import { statusSortBy } from "./useAppState.ts";
 import BreakdownTable from "./BreakdownTable.tsx";
 import { colors } from "./theme.ts";
-import type { AppState, SortBy, UpdateAppState } from "./useAppState.ts";
+import type { AppState, SortBy, TooltipTimings, UpdateAppState } from "./useAppState.ts";
 import { maxSeries } from "./ValueChart.tsx";
 
 interface Props {
@@ -48,6 +48,8 @@ interface Props {
   showStamina: boolean;
   /** Show the chosen attack's damage per second */
   showDps: boolean;
+  /** Timings shown in the hits tooltip */
+  tooltipTimings: TooltipTimings;
   sortBy: AppState["sortBy"];
   reverse: AppState["reverse"];
   onChange: UpdateAppState;
@@ -87,13 +89,51 @@ function formatStatus(hit: AttackResultHit, buildup: number) {
  * Each step of an attack's damage, e.g. "312 | 315 | 150 + 160", with a tooltip of each hit's
  * damage, poise damage, and status buildup
  */
-function AttackHits({ steps, label }: { steps: AttackResultHit[][]; label: string }) {
+function AttackHits({
+  steps,
+  stepTimes,
+  timings,
+  label,
+}: {
+  steps: AttackResultHit[][];
+  stepTimes?: StepTimes[];
+  timings: TooltipTimings;
+  label: string;
+}) {
+  // When each step starts, from the start of the chain (as far as the steps' lengths are known)
+  const stepStarts: (number | undefined)[] = [];
+  let elapsed: number | undefined = 0;
+  for (const times of stepTimes ?? []) {
+    stepStarts.push(elapsed);
+    elapsed = elapsed != null && times.cycle != null ? elapsed + times.cycle : undefined;
+  }
+  const chainTime = stepTimes ? elapsed : undefined;
+  const at = (stepIndex: number, time: number | undefined) =>
+    stepStarts[stepIndex] != null && time != null ? stepStarts[stepIndex]! + time : undefined;
   const rows = steps.flatMap((step, i) =>
-    step.map((hit, j) => ({
-      label: step.length > 1 ? `${i + 1}.${j + 1}` : `${i + 1}`,
-      hit,
-    })),
+    step.map((hit, j) => {
+      const times = stepTimes?.[i];
+      // Each hit's own time if the animations have as many, or else the step's first's
+      const hitTime =
+        times &&
+        (times.hits.length === step.length ? times.hits[j] : j === 0 ? times.hits[0] : null);
+      const last = j === step.length - 1;
+      return {
+        label: step.length > 1 ? `${i + 1}.${j + 1}` : `${i + 1}`,
+        hit,
+        hitAt: hitTime != null ? at(i, hitTime) : undefined,
+        // The step's cancels, on its last hit
+        next: last && times?.next ? { ...times.next, time: at(i, times.next.time) } : undefined,
+        roll: last ? at(i, times?.roll) : undefined,
+        block: last ? at(i, times?.block) : undefined,
+      };
+    }),
   );
+  const showHitTimes = timings.hits && rows.some((row) => row.hitAt != null);
+  const showNext = timings.cancel && rows.some((row) => row.next?.time != null);
+  const showRoll = timings.roll && rows.some((row) => row.roll != null);
+  const showBlock = timings.block && rows.some((row) => row.block != null);
+  const showNextChain = timings.nextChain && chainTime != null;
   // Damage over time is shown per second, or per tick if its interval isn't known (just 0 for ticks
   // that only build up status, e.g. Chilling Mist's cloud)
   const formatHit = (hit: AttackResultHit) =>
@@ -161,10 +201,33 @@ function AttackHits({ steps, label }: { steps: AttackResultHit[][]; label: strin
                   <img src={icon} alt={label} title={label} width={16} height={16} />
                 </TableCell>
               ))}
+              {showHitTimes && (
+                <TableCell sx={cellSx} align="right" title="When the hit lands">
+                  Hit at
+                </TableCell>
+              )}
+              {showNext && (
+                <TableCell
+                  sx={cellSx}
+                  title="When the step can first be cancelled into another attack: its chain's next step, or any attack"
+                >
+                  Next attack
+                </TableCell>
+              )}
+              {showRoll && (
+                <TableCell sx={cellSx} align="right" title="When the step can be rolled out of">
+                  Roll
+                </TableCell>
+              )}
+              {showBlock && (
+                <TableCell sx={cellSx} align="right" title="When the step can be blocked out of">
+                  Block
+                </TableCell>
+              )}
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map(({ label, hit }) => (
+            {rows.map(({ label, hit, hitAt, next, roll, block }) => (
               <TableRow key={label}>
                 <TableCell sx={cellSx}>{label}</TableCell>
                 {showKind && <TableCell sx={cellSx}>{hit.kind ?? "Weapon"}</TableCell>}
@@ -192,8 +255,35 @@ function AttackHits({ steps, label }: { steps: AttackResultHit[][]; label: strin
                     {hit.status[statusType] ? formatStatus(hit, hit.status[statusType]!) : "–"}
                   </TableCell>
                 ))}
+                {showHitTimes && (
+                  <TableCell sx={cellSx} align="right">
+                    {hitAt != null ? formatSeconds(hitAt) : ""}
+                  </TableCell>
+                )}
+                {showNext && (
+                  <TableCell sx={cellSx}>
+                    {next?.time != null ? `${formatSeconds(next.time)} (${next.attack})` : ""}
+                  </TableCell>
+                )}
+                {showRoll && (
+                  <TableCell sx={cellSx} align="right">
+                    {roll != null ? formatSeconds(roll) : ""}
+                  </TableCell>
+                )}
+                {showBlock && (
+                  <TableCell sx={cellSx} align="right">
+                    {block != null ? formatSeconds(block) : ""}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
+            {showNextChain && (
+              <TableRow>
+                <TableCell sx={cellSx} colSpan={99}>
+                  Next chain at {formatSeconds(chainTime!)}
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       }
@@ -239,6 +329,7 @@ function ResultsTable({
   showStance,
   showStamina,
   showDps,
+  tooltipTimings,
   sortBy,
   reverse,
   onChange,
@@ -347,6 +438,11 @@ function ResultsTable({
       );
     });
 
+  // Per second, e.g. "DPS (R1)"
+  const perSecondLabel =
+    (pointLabel === "damage" ? "DPS" : "AR/s") +
+    (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "");
+
   return (
     <TableContainer component={Paper}>
       <Table
@@ -360,38 +456,42 @@ function ResultsTable({
             <TableCell rowSpan={headerRows} padding="checkbox" />
             <TableCell rowSpan={headerRows}>{sortLabel("name", "Weapon", "asc")}</TableCell>
             <TableCell rowSpan={headerRows} align="right">
-              {sortLabel("total", valueLabel, "desc")}
-            </TableCell>
-            {showHits && <TableCell rowSpan={headerRows}>Hits</TableCell>}
-            {showStance && (
-              <TableCell rowSpan={headerRows} align="right">
-                <Tooltip title="Poise damage, weighted across a chain the same way as damage">
-                  {sortLabel("stance", "Poise", "desc")}
-                </Tooltip>
-              </TableCell>
-            )}
-            {showStamina && (
-              <TableCell rowSpan={headerRows} align="right">
-                <Tooltip title="Stamina cost, weighted across a chain the same way as damage">
-                  {sortLabel("stamina", "Stamina", "asc")}
-                </Tooltip>
-              </TableCell>
-            )}
-            {showDps && (
-              <TableCell rowSpan={headerRows} align="right">
+              {showDps ? (
                 <Tooltip
                   title={`${
                     pointLabel === "damage" ? "Damage" : "Attack power"
                   } per second, repeating the attack as fast as the game allows (a chain starts again after its last step), from its animations`}
                 >
-                  {sortLabel("dps", pointLabel === "damage" ? "DPS" : "AR/s", "desc")}
+                  {sortLabel("total", perSecondLabel, "desc")}
+                </Tooltip>
+              ) : (
+                sortLabel("total", valueLabel, "desc")
+              )}
+            </TableCell>
+            {showHits && <TableCell rowSpan={headerRows}>Hits</TableCell>}
+            {showStance && (
+              <TableCell rowSpan={headerRows} align="right">
+                <Tooltip
+                  title={
+                    showDps
+                      ? "Poise damage per second, repeating the attack as fast as the game allows"
+                      : "Poise damage, weighted across a chain the same way as damage"
+                  }
+                >
+                  {sortLabel("stance", showDps ? "Poise/s" : "Poise", "desc")}
                 </Tooltip>
               </TableCell>
             )}
-            {showDps && (
+            {showStamina && (
               <TableCell rowSpan={headerRows} align="right">
-                <Tooltip title="Poise damage per second, repeating the attack as fast as the game allows (a chain starts again after its last step), from its animations">
-                  {sortLabel("poisePerSecond", "Poise/s", "desc")}
+                <Tooltip
+                  title={
+                    showDps
+                      ? "Stamina spent per second, repeating the attack as fast as the game allows (not counting stamina recovery)"
+                      : "Stamina cost, weighted across a chain the same way as damage"
+                  }
+                >
+                  {sortLabel("stamina", showDps ? "Stamina/s" : "Stamina", "asc")}
                 </Tooltip>
               </TableCell>
             )}
@@ -510,7 +610,11 @@ function ResultsTable({
                       }
                     >
                       <Box component="span" sx={tooltipCueSx}>
-                        {formatValue(result.finalValue)}
+                        {showDps
+                          ? result.attackDps != null
+                            ? formatValue(result.attackDps)
+                            : "–"
+                          : formatValue(result.finalValue)}
                       </Box>
                     </Tooltip>
                     {(result.buffNote || result.uncountedHpDamage || result.attackNote) && (
@@ -543,6 +647,8 @@ function ResultsTable({
                       {result.attackSteps && (
                         <AttackHits
                           steps={result.attackSteps}
+                          stepTimes={result.attackStepTimes}
+                          timings={tooltipTimings}
                           label={pointLabel === "damage" ? "Damage" : "AR"}
                         />
                       )}
@@ -550,23 +656,23 @@ function ResultsTable({
                   )}
                   {showStance && (
                     <TableCell align="right">
-                      {result.attackStance != null ? formatStance(result.attackStance) : ""}
+                      {showDps
+                        ? result.attackPoisePerSecond != null
+                          ? formatStance(result.attackPoisePerSecond)
+                          : ""
+                        : result.attackStance != null
+                        ? formatStance(result.attackStance)
+                        : ""}
                     </TableCell>
                   )}
                   {showStamina && (
                     <TableCell align="right">
-                      {result.attackStamina != null ? formatStamina(result.attackStamina) : ""}
-                    </TableCell>
-                  )}
-                  {showDps && (
-                    <TableCell align="right">
-                      {result.attackDps != null ? formatValue(result.attackDps) : ""}
-                    </TableCell>
-                  )}
-                  {showDps && (
-                    <TableCell align="right">
-                      {result.attackPoisePerSecond != null
-                        ? formatStance(result.attackPoisePerSecond)
+                      {showDps
+                        ? result.attackStaminaPerSecond != null
+                          ? formatStamina(result.attackStaminaPerSecond)
+                          : ""
+                        : result.attackStamina != null
+                        ? formatStamina(result.attackStamina)
                         : ""}
                     </TableCell>
                   )}
@@ -678,7 +784,6 @@ function ResultsTable({
                     +showHits +
                     +showStance +
                     +showStamina +
-                    2 * +showDps +
                     allAttributes.length * groups.length
                   }
                 >

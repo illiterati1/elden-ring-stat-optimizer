@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { allDamageTypes, WeaponType, type Weapon } from "../calculator/calculator.ts";
 import { allPhysicalTypes } from "../optimizer/defense.ts";
-import type { AttackData, AttackDataHit } from "../optimizer/build.ts";
+import type { AttackData, AttackDataHit, StepTimes } from "../optimizer/build.ts";
 
 export const allAttacks = [
   "R1",
@@ -60,13 +60,14 @@ export const riposteAttacks: ReadonlySet<string> = new Set([
 
 /**
  * The button repeated for an attack's DPS, for attacks that can be repeated back to back (a chain
- * starts again after its last step)
+ * starts again after its last step). Others are repeated once any attack can start.
  */
 const repeatButtons: Partial<Record<AttackName, NonNullable<StepTiming["next"]>["attack"]>> = {
   R1: "R1",
   R2: "R2",
   "Charged R2": "R2",
   "Powerstance L1": "L1",
+  "Mounted R1": "R1",
 };
 
 /**
@@ -81,22 +82,94 @@ const repeatButtons: Partial<Record<AttackName, NonNullable<StepTiming["next"]>[
 const stepStartDelay = 1 / 30;
 
 /**
- * @returns how long each step takes when the attack is repeated as fast as possible: until the same
- * button's next attack can start (or any attack, after a chain's last step, or else the animation's
- * end), plus a tapped R2's start, or else the step start delay, or undefined if the timings don't
- * say
+ * Jumping attacks, from the jump press: the attack starts this long after it at the earliest (an
+ * earlier press waits for it), and it lands this much later (its landing's recovery is the lighter
+ * one, recorded with each jumping attack). Tested in game on 60 fps recordings of a Rapier's one
+ * handed jumping R1 (its window at 10 frames into the swing, 30 fps): pressed 13 and 14 frames after
+ * the jump, it hit at 36 and landed at 53, twice; pressed 3 frames after, it hit at 37. Assumed the
+ * same for every weapon and jumping attack. (An R1 after it is R1 2, tested on several weapons.)
  */
-function getCycleTimes(attack: AttackName, timing: StepTiming[] | undefined, stepCount: number) {
+const jumpAttackStart = 14 / 60;
+const jumpAirTime = 53 / 60;
+
+/** Chains cut short: to a number of steps, or the steps that fit a time budget */
+export type ChainLimit = { steps: number } | { seconds: number };
+
+/**
+ * @returns each step's times, or undefined if the timings don't have them all. A chain cut short
+ * (lastStep) ends with any attack, not its next step.
+ */
+function getStepTimes(
+  attack: AttackName,
+  timing: StepTiming[] | undefined,
+  stepCount: number,
+  cutShort = false,
+): StepTimes[] | undefined {
+  if (!timing || timing.length < stepCount) return undefined;
   const button = repeatButtons[attack];
-  if (!button || !timing || timing.length < stepCount) return undefined;
-  const times = timing.slice(0, stepCount).map((step) => {
+  return timing.slice(0, stepCount).map((step, i) => {
+    // From the jump press: the attack, and its landing recovery once it lands; repeated by jumping
+    // again
+    const { landing } = step;
+    if (landing) {
+      const lead = jumpAttackStart + stepStartDelay;
+      const next = landing.anyAttack != null ? jumpAirTime + landing.anyAttack : undefined;
+      const repeat = landing.jump;
+      return {
+        lead,
+        hits: step.hits.map((time) => lead + time),
+        ...(next != null && { next: { attack: "any attack" as const, time: next } }),
+        ...(next != null && { anyAttack: next }),
+        ...(landing.roll != null && { roll: jumpAirTime + landing.roll }),
+        ...(landing.block != null && { block: jumpAirTime + landing.block }),
+        ...(repeat != null && { cycle: jumpAirTime + repeat }),
+      };
+    }
+    const lead = step.start ?? stepStartDelay;
+    const own = button && !(cutShort && i === stepCount - 1) ? step.cancels?.[button] : undefined;
+    const repeat = own ?? step.anyAttack ?? step.end;
     const next =
-      step.cancels?.[button] ??
-      (step.next?.attack === button ? step.next.time : step.anyAttack) ??
-      step.end;
-    return next != null ? (step.start != null ? step.start : stepStartDelay) + next : undefined;
+      own != null && (step.anyAttack == null || own <= step.anyAttack)
+        ? { attack: button!, time: lead + own }
+        : step.anyAttack != null
+        ? { attack: "any attack" as const, time: lead + step.anyAttack }
+        : undefined;
+    return {
+      lead,
+      hits: step.hits.map((time) => lead + time),
+      ...(next && { next }),
+      ...(step.anyAttack != null && { anyAttack: lead + step.anyAttack }),
+      ...(step.roll != null && { roll: lead + step.roll }),
+      ...(step.block != null && { block: lead + step.block }),
+      ...(repeat != null && { cycle: lead + repeat }),
+    };
   });
-  return times.every((time) => time != null) ? (times as number[]) : undefined;
+}
+
+/**
+ * @returns how many of a chain's steps it's limited to: a number of steps, or the steps that fit a
+ * time budget from the press until a roll can start after them (at least one)
+ */
+function getChainLength(
+  attack: AttackName,
+  timing: StepTiming[] | undefined,
+  stepCount: number,
+  limit: ChainLimit | undefined,
+) {
+  if (!limit || !chainAttacks.has(attack)) return stepCount;
+  if ("steps" in limit) return Math.max(1, Math.min(stepCount, Math.floor(limit.steps)));
+  const times = getStepTimes(attack, timing, stepCount);
+  if (!times) return stepCount;
+  let elapsed = 0;
+  let count = 0;
+  for (const step of times) {
+    const roll = step.roll ?? step.anyAttack;
+    if (roll == null || elapsed + roll > limit.seconds + 1e-9) break;
+    count++;
+    if (step.cycle == null) break;
+    elapsed += step.cycle;
+  }
+  return Math.max(1, count);
 }
 
 /**
@@ -166,6 +239,13 @@ export interface StepTiming {
   end?: number;
   anyAttack?: number;
   roll?: number;
+  /** When blocking can start */
+  block?: number;
+  /**
+   * For jumping attacks, when any attack, a roll, blocking, and another jump can start after landing
+   * (the time in the air depends on the jump, not the animations: see jumpAirTime)
+   */
+  landing?: { anyAttack?: number; roll?: number; block?: number; jump?: number };
 }
 
 /** A weapon's basic attacks, generated by scripts/build_moveset_data.py */
@@ -282,6 +362,7 @@ export function getAttackData(
   twoHanding: boolean,
   chainWeight: number,
   sumChains = false,
+  limit?: ChainLimit,
 ): AttackData | undefined {
   const moveset = movesets[weapon.weaponName];
   if (!moveset) return undefined;
@@ -319,9 +400,15 @@ export function getAttackData(
     twoHandedWeaponTypes.includes(weapon.weaponType);
   const [preferred, fallback] = twoHanded ? (["2h", "1h"] as const) : (["1h", "2h"] as const);
   const hands = moveset[preferred]?.[attack] ? preferred : fallback;
-  const steps = moveset[hands]?.[attack];
-  if (!steps) return undefined;
+  const allSteps = moveset[hands]?.[attack];
+  if (!allSteps) return undefined;
   const timing = moveset.timing?.[hands]?.[attack];
+  // A chain cut short ends with any attack instead of its next step
+  const steps = allSteps.slice(0, getChainLength(attack, timing, allSteps.length, limit));
+  const stepTimes = getStepTimes(attack, timing, steps.length, steps.length < allSteps.length);
+  const cycleTimes = stepTimes?.every((step) => step.cycle != null)
+    ? stepTimes.map((step) => step.cycle!)
+    : undefined;
 
   const rawWeights = steps.map((_, i) => (chainAttacks.has(attack) ? chainWeight ** i : 1));
   const totalWeight = rawWeights.reduce((sum, weight) => sum + weight, 0);
@@ -362,9 +449,8 @@ export function getAttackData(
     ...(timing?.some((step) => step.hitStamina) && {
       hitStamina: steps.map((_, i) => timing[i]?.hitStamina),
     }),
-    ...(getCycleTimes(attack, timing, steps.length) && {
-      cycleTimes: getCycleTimes(attack, timing, steps.length),
-    }),
+    ...(stepTimes && { stepTimes }),
+    ...(cycleTimes && { cycleTimes }),
     ...(criticalAttacks.has(attack) && { critical: true }),
   };
 }

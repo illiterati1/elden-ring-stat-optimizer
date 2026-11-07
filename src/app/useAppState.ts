@@ -57,6 +57,26 @@ export type DamageTypeDefenses = Record<
 import { allPhysicalTypes, type PhysicalType } from "../optimizer/defense.ts";
 export { allPhysicalTypes, type PhysicalType };
 
+export interface TooltipTimings {
+  /** When each hit lands */
+  readonly hits: boolean;
+  /** When each step can first be cancelled into another attack, and which */
+  readonly cancel: boolean;
+  /** When each step can be rolled out of */
+  readonly roll: boolean;
+  /** When each step can be blocked out of */
+  readonly block: boolean;
+  /** When the next chain can start */
+  readonly nextChain: boolean;
+}
+
+export interface ChainLimitSetting {
+  readonly mode: "none" | "steps" | "seconds";
+  readonly steps: number;
+  /** From the press until a roll can start after the last step */
+  readonly seconds: number;
+}
+
 export interface AppState {
   readonly startingClass: StartingClassName;
   readonly stats: Stats;
@@ -83,8 +103,15 @@ export interface AppState {
   readonly showStance: boolean;
   /** Show the chosen attack's stamina cost */
   readonly showStamina: boolean;
-  /** Show the chosen attack's damage per second, repeated as fast as possible */
+  /**
+   * Show the chosen attack's damage, poise, stamina, and status per second, repeated as fast as
+   * possible, instead of per attack
+   */
   readonly showDps: boolean;
+  /** Timings shown in the hits tooltip, from the start of the chain */
+  readonly tooltipTimings: TooltipTimings;
+  /** Chains cut short: to a number of steps, or the steps that fit a time budget */
+  readonly chainLimit: ChainLimitSetting;
   readonly showRequirements: boolean;
   /**
    * Only optimize the level the level limit stops at (faster, but no chart, and the minimum gain
@@ -159,8 +186,6 @@ export type SortBy =
   | "level"
   | "stance"
   | "stamina"
-  | "dps"
-  | "poisePerSecond"
   | `status:${AttackPowerType}`
   | `scaling:${Attribute}`
   | `requirement:${Attribute}`;
@@ -174,8 +199,6 @@ function isSortBy(value: unknown): value is SortBy {
     value === "level" ||
     value === "stance" ||
     value === "stamina" ||
-    value === "dps" ||
-    value === "poisePerSecond" ||
     (typeof value === "string" &&
       (/^status:\d+$/.test(value) || /^(scaling|requirement):(str|dex|int|fai|arc)$/.test(value)))
   );
@@ -199,6 +222,8 @@ const defaultAppState: AppState = {
   showStance: true,
   showStamina: false,
   showDps: false,
+  tooltipTimings: { hits: true, cancel: true, roll: true, block: false, nextChain: true },
+  chainLimit: { mode: "none", steps: 3, seconds: 2 },
   showRequirements: false,
   closedAlerts: [],
   fastMode: false,
@@ -297,6 +322,8 @@ function getInitialAppState(): AppState {
         Object.entries(stored.plannedStats ?? {}).filter(([, value]) => value > 0),
       ),
       defenses: { ...defaultAppState.defenses, ...stored.defenses },
+      tooltipTimings: { ...defaultAppState.tooltipTimings, ...stored.tooltipTimings },
+      chainLimit: { ...defaultAppState.chainLimit, ...stored.chainLimit },
       physicalNegation: { ...defaultAppState.physicalNegation, ...stored.physicalNegation },
       // Earlier versions had a custom motion value instead of the base attack
       attack: stored.attack && stored.attack !== ("custom" as string) ? stored.attack : "base",

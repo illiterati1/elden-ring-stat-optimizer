@@ -56,11 +56,13 @@ import useMovesets, {
   getAttackData,
   riposteAttacks,
   withOffhandRows,
+  type ChainLimit,
 } from "./useMovesets.ts";
 import useAmmo, { getAmmoKey, weaponTypeAmmoClasses, withAmmo } from "./useAmmo.ts";
 import useBuildResults from "./useBuildResults.ts";
 import CharacterSettings from "./CharacterSettings.tsx";
 import BuildSettings from "./BuildSettings.tsx";
+import TimingSettings from "./TimingSettings.tsx";
 import LimitSettings from "./LimitSettings.tsx";
 import DefenseSettings from "./DefenseSettings.tsx";
 import WeaponPicker from "./WeaponPicker.tsx";
@@ -127,6 +129,8 @@ export default function App() {
     showStance,
     showStamina,
     showDps,
+    tooltipTimings,
+    chainLimit,
     showRequirements,
     closedAlerts,
     meetRequirements,
@@ -389,6 +393,17 @@ export default function App() {
       : [];
   }, [offhandBuffChoices, offhandBuffKey, stackTier, health]);
 
+  // Chains cut short, if set
+  const limit = useMemo<ChainLimit | undefined>(
+    () =>
+      chainLimit.mode === "steps"
+        ? { steps: chainLimit.steps }
+        : chainLimit.mode === "seconds"
+        ? { seconds: chainLimit.seconds }
+        : undefined,
+    [chainLimit],
+  );
+
   const requests = useMemo<BuildRequest[]>(() => {
     const selected = new Set(validSelectedWeapons);
     const selectedWeaponTypes = new Set(weaponTypes);
@@ -571,7 +586,15 @@ export default function App() {
               : attack === ashAttack
               ? undefined
               : uniqueSkillChain ??
-                getAttackData(movesets, weapon, attack, weaponTwoHanding, chainWeight, sumChains);
+                getAttackData(
+                  movesets,
+                  weapon,
+                  attack,
+                  weaponTwoHanding,
+                  chainWeight,
+                  sumChains,
+                  limit,
+                );
           // A skill's enemy debuff is picked separately, so it's noted when it isn't
           const debuffName =
             chosenAttackData?.fixedSkill && skillDebuffs[chosenAttackData.fixedSkill];
@@ -700,6 +723,7 @@ export default function App() {
     attack,
     chainWeight,
     sumChains,
+    limit,
     physicalNegation,
     countedEnemyHp,
     criticalDamageRate,
@@ -753,7 +777,6 @@ export default function App() {
     const hidden =
       (sortBy === "stance" && !showStance) ||
       (sortBy === "stamina" && !showStamina) ||
-      ((sortBy === "dps" || sortBy === "poisePerSecond") && !showDps) ||
       (sortBy.startsWith("status:") &&
         !statusTypesShown.some((statusType) => statusSortBy(statusType) === sortBy));
     return hidden
@@ -831,7 +854,6 @@ export default function App() {
               showStatus={showStatus}
               showStance={showStance}
               showStamina={showStamina}
-              showDps={showDps}
               showRequirements={showRequirements}
               closedAlerts={closedAlerts}
               meetRequirements={meetRequirements}
@@ -857,6 +879,12 @@ export default function App() {
               offhandWeaponTypes={offhandWeaponTypes}
               offhandAffinityChoices={offhandAffinityChoices}
               offhandBuffChoices={offhandBuffChoices}
+              onChange={updateAppState}
+            />
+            <TimingSettings
+              showDps={showDps}
+              tooltipTimings={tooltipTimings}
+              chainLimit={chainLimit}
               onChange={updateAppState}
             />
             <BuffSettings
@@ -948,6 +976,7 @@ export default function App() {
                         showStance={showStance}
                         showStamina={showStamina}
                         showDps={showDps}
+                        tooltipTimings={tooltipTimings}
                         showRequirements={showRequirements}
                         sortBy={sortBy}
                         reverse={reverse}
