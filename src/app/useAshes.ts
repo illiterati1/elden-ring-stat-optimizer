@@ -527,6 +527,8 @@ export function getAshAttack(
   const hits = getSkillHits(ashes, skill, weapon);
   const hands = twoHanding ? "2h" : "1h";
   if (!hits || (!hits.main.length && !hits.followUps.length)) {
+    // Shields', staves', and seals' default skill (SwordArtsParam 10)
+    if (skill === "No Skill") return { unavailableReason: "No skill" };
     return { unavailableReason: `${skill} does no damage` };
   }
 

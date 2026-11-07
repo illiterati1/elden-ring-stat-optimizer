@@ -4701,6 +4701,15 @@ describe("Ashes of War", () => {
     ]);
   });
 
+  it("names shields', staves', and seals' default skill", () => {
+    // Skill 10 is "No Skill"; the DLC's text has a "DLC dummy" placeholder for it, which isn't used
+    for (const name of ["Glintstone Staff", "Finger Seal", "Kite Shield"]) {
+      expect(ashes.weapons[name]?.skill).toBe("No Skill");
+    }
+    const seal = getAshAttack(ashes, movesets, getWeapon("Finger Seal"), "No Skill", false);
+    expect(seal).toEqual({ unavailableReason: "No skill" });
+  });
+
   it("matches Wild Strikes in game", () => {
     // Offered only with its follow-ups
     expect(

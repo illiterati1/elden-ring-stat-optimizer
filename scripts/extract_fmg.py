@@ -10,8 +10,16 @@ import struct
 import sys
 
 
+# Placeholder text in the DLC's files
+PLACEHOLDERS = {"dlc dummy", "dummy"}
+
+
 def read_fmg(path):
-    """Return a dict of text ID -> string, skipping empty entries"""
+    """
+    Return a dict of text ID -> string, skipping empty entries and placeholders: the DLC's files
+    have one "DLC dummy" (or "dummy") entry each, which would otherwise override the base game's text,
+    e.g. ArtsName_dlc02's for skill 10, "No Skill"
+    """
     data = open(path, "rb").read()
     big_endian, version = data[1], data[2]
     if big_endian or version != 2:
@@ -30,7 +38,9 @@ def read_fmg(path):
                 end = offset
                 while data[end : end + 2] != b"\0\0":
                     end += 2
-                entries[text_id] = data[offset:end].decode("utf-16-le")
+                text = data[offset:end].decode("utf-16-le")
+                if text.strip().lower() not in PLACEHOLDERS:
+                    entries[text_id] = text
     return entries
 
 
