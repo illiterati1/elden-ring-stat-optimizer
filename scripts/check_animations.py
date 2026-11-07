@@ -48,6 +48,7 @@ hit more than once (e.g. one that explodes), which this can't tell.
 """
 
 import csv
+import math
 import os
 import re
 import struct
@@ -143,15 +144,36 @@ MOUNTED_CHARGED = {38100, 39100}
 
 # ChrActionFlag types that end an attack early: cancelling into an R1, R2, or L1 (the same
 # attack's next step, or the next attack), any right hand attack, or a roll (or backstep). The
-# first window of each is when that can start.
+# first window of each is when that can start (or its early window's, EARLY_JUMP_TABLE_EVENT).
 ACTION_FLAG_EVENT = 0
-CANCEL_FLAGS = {115: "R1", 116: "R2", 117: "L1", 4: "anyAttack", 26: "roll"}
+# L1 is either of two: 117, or 16, which powerstance chains without 117 continue on (a Dagger's
+# powerstance L1 chain, tested in game on a recording: each gap between hits within a frame).
+CANCEL_FLAGS = {115: "R1", 116: "R2", 117: "L1", 16: "L1", 4: "anyAttack", 26: "roll"}
 # The action flag marking a flail's sweet spot (×1.125 damage), at the start of most of its attacks'
 # hit windows (e.g. the Flail's R1 1: window 0.533-0.667s, flag 0.533-0.6s). Its backstabs,
 # ripostes, and mounted charged attacks, and Spinning Chain, don't have it (the Flail's Spinning
 # Chain spin tested in game at 419, no bonus).
 SWEET_SPOT_FLAG = 42
+# ActivateJumpTableEarly: a window before an action flag's (JumpTableID_ToActivateEarly, s16) that
+# lets it start earlier, judged by the weapon's weaponWeightRate (JumpTable2ID_ToJudgeHowEarly 2,
+# Parameter1 0.0 to Parameter2 1.0), which is 0 on every weapon: as early as possible, the window's
+# start. Most are 2 frames, ending where the flag starts. Tested in game, 10 chains of two handed R1s
+# (each step's repeat cancel has one): a Rapier's took about 43s (45s at the flags' starts, 41s
+# early), against a Longsword's one handed 41.5s (38s, none early), so they start early.
+EARLY_JUMP_TABLE_EVENT = 300
+# AnimSpeedGradient: plays part of an animation faster or slower (SpeedAtStart to SpeedAtEnd, f32),
+# e.g. the Giant-Crusher's two handed R1 1 at x1.23 for frames 0-22 and x1.3 for 26-39. Timings are
+# in real time: tested in game on recordings, the Giant-Crusher's two handed R1 chain took 257 frames
+# at 60 fps (257.5 with the speeds, 272 without), and a Dagger's powerstance L1 chain 192 and 194.
+ANIM_SPEED_EVENT = 608
 NEXT_ATTACKS = ["R1", "R2", "L1"]
+# Animations' lengths in frames (30 a second), read in DS Anim Studio, by (file, animation ID): the
+# .tae files don't have them, and their events can run past the end (a138_030515's action flags to
+# 3.3s, though it's 80 frames, 2.667s). Only needed for steps that can't be cancelled into the same
+# button's attack or any attack: the Ruins Greatsword's one handed R2 2, and the backhand blades'
+# (the Backhand Blade's, Reverse-Bladed Sword's, and Curseblade's Cirque's).
+ANIMATION_FRAMES = {(138, 30515): 80, (58, 30515): 57}
+ANIMATION_FPS = 30
 
 
 class Animations:
@@ -160,6 +182,9 @@ class Animations:
     def __init__(self, game_dir):
         self.dir = os.path.join(game_dir, TAE_DIR)
         self.files = {}
+        # Each animation's speed changes (ANIM_SPEED_EVENT), by file: (start, end, speed at start,
+        # speed at end)
+        self.speeds = {}
 
     def get_file(self, number):
         if number not in self.files:
@@ -190,12 +215,27 @@ class Animations:
                             effects[anim_id].setdefault(struct.unpack_from("<i", data, params)[0], start)
                 cancels = {}
                 for anim_id, events in animations.items():
+                    # Windows that let a flag start early, by flag: (start, end)
+                    early = {}
+                    for start, end, event_type, params in events:
+                        if event_type == EARLY_JUMP_TABLE_EVENT:
+                            flag = struct.unpack_from("<h", data, params)[0]
+                            early.setdefault(flag, []).append((start, end))
                     first = {}
                     for start, end, event_type, params in sorted(events):
                         if event_type == ACTION_FLAG_EVENT:
-                            name = CANCEL_FLAGS.get(struct.unpack_from("<i", data, params)[0])
-                            if name and name not in first:
-                                first[name] = start
+                            flag = struct.unpack_from("<i", data, params)[0]
+                            name = CANCEL_FLAGS.get(flag)
+                            if name:
+                                # Starting early if an early window ends where it starts
+                                first[name] = min(
+                                    [start, first.get(name, start)]
+                                    + [
+                                        early_start
+                                        for early_start, early_end in early.get(flag, [])
+                                        if abs(early_end - start) < 0.01
+                                    ]
+                                )
                     cancels[anim_id] = first
                 sweet_spots = {
                     anim_id: [
@@ -206,8 +246,51 @@ class Animations:
                     ]
                     for anim_id, events in animations.items()
                 }
+                self.speeds[number] = {
+                    anim_id: sorted(
+                        (start, end, *struct.unpack_from("<ff", data, params))
+                        for start, end, event_type, params in events
+                        if event_type == ANIM_SPEED_EVENT and end > start
+                    )
+                    for anim_id, events in animations.items()
+                }
                 self.files[number] = (windows, imports, cancels, effects, sweet_spots)
         return self.files[number]
+
+    def get_speeds(self, number, anim_id, depth=0):
+        """@returns an animation's speed changes (see speeds), following imports"""
+        file = self.get_file(number)
+        if not file or anim_id not in file[0]:
+            return []
+        windows, imports, _, _, _ = file
+        if not windows[anim_id] and anim_id in imports and depth < 4:
+            return self.get_speeds(*imports[anim_id], depth + 1)
+        return self.speeds[number].get(anim_id, [])
+
+    def to_real_time(self, number, anim_id, time):
+        """
+        @returns how long an animation takes to reach a time in it (in animation time), playing
+        faster or slower where its speed changes
+        """
+        real = time
+        for start, end, speed_start, speed_end in self.get_speeds(number, anim_id):
+            if time <= start:
+                continue
+            until = min(time, end)
+            # The speed changes linearly over the window: the time spent is its integral of 1/speed
+            speed_until = speed_start + (speed_end - speed_start) * (until - start) / (end - start)
+            if abs(speed_until - speed_start) < 1e-9:
+                spent = (until - start) / speed_start
+            else:
+                rate = (speed_end - speed_start) / (end - start)
+                spent = math.log(speed_until / speed_start) / rate
+            real += spent - (until - start)
+        return real
+
+    def get_length(self, number, anim_id):
+        """@returns an animation's length, if it's been measured (ANIMATION_FRAMES), or None"""
+        frames = ANIMATION_FRAMES.get((number, anim_id))
+        return frames / ANIMATION_FPS if frames is not None else None
 
     def get_windows(self, number, anim_id, depth=0):
         """@returns an animation's hit windows, following imports"""
@@ -567,8 +650,11 @@ def get_timings(steps, param, moveset):
       - hits: when each hit's window opens (the hits the windows make, see the module docstring,
         which may differ from the moveset's)
       - next: the earliest attack it can be cancelled into, and when ({ "attack": "R1", "time" })
+      - cancels: when it can be cancelled into each of R1, R2, and L1 that it can ({ "R1": time })
       - anyAttack: when any right hand attack can start
       - roll: when a roll can start
+      - end: without an any attack cancel, when the animation ends, if it's been measured
+        (ANIMATION_FRAMES)
       - stamina: what the step costs: its windows' behaviors' stamina (BehaviorParam_PC stamina)
         times the weapon's staminaConsumptionRate
       - leftStamina: how much of it the left hand's weapon's windows cost (powerstance attacks)
@@ -592,20 +678,35 @@ def get_timings(steps, param, moveset):
                 )
                 if file_number is None or not merged:
                     break
-                timing = {"hits": [round(hit["start"], 3) for hit in merged]}
+                # In real time, where the animation plays faster or slower (ANIM_SPEED_EVENT)
+                def real(time):
+                    return steps.animations.to_real_time(file_number, anim_id, time)
+
+                cancels = {name: real(time) for name, time in cancels.items()}
+                timing = {"hits": [round(real(hit["start"]), 3) for hit in merged]}
                 if attack in TAPPED_R2_ATTACKS:
                     charged_id = get_animation_id(TAPPED_R2_ATTACKS[attack], hands, index)
                     files = [n for n in (int(param["spAtkcategory"]), int(param["wepmotionCategory"])) if n]
                     charging = steps.animations.get_effect_start(files, charged_id, CHARGING_SPEFFECT)
                     if charging is not None:
+                        charged_file, _ = steps.animations.find(files, charged_id)
+                        charging = steps.animations.to_real_time(charged_file, charged_id, charging)
                         timing = {"start": round(charging + CHARGING_LAG, 3), **timing}
                 next_attacks = [(cancels[name], name) for name in NEXT_ATTACKS if name in cancels]
                 if next_attacks:
                     time, name = min(next_attacks)
                     timing["next"] = {"attack": name, "time": round(time, 3)}
+                    # Each button's own, since an R2 can be cancelled into another as early as an R1
+                    # (e.g. the Broadsword's R2 2, both 1s), which next leaves out
+                    timing["cancels"] = {name: round(cancels[name], 3) for _, name in sorted(next_attacks)}
                 for name in ["anyAttack", "roll"]:
                     if name in cancels:
                         timing[name] = round(cancels[name], 3)
+                # Without an any attack cancel, the attack can only be repeated once it ends
+                if "anyAttack" not in cancels:
+                    length = steps.animations.get_length(file_number, anim_id)
+                    if length is not None:
+                        timing["end"] = round(real(length), 3)
                 if stamina:
                     timing["stamina"] = round(stamina, 2)
                 if left_stamina:

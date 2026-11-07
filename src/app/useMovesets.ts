@@ -70,16 +70,31 @@ const repeatButtons: Partial<Record<AttackName, NonNullable<StepTiming["next"]>[
 };
 
 /**
+ * Each step starts about a frame after the cancel into it opens. Tested in game on 60 fps
+ * recordings, between hits: a Rapier's two handed R1 chain took 194 frames from its first hit to its
+ * sixth (184 without the delay), a Longsword's one handed R1 chain 158 from its first to its fifth,
+ * twice (150), then 79 to the next chain's first (78), and an Uchigatana's 152 and 151 (152). Not
+ * for tapped R2s, whose start (from the press, with its lag) already has it: a Longsword's two
+ * handed tapped R2 chain took 136 and 141 frames (142 with it, 138 without), about the 2.32s 50 of
+ * them took by stopwatch.
+ */
+const stepStartDelay = 1 / 30;
+
+/**
  * @returns how long each step takes when the attack is repeated as fast as possible: until the same
- * button's next attack can start (or any attack, after a chain's last step), plus a tapped R2's
- * start, or undefined if the timings don't say
+ * button's next attack can start (or any attack, after a chain's last step, or else the animation's
+ * end), plus a tapped R2's start, or else the step start delay, or undefined if the timings don't
+ * say
  */
 function getCycleTimes(attack: AttackName, timing: StepTiming[] | undefined, stepCount: number) {
   const button = repeatButtons[attack];
   if (!button || !timing || timing.length < stepCount) return undefined;
   const times = timing.slice(0, stepCount).map((step) => {
-    const next = step.next?.attack === button ? step.next.time : step.anyAttack;
-    return next != null ? (step.start ?? 0) + next : undefined;
+    const next =
+      step.cancels?.[button] ??
+      (step.next?.attack === button ? step.next.time : step.anyAttack) ??
+      step.end;
+    return next != null ? (step.start != null ? step.start : stepStartDelay) + next : undefined;
   });
   return times.every((time) => time != null) ? (times as number[]) : undefined;
 }
@@ -145,6 +160,10 @@ export interface StepTiming {
   /** True if its hits are in a flail's sweet spot (flailSweetSpotRate) */
   sweetSpot?: true;
   next?: { attack: "R1" | "R2" | "L1"; time: number };
+  /** When it can be cancelled into each of R1, R2, and L1 that it can */
+  cancels?: Partial<Record<"R1" | "R2" | "L1", number>>;
+  /** Without an any attack cancel (anyAttack), when the animation ends */
+  end?: number;
   anyAttack?: number;
   roll?: number;
 }

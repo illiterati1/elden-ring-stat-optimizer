@@ -1755,8 +1755,9 @@ describe("attacks", () => {
 
   it("gives attacks' damage per second from their animations", () => {
     // Longsword +25, 99 in every stat, on the training dummy, each attack repeated as fast as the
-    // timings allow: the one handed R1 chain takes 3.8s (0.567 + 0.6 + 0.633 + 0.533 + 1.467); the
-    // two handed tapped R2s 2.3s (0.3 + 0.633 + 0.333 + 1.033, with their charging window starts)
+    // timings allow: the one handed R1 chain takes 3.967s (0.567 + 0.6 + 0.633 + 0.533 + 1.467, and
+    // a frame more a step); the two handed tapped R2s 2.3s (0.3 + 0.633 + 0.333 + 1.033, with their
+    // charging window starts; 2.31s on a recording)
     const dps = (attack: Parameters<typeof getAttackData>[2], twoHanding: boolean) => {
       const weapon = getWeapon("Longsword");
       const result = optimizeBuild({
@@ -1780,8 +1781,8 @@ describe("attacks", () => {
       return { dps: result.attackDps!, damage, poisePerSecond: result.attackPoisePerSecond, poise };
     };
     const r1 = dps("R1", false);
-    expect(r1.dps).toBeCloseTo(r1.damage / 3.8, 0);
-    expect(r1.poisePerSecond).toBeCloseTo(r1.poise / 3.8, 1);
+    expect(r1.dps).toBeCloseTo(r1.damage / (3.8 + 5 / 30), 0);
+    expect(r1.poisePerSecond).toBeCloseTo(r1.poise / (3.8 + 5 / 30), 1);
     const r2 = dps("R2", true);
     expect(r2.dps).toBeCloseTo(r2.damage / 2.3, 0);
     expect(r2.poisePerSecond).toBeCloseTo(r2.poise / 2.3, 1);
@@ -11780,6 +11781,53 @@ describe("powerstance off hand weapons", () => {
     const withBroadsword = withOffhandRows(longsword, movesets, "Longsword", "Broadsword");
     expect(withBroadsword.steps).toEqual(longsword.steps);
     expect(withBroadsword.hitStamina![0]).toEqual([12, 12.36]);
+  });
+
+  it("repeats R2s at their own cancel, even when an R1's is as early", () => {
+    // The Broadsword's R2 2 can be cancelled into an R1 or an R2 at 0.933s (2 frames early, see
+    // check_animations.py's EARLY_JUMP_TABLE_EVENT; the earliest next attack is the R1), and has no
+    // "any attack" cancel: 0.933s after it starts, 0.433s after the press
+    const r2 = getAttackData(movesets, getWeapon("Broadsword"), "R2", false, 0.5)!;
+    expect(r2.cycleTimes).toHaveLength(2);
+    expect(r2.cycleTimes![1]).toBeCloseTo(1.366);
+    const charged = getAttackData(movesets, getWeapon("Broadsword"), "Charged R2", false, 0.5)!;
+    expect(charged.cycleTimes).toHaveLength(2);
+    // The Backhand Blade's one handed R2 2 has no R2 or any attack cancel, so it's repeated when the
+    // animation ends (57 frames, 1.9s, read in DS Anim Studio), 0.333s after the press
+    const backhand = getAttackData(movesets, getWeapon("Backhand Blade"), "R2", false, 0.5)!;
+    expect(backhand.cycleTimes![1]).toBeCloseTo(2.233);
+  });
+
+  it("starts cancels early where the animations let them", () => {
+    // Tested in game, 10 chains of R1s: a Rapier's two handed, whose repeat cancels each have an
+    // early window, about 43s, and a Longsword's one handed, whose don't, 41.5s; each step starts a
+    // frame after its cancel (recordings)
+    const chain = (weapon: string, twoHanding: boolean) =>
+      getAttackData(movesets, getWeapon(weapon), "R1", twoHanding, 0.5)!.cycleTimes!.reduce(
+        (sum, time) => sum + time,
+        0,
+      );
+    expect(chain("Rapier", true)).toBeCloseTo(4.1 + 6 / 30, 2);
+    expect(chain("Longsword", false)).toBeCloseTo(3.8 + 5 / 30, 2);
+  });
+
+  it("times attacks in real time where their animations play faster", () => {
+    // Tested in game on 60 fps recordings, frames from each chain's first hit to the next chain's:
+    // the Giant-Crusher's two handed R1 chain 257 (its R1 1 plays at x1.23 and x1.3 in parts), and
+    // a Dagger's powerstance L1 chain 192 and 194 (it continues on flag 16, with no L1 flag)
+    const chainFrames = (weapon: string, attack: AttackChoice, twoHanding: boolean) =>
+      getAttackData(movesets, getWeapon(weapon), attack, twoHanding, 0.5)!.cycleTimes!.reduce(
+        (sum, time) => sum + time,
+        0,
+      ) * 60;
+    expect(chainFrames("Giant-Crusher", "R1", true)).toBeCloseTo(258.7, 0);
+    expect(chainFrames("Dagger", "Powerstance L1", false)).toBeCloseTo(194.1, 0);
+    // And a Short Spear's powerstance L1 chain 168 twice (on flag 16, though it has an L1 flag later:
+    // 406 on that), a Longsword's 210 twice (on its L1 flag), and a Longsword's two handed charged
+    // R2s 241 and 239
+    expect(chainFrames("Short Spear", "Powerstance L1", false)).toBeCloseTo(168, 0);
+    expect(chainFrames("Longsword", "Powerstance L1", false)).toBeCloseTo(210, 0);
+    expect(chainFrames("Longsword", "Charged R2", true)).toBeCloseTo(240, 0);
   });
 
   it("gives status buildup per second like DPS", () => {
