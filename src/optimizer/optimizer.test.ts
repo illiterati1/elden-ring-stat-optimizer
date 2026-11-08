@@ -562,6 +562,29 @@ describe("bows", () => {
     const great = getAttackData(movesets, getWeapon("Greatbow"), baseAttack, true, 0.5)!;
     expect(Math.round(great.stepTimes![0].hits[0] * 60)).toBe(155);
     expect(Math.round(great.cycleTimes![0] * 60)).toBe(220);
+    // An unloaded Heavy Crossbow's hits 75 frames after the press, then every 110.5
+    const crossbow = getAttackData(movesets, getWeapon("Heavy Crossbow"), baseAttack, true, 0.5)!;
+    expect(Math.round(crossbow.stepTimes![0].hits[0] * 60)).toBe(75);
+    expect(crossbow.cycleTimes![0] * 60).toBeCloseTo(110.5);
+    // The Pulley Crossbow's 3 bolts 10 frames apart, the first 78 after the press, then every 118.5
+    const pulley = getAttackData(
+      movesets,
+      withAmmo(getWeapon("Pulley Crossbow"), ammo.find((group) => group.names.includes("Bolt"))!),
+      baseAttack,
+      true,
+      0.5,
+    )!;
+    expect(pulley.stepTimes![0].hits.map((time) => Math.round(time * 60))).toEqual([78, 88, 98]);
+    expect(pulley.cycleTimes![0] * 60).toBeCloseTo(118.5);
+    // The Spread Crossbow's 95 then every 137.5, the Repeating Crossbow's 74 then every 111
+    for (const [name, first, cycle] of [
+      ["Spread Crossbow", 95, 137.5],
+      ["Repeating Crossbow", 74, 111],
+    ] as const) {
+      const shot = getAttackData(movesets, getWeapon(name), baseAttack, true, 0.5)!;
+      expect(Math.round(shot.stepTimes![0].hits[0] * 60)).toBe(first);
+      expect(shot.cycleTimes![0] * 60).toBeCloseTo(cycle);
+    }
     // Only light bows
     expect(
       getAttackData(movesets, getWeapon("Longbow"), "Jump Shot + Landing Shot", true, 0.5),
@@ -4894,6 +4917,26 @@ describe("Ashes of War", () => {
       Math.floor(enchantedHit.damage),
       Math.floor(enchantedHit.status![AttackPowerType.BLEED]!),
     ]).toEqual([418, 82]);
+    // The Repeating Crossbow's Repeating Fire fires 12 bolts at 59% of their attack
+    expect(
+      steps("Repeating Crossbow", "Repeating Fire")
+        .flat()
+        .map((hit) => hit.motionValue),
+    ).toEqual(Array(12).fill(59));
+    // Readied each time: its first bolt 104 frames after L2, its last 186 (measured in game: 104, and
+    // 28 to 110 frames after its R1)
+    const repeating = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Repeating Crossbow"),
+      "Repeating Fire",
+      false,
+    );
+    if (!("attack" in repeating)) throw new Error(repeating.unavailableReason);
+    const bolts = repeating.attack.stepTimes![0].hitTimes ?? repeating.attack.stepTimes![0].hits;
+    expect([bolts[0], bolts[11]].map((time) => Math.round(time! * 60))).toEqual([104, 186]);
+    // And used again 261 frames after the last (measured in game: first bolts at 361 and 622)
+    expect(Math.round(repeating.attack.cycleTimes![0] * 60)).toBe(261);
     // The Black Bow (a bow) has Barrage, a light bow's Ash of War
     expect(
       steps("Black Bow", "Barrage")

@@ -354,6 +354,8 @@ export function canTwoHand(movesets: Movesets, weapon: Weapon, attack?: string) 
 /** A bow shot's timing from the press: when its arrow fires, the next shot, and a roll or block */
 interface BowShot {
   release: number;
+  /** For several bolts fired one after another (the Pulley Crossbow's), the time between them */
+  spacing?: number;
   cycle: number;
   roll: number;
   block: number;
@@ -371,6 +373,17 @@ interface BowShot {
  *   TAE says 26), a roll at 42, a block at 46. Also the Harp Bow's (its a232 doesn't exist)
  * - greatbows' (a45): 155 frames to the hit, then every 220 (hits at 336, 558, 778, and 998 from a
  *   press at 181), a roll 78 frames into the release, a block 88
+ * - crossbows' (a46: reloading, 39730, then the shot, 39700): unloaded, 75 frames to the hit, then
+ *   every 110.5 (the Heavy Crossbow's hits at 1266, 1375, and 1487 from a press at 1191), a roll or
+ *   block 40 frames into the shot. Also the Full Moon Crossbow's, whose own reload (a236) can be
+ *   cancelled as soon
+ * - the Pulley Crossbow's (a233): its 3 bolts 10 frames apart, unloaded 78 frames to the first,
+ *   then every 118.5 (hits at 664, 684, 779, 799, 901, and 921 from a press at 586: first and third
+ *   bolts)
+ * - the Spread Crossbow's (a235, its bolts at once): unloaded 95 frames to the hit, then every 137.5
+ *   (hits at 667, 805, and 942 from a press at 572)
+ * - the Repeating Crossbow's (a935's reload): unloaded 74 frames to the hit, then every 111 (hits at
+ *   274, 383, and 496 from a press at 200)
  */
 const longbowShot: BowShot = {
   release: 63 / 60,
@@ -389,6 +402,31 @@ const greatbowShot: BowShot = {
   cycle: 220 / 60,
   roll: (153 + 78) / 60,
   block: (153 + 88) / 60,
+};
+const crossbowShot: BowShot = {
+  release: 73 / 60,
+  cycle: 110.5 / 60,
+  roll: (73 + 40) / 60,
+  block: (73 + 40) / 60,
+};
+const pulleyCrossbowShot: BowShot = {
+  release: 76 / 60,
+  spacing: 10 / 60,
+  cycle: 118.5 / 60,
+  roll: (76 + 40) / 60,
+  block: (76 + 40) / 60,
+};
+const spreadCrossbowShot: BowShot = {
+  release: 93 / 60,
+  cycle: 137.5 / 60,
+  roll: (93 + 40) / 60,
+  block: (93 + 40) / 60,
+};
+const repeatingCrossbowShot: BowShot = {
+  release: 72 / 60,
+  cycle: 111 / 60,
+  roll: (72 + 40) / 60,
+  block: (72 + 40) / 60,
 };
 const shortbowWeapons: ReadonlySet<string> = new Set([
   "Shortbow",
@@ -413,15 +451,28 @@ const bowShots = new Map<string, BowShot>([
   ...["Lion Greatbow", "Golem Greatbow", "Erdtree Greatbow", "Greatbow", "Igon's Greatbow"].map(
     (name) => [name, greatbowShot] as const,
   ),
+  ...[
+    "Soldier's Crossbow",
+    "Light Crossbow",
+    "Heavy Crossbow",
+    "Arbalest",
+    "Crepus's Black-Key Crossbow",
+    "Full Moon Crossbow",
+  ].map((name) => [name, crossbowShot] as const),
+  ["Pulley Crossbow", pulleyCrossbowShot],
+  ["Spread Crossbow", spreadCrossbowShot],
+  ["Repeating Crossbow", repeatingCrossbowShot],
 ]);
 
-function getBowShotTimes(weapon: Weapon): StepTimes | undefined {
+function getBowShotTimes(weapon: Weapon, count = 1): StepTimes | undefined {
   const shot = bowShots.get(weapon.weaponName);
   if (!shot) return undefined;
   const lead = stepStartDelay;
   return {
     lead,
-    hits: [lead + shot.release],
+    hits: shot.spacing
+      ? Array.from({ length: count }, (_, i) => lead + shot.release + i * shot.spacing!)
+      : [lead + shot.release],
     next: { attack: "any attack", time: shot.cycle },
     anyAttack: shot.cycle,
     roll: shot.roll,
@@ -510,7 +561,7 @@ export function getAttackData(
       ? undefined
       : jumpLandingShot
       ? getJumpLandingShotTimes()
-      : getBowShotTimes(weapon);
+      : getBowShotTimes(weapon, count);
     const shots = (shotHit: typeof hit) =>
       Array.from({ length: count }, () =>
         categories.length ? { ...shotHit, categories } : shotHit,

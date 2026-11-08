@@ -1254,6 +1254,15 @@ LANDING_TIMES = {
     "Erdtree Slam": 128 / 60,
     "Gold Breaker": 135 / 60,
 }
+# How long from the press until a skill's shooting animation starts, where readying it comes first
+# each time (measured in game at 60 fps): the Repeating Crossbow's Repeating Fire's first bolt hits
+# 104 frames after L2 (its fire animation's at 24). Bows' skills are timed from the shot's press
+# instead, since holding L2 keeps them ready (tested: Mighty Shot hits 92 frames after it)
+READY_TIMES = {"Repeating Fire": 80 / 60}
+# Cancels measured in game where the animations' disagree (by skill and part, from the animation's
+# start): Repeating Fire can be used again 261 frames after the last (its first bolts at 361 and 622),
+# 181 into its fire animation after its 80 readying, not the 198 its TAE's L2 cancel says
+CANCEL_FITS = {("Repeating Fire", ""): {"L2": 181 / 60}}
 # Skills not timed until they're measured
 UNTIMED_SKILLS = set()
 # Skills whose main attack is several animations in a row, each from when it starts after the
@@ -1350,10 +1359,10 @@ def get_window_hits(behaviors, bullets, attacks, variation, judge):
 # and bows, greatarrows' for greatbows. Bows' skills fire it with their own behaviors (e.g. Mighty
 # Shot's judge 811: an arrow at 153% of its attack, vs a shot's 300 at 100%); other ammunition of
 # the class uses the same rows, but for a few categories (e.g. Radahn's Spears' 113)
-BOW_AMMO_VARIATIONS = {50: 5000, 51: 5000, 53: 5100}
+BOW_AMMO_VARIATIONS = {50: 5000, 51: 5000, 53: 5100, 55: 5200}
 # Ammunition names by bow class, for its skills' hits, and its ammunition's EquipParamWeapon wepType
-BOW_AMMO_KINDS = {50: "Arrow", 51: "Arrow", 53: "Greatarrow"}
-BOW_AMMO_CLASSES = {50: 81, 51: 81, 53: 83}
+BOW_AMMO_KINDS = {50: "Arrow", 51: "Arrow", 53: "Greatarrow", 55: "Bolt"}
+BOW_AMMO_CLASSES = {50: 81, 51: 81, 53: 83, 55: 85}
 # How many of a bow skill's arrows hit one target, where not all it fires do (tested in game): Fan
 # Shot fires 8 (judges 880 and 881, 4 each) but only 2 can hit one target, and Rain of Arrows drops
 # 12, all counted (it's best against big enemies; about 8 hit Flying Dragon Agheel, 1453 with a
@@ -1383,13 +1392,15 @@ def get_bow_skill_hits(steps, file_number, variation, behaviors, bullets, name=N
         # A projectile fired from several points at once counts once (Fan Shot's 881, from 7)
         windows = {(start, judge) for start, _, judge, *_ in animations.get_windows(file_number, anim_id) or []}
         for _, judge in sorted(windows):
-            for atk, bullet in get_window_hits(behaviors, bullets, steps.game.attacks, variation, judge):
+            window_hits = get_window_hits(behaviors, bullets, steps.game.attacks, variation, judge)
+            for index, (atk, bullet) in enumerate(window_hits):
                 motion_value = float(atk["atkPhysCorrection"])
-                # Only the skill's own arrows (Skill Attack, 112), not what some arrows spawn on
+                # Only the skill's own shots: the window's (e.g. the Repeating Crossbow's bolts, not
+                # Skill Attacks), and Skill Attacks (112) they spawn, not what some arrows spawn on
                 # hitting (e.g. Lightningbone Arrows' lightning, untested)
-                if not motion_value or 112 not in [
-                    int(atk[f"subCategory{i}"]) for i in range(1, 5)
-                ]:
+                if not motion_value or (
+                    index > 0 and 112 not in [int(atk[f"subCategory{i}"]) for i in range(1, 5)]
+                ):
                     continue
                 attribute = WEAPON_ATTRIBUTE_TYPES.get(int(atk["atkAttribute"]))
                 details = {
@@ -1557,9 +1568,11 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
             timing["hitTimes"] = hit_times
         if approximate:
             timing["approximate"] = approximate
-        # A leap's hits are on landing, a measured time after the press
-        if name in LANDING_TIMES:
-            timing = {"start": round(LANDING_TIMES[name], 3), **timing}
+        # A leap's hits are on landing, a measured time after the press, and some skills are readied
+        # first
+        if name in LANDING_TIMES or name in READY_TIMES:
+            start = LANDING_TIMES.get(name) or READY_TIMES[name]
+            timing = {"start": round(start, 3), **timing}
         # An uncharged version starts once its charged one's charging window opens
         charged = anim_id - 1
         charging = (
@@ -1594,6 +1607,8 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         for cancel in ["L2", "R1", "R2", "anyAttack", "roll", "block"]:
             if cancel in cancels:
                 timing[cancel] = real(cancels[cancel])
+        for cancel, time in CANCEL_FITS.get((name, label), {}).items():
+            timing[cancel] = round(time, 3)
         if any(len(hit) > 4 and hit[4].get("kind") == "Loop" for hit in part_hits) and len(starts) > 1:
             # Evenly spaced hits, looping: each pass is as many of their gaps as hits
             gaps = (real(starts[-1]) - real(starts[0])) / (len(starts) - 1)  # (one animation)
