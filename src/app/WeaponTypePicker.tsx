@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Box, Checkbox, FormControlLabel } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel } from "@mui/material";
 import type { WeaponType } from "../calculator/calculator.ts";
 import {
   catalystTypes,
@@ -83,6 +83,14 @@ function WeaponTypePicker({ weaponTypes, onWeaponTypesChanged }: Props) {
 
   return (
     <Box>
+      <Button
+        size="small"
+        sx={{ ml: -0.5, mb: 0.5 }}
+        disabled={weaponTypes.length === 0}
+        onClick={() => onWeaponTypesChanged([])}
+      >
+        Select none
+      </Button>
       {categories.map(([label, weaponTypesInCategory]) => (
         <Box key={label}>
           {renderWeaponCategory(label, weaponTypesInCategory)}

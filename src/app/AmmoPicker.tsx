@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Box, Checkbox, FormControlLabel } from "@mui/material";
+import { Box, Button, Checkbox, FormControlLabel } from "@mui/material";
 import {
   ammoClassLabels,
   getAmmoKey,
@@ -28,6 +28,14 @@ const checkboxSx = {
 function AmmoPicker({ ammo, selectedAmmo, onSelectedAmmoChanged }: Props) {
   return (
     <Box>
+      <Button
+        size="small"
+        sx={{ ml: -0.5, mb: 0.5 }}
+        disabled={selectedAmmo.length === 0}
+        onClick={() => onSelectedAmmoChanged([])}
+      >
+        Select none
+      </Button>
       {(Object.keys(ammoClassLabels) as AmmoClass[]).map((ammoClass) => {
         const keys = ammo.filter((group) => group.class === ammoClass).map(getAmmoKey);
         const selectedCount = keys.filter((key) => selectedAmmo.includes(key)).length;
