@@ -67,6 +67,7 @@ from build_moveset_data import (  # noqa: E402
 )
 from extract_fmg import read_fmg  # noqa: E402
 from game_attacks import get_motion_values  # noqa: E402
+from check_animations import CHARGING_LAG  # noqa: E402
 
 # EquipParamGem canMountWep_* flags, by weapon type (EquipParamWeapon wepType). SpearLarge and
 # Sorcery aren't used.
@@ -341,7 +342,8 @@ OWN_STATUS_MOTION_ROWS = {
 # Magma Wyrm's Scalesword's Magma Guillotine's lava (counted 5 times, ROW_REPEATS)
 HIT_ROWS = {"300729002"}
 
-# What hits are called where the sheet's name for them is misleading, by AtkId: the Royal Greatsword's
+# What hits are called where the sheet's name for them is misleading, by AtkId (e.g. Prelate's
+# Charge's "Bullet", the fire it leaves on the ground: 30000835-36): the Royal Greatsword's
 # Wolf's Assault's "bullet" is the explosion when it lands
 ROW_KINDS = {
     "300406910": "Explosion",
@@ -352,6 +354,8 @@ ROW_KINDS = {
     "301217905": "Explosion",
     "301217910": "Projectile",
     "700000421": "Ground Fire",
+    "30000835": "Ground Fire",
+    "30000836": "Ground Fire",
     "301302900": "Large Skull",
     "301302902": "Medium Skull",
     "301302903": "Medium Skull",
@@ -1233,6 +1237,43 @@ TWINBLADE_TYPE = 14
 TWINBLADE_SKILL_RANGE = 2400
 # AtkParam flat attack fields, by damage type
 FLAT_ATTACK_FIELDS = ["atkPhys", "atkMag", "atkFire", "atkThun", "atkDark"]
+# A charged skill's animation plays from the press, with a charging window (this SpEffect); releasing
+# the skill during it switches to its uncharged version, the animation after it, like tapped R2s
+# (check_animations.py's CHARGING_SPEFFECT and CHARGING_LAG): e.g. Swift Slash's 40000 (its window at
+# 10-20 frames) and 40001
+SKILL_CHARGING_SPEFFECT = 100285
+# Leaping skills' hits are in the animation played on landing, after a jump the animations don't
+# time: how long from the press until it starts (measured in game at 60 fps: Golden Slam's slam 128
+# frames after the press on a Claymore, Gold Breaker's 135 on Marika's Hammer). The Staff of the
+# Avatar's Erdtree Slam uses Golden Slam's jump (the same events), so it's assumed the same
+LANDING_TIMES = {
+    "Golden Slam": 128 / 60,
+    # A lower jump: 108 frames on a Club
+    "Ground Slam": 108 / 60,
+    "Erdtree Slam": 128 / 60,
+    "Gold Breaker": 135 / 60,
+}
+# Skills not timed until they're measured
+UNTIMED_SKILLS = set()
+# Skills whose main attack is several animations in a row, each from when it starts after the
+# first's start (measured in game): Prelate's Charge pressed once does its start (40000) and then its
+# finish (40004), without its charging loop (40003, while held): its initial attack 75 frames after
+# the press (60 fps) and its final attack 147 (on a Great Mace), so the finish starts 109 frames into
+# the start (with the step's 2 frames' delay). Held, the finish starts 3 frames after the release
+ANIMATION_SEQUENCES = {
+    "Prelate's Charge": [(40000, 0), (40004, 109 / 60)],
+}
+# Projectile hits' times measured in game, where the animations only say when the projectile is
+# created (by skill and part, each hit's from the animation's start, or None to use the animation's):
+# Ordovis's Vortex's charged vortex hits the dummy 3 times (60 fps from the press: 148, 164, and 179,
+# with 2 frames' delay before the animation), and Waves of Darkness's 3 waves land 118, 167, and 250
+# frames after the press on a Greataxe (expanding rings: when depends on the distance)
+HIT_TIME_FITS = {
+    ("Ordovis's Vortex", "Charged"): [None, None, 162 / 60, 177 / 60],
+    ("Waves of Darkness", "#1"): [None, None, 116 / 60, 165 / 60, 248 / 60],
+    # Its ground fire first burns the dummy 122 frames after the press (then every second)
+    ("Prelate's Charge", ""): [None, None, None, None, 120 / 60, None],
+}
 
 
 def get_skill_range(row):
@@ -1267,12 +1308,19 @@ def get_window_attacks(behaviors, bullets, attacks, variation, judge):
     for a projectile, its attack and the projectiles' it creates (on hitting, or at intervals),
     that have motion values or flat attack
     """
+    return [atk for atk, _ in get_window_hits(behaviors, bullets, attacks, variation, judge)]
+
+
+def get_window_hits(behaviors, bullets, attacks, variation, judge):
+    """
+    @returns get_window_attacks's rows, each with the BulletParam row it's a projectile's (or None)
+    """
     behavior = get_window_behavior(behaviors, variation, judge)
     if not behavior:
         return []
     atk_ids = []
     if behavior["refType"] == "0":
-        atk_ids.append(int(behavior["refId"]))
+        atk_ids.append((int(behavior["refId"]), None))
     elif behavior["refType"] == "1":
         pending = [int(behavior["refId"])]
         seen = set()
@@ -1281,17 +1329,17 @@ def get_window_attacks(behaviors, bullets, attacks, variation, judge):
             if not bullet or int(bullet["id"]) in seen:
                 continue
             seen.add(int(bullet["id"]))
-            atk_ids.append(int(bullet["atkId_Bullet"]))
+            atk_ids.append((int(bullet["atkId_Bullet"]), bullet))
             pending += [int(bullet[field]) for field in ("HitBulletID", "intervalCreateBulletId") if int(bullet[field]) > 0]
     return [
-        attacks[atk_id]
-        for atk_id in atk_ids
+        (attacks[atk_id], bullet)
+        for atk_id, bullet in atk_ids
         if atk_id in attacks
         and (any(get_motion_values(attacks[atk_id])) or any(float(attacks[atk_id][field]) for field in FLAT_ATTACK_FIELDS))
     ]
 
 
-def get_skill_timing(steps, number, variation, hits, behaviors, bullets):
+def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=None):
     """
     @param steps check_animations.py's Steps
     @param number the skill's animation file
@@ -1299,35 +1347,41 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets):
     a class's version (0 for others)
     @param hits a version of the skill (main and followUps)
     @param behaviors BehaviorParam_PC rows, and bullets BulletParam rows, by ID
+    @param name the skill's name, for LANDING_TIMES, UNTIMED_SKILLS, and HIT_TIME_FITS
     @returns the version's timing, by weapon animation range (see get_skill_range; "0" is the
     default) and part ("" for the main attack, or the follow-up's label): each part's animation's
-    hits, its stamina cost, and when it can be cancelled into another skill ("L2"), "R1", "R2", any
-    attack, a roll, or blocking, in seconds of real time (see Animations.to_real_time); a loop (a main attack of
+    hits, its stamina cost, when it can be cancelled into another skill ("L2"), "R1", "R2", any
+    attack, a roll, or blocking, and for an uncharged version, when it starts after the press
+    ("start", see SKILL_CHARGING_SPEFFECT), in seconds of real time (see Animations.to_real_time); a loop (a main attack of
     "Loop" hits, e.g. Wild Strikes') also has "loop", how long each pass takes, and "opening", how
     long until it starts. Each part's animation is the one whose hits (motion value and flat attack)
     match the most of its hits, in its range, or else in the default one.
     """
     animations = steps.animations
     file = animations.get_file(number)
-    if not file:
+    if not file or name in UNTIMED_SKILLS:
         return None
-    # Each animation's hits' signatures and when they start
+    # Each animation's hits' signatures and when they start, and each hit's signature, start, and
+    # projectile (BulletParam row, or None)
     animation_hits = {}
+    window_hits = {}
     for anim_id in file[0]:
         if not SKILL_ANIMATIONS[0] <= anim_id < SKILL_ANIMATIONS[1] or anim_id % 10 >= LACKING_FP_ANIMATION:
             continue
         signatures = []
         starts = []
+        own_hits = []
         for start, _, judge, *_ in animations.get_windows(number, anim_id) or []:
             # The weapon's (or its class's) own rows, or else the skill's general ones
-            atks = get_window_attacks(behaviors, bullets, steps.game.attacks, variation, judge)
-            for atk in atks:
-                signatures.append(
-                    hit_signature(get_motion_values(atk), [float(atk[field]) for field in FLAT_ATTACK_FIELDS])
-                )
+            atks = get_window_hits(behaviors, bullets, steps.game.attacks, variation, judge)
+            for atk, bullet in atks:
+                signature = hit_signature(get_motion_values(atk), [float(atk[field]) for field in FLAT_ATTACK_FIELDS])
+                signatures.append(signature)
+                own_hits.append((start, signature, bullet))
             if atks:
                 starts.append(start)
         animation_hits[anim_id] = (signatures, sorted(starts))
+        window_hits[anim_id] = sorted(own_hits, key=lambda hit: hit[0])
 
     def range_of(anim_id):
         return anim_id // 100 * 100 - SKILL_ANIMATIONS[0]
@@ -1354,27 +1408,108 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets):
         if not best:
             return None
         anim_id = best[1]
+        # Its animations, each with when it starts (ANIMATION_SEQUENCES), the last one's cancels
+        # counting
+        segments = [(anim_id, 0.0)]
+        if not label and name in ANIMATION_SEQUENCES:
+            segments = ANIMATION_SEQUENCES[name]
+            anim_id = segments[-1][0]
+        offset = segments[-1][1]
 
         def real(time):
-            return round(animations.to_real_time(number, anim_id, time), 3)
+            return round(animations.to_real_time(number, anim_id, time) + offset, 3)
 
         starts = animation_hits[anim_id][1]
-        timing = {"hits": [real(start) for start in starts]}
+        all_hits = [
+            (round(animations.to_real_time(number, segment, start) + segment_start, 3), signature, bullet)
+            for segment, segment_start in segments
+            for start, signature, bullet in window_hits[segment]
+        ]
+        all_hits.sort(key=lambda hit: hit[0])
+        timing = {
+            "hits": sorted(
+                {
+                    round(animations.to_real_time(number, segment, start) + segment_start, 3)
+                    for segment, segment_start in segments
+                    for start in animation_hits[segment][1]
+                }
+            )
+        }
+        # Each of the part's hits' own time, in order: its window's (the first of its kind not taken
+        # yet), or a projectile's again after it can hit the same target again (dmgHitRecordLifeTime),
+        # or a measured one (HIT_TIME_FITS). Projectiles' are approximate: when they're created, not
+        # when they reach the target
+        hit_times = []
+        approximate = []
+        taken = set()
+        last = {}
+        fits = HIT_TIME_FITS.get((name, label), [])
+        for i, hit in enumerate(part_hits):
+            signature = hit_signature(
+                hit[0] if isinstance(hit[0], list) else [hit[0]],
+                (hit[4].get("flat") if len(hit) > 4 else None) or [0] * 5,
+            )
+            index = next(
+                (
+                    j
+                    for j, (_, other, _) in enumerate(all_hits)
+                    if j not in taken and other == signature
+                ),
+                None,
+            )
+            time = None
+            bullet = None
+            if index is not None:
+                taken.add(index)
+                time, _, bullet = all_hits[index]
+            elif signature in last and last[signature][1]:
+                previous, bullet = last[signature]
+                again = float(bullet.get("dmgHitRecordLifeTime") or 0)
+                time = round(previous + again, 3) if again > 0 else None
+            if i < len(fits) and fits[i] is not None:
+                time = round(fits[i], 3)
+            if time is not None:
+                last[signature] = (time, bullet)
+                if bullet is not None:
+                    approximate.append(i)
+            hit_times.append(time)
+        if any(time is not None for time in hit_times) and hit_times != timing["hits"]:
+            timing["hitTimes"] = hit_times
+        if approximate:
+            timing["approximate"] = approximate
+        # A leap's hits are on landing, a measured time after the press
+        if name in LANDING_TIMES:
+            timing = {"start": round(LANDING_TIMES[name], 3), **timing}
+        # An uncharged version starts once its charged one's charging window opens
+        charged = anim_id - 1
+        charging = (
+            animations.get_effect_start([number], charged, SKILL_CHARGING_SPEFFECT)
+            if charged in file[0]
+            and len(segments) == 1
+            and animations.get_effect_start([number], anim_id, SKILL_CHARGING_SPEFFECT) is None
+            else None
+        )
+        if charging is not None:
+            timing = {
+                "start": round(animations.to_real_time(number, charged, charging) + CHARGING_LAG, 3),
+                **timing,
+            }
         # Its stamina cost: its windows' behaviors' (before the weapon's staminaConsumptionRate),
         # like attacks' (e.g. Lion's Claw's 45, matching the sheet's StaminaCost)
         stamina = sum(
             float((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
-            for _, _, judge, *_ in animations.get_windows(number, anim_id) or []
+            for segment, _ in segments
+            for _, _, judge, *_ in animations.get_windows(number, segment) or []
         )
         if stamina:
             timing["stamina"] = round(stamina, 2)
         cancels = animations.get_cancels(number, anim_id)
-        for name in ["L2", "R1", "R2", "anyAttack", "roll", "block"]:
-            if name in cancels:
-                timing[name] = real(cancels[name])
+        for cancel in ["L2", "R1", "R2", "anyAttack", "roll", "block"]:
+            if cancel in cancels:
+                timing[cancel] = real(cancels[cancel])
         if any(len(hit) > 4 and hit[4].get("kind") == "Loop" for hit in part_hits) and len(starts) > 1:
             # Evenly spaced hits, looping: each pass is as many of their gaps as hits
-            gaps = (real(starts[-1]) - real(starts[0])) / (len(starts) - 1)
+            gaps = (real(starts[-1]) - real(starts[0])) / (len(starts) - 1)  # (one animation)
             timing["loop"] = round(gaps * len(starts), 3)
             # Its opening: the animation before it without hits, until any attack can start (it
             # goes on to the loop then: tested in game, Wild Strikes' first hit)
@@ -2088,6 +2223,7 @@ def main():
                 hits,
                 behavior_rows,
                 bullet_rows,
+                name,
             )
             if timing:
                 hits["timing"] = timing

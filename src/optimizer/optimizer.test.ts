@@ -4769,6 +4769,38 @@ describe("Ashes of War", () => {
     // Ice Spear on a Short Spear (no spears' version of its own): its thrust 32 frames after the
     // press, and its projectile 44 later (45 and 46, as it flies)
     expect(times("Short Spear", "Ice Spear").stepTimes![0].hits.map(frames)).toEqual([32, 76]);
+    // Flame Spear on a Longsword: its charged version plays from the press, and tapped, it switches to
+    // its uncharged one once the charged one's charging window opens (with tapped R2s' lag): its
+    // hits at 60 and 67 tapped (58 and 66 here), 107 and 112 charged (102 and 110)
+    const flameSpear = (version: string) =>
+      times("Longsword", withFollowUp("Flame Spear", version)).stepTimes![0].hits.map(frames);
+    expect(flameSpear("Uncharged")).toEqual([58, 66]);
+    expect(flameSpear("Charged")).toEqual([102, 110]);
+    // Each hit's own time, where projectiles hit again: Ordovis's Vortex's charged vortex hits 3 times
+    // (measured in game: 148, 164, and 179), approximate
+    const ordovis = times("Ordovis's Greatsword", withFollowUp("Ordovis's Vortex", "Charged"))
+      .stepTimes![0];
+    expect(ordovis.hitTimes!.map((time) => frames(time!))).toEqual([132, 146, 164, 179]);
+    expect(ordovis.approximate).toEqual([false, true, true, true]);
+    // Leaps' hits are on landing, measured: Golden Slam's 128 frames after the press, and Gold
+    // Breaker's 135 (its shockwave 8 after: 143 in game)
+    expect(
+      times("Claymore", "Golden Slam").stepTimes![0].hitTimes!.map((time) => frames(time!)),
+    ).toEqual([128]);
+    expect(
+      times("Marika's Hammer", "Gold Breaker").stepTimes![0].hitTimes!.map((time) => frames(time!)),
+    ).toEqual([135, 141]);
+    expect(
+      times("Club", "Ground Slam").stepTimes![0].hitTimes!.map((time) => frames(time!)),
+    ).toEqual([108]);
+    // Prelate's Charge pressed once: its start, then its finish (measured in game on a Great Mace: the
+    // initial attack 75 frames after the press, the final attack 147), its ground fire's first burn
+    // measured (122), and its stamina each window's (72, times the Great Mace's 1.06)
+    const prelate = times("Great Mace", "Prelate's Charge");
+    expect(prelate.stepTimes![0].hitTimes!.map((time) => frames(time!))).toEqual([
+      74, 96, 111, 123, 122, 147,
+    ]);
+    expect(prelate.stamina).toEqual([76.32]);
   });
 
   it("matches Wild Strikes in game", () => {

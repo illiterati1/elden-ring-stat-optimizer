@@ -438,6 +438,12 @@ export interface StepTimes {
   /** Until its animation starts: a tapped R2's start, or else the step start delay */
   lead: number;
   hits: number[];
+  /**
+   * Each of the step's hits' own time, where known separately from its animation's hits (e.g. a
+   * projectile's repeated hits), and which are approximate
+   */
+  hitTimes?: (number | undefined)[];
+  approximate?: boolean[];
   /** The earliest attack it can be cancelled into (its chain's next step, or any attack) */
   next?: { attack: "R1" | "R2" | "L1" | "L2" | "any attack"; time: number };
   anyAttack?: number;

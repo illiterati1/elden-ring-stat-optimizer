@@ -79,7 +79,19 @@ interface SkillHits {
 
 /** A skill part's timing, in seconds from when its animation starts (see build_ash_data.py) */
 interface SkillPartTiming {
+  /**
+   * For an uncharged version, how long after the press its animation starts: once the charged
+   * one's charging window opens (like tapped R2s)
+   */
+  start?: number;
   hits: number[];
+  /**
+   * Each of the part's hits' own time, in order (null if unknown), where they aren't just its
+   * animation's hits
+   */
+  hitTimes?: (number | null)[];
+  /** Which of the part's hits' times are approximate (projectiles': when they're created) */
+  approximate?: number[];
   /** When it can be cancelled into another skill (or its chain's next step) */
   L2?: number;
   R1?: number;
@@ -121,12 +133,21 @@ function getSkillStepTimes(
   const fallback = hits.timing?.["0"] ?? {};
   const timings = parts.map(({ label }) => own[label] ?? fallback[label]);
   if (!timings.length || timings.some((timing) => !timing)) return undefined;
-  return parts.map(({ next: button, noRepeat }, i) => {
+  return parts.map(({ label, next: button, noRepeat }, i) => {
     const timing = timings[i]!;
+    // Each counted hit's own time (see SkillPartTiming hitTimes), if the part's hits are known
+    const partHits = label
+      ? hits.followUps.find((followUp) => followUp.label === label)?.hits
+      : hits.main;
+    const ownTimes =
+      partHits &&
+      (timing.hitTimes ?? (timing.hits.length === partHits.length ? timing.hits : undefined));
+    const counted = partHits?.flatMap((hit, j) => (hit[4]?.uncounted ? [] : [j])) ?? [];
     if (timing.loop != null) {
       return { lead: 0, hits: timing.hits, cycle: timing.loop };
     }
-    const lead = stepStartDelay;
+    // An uncharged version starts once it's released, or else a step starts a frame after its press
+    const lead = timing.start ?? stepStartDelay;
     const last = i === parts.length - 1;
     const nextButton = last ? "L2" : button;
     const buttonTime = nextButton ? timing[nextButton] : undefined;
@@ -139,6 +160,10 @@ function getSkillStepTimes(
     return {
       lead,
       hits: timing.hits.map((time) => lead + time),
+      ...(ownTimes && {
+        hitTimes: counted.map((j) => (ownTimes[j] != null ? lead + ownTimes[j]! : undefined)),
+        approximate: counted.map((j) => !!timing.approximate?.includes(j)),
+      }),
       ...(next && { next }),
       ...(timing.anyAttack != null && { anyAttack: lead + timing.anyAttack }),
       ...(timing.roll != null && { roll: lead + timing.roll }),

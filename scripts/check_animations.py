@@ -113,6 +113,8 @@ CHARGING_SPEFFECT = 100280
 CHARGING_LAG = 2 / 30
 TAPPED_R2_ATTACKS = {"R2": "Charged R2"}
 ADD_SPEFFECT_EVENT = 67
+# AddSpEffect_Multiplayer, which some skills' charging windows use (e.g. Swift Slash's)
+ADD_SPEFFECT_MULTIPLAYER_EVENT = 66
 
 # Attacks the sheet lists once rather than one and two handed (see build_moveset_data.py's
 # SHARED_ATTACKS): their sheet columns and animation ID. Powerstance (dual wielding) L1s hit with
@@ -229,7 +231,7 @@ class Animations:
                 for anim_id, events in animations.items():
                     effects[anim_id] = {}
                     for start, end, event_type, params in sorted(events):
-                        if event_type == ADD_SPEFFECT_EVENT:
+                        if event_type in (ADD_SPEFFECT_EVENT, ADD_SPEFFECT_MULTIPLAYER_EVENT):
                             effects[anim_id].setdefault(struct.unpack_from("<i", data, params)[0], start)
                 cancels = {}
                 for anim_id, events in animations.items():

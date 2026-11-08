@@ -116,15 +116,24 @@ function AttackHits({
   const rows = steps.flatMap((step, i) =>
     step.map((hit, j) => {
       const times = stepTimes?.[i];
-      // Each hit's own time if the animations have as many, or else the step's first's
+      // Each hit's own time if known, or if the animations have as many, or else the step's first's
+      const ownTimes = times?.hitTimes?.length === step.length ? times.hitTimes : undefined;
       const hitTime =
         times &&
-        (times.hits.length === step.length ? times.hits[j] : j === 0 ? times.hits[0] : null);
+        (ownTimes
+          ? ownTimes[j]
+          : times.hits.length === step.length
+          ? times.hits[j]
+          : j === 0
+          ? times.hits[0]
+          : null);
       const last = j === step.length - 1;
       return {
         label: step.length > 1 ? `${i + 1}.${j + 1}` : `${i + 1}`,
         hit,
         hitAt: hitTime != null ? at(i, hitTime) : undefined,
+        // Projectiles' times are when they're created, or measured at one distance
+        approximate: !!(ownTimes && times?.approximate?.[j]),
         // The step's cancels, on its last hit
         next: last && times?.next ? { ...times.next, time: at(i, times.next.time) } : undefined,
         roll: last ? at(i, times?.roll) : undefined,
@@ -205,7 +214,11 @@ function AttackHits({
                 </TableCell>
               ))}
               {showHitTimes && (
-                <TableCell sx={cellSx} align="right" title="When the hit lands">
+                <TableCell
+                  sx={cellSx}
+                  align="right"
+                  title="When the hit lands (~: approximate, a projectile's, which depends on how far away the target is)"
+                >
                   Hit at
                 </TableCell>
               )}
@@ -230,7 +243,7 @@ function AttackHits({
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map(({ label, hit, hitAt, next, roll, block }) => (
+            {rows.map(({ label, hit, hitAt, approximate, next, roll, block }) => (
               <TableRow key={label}>
                 <TableCell sx={cellSx}>{label}</TableCell>
                 {showKind && <TableCell sx={cellSx}>{hit.kind ?? "Weapon"}</TableCell>}
@@ -260,7 +273,7 @@ function AttackHits({
                 ))}
                 {showHitTimes && (
                   <TableCell sx={cellSx} align="right">
-                    {hitAt != null ? formatSeconds(hitAt) : ""}
+                    {hitAt != null ? `${approximate ? "~" : ""}${formatSeconds(hitAt)}` : ""}
                   </TableCell>
                 )}
                 {showNext && (
