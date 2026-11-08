@@ -152,11 +152,20 @@ def main():
     with open(os.path.join(project_dir, "data", "Bullet-vanilla.csv"), encoding="utf-8") as f:
         bullets = {int(row["id"]): row for row in csv.DictReader(f)}
     with open(os.path.join(project_dir, "data", "BehaviorParam_PC-vanilla.csv"), encoding="utf-8") as f:
-        bullet_behaviors = {
-            (int(row["variationId"]), int(row["behaviorJudgeId"])): int(row["refId"])
-            for row in csv.DictReader(f)
-            if row["refType"] == "1"
-        }
+        behavior_rows = list(csv.DictReader(f))
+    bullet_behaviors = {
+        (int(row["variationId"]), int(row["behaviorJudgeId"])): int(row["refId"])
+        for row in behavior_rows
+        if row["refType"] == "1"
+    }
+    # Each shot's stamina cost (before the weapon's staminaConsumptionRate), by behavior variation
+    # (from its row's ID, 100000000 + variation × 1000 + judge: the Piquebone Bolt's row has another
+    # variationId)
+    shot_stamina = {
+        (int(row["id"]) - 100_000_000) // 1000: int(row["stamina"])
+        for row in behavior_rows
+        if 100_000_000 <= int(row["id"]) < 200_000_000 and int(row["id"]) % 1000 == SHOT_JUDGE_ID
+    }
 
     def get_shots(row, judge_id, count):
         """@returns how many bolts a shot fires, and their motion values"""
@@ -223,6 +232,8 @@ def main():
                 "attack": attack,
                 "status": status,
                 "poise": row["saWeaponDamage"],
+                # Its shot's stamina cost, e.g. an Arrow's 13 and a Ballista Bolt's 40
+                "stamina": shot_stamina.get(row["behaviorVariationId"]),
                 "physicalType": get_physical_type(row),
                 "enemyTypeRates": {
                     enemy_type: row[field]
@@ -239,6 +250,7 @@ def main():
             tuple(sorted(entry["attack"].items())),
             tuple(sorted(entry["status"].items())),
             entry["poise"],
+            entry["stamina"],
             entry["physicalType"],
             tuple(sorted(entry["enemyTypeRates"].items())),
             json.dumps(entry["weaponBonuses"], sort_keys=True),
@@ -264,6 +276,7 @@ def main():
                 "attack": entry["attack"],
                 "status": entry["status"],
                 "poise": entry["poise"],
+                **({"stamina": entry["stamina"]} if entry["stamina"] is not None else {}),
                 "physicalType": entry["physicalType"],
                 **({"enemyTypeRates": entry["enemyTypeRates"]} if entry["enemyTypeRates"] else {}),
                 **({"weaponBonuses": entry["weaponBonuses"]} if entry["weaponBonuses"] else {}),

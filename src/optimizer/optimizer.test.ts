@@ -585,6 +585,30 @@ describe("bows", () => {
       expect(Math.round(shot.stepTimes![0].hits[0] * 60)).toBe(first);
       expect(shot.cycleTimes![0] * 60).toBeCloseTo(cycle);
     }
+    // The Jar Cannon's 85 frames after its R2, then every 263.5 (measured in game: 406, then 491,
+    // 755, and 1018), each shot costing its ammunition's 40 stamina times its 1.12
+    const jarCannon = getAttackData(
+      movesets,
+      withAmmo(
+        getWeapon("Jar Cannon"),
+        ammo.find((group) => group.names.includes("Ballista Bolt"))!,
+      ),
+      baseAttack,
+      true,
+      0.5,
+    )!;
+    expect(Math.round(jarCannon.stepTimes![0].hits[0] * 60)).toBe(85);
+    expect(jarCannon.cycleTimes![0] * 60).toBeCloseTo(263.5);
+    expect(jarCannon.stamina).toEqual([44.8]);
+    // A Longbow's shot with Arrows costs 13
+    const arrowShot = getAttackData(
+      movesets,
+      withAmmo(getWeapon("Longbow"), ammo.find((group) => group.names.includes("Arrow"))!),
+      baseAttack,
+      true,
+      0.5,
+    )!;
+    expect(arrowShot.stamina).toEqual([13]);
     // Only light bows
     expect(
       getAttackData(movesets, getWeapon("Longbow"), "Jump Shot + Landing Shot", true, 0.5),

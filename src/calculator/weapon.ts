@@ -114,6 +114,9 @@ export interface Weapon {
   /** Poise damage of the ammunition a ranged weapon is firing, which replaces the weapon's own */
   ammoPoise?: number;
 
+  /** Each shot's stamina cost with the ammunition a ranged weapon is firing (before its rate) */
+  ammoStamina?: number;
+
   /** Names of the ammunition a ranged weapon is firing, for skills that fire some differently */
   ammoNames?: readonly string[];
 

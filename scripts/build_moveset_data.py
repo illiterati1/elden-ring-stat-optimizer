@@ -132,6 +132,9 @@ FINAL_CHAIN_CATEGORY = 104
 
 PHYSICAL_TYPES = {"standard": 0, "slash": 1, "strike": 2, "pierce": 3}
 
+# EquipParamWeapon wepType of light bows, bows, greatbows, crossbows, and ballistae
+RANGED_WEAPON_TYPES = {50, 51, 53, 55, 56}
+
 # EquipParamWeapon atkAttribute values
 WEAPON_ATTRIBUTE_TYPES = {0: "slash", 1: "strike", 2: "pierce", 3: "standard"}
 
@@ -484,6 +487,13 @@ def main():
         }
         if weapon not in weapons:
             print(f"Warning: no game data for {weapon}, assuming standard physical damage")
+        # A ranged weapon's stamina rate, for its shots' (its ammunition's) cost
+        if (
+            weapon in weapons
+            and int(weapons[weapon]["wepType"]) in RANGED_WEAPON_TYPES
+            and float(weapons[weapon]["staminaConsumptionRate"]) != 1
+        ):
+            entry["staminaRate"] = float(weapons[weapon]["staminaConsumptionRate"])
         one_handed = weapon in weapons and weapons[weapon]["bothHandEquipable"] == "0"
         if one_handed:
             entry["oneHanded"] = True

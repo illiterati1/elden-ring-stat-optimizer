@@ -256,6 +256,8 @@ interface Moveset {
   type: number;
   /** Set for weapons that can't be two handed */
   oneHanded?: true;
+  /** A ranged weapon's stamina rate, which its shots' cost (its ammunition's) is multiplied by */
+  staminaRate?: number;
   "1h"?: Partial<Record<AttackName, MovesetHit[][]>>;
   "2h"?: Partial<Record<AttackName, MovesetHit[][]>>;
   /**
@@ -384,6 +386,10 @@ interface BowShot {
  *   (hits at 667, 805, and 942 from a press at 572)
  * - the Repeating Crossbow's (a935's reload): unloaded 74 frames to the hit, then every 111 (hits at
  *   274, 383, and 496 from a press at 200)
+ * - ballistae's (a52: shot 37100): 85 frames to the hit, then every 263.5 (the Jar Cannon's hits at
+ *   491, 755, and 1018 from an R2 at 406; its shot can be cancelled into another 180 frames in, so
+ *   83 + 180), a roll or block 190 frames into the shot. The Hand Ballista and Rabbath's Cannon
+ *   share the Jar Cannon's animations but for which projectile they fire, so assumed the same
  */
 const longbowShot: BowShot = {
   release: 63 / 60,
@@ -428,6 +434,12 @@ const repeatingCrossbowShot: BowShot = {
   roll: (72 + 40) / 60,
   block: (72 + 40) / 60,
 };
+const ballistaShot: BowShot = {
+  release: 83 / 60,
+  cycle: 263.5 / 60,
+  roll: (83 + 190) / 60,
+  block: (83 + 190) / 60,
+};
 const shortbowWeapons: ReadonlySet<string> = new Set([
   "Shortbow",
   "Misbegotten Shortbow",
@@ -462,6 +474,9 @@ const bowShots = new Map<string, BowShot>([
   ["Pulley Crossbow", pulleyCrossbowShot],
   ["Spread Crossbow", spreadCrossbowShot],
   ["Repeating Crossbow", repeatingCrossbowShot],
+  ...["Hand Ballista", "Jar Cannon", "Rabbath's Cannon"].map(
+    (name) => [name, ballistaShot] as const,
+  ),
 ]);
 
 function getBowShotTimes(weapon: Weapon, count = 1): StepTimes | undefined {
@@ -566,7 +581,14 @@ export function getAttackData(
       Array.from({ length: count }, () =>
         categories.length ? { ...shotHit, categories } : shotHit,
       );
+    // Each shot costs its ammunition's stamina, times the weapon's rate (two for the jump shot and
+    // its landing shot)
+    const shotStamina =
+      weapon.ammoStamina != null
+        ? Math.round(weapon.ammoStamina * (moveset.staminaRate ?? 1) * 100) / 100
+        : undefined;
     return {
+      ...(shotStamina != null && { stamina: [jumpLandingShot ? shotStamina * 2 : shotStamina] }),
       steps: [
         jumpLandingShot
           ? [...shots({ ...hit, motionValue: (motionValue * 96) / 100 }), ...shots(hit)]

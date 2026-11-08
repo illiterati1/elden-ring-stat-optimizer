@@ -17,6 +17,8 @@ export interface AmmoGroup {
   status: Partial<Record<AttackPowerType, number>>;
   /** Poise damage, which replaces the weapon's */
   poise?: number;
+  /** Each shot's stamina cost, before the weapon's stamina rate */
+  stamina?: number;
   /** Physical damage type, which replaces the weapon's */
   physicalType?: Weapon["ammoPhysicalType"];
   /** Damage multipliers against enemy types, e.g. Igon's Harpoon's ×1.3 against dragons */
@@ -87,6 +89,7 @@ export function withAmmo(weapon: Weapon, group: AmmoGroup): Weapon {
     ...(bonus?.damageMultipliers && { damageMultipliers: bonus.damageMultipliers }),
     ...(group.poise != null && { ammoPoise: group.poise }),
     ammoNames: group.names,
+    ...(group.stamina != null && { ammoStamina: group.stamina }),
     ...(bonus?.shots && { ammoShots: bonus.shots }),
     ...(group.physicalType && { ammoPhysicalType: group.physicalType }),
     ...weapon,
