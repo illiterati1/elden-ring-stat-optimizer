@@ -440,12 +440,15 @@ export default function App() {
         }
         // Weapons of a checked type are included if their affinity (including Unique) is
         // selected. Weapons that can cast count as staves or seals, like in the original
-        // calculator.
+        // calculator. Ones that can't be infused but take Ashes of War (e.g. bows, staves, and
+        // torches) count as Standard too.
+        const takesAshes =
+          affinityId === uniqueAffinityId && !!ashes.weapons[weaponName]?.canChange;
         return (
           (selectedWeaponTypes.has(weaponType) ||
             (sorceryTool && selectedWeaponTypes.has(WeaponType.GLINTSTONE_STAFF)) ||
             (incantationTool && selectedWeaponTypes.has(WeaponType.SACRED_SEAL))) &&
-          selectedAffinityIds.has(affinityId)
+          (selectedAffinityIds.has(affinityId) || (takesAshes && selectedAffinityIds.has(0)))
         );
       },
     );

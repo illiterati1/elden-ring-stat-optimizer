@@ -4866,6 +4866,34 @@ describe("Ashes of War", () => {
       return result.attack.steps[0][0].statusMotionValue;
     };
     expect([rancor("Bloodbone Arrow"), rancor("Arrow")]).toEqual([45, 75]);
+    // Enchanted Shot on the Albinauric Bow +25 with Bloodbone Arrows does 418 and 82 blood loss
+    // (tested in game, 99 in every stat)
+    const albinauric = withAmmo(
+      getWeapon("Albinauric Bow"),
+      ammo.find((group) => group.names.includes("Bloodbone Arrow"))!,
+    );
+    const enchanted = getAshAttack(ashes, movesets, albinauric, "Enchanted Shot", false);
+    if (!("attack" in enchanted)) throw new Error(enchanted.unavailableReason);
+    const enchantedHit = optimizeBuild({
+      weapon: albinauric,
+      regularUpgradeLevel: 25,
+      twoHanding: true,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: enchanted.attack,
+    }).attackSteps![0][0];
+    expect([
+      Math.floor(enchantedHit.damage),
+      Math.floor(enchantedHit.status![AttackPowerType.BLEED]!),
+    ]).toEqual([418, 82]);
     // The Black Bow (a bow) has Barrage, a light bow's Ash of War
     expect(
       steps("Black Bow", "Barrage")
