@@ -114,6 +114,9 @@ export interface Weapon {
   /** Poise damage of the ammunition a ranged weapon is firing, which replaces the weapon's own */
   ammoPoise?: number;
 
+  /** Names of the ammunition a ranged weapon is firing, for skills that fire some differently */
+  ammoNames?: readonly string[];
+
   /**
    * For a weapon firing several bolts per shot, e.g. the Spread Crossbow's spread or the Pulley
    * Crossbow's three in quick succession, how many and their motion values

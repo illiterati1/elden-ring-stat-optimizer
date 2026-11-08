@@ -64,6 +64,8 @@ type AshHit = [
 interface SkillHits {
   /** Empty for skills that only do damage with follow-ups, e.g. stances like Unsheathe */
   main: AshHit[];
+  /** A bow's skill's main attack with ammunition that fires it differently, by its name */
+  ammo?: Record<string, AshHit[]>;
   /** A follow-up's note is shown with its results, e.g. that it can hit more than counted */
   followUps: { label: string; hands?: "1h" | "2h"; hits: AshHit[]; note?: string }[];
   /** True if this version puts its own weapon buff on the weapon, e.g. the Dragon Halberd's */
@@ -237,13 +239,18 @@ function isLoopSkill(ashes: Ashes, skill: string) {
 function getSkillHits(
   ashes: Ashes,
   skill: string,
-  weapon: Pick<Weapon, "weaponName" | "weaponType">,
+  weapon: Pick<Weapon, "weaponName" | "weaponType" | "ammoNames">,
 ): SkillHits | undefined {
   const skillData = ashes.skills[skill];
-  const hits =
+  const version =
     skillData?.unique?.[weapon.weaponName] ??
     skillData?.classes?.[weapon.weaponType] ??
     skillData?.generic;
+  // A bow's skill fired with ammunition that has its own hits for it
+  const ammoHits = weapon.ammoNames
+    ?.map((name) => version?.ammo?.[name])
+    .find((ammoMain) => ammoMain);
+  const hits = version && ammoHits ? { ...version, main: ammoHits } : version;
   if (hits && !hits.main.length && skillData?.generic?.main.length) {
     return { ...hits, main: skillData.generic.main };
   }

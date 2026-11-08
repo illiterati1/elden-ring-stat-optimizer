@@ -15,6 +15,7 @@ import { getCumulativeLevelUpCosts, getLevelUpCost } from "./runes.ts";
 import { getCharacterLevel, startingClasses } from "./startingClasses.ts";
 import { getAmmoLabel, withAmmo, type AmmoGroup } from "../app/useAmmo.ts";
 import {
+  baseAttack,
   canTwoHand,
   getAttackData,
   withOffhandRows,
@@ -531,6 +532,73 @@ describe("bows", () => {
       ),
     };
   };
+
+  it("times a Longbow's shot", () => {
+    // Tested in game at 60 fps: a Longbow's shot hits 65 frames after the press at point blank
+    const shot = getAttackData(movesets, getWeapon("Longbow"), baseAttack, true, 0.5)!;
+    expect(Math.round(shot.stepTimes![0].hits[0] * 60)).toBe(65);
+    // Its release can be cancelled into the next shot 36 frames in (99 from the press: tested on
+    // the Black Bow, which hits 65 frames after the press too)
+    expect(Math.round(shot.cycleTimes![0] * 60)).toBe(99);
+    // A Shortbow's hits 50 frames after the press, then every 73
+    const short = getAttackData(movesets, getWeapon("Shortbow"), baseAttack, true, 0.5)!;
+    expect(Math.round(short.stepTimes![0].hits[0] * 60)).toBe(50);
+    expect(Math.round(short.cycleTimes![0] * 60)).toBe(73);
+    // Its jump shot then landing shot: 96% and 100%, a pair every 116 frames, the landing shot 56.5
+    // after the jump shot
+    const pair = getAttackData(
+      movesets,
+      getWeapon("Shortbow"),
+      "Jump Shot + Landing Shot",
+      true,
+      0.5,
+    )!;
+    expect(pair.steps[0].map((hit) => hit.motionValue)).toEqual([96, 100]);
+    expect(Math.round(pair.cycleTimes![0] * 60)).toBe(116);
+    const [jumpHit, landingHit] = pair.stepTimes![0].hits;
+    expect(Math.round(jumpHit * 60)).toBe(33);
+    expect(Math.round((landingHit - jumpHit) * 60 * 2) / 2).toBe(56.5);
+    // A Greatbow's hits 155 frames after the press, then every 220
+    const great = getAttackData(movesets, getWeapon("Greatbow"), baseAttack, true, 0.5)!;
+    expect(Math.round(great.stepTimes![0].hits[0] * 60)).toBe(155);
+    expect(Math.round(great.cycleTimes![0] * 60)).toBe(220);
+    // Only light bows
+    expect(
+      getAttackData(movesets, getWeapon("Longbow"), "Jump Shot + Landing Shot", true, 0.5),
+    ).toBeUndefined();
+  });
+
+  it("matches bows' jumping shots in game", () => {
+    // Tested in game at +25 with 99 in every stat: a Longbow's shot does 309 with Arrows, its
+    // jumping shot 293 (0.96 times the attack power, from its jumping animations' SpEffect 436)
+    const { attackPower } = shoot("Longbow", "Arrow");
+    const jumping = getAttackData(movesets, getWeapon("Longbow"), "Jumping R1", true, 0.5)!;
+    const motionValue = jumping.steps[0][0].motionValue;
+    const damage = (rate: number) =>
+      Math.floor(
+        getDamageAfterDefense((attackPower[AttackPowerType.PHYSICAL]! * rate) / 100, {
+          defense: 123.2,
+          negation: 0,
+        }),
+      );
+    expect([damage(100), damage(motionValue)]).toEqual([309, 293]);
+    // Greatbows have none
+    expect(getAttackData(movesets, getWeapon("Greatbow"), "Jumping R1", true, 0.5)).toBeUndefined();
+  });
+
+  it("matches Mighty Shot in game", () => {
+    // Tested in game at +25 with 99 in every stat: a Longbow's Mighty Shot with Arrows does 529 (its
+    // 153% of the shot's attack)
+    const { attackPower } = shoot("Longbow", "Arrow");
+    expect(
+      Math.floor(
+        getDamageAfterDefense((attackPower[AttackPowerType.PHYSICAL]! * 153) / 100, {
+          defense: 123.2,
+          negation: 0,
+        }),
+      ),
+    ).toBe(529);
+  });
 
   it("matches the Serpent Bow's poison in game", () => {
     // Tested in game at +10 with 99 in every stat: about 243 poison with Serpent Arrows and 40
@@ -1249,6 +1317,7 @@ describe("attacks", () => {
     // 30 one handed and 34 two handed. Its melee hits use standard weapon scaling
     // (AttackElementCorrectParam 10000), not the staff's Intelligence scaling.
     const weapon = getWeapon("Lusat's Glintstone Staff");
+    expect(getAttackData(movesets, weapon, "R1", false, 0.5)).toBeUndefined();
     const bonk = (twoHanding: boolean) =>
       Math.floor(
         optimizeBuild({
@@ -1265,7 +1334,8 @@ describe("attacks", () => {
           ),
           physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
           limits: { ...noLimits, maxLevels: 0 },
-          attack: getAttackData(movesets, weapon, "R1", twoHanding, 0.5)!,
+          // (a catalyst's melee R1s are its base attack, its R1 casting)
+          attack: getAttackData(movesets, weapon, baseAttack, twoHanding, 0.5)!,
         }).attackSteps![0][0].damage,
       );
     expect(bonk(false)).toBe(30);
@@ -1283,13 +1353,13 @@ describe("attacks", () => {
       bonusAttributes: noBonus,
       objective: "totalAttack",
       limits: { ...noLimits, maxLevels: 0 },
-      attack: getAttackData(movesets, weapon, "R1", false, 0.5)!,
+      attack: getAttackData(movesets, weapon, baseAttack, false, 0.5)!,
     }).breakdown;
     expect(breakdown[0].total).toBeCloseTo(102.9, 0);
     expect(breakdown[0].attributes.int).toBeUndefined();
 
     // The optimizer values Strength and Dexterity for them, not Intelligence
-    const attack = getAttackData(movesets, weapon, "R1", false, 0.5)!;
+    const attack = getAttackData(movesets, weapon, baseAttack, false, 0.5)!;
     for (const defenses of [
       undefined,
       Object.fromEntries(
@@ -4712,6 +4782,98 @@ describe("Ashes of War", () => {
     }
     const seal = getAshAttack(ashes, movesets, getWeapon("Finger Seal"), "No Skill", false);
     expect(seal).toEqual({ unavailableReason: "No skill" });
+  });
+
+  it("has bows' skills, firing their ammunition", () => {
+    const steps = (weaponName: string, choice: string) => {
+      const result = getAshAttack(ashes, movesets, getWeapon(weaponName), choice, false);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return result.attack.steps;
+    };
+    // Mighty Shot fires an arrow at 153% of its attack (its own judge 811 for arrows), 300% poise
+    const mighty = steps("Longbow", "Mighty Shot");
+    expect(mighty.flat().map((hit) => [hit.motionValue, hit.poiseMotionValue])).toEqual([
+      [153, 300],
+    ]);
+    // A greatbow's version fires a greatarrow: Rain of Arrows' 50% (70% for arrows), all 12 of its
+    // arrows counted (it's best against big enemies)
+    expect(steps("Greatbow", "Rain of Arrows").flat()[0].motionValue).toBe(50);
+    expect(
+      steps("Longbow", "Rain of Arrows")
+        .flat()
+        .map((hit) => hit.motionValue),
+    ).toEqual(Array(12).fill(70));
+    // Radahn's Rain can hit 16 times, at 36% of the arrow's attack each
+    expect(
+      steps("Lion Greatbow", "Radahn's Rain")
+        .flat()
+        .map((hit) => hit.motionValue),
+    ).toEqual(Array(16).fill(36));
+    // Its arrows land 168 to 249 frames after the press (measured in game at 60 fps)
+    const radahn = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Lion Greatbow"),
+      "Radahn's Rain",
+      false,
+    );
+    if (!("attack" in radahn)) throw new Error(radahn.unavailableReason);
+    const landed = radahn.attack.stepTimes![0].hitTimes!.map((time) => Math.round(time! * 60));
+    expect([landed[0], landed[15]]).toEqual([168, 249]);
+    // Rain of Arrows' land 133 to 176 frames after the press on a Longbow
+    const rain = getAshAttack(ashes, movesets, getWeapon("Longbow"), "Rain of Arrows", false);
+    if (!("attack" in rain)) throw new Error(rain.unavailableReason);
+    const rainHits = rain.attack.stepTimes![0].hitTimes!.map((time) => Math.round(time! * 60));
+    expect([rainHits[0], rainHits[11]]).toEqual([133, 176]);
+    // The Igon's Greatbow's Igon's Drake Hunt with Igon's Harpoons does 1213 to the dummy (tested in
+    // game at +25 with 99 in every stat): its 155%, and the bow's ×1.2 physical for the harpoon's
+    // category 135
+    const ammo: AmmoGroup[] = JSON.parse(
+      readFileSync(new URL("../../public/ammo.json", import.meta.url), "utf8"),
+    );
+    const igonBow = withAmmo(
+      getWeapon("Igon's Greatbow"),
+      ammo.find((group) => group.names.includes("Igon's Harpoon"))!,
+    );
+    const igon = getAshAttack(ashes, movesets, igonBow, "Igon's Drake Hunt", false);
+    if (!("attack" in igon)) throw new Error(igon.unavailableReason);
+    const igonDamage = optimizeBuild({
+      weapon: igonBow,
+      regularUpgradeLevel: 25,
+      twoHanding: true,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: igon.attack,
+    }).attackSteps![0][0].damage;
+    expect(Math.floor(igonDamage)).toBe(1213);
+    // Some ammunition fires a skill differently: Rancor Shot with Bloodbone Arrows builds up 45% of
+    // their blood loss, 75% with others (tested in game on the Bone Bow +25: 24 of a shot's 55)
+    const rancor = (arrowName: string) => {
+      const bow = withAmmo(
+        getWeapon("Bone Bow"),
+        ammo.find((group) => group.names.includes(arrowName))!,
+      );
+      const result = getAshAttack(ashes, movesets, bow, "Rancor Shot", false);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return result.attack.steps[0][0].statusMotionValue;
+    };
+    expect([rancor("Bloodbone Arrow"), rancor("Arrow")]).toEqual([45, 75]);
+    // The Black Bow (a bow) has Barrage, a light bow's Ash of War
+    expect(
+      steps("Black Bow", "Barrage")
+        .flat()
+        .map((hit) => hit.motionValue),
+    ).toEqual([80]);
+    // Fan Shot fires 8 arrows, 2 of which can hit one target
+    expect(steps("Ansbach's Longbow", "Fan Shot").flat()).toHaveLength(2);
   });
 
   it("times skills from their animations", () => {

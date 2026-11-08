@@ -13,6 +13,7 @@ export const allAttacks = [
   "Backstep R1",
   "Jumping R1",
   "Jumping R2",
+  "Jump Shot + Landing Shot",
   "Guard Counter",
   "Backstab",
   "Riposte",
@@ -350,6 +351,104 @@ export function canTwoHand(movesets: Movesets, weapon: Weapon, attack?: string) 
   return !movesets[weapon.weaponName]?.oneHanded && !(attack && oneHandedAttacks.has(attack));
 }
 
+/** A bow shot's timing from the press: when its arrow fires, the next shot, and a roll or block */
+interface BowShot {
+  release: number;
+  cycle: number;
+  roll: number;
+  block: number;
+}
+
+/**
+ * Bows' shots: the arrow fires as the release animation (36000) starts, after drawing, and the release
+ * can be cancelled into another attack, a roll, or a block (its TAE). Measured in game at 60 fps:
+ * - the Longbow's animations (a44): the shot hits 65 frames after the press at point blank (the
+ *   release at 63, after the step start delay), cancelled 36 frames in (so a shot every 99), a roll
+ *   or block at 48. Also the Albinauric Bow's (its own, a230, doesn't exist), and the Black Bow's and
+ *   Ansbach's Longbow's (a231, the same cancels: tested on the Black Bow, 65 frames to the hit and
+ *   then every 99)
+ * - light bows' (a51): 50 frames to the hit, then every 73 (its release cancelled 25 frames in; the
+ *   TAE says 26), a roll at 42, a block at 46. Also the Harp Bow's (its a232 doesn't exist)
+ * - greatbows' (a45): 155 frames to the hit, then every 220 (hits at 336, 558, 778, and 998 from a
+ *   press at 181), a roll 78 frames into the release, a block 88
+ */
+const longbowShot: BowShot = {
+  release: 63 / 60,
+  cycle: 99 / 60,
+  roll: (63 + 48) / 60,
+  block: (63 + 48) / 60,
+};
+const shortbowShot: BowShot = {
+  release: 48 / 60,
+  cycle: 73 / 60,
+  roll: (48 + 42) / 60,
+  block: (48 + 46) / 60,
+};
+const greatbowShot: BowShot = {
+  release: 153 / 60,
+  cycle: 220 / 60,
+  roll: (153 + 78) / 60,
+  block: (153 + 88) / 60,
+};
+const shortbowWeapons: ReadonlySet<string> = new Set([
+  "Shortbow",
+  "Misbegotten Shortbow",
+  "Red Branch Shortbow",
+  "Composite Bow",
+  "Bone Bow",
+  "Harp Bow",
+]);
+const bowShots = new Map<string, BowShot>([
+  ...[
+    "Longbow",
+    "Horn Bow",
+    "Erdtree Bow",
+    "Serpent Bow",
+    "Pulley Bow",
+    "Albinauric Bow",
+    "Black Bow",
+    "Ansbach's Longbow",
+  ].map((name) => [name, longbowShot] as const),
+  ...[...shortbowWeapons].map((name) => [name, shortbowShot] as const),
+  ...["Lion Greatbow", "Golem Greatbow", "Erdtree Greatbow", "Greatbow", "Igon's Greatbow"].map(
+    (name) => [name, greatbowShot] as const,
+  ),
+]);
+
+function getBowShotTimes(weapon: Weapon): StepTimes | undefined {
+  const shot = bowShots.get(weapon.weaponName);
+  if (!shot) return undefined;
+  const lead = stepStartDelay;
+  return {
+    lead,
+    hits: [lead + shot.release],
+    next: { attack: "any attack", time: shot.cycle },
+    anyAttack: shot.cycle,
+    roll: shot.roll,
+    block: shot.block,
+    cycle: shot.cycle,
+  };
+}
+
+/**
+ * A light bow's jump shot and then a shot as soon as it lands, repeated (measured in game on a
+ * Shortbow at 60 fps: from the jump press at 1513 (R1 4 frames later, as soon as it can be), hits at
+ * 1546, 1602, 1660, 1716, 1777, 1834, 1894, and 1951, so the jump shot 33 frames after the jump
+ * press, the landing shot 56.5 after it, and a pair every 116)
+ */
+const jumpLandingShotPair = 116 / 60;
+const jumpShotHit = 33 / 60;
+const landingShotDelay = 56.5 / 60;
+function getJumpLandingShotTimes(): StepTimes {
+  return {
+    lead: stepStartDelay,
+    hits: [jumpShotHit, jumpShotHit + landingShotDelay],
+    next: { attack: "any attack", time: jumpLandingShotPair },
+    anyAttack: jumpLandingShotPair,
+    cycle: jumpLandingShotPair,
+  };
+}
+
 /**
  * @param chainWeight how much each step of a chain counts relative to the one before it
  * @param sumChains add up a chain's steps rather than taking their weighted average
@@ -366,7 +465,27 @@ export function getAttackData(
 ): AttackData | undefined {
   const moveset = movesets[weapon.weaponName];
   if (!moveset) return undefined;
-  if (attack === baseAttack) {
+  // A catalyst's R1 casts its spell, so its melee R1s are its base attack instead
+  if (
+    weapon.weaponType === WeaponType.GLINTSTONE_STAFF ||
+    weapon.weaponType === WeaponType.SACRED_SEAL
+  ) {
+    if (attack === "R1") return undefined;
+    if (attack === baseAttack) attack = "R1";
+  }
+  // A light bow's, bow's, or crossbow's jumping shot is its shot with 0.96 times the attack power
+  // (SpEffect 436 in its jumping animations, e.g. a44's 33030; tested in game: a Longbow's does 293
+  // with Arrows where its shot does 309), so 96% of its motion value (status and poise unchanged)
+  const jumpingShot =
+    attack === "Jumping R1" &&
+    (weapon.weaponType === WeaponType.LIGHT_BOW ||
+      weapon.weaponType === WeaponType.BOW ||
+      weapon.weaponType === WeaponType.CROSSBOW);
+  // A light bow's jump shot and then its landing shot (see getJumpLandingShotTimes)
+  const jumpLandingShot =
+    attack === "Jump Shot + Landing Shot" && shortbowWeapons.has(weapon.weaponName);
+  if (attack === "Jump Shot + Landing Shot" && !jumpLandingShot) return undefined;
+  if (attack === baseAttack || jumpingShot || jumpLandingShot) {
     // One hit, or one for each bolt of a spread shot
     const { count, motionValue, statusMotionValue, poiseMotionValue } = weapon.ammoShots ?? {
       count: 1,
@@ -375,7 +494,7 @@ export function getAttackData(
       poiseMotionValue: 100,
     };
     const hit = {
-      motionValue,
+      motionValue: jumpingShot ? (motionValue * 96) / 100 : motionValue,
       statusMotionValue,
       poiseMotionValue,
       physicalType: weapon.ammoPhysicalType ?? allPhysicalTypes[moveset.type] ?? "standard",
@@ -387,12 +506,24 @@ export function getAttackData(
       ...(weapon.ammoPoise != null ? [105] : []),
       ...(twoHanding && !weapon.paired ? [120] : []),
     ];
+    const shotTimes = jumpingShot
+      ? undefined
+      : jumpLandingShot
+      ? getJumpLandingShotTimes()
+      : getBowShotTimes(weapon);
+    const shots = (shotHit: typeof hit) =>
+      Array.from({ length: count }, () =>
+        categories.length ? { ...shotHit, categories } : shotHit,
+      );
     return {
       steps: [
-        Array.from({ length: count }, () => (categories.length ? { ...hit, categories } : hit)),
+        jumpLandingShot
+          ? [...shots({ ...hit, motionValue: (motionValue * 96) / 100 }), ...shots(hit)]
+          : shots(hit),
       ],
       weights: [1],
       poiseBase: weapon.ammoPoise ?? moveset.poise,
+      ...(shotTimes && { stepTimes: [shotTimes], cycleTimes: [shotTimes.cycle!] }),
     };
   }
   const twoHanded =

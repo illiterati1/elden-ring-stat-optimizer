@@ -179,10 +179,15 @@ def main():
             attribute = row["atkAttribute"]
         return PHYSICAL_TYPES.get(attribute, "pierce")
 
-    def get_sub_category(row):
+    def get_sub_categories(row):
+        """@returns its shot's attack categories: any of subCategory1-4 (e.g. Igon's Harpoon's 135 is
+        its subCategory3, which the Igon's Greatbow's ×1.2 physical is for: tested in game, its Igon's
+        Drake Hunt does 1213 to the dummy at +25 with 99 in every stat, 1011 without it)"""
         atk_id = game_attacks.behaviors.get(row["behaviorVariationId"], {}).get(SHOT_JUDGE_ID)
         attack = game_attacks.attacks.get(atk_id)
-        return int(attack["subCategory1"]) if attack else 0
+        if not attack:
+            return []
+        return [int(attack[f"subCategory{i}"]) for i in range(1, 5) if int(attack[f"subCategory{i}"])]
 
     ammo = []
     for row in weapons.values():
@@ -200,11 +205,11 @@ def main():
                 for t, field in STATUS_FIELDS.items():
                     if effect[field] > 0:
                         status[t] = effect[field]
-        sub_category = get_sub_category(row)
+        sub_categories = get_sub_categories(row)
         bonuses = {
-            weapon: dict(bonus[sub_category])
+            weapon: dict(next(bonus[category] for category in sub_categories if category in bonus))
             for weapon, bonus in weapon_bonuses.items()
-            if sub_category in bonus
+            if any(category in bonus for category in sub_categories)
         }
         if ammo_class == "bolt":
             for weapon, (judge_id, count) in MULTI_SHOT_WEAPONS.items():

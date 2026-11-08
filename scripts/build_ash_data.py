@@ -58,6 +58,7 @@ from collections import Counter
 sys.path.insert(0, os.path.dirname(__file__))
 from build_moveset_data import (  # noqa: E402
     PHYSICAL_TYPES,
+    WEAPON_ATTRIBUTE_TYPES,
     UNIQUE_FLAT_ATTACK_FIELDS,
     UNIQUE_MOTION_VALUE_FIELDS,
     WEAPON_ATTRIBUTE_TYPES,
@@ -1273,6 +1274,12 @@ HIT_TIME_FITS = {
     ("Waves of Darkness", "#1"): [None, None, 116 / 60, 165 / 60, 248 / 60],
     # Its ground fire first burns the dummy 122 frames after the press (then every second)
     ("Prelate's Charge", ""): [None, None, None, None, 120 / 60, None],
+    # Radahn's Rain's 16 hits land from 168 to 249 frames after the press (its first and last
+    # measured, the rest assumed evenly between them)
+    ("Radahn's Rain", ""): [(166 + i * 81 / 15) / 60 for i in range(16)],
+    # Rain of Arrows' 12 land from 133 to 176 frames after the press on a Longbow (likewise; assumed
+    # the same on other bows)
+    ("Rain of Arrows", ""): [(131 + i * 43 / 11) / 60 for i in range(12)],
 }
 
 
@@ -1339,6 +1346,77 @@ def get_window_hits(behaviors, bullets, attacks, variation, judge):
     ]
 
 
+# Bows' ammunition's behavior variation by bow class (EquipParamWeapon wepType): arrows' for light bows
+# and bows, greatarrows' for greatbows. Bows' skills fire it with their own behaviors (e.g. Mighty
+# Shot's judge 811: an arrow at 153% of its attack, vs a shot's 300 at 100%); other ammunition of
+# the class uses the same rows, but for a few categories (e.g. Radahn's Spears' 113)
+BOW_AMMO_VARIATIONS = {50: 5000, 51: 5000, 53: 5100}
+# Ammunition names by bow class, for its skills' hits, and its ammunition's EquipParamWeapon wepType
+BOW_AMMO_KINDS = {50: "Arrow", 51: "Arrow", 53: "Greatarrow"}
+BOW_AMMO_CLASSES = {50: 81, 51: 81, 53: 83}
+# How many of a bow skill's arrows hit one target, where not all it fires do (tested in game): Fan
+# Shot fires 8 (judges 880 and 881, 4 each) but only 2 can hit one target, and Rain of Arrows drops
+# 12, all counted (it's best against big enemies; about 8 hit Flying Dragon Agheel, 1453 with a
+# Longbow +25 and Arrows at 99 in every stat, and 10 the Mt. Gelmir Ulcerated Tree Spirit, 2088)
+# The Lion Greatbow's Radahn's Rain can hit 16 times (its damage and poise per arrow tested in game
+# with Great Arrows and Radahn's Spears)
+BOW_HIT_COUNTS = {"Fan Shot": 2, "Rain of Arrows": 12, "Radahn's Rain": 16}
+
+
+def get_bow_skill_hits(steps, file_number, variation, behaviors, bullets, name=None, kind=None):
+    """
+    @param file_number a bow skill's animation file
+    @param variation its ammunition's behavior variation (BOW_AMMO_VARIATIONS)
+    @returns its hits: each of its animation's projectiles' (its main animation's, the first with
+    any), as many as it fires (numShoot), with the ammunition's attack and status buildup times its
+    motion values
+    """
+    animations = steps.animations
+    file = animations.get_file(file_number)
+    if not file:
+        return []
+    kind = kind or next(k for t, k in BOW_AMMO_KINDS.items() if BOW_AMMO_VARIATIONS[t] == variation)
+    for anim_id in sorted(file[0]):
+        if not SKILL_ANIMATIONS[0] <= anim_id < SKILL_ANIMATIONS[1] or anim_id % 10 >= LACKING_FP_ANIMATION:
+            continue
+        hits = []
+        # A projectile fired from several points at once counts once (Fan Shot's 881, from 7)
+        windows = {(start, judge) for start, _, judge, *_ in animations.get_windows(file_number, anim_id) or []}
+        for _, judge in sorted(windows):
+            for atk, bullet in get_window_hits(behaviors, bullets, steps.game.attacks, variation, judge):
+                motion_value = float(atk["atkPhysCorrection"])
+                # Only the skill's own arrows (Skill Attack, 112), not what some arrows spawn on
+                # hitting (e.g. Lightningbone Arrows' lightning, untested)
+                if not motion_value or 112 not in [
+                    int(atk[f"subCategory{i}"]) for i in range(1, 5)
+                ]:
+                    continue
+                attribute = WEAPON_ATTRIBUTE_TYPES.get(int(atk["atkAttribute"]))
+                details = {
+                    "kind": kind,
+                    "categories": [
+                        int(atk[field])
+                        for field in ["subCategory1", "subCategory2", "subCategory3", "subCategory4"]
+                        if int(atk[field])
+                    ],
+                }
+                if atk["isDisableBothHandsAtkBonus"] == "1":
+                    details["noTwoHandBonus"] = True
+                hit = [
+                    number(motion_value),
+                    number(float(atk["statusAilmentAtkPowerCorrectRate"])),
+                    number(float(atk["atkSuperArmorCorrection"])),
+                    PHYSICAL_TYPES[attribute] if attribute else WEAPON_TYPE,
+                    details,
+                ]
+                hits += [copy.deepcopy(hit) for _ in range(max(1, int(bullet["numShoot"])) if bullet else 1)]
+        if hits and name in BOW_HIT_COUNTS:
+            hits = [copy.deepcopy(hits[0]) for _ in range(BOW_HIT_COUNTS[name])]
+        if hits:
+            return hits
+    return []
+
+
 def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=None):
     """
     @param steps check_animations.py's Steps
@@ -1396,9 +1474,11 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         )
         wanted.pop(hit_signature([0], [0] * 5), None)
         best = None
-        for wanted_range in dict.fromkeys([skill_range, 0]):
+        # (or else any, for a bow's skill: the Lion Greatbow's Radahn's Rain is only in 44560)
+        bow_skill = variation in BOW_AMMO_VARIATIONS.values()
+        for wanted_range in dict.fromkeys([skill_range, 0, *([None] if bow_skill else [])]):
             for anim_id, (signatures, _) in sorted(animation_hits.items()):
-                if range_of(anim_id) != wanted_range:
+                if wanted_range is not None and range_of(anim_id) != wanted_range:
                     continue
                 score = sum((Counter(signatures) & wanted).values())
                 if score and (best is None or score > best[0]):
@@ -1496,10 +1576,17 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
             }
         # Its stamina cost: its windows' behaviors' (before the weapon's staminaConsumptionRate),
         # like attacks' (e.g. Lion's Claw's 45, matching the sheet's StaminaCost)
+        # (a bow's arrows fired from several points at once cost once: Fan Shot's 881, from 7;
+        # assumed, untested)
+        bow = variation in BOW_AMMO_VARIATIONS.values()
         stamina = sum(
             float((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
             for segment, _ in segments
-            for _, _, judge, *_ in animations.get_windows(number, segment) or []
+            for _, judge in (
+                {(start, judge) for start, _, judge, *_ in animations.get_windows(number, segment) or []}
+                if bow
+                else [(start, judge) for start, _, judge, *_ in animations.get_windows(number, segment) or []]
+            )
         )
         if stamina:
             timing["stamina"] = round(stamina, 2)
@@ -2195,6 +2282,62 @@ def main():
     class_variations = {}
     for row in weapons.values():
         class_variations.setdefault(int(row["wepType"]), int(row["behaviorVariationId"]) // 100 * 100)
+    # Bows' skills, which the sheet doesn't have: each fires the ammunition its own way (its
+    # animation's projectile behaviors use the ammunition's behavior variation, see
+    # BOW_AMMO_VARIATIONS), so a version for each class of bow that can use it
+    ash_mounts = {ash["name"]: ash["mounts"] for ash in ashes}
+    bow_skills = {
+        name: ash_skill_ids[name]
+        for name, mounts in ash_mounts.items()
+        if name in ash_skill_ids and any(t in BOW_AMMO_VARIATIONS for t in mounts)
+    }
+    for weapon_name, row in weapons.items():
+        if int(row["wepType"]) in BOW_AMMO_VARIATIONS and weapon_name in weapon_skills:
+            bow_skills.setdefault(weapon_skills[weapon_name]["skill"], int(row["swordArtsParamId"]))
+    for name, skill_id in bow_skills.items():
+        if name in skills or skill_id not in skill_animation_types:
+            continue
+        animation_file = SKILL_ANIMATION_FILE_BASE + skill_animation_types[skill_id]
+        # An Ash of War's version for each class of bow it mounts on, and a unique skill's (or a bow's
+        # own Ash of War it can't otherwise mount, e.g. the Black Bow's Barrage, a light bows' Ash of
+        # War on a bow) for each bow that has it
+        mounts = [t for t in ash_mounts.get(name, []) if t in BOW_AMMO_VARIATIONS]
+        versions = [("classes", str(t), t) for t in mounts] + [
+            ("unique", weapon_name, int(row["wepType"]))
+            for weapon_name, row in weapons.items()
+            if weapon_name in weapon_skills
+            and weapon_skills[weapon_name]["skill"] == name
+            and int(row["wepType"]) in BOW_AMMO_VARIATIONS
+            and int(row["wepType"]) not in mounts
+        ]
+        skill = {"generic": None, "classes": {}, "unique": {}}
+        for group, key, weapon_type in versions:
+            hits = get_bow_skill_hits(
+                steps, animation_file, BOW_AMMO_VARIATIONS[weapon_type], behavior_rows, bullet_rows, name
+            )
+            if not hits:
+                continue
+            version = {"main": hits, "followUps": []}
+            # Ammunition whose rows for the skill differ, by name (e.g. Rancor Shot's 45% status
+            # with Bloodbone Arrows, 75% with others: tested in game, 24 blood loss on the Bone Bow)
+            ammo_class = BOW_AMMO_CLASSES[weapon_type]
+            for ammo_name, ammo_row in weapons.items():
+                if int(ammo_row["wepType"]) != ammo_class:
+                    continue
+                ammo_hits = get_bow_skill_hits(
+                    steps,
+                    animation_file,
+                    int(ammo_row["behaviorVariationId"]),
+                    behavior_rows,
+                    bullet_rows,
+                    name,
+                    kind=BOW_AMMO_KINDS[weapon_type],
+                )
+                if ammo_hits and ammo_hits != hits:
+                    version.setdefault("ammo", {})[ammo_name] = ammo_hits
+            skill[group][key] = version
+        if skill["classes"] or skill["unique"]:
+            skills[name] = skill
     for name, skill in skills.items():
         for group, key, hits in [
             ("generic", None, skill["generic"]),
@@ -2209,9 +2352,14 @@ def main():
                 continue
             # A class's version uses its class's behavior variation (e.g. 1400 for curved swords'
             # Wild Strikes), a unique weapon's its own
+            # (a bow's skill uses its ammunition's, see BOW_AMMO_VARIATIONS)
             variation = (
-                int(row["behaviorVariationId"])
+                BOW_AMMO_VARIATIONS[int(row["wepType"])]
+                if row and int(row["wepType"]) in BOW_AMMO_VARIATIONS
+                else int(row["behaviorVariationId"])
                 if row
+                else BOW_AMMO_VARIATIONS[int(key)]
+                if group == "classes" and int(key) in BOW_AMMO_VARIATIONS
                 else class_variations.get(int(key), 0)
                 if group == "classes"
                 else 0

@@ -86,6 +86,7 @@ export function withAmmo(weapon: Weapon, group: AmmoGroup): Weapon {
   return {
     ...(bonus?.damageMultipliers && { damageMultipliers: bonus.damageMultipliers }),
     ...(group.poise != null && { ammoPoise: group.poise }),
+    ammoNames: group.names,
     ...(bonus?.shots && { ammoShots: bonus.shots }),
     ...(group.physicalType && { ammoPhysicalType: group.physicalType }),
     ...weapon,

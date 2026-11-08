@@ -77,6 +77,7 @@ import {
   statusTypes,
   uniqueAffinityId,
   weaponTypeLabels,
+  catalystTypes,
 } from "./uiUtils.ts";
 
 /** Skills that apply an enemy debuff, which is picked separately (in the enemy debuffs), by name */
@@ -636,7 +637,11 @@ export default function App() {
               unavailableReason ??
               (offhandMismatch ? `Doesn't powerstance with ${offhand.name}` : undefined) ??
               (ash && "unavailableReason" in ash ? ash.unavailableReason : undefined) ??
-              (attack !== baseAttack && !attackData ? `No ${attack} for this weapon` : undefined),
+              (attack === "R1" && !attackData && catalystTypes.includes(weapon.weaponType)
+                ? "A catalyst's R1s are its base attack"
+                : attack !== baseAttack && !attackData
+                ? `No ${attack} for this weapon`
+                : undefined),
             // The left hand weapon's hits use its own attack rows
             attack:
               usesOffhand && attackData

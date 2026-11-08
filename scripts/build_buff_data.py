@@ -356,6 +356,9 @@ DEBUFF_NOTES = {
 # 1575 on the training dummy's 74212 HP after a Longsword's R1, as the Queen's Black Flame's)
 HIT_HP_DAMAGE_EFFECTS = {1626001: "Black flame"}
 
+# Golden Arrows' attack category (subCategory1), which bows' passive effects boost
+GOLDEN_ARROW_CATEGORY = 118
+
 def merge_armor(buffs):
     """
     Merges armor of the same slot and effects that differs only in looks, in place: altered versions
@@ -657,6 +660,10 @@ def main():
             [row[f] for f in ("residentSpEffectId", "residentSpEffectId1", "residentSpEffectId2") if row[f] > 0],
             own=True,
         )
+        # Bows' ×1.5 against those who live in death for Golden Arrows (category 118) only matters
+        # firing them from that bow, not for another weapon, so it isn't an off-hand buff (the user's
+        # call; TODO: apply it to the bow's own Golden Arrow shots)
+        effects = [effect for effect in effects if effect.get("categories") != [GOLDEN_ARROW_CATEGORY]]
         # Conditional ones are picked separately (weapon effects), since they don't always apply
         if name in NOTES or name in HP_CONDITIONS:
             add("weaponEffect", name, effects, type="unique")
