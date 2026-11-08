@@ -376,7 +376,7 @@ interface BowShot {
  * - crossbows' (a46: reloading, 39730, then the shot, 39700): unloaded, 75 frames to the hit, then
  *   every 110.5 (the Heavy Crossbow's hits at 1266, 1375, and 1487 from a press at 1191), a roll or
  *   block 40 frames into the shot. Also the Full Moon Crossbow's, whose own reload (a236) can be
- *   cancelled as soon
+ *   cancelled as soon (tested: 75 frames, then every 111)
  * - the Pulley Crossbow's (a233): its 3 bolts 10 frames apart, unloaded 78 frames to the first,
  *   then every 118.5 (hits at 664, 684, 779, 799, 901, and 921 from a press at 586: first and third
  *   bolts)
