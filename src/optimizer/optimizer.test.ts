@@ -5134,6 +5134,36 @@ describe("Ashes of War", () => {
         .flat()
         .map((hit) => hit.motionValue),
     ).toEqual([150]);
+    // Golden Crux: #1's spikes 84 frames after L2 (87 in game), then its end, whose L2 cancel goes on
+    // to #2 (its hit 184, as in game), then #1 again (372; 368)
+    const crux = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Greatsword of Damnation"),
+      withFollowUp("Golden Crux", " chain"),
+      false,
+    );
+    if (!("attack" in crux)) throw new Error(crux.unavailableReason);
+    const [cruxFirst, cruxSecond] = crux.attack.stepTimes!;
+    const cruxCycle = crux.attack.cycleTimes!;
+    expect([
+      Math.round(cruxFirst.hits[0] * 60),
+      Math.round((cruxCycle[0] + cruxSecond.hits[0]) * 60),
+      Math.round((cruxCycle[0] + cruxCycle[1] + cruxFirst.hits[0]) * 60),
+    ]).toEqual([84, 184, 372]);
+    // Phantom Slash's phantom slashes 68 frames after L2 (66 and 70 in game), then its swing at 106
+    // (110 in game)
+    const phantom = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Halberd"),
+      withFollowUp("Phantom Slash", " chain"),
+      false,
+    );
+    if (!("attack" in phantom)) throw new Error(phantom.unavailableReason);
+    expect(phantom.attack.stepTimes![0].hitTimes!.map((time) => Math.round(time! * 60))).toEqual([
+      68, 106,
+    ]);
     // Fan Shot fires 8 arrows, 2 of which can hit one target
     expect(steps("Ansbach's Longbow", "Fan Shot").flat()).toHaveLength(2);
   });
@@ -12290,7 +12320,7 @@ describe("powerstance off hand weapons", () => {
   it("repeats R2s at their own cancel, even when an R1's is as early", () => {
     // The Broadsword's R2 2 can be cancelled into an R1 or an R2 at 0.933s (2 frames early, see
     // check_animations.py's EARLY_JUMP_TABLE_EVENT; the earliest next attack is the R1), and has no
-    // "any attack" cancel: 0.933s after it starts, 0.433s after the press
+    // "R1/R2" cancel: 0.933s after it starts, 0.433s after the press
     const r2 = getAttackData(movesets, getWeapon("Broadsword"), "R2", false, 0.5)!;
     expect(r2.cycleTimes).toHaveLength(2);
     expect(r2.cycleTimes![1]).toBeCloseTo(1.366);
@@ -12334,6 +12364,30 @@ describe("powerstance off hand weapons", () => {
     expect(chainFrames("Longsword", "Charged R2", true)).toBeCloseTo(240, 0);
   });
 
+  it("goes on at any attack's cancel when it's before the attack's own", () => {
+    // Tested in game on 60 fps recordings, frames after the first press: the Miséricorde's two
+    // handed R2 chain 25, 86, 138, 199 (#2's R2 cancel 142 frames in, any attack's 46), the Pike's 55,
+    // 143, 238, 321 (#1's R2 cancel 156 frames in, any attack's 54), and the Death Knight's Twin Axes'
+    // two handed R1 chain (no R1 cancels) 35, 56, 102, 125, 172, 175, 222, 258, 260, then 329
+    const hitFrames = (weapon: string, attack: AttackChoice, loops = 1) => {
+      const data = getAttackData(movesets, getWeapon(weapon), attack, true, 0.5)!;
+      const frames: number[] = [];
+      let start = 0;
+      for (let loop = 0; loop < loops; loop++) {
+        data.stepTimes!.forEach((step, i) => {
+          frames.push(...step.hits.map((time) => Math.round((start + time) * 60)));
+          start += data.cycleTimes![i];
+        });
+      }
+      return frames;
+    };
+    expect(hitFrames("Miséricorde", "R2", 2)).toEqual([26, 88, 142, 204]);
+    expect(hitFrames("Pike", "R2", 2)).toEqual([52, 136, 232, 316]);
+    expect(hitFrames("Death Knight's Twin Axes", "R1", 2).slice(0, 10)).toEqual([
+      36, 57, 104, 127, 175, 177, 223, 259, 260, 332,
+    ]);
+  });
+
   it("times each step's hits and cancels, and cuts chains short", () => {
     const longsword = getWeapon("Longsword");
     const r1 = getAttackData(movesets, longsword, "R1", false, 0.5)!;
@@ -12344,14 +12398,14 @@ describe("powerstance off hand weapons", () => {
     expect(first.next).toEqual({ attack: "R1", time: expect.closeTo(1 / 30 + 0.567) });
     expect(first.roll).toBeCloseTo(1 / 30 + 0.8);
     expect(first.block).toBeCloseTo(1 / 30 + 0.9);
-    // The last step is followed by any attack, which starts the chain again
-    expect(r1.stepTimes![4].next!.attack).toBe("any attack");
+    // The last step is followed by a right hand attack (R1/R2), which starts the chain again
+    expect(r1.stepTimes![4].next!.attack).toBe("R1/R2");
 
     // Cut to two steps, the second ends with any attack too
     const two = getAttackData(movesets, longsword, "R1", false, 0.5, false, { steps: 2 })!;
     expect(two.steps).toHaveLength(2);
     expect(two.weights[0] + two.weights[1]).toBeCloseTo(1);
-    expect(two.stepTimes![1].next!.attack).toBe("any attack");
+    expect(two.stepTimes![1].next!.attack).toBe("R1/R2");
     expect(two.cycleTimes![1]).toBeCloseTo(1 / 30 + 0.767);
     // Or the steps that fit a time budget, from the press until a roll can start after them: the
     // second step's roll is at 1.37s, the third's at 2.03s

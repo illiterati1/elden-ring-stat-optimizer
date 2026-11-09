@@ -123,7 +123,7 @@ interface SkillStepPart {
 /**
  * @returns each step's times (see getAttackData's), from a version's timing for the weapon's
  * animation range, or undefined if any step's aren't known. A step goes on to the next with its
- * button (or any attack), and the last step repeats with another skill (L2, or any attack). A
+ * button (or an R1/R2), and the last step repeats with another skill (L2, or an R1/R2). A
  * loop's step is one pass, repeated.
  */
 function getSkillStepTimes(
@@ -167,7 +167,7 @@ function getSkillStepTimes(
       (nextButton === "L2" || timing.anyAttack == null || buttonTime <= timing.anyAttack)
         ? { attack: nextButton!, time: lead + buttonTime }
         : timing.anyAttack != null
-        ? { attack: "any attack" as const, time: lead + timing.anyAttack }
+        ? { attack: "R1/R2" as const, time: lead + timing.anyAttack }
         : undefined;
     return {
       lead,

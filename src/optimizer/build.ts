@@ -449,14 +449,18 @@ export interface StepTimes {
    */
   hitTimes?: (number | undefined)[];
   approximate?: boolean[];
-  /** The earliest attack it can be cancelled into (its chain's next step, or any attack) */
-  next?: { attack: "R1" | "R2" | "L1" | "L2" | "any attack"; time: number };
+  /** The earliest attack it can be cancelled into (its chain's next step, or a right hand attack) */
+  next?: { attack: "R1" | "R2" | "L1" | "L2" | "R1/R2"; time: number };
+  /**
+   * When any right hand attack (R1 or R2) can start: the animations' "cancel - RH attack" flag (4),
+   * named anyAttack in the data
+   */
   anyAttack?: number;
   roll?: number;
   block?: number;
   /**
    * How long the step lasts when the attack is repeated as fast as possible, if known: until the
-   * same button's next attack can start (or any attack, after a chain's last step or for attacks that
+   * same button's next attack can start (or an R1/R2, after a chain's last step or for attacks that
    * can't be repeated back to back, or else the animation's end)
    */
   cycle?: number;

@@ -356,6 +356,8 @@ ROW_KINDS = {
     "301217910": "Projectile",
     "700000421": "Ground Fire",
     "303208905": "Projectile",
+    "301805002": "Phantom",
+    "301805012": "Phantom",
     "303208906": "Explosion",
     "30000835": "Ground Fire",
     "30000836": "Ground Fire",
@@ -1317,6 +1319,10 @@ ANIMATION_SEQUENCES = {
     # in (measured in game: tapped, its hit 122 frames after the press, the next 278 after it, the
     # spit's L2 cancel 164 frames in)
     "Flame Spit": [(40000, 0), (40004, 112 / 60)],
+    # The Greatsword of Damnation's Golden Crux's #1: its spikes (40000), then its end (40004), whose
+    # L2 cancel goes on to #2, 96 frames in (measured in game: #1's hit 87 frames after L2, #2's 184,
+    # the next #1's 368)
+    ("Golden Crux", "#1"): [(40000, 0), (40004, 96 / 60)],
 }
 # Projectile hits' times measured in game, where the animations only say when the projectile is
 # created (by skill and part, each hit's from the animation's start, or None to use the animation's):
@@ -1328,6 +1334,10 @@ HIT_TIME_FITS = {
     ("Waves of Darkness", "#1"): [None, None, 116 / 60, 165 / 60, 248 / 60],
     # Its ground fire first burns the dummy 122 frames after the press (then every second)
     ("Prelate's Charge", ""): [None, None, None, None, 120 / 60, None],
+    # Phantom Slash's phantom slashes before its swing (measured in game: #1's 66 and 70 frames after
+    # L2, its swing 110; #2's 59 frames after its start, its swing 90 as its animation says)
+    ("Phantom Slash", "#1"): [66 / 60, None],
+    ("Phantom Slash", "#2"): [57 / 60, None],
     # Radahn's Rain's 16 hits land from 168 to 249 frames after the press (its first and last
     # measured, the rest assumed evenly between them)
     ("Radahn's Rain", ""): [(166 + i * 81 / 15) / 60 for i in range(16)],
@@ -1590,8 +1600,11 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         # Its animations, each with when it starts (ANIMATION_SEQUENCES), the last one's cancels
         # counting
         segments = [(anim_id, 0.0)]
-        if not label and name in ANIMATION_SEQUENCES:
-            segments = ANIMATION_SEQUENCES[name]
+        sequence = ANIMATION_SEQUENCES.get((name, label)) or (
+            ANIMATION_SEQUENCES.get(name) if not label else None
+        )
+        if sequence:
+            segments = sequence
             anim_id = segments[-1][0]
         offset = segments[-1][1]
 

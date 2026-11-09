@@ -130,7 +130,7 @@ function TimingSettings({ showDps, tooltipTimings, chainLimit, onChange }: Props
         )}
         {chainLimit.mode !== "none" && (
           <Typography variant="body2" color="text.secondary">
-            A chain cut short starts again once any attack can (at least one step)
+            A chain cut short starts again once an R1 or R2 can (at least one step)
           </Typography>
         )}
       </Box>

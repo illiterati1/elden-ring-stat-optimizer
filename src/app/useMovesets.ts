@@ -61,7 +61,7 @@ export const riposteAttacks: ReadonlySet<string> = new Set([
 
 /**
  * The button repeated for an attack's DPS, for attacks that can be repeated back to back (a chain
- * starts again after its last step). Others are repeated once any attack can start.
+ * starts again after its last step). Others are repeated once a right hand attack (R1/R2) can start.
  */
 const repeatButtons: Partial<Record<AttackName, NonNullable<StepTiming["next"]>["attack"]>> = {
   R1: "R1",
@@ -98,7 +98,7 @@ export type ChainLimit = { steps: number } | { seconds: number };
 
 /**
  * @returns each step's times, or undefined if the timings don't have them all. A chain cut short
- * (lastStep) ends with any attack, not its next step.
+ * (lastStep) ends with a right hand attack (R1/R2), not its next step.
  */
 function getStepTimes(
   attack: AttackName,
@@ -119,7 +119,7 @@ function getStepTimes(
       return {
         lead,
         hits: step.hits.map((time) => lead + time),
-        ...(next != null && { next: { attack: "any attack" as const, time: next } }),
+        ...(next != null && { next: { attack: "R1/R2" as const, time: next } }),
         ...(next != null && { anyAttack: next }),
         ...(landing.roll != null && { roll: jumpAirTime + landing.roll }),
         ...(landing.block != null && { block: jumpAirTime + landing.block }),
@@ -127,13 +127,26 @@ function getStepTimes(
       };
     }
     const lead = step.start ?? stepStartDelay;
-    const own = button && !(cutShort && i === stepCount - 1) ? step.cancels?.[button] : undefined;
+    // Its own button's cancel, or for R1 and R2, any attack's if that comes first (tested in game:
+    // the Miséricorde's and the Pike's two handed R2 chains go on at any attack's, long before their
+    // R2 cancels: 26, 88, 142 and 52, 136, 232, 316 frames, 25, 86, 138 and 55, 143, 238, 321 in game;
+    // powerstance L1 chains don't, e.g. the Short Spear's, 168 frames as its L1 cancels say)
+    const ownCancel =
+      button && !(cutShort && i === stepCount - 1) ? step.cancels?.[button] : undefined;
+    const own =
+      ownCancel != null &&
+      (button === "R1" || button === "R2") &&
+      step.anyAttack != null &&
+      step.anyAttack < ownCancel
+        ? undefined
+        : ownCancel;
     const repeat = own ?? step.anyAttack ?? step.end;
+    // (a powerstance L1 chain goes on at its L1 cancel: the R1/R2 cancel is the right hand's)
     const next =
-      own != null && (step.anyAttack == null || own <= step.anyAttack)
+      own != null && (button === "L1" || step.anyAttack == null || own <= step.anyAttack)
         ? { attack: button!, time: lead + own }
         : step.anyAttack != null
-        ? { attack: "any attack" as const, time: lead + step.anyAttack }
+        ? { attack: "R1/R2" as const, time: lead + step.anyAttack }
         : undefined;
     return {
       lead,
@@ -236,14 +249,14 @@ export interface StepTiming {
   next?: { attack: "R1" | "R2" | "L1"; time: number };
   /** When it can be cancelled into each of R1, R2, and L1 that it can */
   cancels?: Partial<Record<"R1" | "R2" | "L1", number>>;
-  /** Without an any attack cancel (anyAttack), when the animation ends */
+  /** Without an R1/R2 cancel (anyAttack), when the animation ends */
   end?: number;
   anyAttack?: number;
   roll?: number;
   /** When blocking can start */
   block?: number;
   /**
-   * For jumping attacks, when any attack, a roll, blocking, and another jump can start after landing
+   * For jumping attacks, when an R1/R2, a roll, blocking, and another jump can start after landing
    * (the time in the air depends on the jump, not the animations: see jumpAirTime)
    */
   landing?: { anyAttack?: number; roll?: number; block?: number; jump?: number };
@@ -262,7 +275,7 @@ interface Moveset {
   "2h"?: Partial<Record<AttackName, MovesetHit[][]>>;
   /**
    * Each attack step's timing from the game's animations, in seconds from the step's start: when
-   * each hit's window opens, the earliest attack it can be cancelled into and when, when any attack
+   * each hit's window opens, the earliest attack it can be cancelled into and when, when an R1/R2
    * can start, and when a roll can (not used yet)
    */
   timing?: Partial<Record<"1h" | "2h", Partial<Record<AttackName, StepTiming[]>>>>;
@@ -488,7 +501,7 @@ function getBowShotTimes(weapon: Weapon, count = 1): StepTimes | undefined {
     hits: shot.spacing
       ? Array.from({ length: count }, (_, i) => lead + shot.release + i * shot.spacing!)
       : [lead + shot.release],
-    next: { attack: "any attack", time: shot.cycle },
+    next: { attack: "R1/R2", time: shot.cycle },
     anyAttack: shot.cycle,
     roll: shot.roll,
     block: shot.block,
@@ -509,7 +522,7 @@ function getJumpLandingShotTimes(): StepTimes {
   return {
     lead: stepStartDelay,
     hits: [jumpShotHit, jumpShotHit + landingShotDelay],
-    next: { attack: "any attack", time: jumpLandingShotPair },
+    next: { attack: "R1/R2", time: jumpLandingShotPair },
     anyAttack: jumpLandingShotPair,
     cycle: jumpLandingShotPair,
   };

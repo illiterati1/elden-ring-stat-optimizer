@@ -148,8 +148,12 @@ MOUNTED_CHARGED = {38100, 39100}
 # attack's next step, or the next attack), any right hand attack, or a roll (or backstep). The
 # first window of each is when that can start (or its early window's, EARLY_JUMP_TABLE_EVENT).
 ACTION_FLAG_EVENT = 0
-# L1 is either of two: 117, or 16, which powerstance chains without 117 continue on (a Dagger's
-# powerstance L1 chain, tested in game on a recording: each gap between hits within a frame).
+# Per DS Anim Studio's names: 117 is "cancel - L1 attack", 16 "cancel - LH attack" (powerstance
+# chains without 117 continue on it: a Dagger's powerstance L1 chain, tested in game on a recording,
+# each gap between hits within a frame), and 4 "cancel - RH attack" (R1 or R2, not any attack: kept
+# as "anyAttack" in the data; R1 and R2 chains go on at it, powerstance L1 chains and skills don't,
+# tested in game). Others not used here: 11 "cancel - LS movement", 107 quick goods (e.g. some
+# consumables), 31 goods, and 29 magic.
 # Blocking is 22, jumping (or crouching) 32, and skills (L2) 103 and 104 (103 is a quick one, for
 # some skills; per the user, from the animations). A skill's chain continues on L2 (tested in game:
 # Storm Blade's and Sword Dance's follow-ups).
@@ -241,11 +245,25 @@ class Animations:
                         if event_type == EARLY_JUMP_TABLE_EVENT:
                             flag = struct.unpack_from("<h", data, params)[0]
                             early.setdefault(flag, []).append((start, end))
+                    # Roll and R1/R2 cancel windows run until a little after the animation ends (per
+                    # the user, from DS Anim Studio: e.g. a036_034020, 124 frames), so a cancel
+                    # window starting after they've ended is after the animation's end and doesn't
+                    # count (its L1 attack window from 148)
+                    cancel_ends = [
+                        end
+                        for start, end, event_type, params in events
+                        if event_type == ACTION_FLAG_EVENT
+                        and struct.unpack_from("<i", data, params)[0] in (4, 26)
+                        and end < 1e6
+                    ]
+                    last_end = max(cancel_ends) if cancel_ends else None
                     first = {}
                     for start, end, event_type, params in sorted(events):
                         if event_type == ACTION_FLAG_EVENT:
                             flag = struct.unpack_from("<i", data, params)[0]
                             name = CANCEL_FLAGS.get(flag)
+                            if name and last_end is not None and start >= last_end - 1e-6:
+                                continue
                             if name:
                                 # Starting early if an early window ends where it starts
                                 first[name] = min(

@@ -227,7 +227,7 @@ function AttackHits({
               {showNext && (
                 <TableCell
                   sx={cellSx}
-                  title="When the step can first be cancelled into another attack: its chain's next step, or any attack"
+                  title="When the step can first be cancelled into another attack: its chain's next step, or a right hand attack (R1/R2)"
                 >
                   Next attack
                 </TableCell>
