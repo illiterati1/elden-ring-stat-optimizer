@@ -4,6 +4,7 @@ import { allPhysicalTypes } from "../optimizer/defense.ts";
 import type { AttackData, AttackDataHit, StepTimes } from "../optimizer/build.ts";
 
 export const allAttacks = [
+  "Standard Shot",
   "R1",
   "R2",
   "Charged R2",
@@ -31,9 +32,16 @@ export const allAttacks = [
 
 export type AttackName = typeof allAttacks[number];
 
-/** A single hit with 100 motion values for everything, i.e. the weapon's plain attack power */
-export const baseAttack = "base";
-export type AttackChoice = AttackName | typeof baseAttack;
+export type AttackChoice = AttackName;
+
+/** Ranged weapons, whose Standard Shot fires their ammunition */
+const rangedWeaponTypes: ReadonlySet<WeaponType> = new Set([
+  WeaponType.LIGHT_BOW,
+  WeaponType.BOW,
+  WeaponType.GREATBOW,
+  WeaponType.CROSSBOW,
+  WeaponType.BALLISTA,
+]);
 
 /** Attacks that are chains of several steps, weighted towards the first */
 export const chainAttacks: ReadonlySet<AttackName> = new Set([
@@ -553,14 +561,17 @@ export function getAttackData(
 ): AttackData | undefined {
   const moveset = movesets[weapon.weaponName];
   if (!moveset) return undefined;
-  // A catalyst's R1 casts its spell, so its melee R1s are its base attack instead
+  // A catalyst's R1 casts its spell, so its melee strikes (its moveset's R1 chain) are its R2
   if (
     weapon.weaponType === WeaponType.GLINTSTONE_STAFF ||
     weapon.weaponType === WeaponType.SACRED_SEAL
   ) {
     if (attack === "R1") return undefined;
-    if (attack === baseAttack) attack = "R1";
+    if (attack === "R2") attack = "R1";
   }
+  // Only ranged weapons shoot
+  const standardShot = attack === "Standard Shot";
+  if (standardShot && !rangedWeaponTypes.has(weapon.weaponType)) return undefined;
   // A light bow's, bow's, or crossbow's jumping shot is its shot with 0.96 times the attack power
   // (SpEffect 436 in its jumping animations, e.g. a44's 33030; tested in game: a Longbow's does 293
   // with Arrows where its shot does 309), so 96% of its motion value (status and poise unchanged)
@@ -573,7 +584,7 @@ export function getAttackData(
   const jumpLandingShot =
     attack === "Jump Shot + Landing Shot" && jumpLandingShotWeapons.has(weapon.weaponName);
   if (attack === "Jump Shot + Landing Shot" && !jumpLandingShot) return undefined;
-  if (attack === baseAttack || jumpingShot || jumpLandingShot) {
+  if (standardShot || jumpingShot || jumpLandingShot) {
     // One hit, or one for each bolt of a spread shot
     const { count, motionValue, statusMotionValue, poiseMotionValue } = weapon.ammoShots ?? {
       count: 1,

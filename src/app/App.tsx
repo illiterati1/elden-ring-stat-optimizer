@@ -45,13 +45,13 @@ import useAshes, {
   getAshAttack,
   getAshAttacks,
   getAshChoices,
+  parseAshChoice,
   withFollowUp,
   type AshAttack,
   type SkillVariant,
 } from "./useAshes.ts";
 import useMovesets, {
   allAttacks,
-  baseAttack,
   canTwoHand,
   getAttackData,
   riposteAttacks,
@@ -170,29 +170,10 @@ export default function App() {
   const ammo = useAmmo();
   const movesets = useMovesets();
   const ashes = useAshes();
-  const ashChoices = useMemo(() => getAshChoices(ashes), [ashes]);
+  const allAshChoices = useMemo(() => getAshChoices(ashes), [ashes]);
   const closeAlert = (id: string) => updateAppState({ closedAlerts: [...closedAlerts, id] });
-  // With an enemy picked, only the ripostes it can take are offered. A riposte it can't take
-  // becomes the one it can (or R1 if it can't be riposted).
-  const attackChoices = useMemo(
-    () =>
-      enemyRipostes
-        ? allAttacks.filter(
-            (attackName) => !riposteAttacks.has(attackName) || enemyRipostes.includes(attackName),
-          )
-        : allAttacks,
-    [enemyRipostes],
-  );
-  const attack =
-    riposteAttacks.has(savedAttack) && !(attackChoices as readonly string[]).includes(savedAttack)
-      ? attackChoices.find((attackName) => riposteAttacks.has(attackName)) ?? "R1"
-      : savedAttack;
   // The enemy's HP, for damage that's a percentage of it, if known
   const countedEnemyHp = enemyHp > 0 ? enemyHp : undefined;
-  // The saved Ash of War, or the first if it isn't one of the choices (e.g. from an earlier version)
-  const ashOfWar = ashChoices.some(({ value }) => value === savedAshOfWar)
-    ? savedAshOfWar
-    : ashChoices[0]?.value ?? "";
   const buffable = useBuffable();
   // Buffs give bonus stats (not counted towards level) and damage multipliers
   const allBuffs = useBuffs();
@@ -305,6 +286,64 @@ export default function App() {
         .map((weapon) => weapon.weaponName),
     ]);
   }, [weapons, validSelectedWeapons, weaponTypes]);
+  // One version of each picked weapon, for which attacks and skills they can use
+  const pickedWeaponList = useMemo(() => {
+    const byName = new Map<string, Weapon>();
+    for (const weapon of weapons) {
+      if (pickedWeapons.has(weapon.weaponName) && !byName.has(weapon.weaponName)) {
+        byName.set(weapon.weaponName, weapon);
+      }
+    }
+    return [...byName.values()];
+  }, [weapons, pickedWeapons]);
+
+  // Attacks some picked weapon has (all of them with none picked). With an enemy picked, only the
+  // ripostes it can take are offered. An attack that isn't one of the choices becomes the first.
+  const attackChoices = useMemo(
+    () =>
+      allAttacks.filter(
+        (attackName) =>
+          (!enemyRipostes ||
+            !riposteAttacks.has(attackName) ||
+            enemyRipostes.includes(attackName)) &&
+          (!pickedWeaponList.length ||
+            pickedWeaponList.some(
+              (weapon) =>
+                !!getAttackData(movesets, weapon, attackName, false, 0.5) ||
+                !!getAttackData(movesets, weapon, attackName, true, 0.5),
+            )),
+      ),
+    [enemyRipostes, pickedWeaponList, movesets],
+  );
+  // Spell scaling doesn't use an attack
+  const attackActive = objective !== "spellScaling";
+  const attack =
+    savedAttack === ashAttack || (attackChoices as readonly string[]).includes(savedAttack)
+      ? savedAttack
+      : riposteAttacks.has(savedAttack)
+      ? attackChoices.find((attackName) => riposteAttacks.has(attackName)) ??
+        attackChoices[0] ??
+        "R1"
+      : attackChoices[0] ?? "R1";
+  // Skills some picked weapon can use: an Ash of War it can take, or its own built-in skill (all
+  // of them with none picked). Weapons with a fixed skill use it whichever is picked.
+  const ashChoices = useMemo(() => {
+    if (!pickedWeaponList.length) return allAshChoices;
+    const usable = new Set<string>();
+    for (const weapon of pickedWeaponList) {
+      const info = ashes.weapons[weapon.weaponName];
+      if (!info?.canChange) continue;
+      usable.add(info.skill);
+      for (const ash of ashes.ashes) {
+        if (ash.mounts.includes(weapon.weaponType)) usable.add(ash.name);
+      }
+    }
+    return allAshChoices.filter(({ value }) => usable.has(parseAshChoice(value)[0]));
+  }, [allAshChoices, pickedWeaponList, ashes]);
+  // The saved Ash of War, or the first if it isn't one of the choices (e.g. from an earlier version)
+  const ashOfWar = ashChoices.some(({ value }) => value === savedAshOfWar)
+    ? savedAshOfWar
+    : ashChoices[0]?.value ?? "";
 
   // Each hit's physical damage type picks which physical negation applies. Standard is only
   // used for a weapon without attack data.
@@ -528,32 +567,33 @@ export default function App() {
             : !!weaponBuff && isBuffable(buffable, weapon);
         // The weapon's own motion values for the chosen attack, or its skill: each version of a
         // fixed skill that has several (e.g. Moonveil's R1 and R2) is its own result
-        const skillAttacks: { ash?: AshAttack; variant?: SkillVariant }[] =
-          attack === ashAttack && !unavailableReason
-            ? getAshAttacks(
-                ashes,
-                movesets,
-                weapon,
-                ashOfWar,
-                weaponTwoHanding,
-                chainWeight,
-                sumChains,
-              )
-            : attack === ashAttack
-            ? [
-                {
-                  ash: getAshAttack(
-                    ashes,
-                    movesets,
-                    weapon,
-                    ashOfWar,
-                    weaponTwoHanding,
-                    chainWeight,
-                    sumChains,
-                  ),
-                },
-              ]
-            : [{ ash: undefined }];
+        const skillAttacks: { ash?: AshAttack; variant?: SkillVariant }[] = !attackActive
+          ? [{ ash: undefined }]
+          : attack === ashAttack && !unavailableReason
+          ? getAshAttacks(
+              ashes,
+              movesets,
+              weapon,
+              ashOfWar,
+              weaponTwoHanding,
+              chainWeight,
+              sumChains,
+            )
+          : attack === ashAttack
+          ? [
+              {
+                ash: getAshAttack(
+                  ashes,
+                  movesets,
+                  weapon,
+                  ashOfWar,
+                  weaponTwoHanding,
+                  chainWeight,
+                  sumChains,
+                ),
+              },
+            ]
+          : [{ ash: undefined }];
         // With a skill's buff picked that changes the weapon's R2s while it lasts (e.g. War Cry, or the
         // Dark Moon Greatsword's own Moonlight Greatsword), its R2s are the skill's chains, which have
         // the buff: its own skill's on a weapon with a fixed skill, or a picked Ash of War's the weapon
@@ -568,7 +608,7 @@ export default function App() {
             ? weaponBuff.name
             : undefined;
         const skillChain =
-          r2Skill && attack !== ashAttack && attack !== baseAttack
+          attackActive && r2Skill && attack !== ashAttack && attack !== "Standard Shot"
             ? getAshAttack(
                 ashes,
                 movesets,
@@ -584,21 +624,22 @@ export default function App() {
             ? skillChain.attack
             : undefined;
         return skillAttacks.map(({ ash, variant }): BuildRequest => {
-          const chosenAttackData =
-            ash && "attack" in ash
-              ? ash.attack
-              : attack === ashAttack
-              ? undefined
-              : uniqueSkillChain ??
-                getAttackData(
-                  movesets,
-                  weapon,
-                  attack,
-                  weaponTwoHanding,
-                  chainWeight,
-                  sumChains,
-                  limit,
-                );
+          const chosenAttackData = !attackActive
+            ? undefined
+            : ash && "attack" in ash
+            ? ash.attack
+            : attack === ashAttack
+            ? undefined
+            : uniqueSkillChain ??
+              getAttackData(
+                movesets,
+                weapon,
+                attack,
+                weaponTwoHanding,
+                chainWeight,
+                sumChains,
+                limit,
+              );
           // A skill's enemy debuff is picked separately, so it's noted when it isn't
           const debuffName =
             chosenAttackData?.fixedSkill && skillDebuffs[chosenAttackData.fixedSkill];
@@ -640,11 +681,11 @@ export default function App() {
               unavailableReason ??
               (offhandMismatch ? `Doesn't powerstance with ${offhand.name}` : undefined) ??
               (ash && "unavailableReason" in ash ? ash.unavailableReason : undefined) ??
-              (attack === "R1" && !attackData && catalystTypes.includes(weapon.weaponType)
-                ? "A catalyst's R1s are its base attack"
-                : attack !== baseAttack && !attackData
-                ? `No ${attack} for this weapon`
-                : undefined),
+              (!attackActive || attackData
+                ? undefined
+                : attack === "R1" && catalystTypes.includes(weapon.weaponType)
+                ? "A catalyst's R1 casts spells: its melee strikes are its R2"
+                : `No ${attack} for this weapon`),
             // The left hand weapon's hits use its own attack rows
             attack:
               usesOffhand && attackData
@@ -758,6 +799,7 @@ export default function App() {
     stackTier,
     health,
     objective,
+    attackActive,
     enemyDefenses,
     limits,
     fastMode,
@@ -803,7 +845,7 @@ export default function App() {
     );
 
   // Attacks other than the base one have hits to show. They don't apply to spell scaling.
-  const attackMode = attack !== baseAttack && objective !== "spellScaling";
+  const attackMode = attackActive;
   // Also show hits for the base attack when a weapon fires several, e.g. the Spread Crossbow
   const showHits =
     attackMode ||

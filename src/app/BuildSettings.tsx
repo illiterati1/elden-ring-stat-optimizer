@@ -19,7 +19,7 @@ import type { AppState, UpdateAppState } from "./useAppState.ts";
 import { objectiveOptions } from "./uiUtils.ts";
 import WeaponTypePicker from "./WeaponTypePicker.tsx";
 import NumberTextField from "./NumberTextField.tsx";
-import { baseAttack, chainAttacks, type AttackName } from "./useMovesets.ts";
+import { chainAttacks, type AttackName } from "./useMovesets.ts";
 import { ashAttack } from "./useAshes.ts";
 import AffinityPicker from "./AffinityPicker.tsx";
 import AmmoPicker from "./AmmoPicker.tsx";
@@ -172,30 +172,37 @@ function BuildSettings({
           </Select>
         </FormControl>
 
-        <FormControl fullWidth size="small">
-          <InputLabel id="attackLabel">Attack</InputLabel>
-          <Select
-            labelId="attackLabel"
-            label="Attack"
-            value={attack}
-            onChange={(evt) => onChange({ attack: evt.target.value as AppState["attack"] })}
-          >
-            <MenuItem value={baseAttack}>Base</MenuItem>
-            <MenuItem value={ashAttack}>Ash of War</MenuItem>
-            {attackChoices.map((attackName) => (
-              <MenuItem key={attackName} value={attackName} title={attackNotes[attackName]}>
-                {attackName}
-                {chainAttacks.has(attackName) ? " chain" : ""}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        {attack in attackNotes && (
+        {/* Spell scaling doesn't use an attack */}
+        {objective !== "spellScaling" && (
+          <FormControl fullWidth size="small">
+            <InputLabel id="attackLabel">Attack</InputLabel>
+            <Select
+              labelId="attackLabel"
+              label="Attack"
+              value={attack}
+              onChange={(evt) => onChange({ attack: evt.target.value as AppState["attack"] })}
+            >
+              <MenuItem value={ashAttack}>Ash of War</MenuItem>
+              {attackChoices.map((attackName) => (
+                <MenuItem key={attackName} value={attackName} title={attackNotes[attackName]}>
+                  {attackName}
+                  {chainAttacks.has(attackName) ? " chain" : ""}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+        {objective !== "spellScaling" && attack in attackNotes && (
           <Typography variant="body2" color="text.secondary" alignSelf="center">
             {attackNotes[attack as AttackName]}
           </Typography>
         )}
-        {attack === ashAttack && (
+        {objective !== "spellScaling" && attack === ashAttack && !ashChoices.length && (
+          <Typography variant="body2" color="text.secondary" alignSelf="center">
+            The weapons picked use their own skills
+          </Typography>
+        )}
+        {objective !== "spellScaling" && attack === ashAttack && ashChoices.length > 0 && (
           <FormControl fullWidth size="small">
             <InputLabel id="ashOfWarLabel">Ash of War</InputLabel>
             <Select
@@ -213,7 +220,7 @@ function BuildSettings({
             </Select>
           </FormControl>
         )}
-        {attack.startsWith("Powerstance") && (
+        {objective !== "spellScaling" && attack.startsWith("Powerstance") && (
           <OffhandPicker
             offhandWeapon={offhandWeapon}
             offhandUpgradeLevel={offhandUpgradeLevel}
@@ -226,7 +233,7 @@ function BuildSettings({
             onChange={onChange}
           />
         )}
-        {hasChain && (
+        {objective !== "spellScaling" && hasChain && (
           <>
             <NumberTextField
               label="Chain weighting"

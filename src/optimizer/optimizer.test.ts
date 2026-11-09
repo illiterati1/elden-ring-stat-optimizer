@@ -9,13 +9,12 @@ import getWeaponAttack, {
   type Weapon,
 } from "../calculator/calculator.ts";
 import { decodeRegulationData } from "../regulationData.ts";
-import { getDamageAfterDefense, getDefenseMultiplier } from "./defense.ts";
+import { allPhysicalTypes, getDamageAfterDefense, getDefenseMultiplier } from "./defense.ts";
 import { applyLimits, type Limits } from "./limits.ts";
 import { getCumulativeLevelUpCosts, getLevelUpCost } from "./runes.ts";
 import { getCharacterLevel, startingClasses } from "./startingClasses.ts";
 import { getAmmoLabel, withAmmo, type AmmoGroup } from "../app/useAmmo.ts";
 import {
-  baseAttack,
   canTwoHand,
   getAttackData,
   withOffhandRows,
@@ -52,6 +51,25 @@ const weapons = decodeRegulationData(
     readFileSync(new URL("../../public/regulation-vanilla-v1.17.js", import.meta.url), "utf8"),
   ),
 );
+
+/** A single hit with 100 motion values, i.e. the weapon's plain attack power */
+function plainHit(movesets: Movesets, weapon: Weapon): AttackData {
+  const moveset = movesets[weapon.weaponName];
+  return {
+    steps: [
+      [
+        {
+          motionValue: 100,
+          statusMotionValue: 100,
+          poiseMotionValue: 100,
+          physicalType: allPhysicalTypes[moveset.type] ?? "standard",
+        },
+      ],
+    ],
+    weights: [1],
+    poiseBase: moveset.poise,
+  };
+}
 
 function getWeapon(name: string) {
   const weapon = weapons.find((weapon) => weapon.name === name);
@@ -535,13 +553,13 @@ describe("bows", () => {
 
   it("times a Longbow's shot", () => {
     // Tested in game at 60 fps: a Longbow's shot hits 65 frames after the press at point blank
-    const shot = getAttackData(movesets, getWeapon("Longbow"), baseAttack, true, 0.5)!;
+    const shot = getAttackData(movesets, getWeapon("Longbow"), "Standard Shot", true, 0.5)!;
     expect(Math.round(shot.stepTimes![0].hits[0] * 60)).toBe(65);
     // Its release can be cancelled into the next shot 36 frames in (99 from the press: tested on
     // the Black Bow, which hits 65 frames after the press too)
     expect(Math.round(shot.cycleTimes![0] * 60)).toBe(99);
     // A Shortbow's hits 50 frames after the press, then every 73
-    const short = getAttackData(movesets, getWeapon("Shortbow"), baseAttack, true, 0.5)!;
+    const short = getAttackData(movesets, getWeapon("Shortbow"), "Standard Shot", true, 0.5)!;
     expect(Math.round(short.stepTimes![0].hits[0] * 60)).toBe(50);
     expect(Math.round(short.cycleTimes![0] * 60)).toBe(73);
     // Its jump shot then landing shot: 96% and 100%, a pair every 116 frames, the landing shot 56.5
@@ -559,18 +577,24 @@ describe("bows", () => {
     expect(Math.round(jumpHit * 60)).toBe(33);
     expect(Math.round((landingHit - jumpHit) * 60 * 2) / 2).toBe(56.5);
     // A Greatbow's hits 155 frames after the press, then every 220
-    const great = getAttackData(movesets, getWeapon("Greatbow"), baseAttack, true, 0.5)!;
+    const great = getAttackData(movesets, getWeapon("Greatbow"), "Standard Shot", true, 0.5)!;
     expect(Math.round(great.stepTimes![0].hits[0] * 60)).toBe(155);
     expect(Math.round(great.cycleTimes![0] * 60)).toBe(220);
     // An unloaded Heavy Crossbow's hits 75 frames after the press, then every 110.5
-    const crossbow = getAttackData(movesets, getWeapon("Heavy Crossbow"), baseAttack, true, 0.5)!;
+    const crossbow = getAttackData(
+      movesets,
+      getWeapon("Heavy Crossbow"),
+      "Standard Shot",
+      true,
+      0.5,
+    )!;
     expect(Math.round(crossbow.stepTimes![0].hits[0] * 60)).toBe(75);
     expect(crossbow.cycleTimes![0] * 60).toBeCloseTo(110.5);
     // The Pulley Crossbow's 3 bolts 10 frames apart, the first 78 after the press, then every 118.5
     const pulley = getAttackData(
       movesets,
       withAmmo(getWeapon("Pulley Crossbow"), ammo.find((group) => group.names.includes("Bolt"))!),
-      baseAttack,
+      "Standard Shot",
       true,
       0.5,
     )!;
@@ -581,7 +605,7 @@ describe("bows", () => {
       ["Spread Crossbow", 95, 137.5],
       ["Repeating Crossbow", 74, 111],
     ] as const) {
-      const shot = getAttackData(movesets, getWeapon(name), baseAttack, true, 0.5)!;
+      const shot = getAttackData(movesets, getWeapon(name), "Standard Shot", true, 0.5)!;
       expect(Math.round(shot.stepTimes![0].hits[0] * 60)).toBe(first);
       expect(shot.cycleTimes![0] * 60).toBeCloseTo(cycle);
     }
@@ -593,7 +617,7 @@ describe("bows", () => {
         getWeapon("Jar Cannon"),
         ammo.find((group) => group.names.includes("Ballista Bolt"))!,
       ),
-      baseAttack,
+      "Standard Shot",
       true,
       0.5,
     )!;
@@ -604,7 +628,7 @@ describe("bows", () => {
     const arrowShot = getAttackData(
       movesets,
       withAmmo(getWeapon("Longbow"), ammo.find((group) => group.names.includes("Arrow"))!),
-      baseAttack,
+      "Standard Shot",
       true,
       0.5,
     )!;
@@ -692,7 +716,7 @@ describe("bows", () => {
       getAttackData(
         movesets,
         withAmmo(getWeapon("Longbow"), ammo.find((group) => group.names.includes(arrowName))!),
-        "base",
+        "Standard Shot",
         true,
         0.5,
       )!.poiseBase;
@@ -716,7 +740,7 @@ describe("bows", () => {
       bonusAttributes: noBonus,
       objective: "totalAttack",
       limits: { ...noLimits, maxLevels: 0 },
-      attack: getAttackData(movesets, weapon, "base", true, 0.5),
+      attack: getAttackData(movesets, weapon, "Standard Shot", true, 0.5),
     });
     expect(result.attackSteps![0]).toHaveLength(3);
     expect(result.attackStatus![AttackPowerType.SCARLET_ROT]).toBeCloseTo(144);
@@ -729,7 +753,7 @@ describe("bows", () => {
       getWeapon("Pulley Crossbow"),
       ammo.find((group) => group.names.includes("Bolt"))!,
     );
-    const attack = getAttackData(movesets, weapon, "base", true, 0.5)!;
+    const attack = getAttackData(movesets, weapon, "Standard Shot", true, 0.5)!;
     expect(attack.steps[0].map((hit) => hit.statusMotionValue)).toEqual([100, 100, 100]);
   });
 
@@ -892,23 +916,9 @@ describe("attacks", () => {
     );
   });
 
-  it("uses 100 motion values and the weapon's own physical type for the base attack", () => {
-    expect(getAttackData(movesets, longsword, "base", false, 0.5)).toEqual({
-      steps: [
-        [
-          {
-            motionValue: 100,
-            statusMotionValue: 100,
-            poiseMotionValue: 100,
-            physicalType: "standard",
-          },
-        ],
-      ],
-      weights: [1],
-      poiseBase: 5,
-    });
-    const uchigatana = getAttackData(movesets, getWeapon("Uchigatana"), "base", false, 0.5)!;
-    expect(uchigatana.steps[0][0].physicalType).toBe("slash");
+  it("only shoots with ranged weapons", () => {
+    expect(getAttackData(movesets, longsword, "Standard Shot", false, 0.5)).toBeUndefined();
+    expect(getAttackData(movesets, getWeapon("Longbow"), "Standard Shot", true, 0.5)).toBeDefined();
   });
 
   it("weights status buildup across a chain", () => {
@@ -925,7 +935,7 @@ describe("attacks", () => {
     };
     const base = optimizeBuild({
       ...request,
-      attack: getAttackData(movesets, uchigatana, "base", false, 0.5),
+      attack: plainHit(movesets, uchigatana),
     });
     const bleed = base.statusBuildup[AttackPowerType.BLEED]!;
     expect(base.attackStatus![AttackPowerType.BLEED]).toBeCloseTo(bleed);
@@ -1385,8 +1395,8 @@ describe("attacks", () => {
           ),
           physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
           limits: { ...noLimits, maxLevels: 0 },
-          // (a catalyst's melee R1s are its base attack, its R1 casting)
-          attack: getAttackData(movesets, weapon, baseAttack, twoHanding, 0.5)!,
+          // (a catalyst's melee strikes are its R2, its R1 casting)
+          attack: getAttackData(movesets, weapon, "R2", twoHanding, 0.5)!,
         }).attackSteps![0][0].damage,
       );
     expect(bonk(false)).toBe(30);
@@ -1404,13 +1414,13 @@ describe("attacks", () => {
       bonusAttributes: noBonus,
       objective: "totalAttack",
       limits: { ...noLimits, maxLevels: 0 },
-      attack: getAttackData(movesets, weapon, baseAttack, false, 0.5)!,
+      attack: getAttackData(movesets, weapon, "R2", false, 0.5)!,
     }).breakdown;
     expect(breakdown[0].total).toBeCloseTo(102.9, 0);
     expect(breakdown[0].attributes.int).toBeUndefined();
 
     // The optimizer values Strength and Dexterity for them, not Intelligence
-    const attack = getAttackData(movesets, weapon, baseAttack, false, 0.5)!;
+    const attack = getAttackData(movesets, weapon, "R2", false, 0.5)!;
     for (const defenses of [
       undefined,
       Object.fromEntries(
@@ -12128,7 +12138,8 @@ describe("enemy types", () => {
       physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
       limits: { ...noLimits, maxLevels: 0 },
       // Buffs' damage multipliers only apply to an attack's hits
-      attack: getAttackData(movesets, weapon, "base", false, 0.5),
+      attack:
+        getAttackData(movesets, weapon, "Standard Shot", true, 0.5) ?? plainHit(movesets, weapon),
       enemyTypes,
       buffs,
     }).curve.values[0];

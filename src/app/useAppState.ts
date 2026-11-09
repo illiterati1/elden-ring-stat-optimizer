@@ -259,7 +259,7 @@ const defaultAppState: AppState = {
   enemyRipostes: null,
   enemyTypes: [],
   showFriendlyEnemies: false,
-  attack: "base",
+  attack: "R1",
   ashOfWar: "",
   offhandWeapon: null,
   offhandUpgradeLevel: 25,
@@ -326,7 +326,13 @@ function getInitialAppState(): AppState {
       chainLimit: { ...defaultAppState.chainLimit, ...stored.chainLimit },
       physicalNegation: { ...defaultAppState.physicalNegation, ...stored.physicalNegation },
       // Earlier versions had a custom motion value instead of the base attack
-      attack: stored.attack && stored.attack !== ("custom" as string) ? stored.attack : "base",
+      // (the base attack is gone: its ranged weapons' shot is the Standard Shot, and others' R1)
+      attack:
+        stored.attack &&
+        stored.attack !== ("custom" as string) &&
+        stored.attack !== ("base" as string)
+          ? stored.attack
+          : "R1",
       // Great Arrows and Radahn's Spears were one choice before Radahn's Spears got the Lion
       // Greatbow's bonus
       selectedAmmo: (stored.selectedAmmo ?? defaultAppState.selectedAmmo).flatMap((key) =>
