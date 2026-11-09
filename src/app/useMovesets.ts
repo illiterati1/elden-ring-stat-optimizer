@@ -516,6 +516,15 @@ function getBowShotTimes(weapon: Weapon, count = 1): StepTimes | undefined {
  * press, the landing shot 56.5 after it, and a pair every 116)
  */
 const jumpLandingShotPair = 116 / 60;
+/**
+ * Bows with light bows' moveset, which can do it: light bows, and the Black Bow and Ansbach's
+ * Longbow (bows with light bows' animations, a51; assumed the same timing)
+ */
+const jumpLandingShotWeapons: ReadonlySet<string> = new Set([
+  ...shortbowWeapons,
+  "Black Bow",
+  "Ansbach's Longbow",
+]);
 const jumpShotHit = 33 / 60;
 const landingShotDelay = 56.5 / 60;
 function getJumpLandingShotTimes(): StepTimes {
@@ -562,7 +571,7 @@ export function getAttackData(
       weapon.weaponType === WeaponType.CROSSBOW);
   // A light bow's jump shot and then its landing shot (see getJumpLandingShotTimes)
   const jumpLandingShot =
-    attack === "Jump Shot + Landing Shot" && shortbowWeapons.has(weapon.weaponName);
+    attack === "Jump Shot + Landing Shot" && jumpLandingShotWeapons.has(weapon.weaponName);
   if (attack === "Jump Shot + Landing Shot" && !jumpLandingShot) return undefined;
   if (attack === baseAttack || jumpingShot || jumpLandingShot) {
     // One hit, or one for each bolt of a spread shot

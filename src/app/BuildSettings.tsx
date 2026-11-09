@@ -75,7 +75,8 @@ const attackNotes: Partial<Record<AttackName, string>> = {
   Riposte: "For roughly human-sized enemies",
   "Large Riposte": "Generally for anything larger than a Crucible Knight",
   "Small Riposte": "Generally for Vulgar Militia and some dismounted enemies",
-  "Jump Shot + Landing Shot": "Light bows: a jumping shot, then a shot as soon as it lands",
+  "Jump Shot + Landing Shot":
+    "Light bows (and the Black Bow and Ansbach's Longbow): a jumping shot, then a shot as soon as it lands",
 };
 
 /**

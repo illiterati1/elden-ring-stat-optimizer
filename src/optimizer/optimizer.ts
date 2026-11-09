@@ -62,6 +62,12 @@ export interface OptimizeOptions {
   physicalNegation?: Record<PhysicalType, number>;
 
   /**
+   * True for an attack that can't be done at all without the weapon's requirements (a skill): it
+   * does nothing while any is unmet, rather than having its scaling penalized
+   */
+  needsRequirements?: boolean;
+
+  /**
    * The weapon whose scaling hits' spellBuffAttack uses: the catalyst's spell scaling for one stat,
    * for every damage type (see getSpellBuffWeapon)
    */
@@ -237,6 +243,18 @@ export function evaluateObjective(
 
   const terms = getTermGroups(options)?.[0];
   if (!terms) return undefined;
+  // An attack that needs the requirements does nothing while any is unmet
+  if (
+    options.needsRequirements &&
+    getWeaponAttack({
+      weapon,
+      attributes: getEffectiveAttributes(leveled, bonusAttributes),
+      twoHanding,
+      upgradeLevel,
+    }).ineffectiveAttributes.length
+  ) {
+    return 0;
+  }
   return getTermsDamage(
     terms,
     terms.map((term) => getTermAttackPower(options, term, leveled)),
@@ -608,6 +626,9 @@ interface Model {
 
   /** Bitmask of attributes (by index) whose unmet requirement penalizes each term */
   penaltyMasks: number[];
+
+  /** What a penalized term's attack power is multiplied by (0 for attacks that need requirements) */
+  penaltyMultiplier: number;
 }
 
 function buildModel(options: OptimizeOptions, terms: Term[]): Model {
@@ -634,8 +655,14 @@ function buildModel(options: OptimizeOptions, terms: Term[]): Model {
     min: attributeSet.map((attribute) => attributes[attribute]),
     contributions: [],
     unmet: [],
+    // An attack that needs the requirements does nothing while any is unmet
     penaltyMasks: terms.map(({ damageType, weapon: termWeapon = weapon, noRequirements }) =>
-      noRequirements
+      options.needsRequirements
+        ? attributeSet.reduce(
+            (mask, attribute, i) => (weapon.requirements[attribute] ? mask | (1 << i) : mask),
+            0,
+          )
+        : noRequirements
         ? 0
         : attributeSet.reduce(
             (mask, attribute, i) =>
@@ -643,6 +670,7 @@ function buildModel(options: OptimizeOptions, terms: Term[]): Model {
             0,
           ),
     ),
+    penaltyMultiplier: options.needsRequirements ? 0 : ineffectivePenaltyMultiplier,
   };
 
   model.termDamageOptions = terms.map(({ hits }) =>
@@ -698,7 +726,7 @@ function evaluateModel(model: Model, values: number[]) {
   }
 
   const attackPowers = model.terms.map(({ base }, t) => {
-    if (unmetMask & model.penaltyMasks[t]) return base * ineffectivePenaltyMultiplier;
+    if (unmetMask & model.penaltyMasks[t]) return base * model.penaltyMultiplier;
     let attackPower = base;
     for (let i = 0; i < values.length; i++) {
       attackPower += model.contributions[i][t][values[i]];
@@ -725,7 +753,7 @@ function evaluateModel(model: Model, values: number[]) {
  * @returns the attribute values for each number of levels, indexed by model attribute
  */
 function optimizeLinear(model: Model, maxLevels: number): number[][] {
-  const { attributes, terms, min, unmet, contributions, penaltyMasks } = model;
+  const { attributes, terms, min, unmet, contributions, penaltyMasks, penaltyMultiplier } = model;
   const k = attributes.length;
   // How much each term's attack power is worth without defenses: e.g. its motion values and damage
   // multiplier. With defenses there's only one term, and any positive weight gives the same result.
@@ -760,8 +788,7 @@ function optimizeLinear(model: Model, maxLevels: number): number[][] {
     const assumedUnmet = initiallyUnmet & ~metMask;
     const penalized = terms.map((_, t) => (penaltyMasks[t] & assumedUnmet) !== 0);
     const constant = terms.reduce(
-      (sum, { base }, t) =>
-        sum + slopes[t] * (penalized[t] ? base * ineffectivePenaltyMultiplier : base),
+      (sum, { base }, t) => sum + slopes[t] * (penalized[t] ? base * penaltyMultiplier : base),
       0,
     );
 

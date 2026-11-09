@@ -701,6 +701,31 @@ export function getAshAttack(
   /** For chains, add up the steps rather than taking their weighted average */
   sumChains = false,
 ): AshAttack {
+  const result = getSkillAttack(
+    ashes,
+    movesets,
+    weapon,
+    choice,
+    twoHanding,
+    chainWeight,
+    sumChains,
+  );
+  // A skill can't be used at all without the weapon's requirements
+  return "attack" in result
+    ? { ...result, attack: { ...result.attack, needsRequirements: true } }
+    : result;
+}
+
+/** getAshAttack, without needsRequirements */
+function getSkillAttack(
+  ashes: Ashes,
+  movesets: Movesets,
+  weapon: Weapon,
+  choice: string,
+  twoHanding: boolean,
+  chainWeight: number,
+  sumChains: boolean,
+): AshAttack {
   const [ash, countedFollowUp] = parseAshChoice(choice);
   const info = ashes.weapons[weapon.weaponName];
   if (!info) return { unavailableReason: "No skill data" };

@@ -609,6 +609,10 @@ describe("bows", () => {
       0.5,
     )!;
     expect(arrowShot.stamina).toEqual([13]);
+    // The Black Bow and Ansbach's Longbow (light bows' moveset) can do it too
+    expect(
+      getAttackData(movesets, getWeapon("Black Bow"), "Jump Shot + Landing Shot", true, 0.5),
+    ).toBeDefined();
     // Only light bows
     expect(
       getAttackData(movesets, getWeapon("Longbow"), "Jump Shot + Landing Shot", true, 0.5),
@@ -4829,6 +4833,34 @@ describe("Ashes of War", () => {
     }
     const seal = getAshAttack(ashes, movesets, getWeapon("Finger Seal"), "No Skill", false);
     expect(seal).toEqual({ unavailableReason: "No skill" });
+  });
+
+  it("does nothing with a skill whose weapon's requirements aren't met", () => {
+    // A Longsword needs 10 Strength: a skill can't be used below that (its damage is 0), so the
+    // optimizer levels Strength to meet it first
+    const longsword = getWeapon("Longsword");
+    const claw = getAshAttack(ashes, movesets, longsword, "Lion's Claw", false);
+    if (!("attack" in claw)) throw new Error(claw.unavailableReason);
+    const build = (maxLevels: number) =>
+      optimizeBuild({
+        weapon: longsword,
+        regularUpgradeLevel: 0,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 8, dex: 13, int: 9, fai: 9, arc: 7 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        limits: { ...noLimits, maxLevels },
+        attack: claw.attack,
+      });
+    const unmet = build(0);
+    expect(unmet.skillRequirementsUnmet).toBe(true);
+    expect(unmet.finalValue).toBe(0);
+    const met = build(2);
+    expect(met.skillRequirementsUnmet).toBeUndefined();
+    expect(met.attributes.str).toBeGreaterThanOrEqual(10);
+    expect(met.finalValue).toBeGreaterThan(0);
   });
 
   it("matches shields' own skills in game", () => {

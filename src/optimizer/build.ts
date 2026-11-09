@@ -469,6 +469,11 @@ export interface StepTimes {
 export interface AttackData {
   /** Each step of a chain (one for attacks that aren't chains), each with one or more hits */
   steps: AttackDataHit[][];
+  /**
+   * True for a skill, which can't be used at all without the weapon's requirements (its damage is
+   * 0 while any is unmet)
+   */
+  needsRequirements?: boolean;
   /** True for critical hits (backstabs and ripostes), which some enemies take less damage from */
   critical?: boolean;
   /** How much each step counts towards the objective, adding up to 1 (0 for a skill's follow-ups) */
@@ -606,6 +611,8 @@ export interface BuildResult {
   /** The skill the weapon used, if it can't take the chosen Ash of War's, e.g. Moonveil's */
   fixedSkill?: string;
   /** Which version of its fixed skill, if it has several (each is its own result) */
+  /** True for a skill that can't be used because the weapon's requirements aren't met */
+  skillRequirementsUnmet?: boolean;
   skillVariant?: { label: string; short: string };
   /** Damage of a percentage of the enemy's max HP included in the value, e.g. "Black flame" */
   hpDamage?: { label: string; damage: number };
@@ -1338,6 +1345,7 @@ export function optimizeBuild(
           )
         : undefined,
     physicalNegation,
+    ...(attack?.needsRequirements && objective !== "spellScaling" && { needsRequirements: true }),
     ...(spellBuffWeapon && { spellBuffWeapon }),
     ...(offhandWeapon && { offhandWeapon }),
     // Some enemies take less damage from critical hits (assumed to apply after defenses), and some
@@ -1613,6 +1621,10 @@ export function optimizeBuild(
       ),
     ),
     attackSteps,
+    // A skill whose weapon's requirements aren't met can't be used
+    ...(attack?.needsRequirements &&
+      objective !== "spellScaling" &&
+      ineffectiveAttributes.length > 0 && { skillRequirementsUnmet: true }),
     ...(hpDamage > 0 && {
       hpDamage: {
         label: attack!.steps.flat().find((hit) => hit.hpDamage)!.hpDamage!.label,
@@ -1629,7 +1641,12 @@ export function optimizeBuild(
     skillVariant,
     attackStance: resultAttack ? getAttackStance(resultAttack) : undefined,
     attackStamina: attack ? getAttackStamina(attack) : undefined,
-    attackDps: resultAttack && attackSteps ? getAttackDps(resultAttack, attackSteps) : undefined,
+    attackDps:
+      attack?.needsRequirements && objective !== "spellScaling" && ineffectiveAttributes.length > 0
+        ? 0
+        : resultAttack && attackSteps
+        ? getAttackDps(resultAttack, attackSteps)
+        : undefined,
     attackPoisePerSecond: resultAttack ? getAttackPoisePerSecond(resultAttack) : undefined,
     attackStaminaPerSecond: resultAttack ? getAttackStaminaPerSecond(resultAttack) : undefined,
     attackStepTimes: resultAttack?.stepTimes,

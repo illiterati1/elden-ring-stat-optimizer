@@ -596,69 +596,78 @@ function ResultsTable({
                       result.ineffectiveAttributes.length > 0 ? { color: "error.main" } : undefined
                     }
                   >
-                    {!result.exact && (
-                      <Tooltip title="This weapon scales with many stats, so a faster approximate search was used. The result may be slightly below optimal.">
-                        <span>≈</span>
-                      </Tooltip>
-                    )}
-                    <Tooltip
-                      componentsProps={{ tooltip: { sx: { maxWidth: "none", p: 1 } } }}
-                      title={
-                        result.breakdown.length > 0 && (
-                          <>
-                            {result.hpDamage && (
-                              <Box sx={{ maxWidth: 360, mb: 1 }}>
-                                Includes {formatValue(result.hpDamage.damage)}{" "}
-                                {result.hpDamage.label.toLowerCase()} damage, a percentage of the
-                                enemy&apos;s max HP, which stats don&apos;t change.
-                              </Box>
-                            )}
-                            {result.uncountedHpDamage && (
-                              <Box sx={{ maxWidth: 360, mb: 1 }}>
-                                {result.uncountedHpDamage.label} isn&apos;t counted: it does{" "}
-                                {result.uncountedHpDamage.rate * 100}% of the enemy&apos;s max HP
-                                {result.uncountedHpDamage.flat
-                                  ? ` plus ${result.uncountedHpDamage.flat}`
-                                  : ""}{" "}
-                                {result.uncountedHpDamage.ticks} times after each hit. Enter the
-                                enemy&apos;s HP in the enemy defenses, or pick an enemy, to include
-                                it.
-                              </Box>
-                            )}
-                            <BreakdownTable rows={result.breakdown} pointLabel={pointLabel} />
-                            {result.menuAttackPower && (
-                              <Box sx={{ maxWidth: 360, mt: 1 }}>
-                                This is the attack power the game&apos;s menu shows, which uses the
-                                catalyst&apos;s own scaling, but its melee attacks scale like
-                                regular weapons (Strength and Dexterity), so it&apos;s misleading.
-                                Choose the R1 chain attack to see its actual melee damage.
-                              </Box>
-                            )}
-                          </>
-                        )
-                      }
-                    >
-                      <Box component="span" sx={tooltipCueSx}>
-                        {showDps
-                          ? result.attackDps != null
-                            ? formatValue(result.attackDps)
-                            : "–"
-                          : formatValue(result.finalValue)}
-                      </Box>
-                    </Tooltip>
-                    {(result.buffNote || result.uncountedHpDamage || result.attackNote) && (
-                      <Tooltip
-                        title={[
-                          result.attackNote,
-                          result.buffNote,
-                          result.uncountedHpDamage &&
-                            `${result.uncountedHpDamage.label} isn't counted, since the enemy's HP isn't known: enter it in the enemy defenses, or pick an enemy`,
-                        ]
-                          .filter(Boolean)
-                          .join(". ")}
-                      >
-                        <span>*</span>
-                      </Tooltip>
+                    {result.skillRequirementsUnmet ? (
+                      // A skill can't be used without the weapon's requirements
+                      "Skill requirements not met"
+                    ) : (
+                      <>
+                        {!result.exact && (
+                          <Tooltip title="This weapon scales with many stats, so a faster approximate search was used. The result may be slightly below optimal.">
+                            <span>≈</span>
+                          </Tooltip>
+                        )}
+                        <Tooltip
+                          componentsProps={{ tooltip: { sx: { maxWidth: "none", p: 1 } } }}
+                          title={
+                            result.breakdown.length > 0 && (
+                              <>
+                                {result.hpDamage && (
+                                  <Box sx={{ maxWidth: 360, mb: 1 }}>
+                                    Includes {formatValue(result.hpDamage.damage)}{" "}
+                                    {result.hpDamage.label.toLowerCase()} damage, a percentage of
+                                    the enemy&apos;s max HP, which stats don&apos;t change.
+                                  </Box>
+                                )}
+                                {result.uncountedHpDamage && (
+                                  <Box sx={{ maxWidth: 360, mb: 1 }}>
+                                    {result.uncountedHpDamage.label} isn&apos;t counted: it does{" "}
+                                    {result.uncountedHpDamage.rate * 100}% of the enemy&apos;s max
+                                    HP
+                                    {result.uncountedHpDamage.flat
+                                      ? ` plus ${result.uncountedHpDamage.flat}`
+                                      : ""}{" "}
+                                    {result.uncountedHpDamage.ticks} times after each hit. Enter the
+                                    enemy&apos;s HP in the enemy defenses, or pick an enemy, to
+                                    include it.
+                                  </Box>
+                                )}
+                                <BreakdownTable rows={result.breakdown} pointLabel={pointLabel} />
+                                {result.menuAttackPower && (
+                                  <Box sx={{ maxWidth: 360, mt: 1 }}>
+                                    This is the attack power the game&apos;s menu shows, which uses
+                                    the catalyst&apos;s own scaling, but its melee attacks scale
+                                    like regular weapons (Strength and Dexterity), so it&apos;s
+                                    misleading. Choose the R1 chain attack to see its actual melee
+                                    damage.
+                                  </Box>
+                                )}
+                              </>
+                            )
+                          }
+                        >
+                          <Box component="span" sx={tooltipCueSx}>
+                            {showDps
+                              ? result.attackDps != null
+                                ? formatValue(result.attackDps)
+                                : "–"
+                              : formatValue(result.finalValue)}
+                          </Box>
+                        </Tooltip>
+                        {(result.buffNote || result.uncountedHpDamage || result.attackNote) && (
+                          <Tooltip
+                            title={[
+                              result.attackNote,
+                              result.buffNote,
+                              result.uncountedHpDamage &&
+                                `${result.uncountedHpDamage.label} isn't counted, since the enemy's HP isn't known: enter it in the enemy defenses, or pick an enemy`,
+                            ]
+                              .filter(Boolean)
+                              .join(". ")}
+                          >
+                            <span>*</span>
+                          </Tooltip>
+                        )}
+                      </>
                     )}
                   </TableCell>
                   {showHits && (
