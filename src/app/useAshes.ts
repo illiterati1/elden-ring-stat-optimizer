@@ -146,15 +146,25 @@ function getSkillStepTimes(
       (timing.hitTimes ?? (timing.hits.length === partHits.length ? timing.hits : undefined));
     const counted = partHits?.flatMap((hit, j) => (hit[4]?.uncounted ? [] : [j])) ?? [];
     if (timing.loop != null) {
-      return { lead: 0, hits: timing.hits, cycle: timing.loop };
+      return {
+        lead: 0,
+        hits: timing.hits,
+        cycle: timing.loop,
+        ...(timing.opening != null && { opening: timing.opening }),
+      };
     }
     // An uncharged version starts once it's released, or else a step starts a frame after its press
     const lead = timing.start ?? stepStartDelay;
     const last = i === parts.length - 1;
     const nextButton = last ? "L2" : button;
     const buttonTime = nextButton ? timing[nextButton] : undefined;
+    // A skill again (L2) waits for its own cancel, even if any attack can start sooner (tested in
+    // game: the One-Eyed Shield's Flame Spit, used again 278 frames after its last, at its L2 cancel
+    // rather than its any attack cancel 10 frames earlier); an R1 or R2 follow-up can start at
+    // either
     const next =
-      buttonTime != null && (timing.anyAttack == null || buttonTime <= timing.anyAttack)
+      buttonTime != null &&
+      (nextButton === "L2" || timing.anyAttack == null || buttonTime <= timing.anyAttack)
         ? { attack: nextButton!, time: lead + buttonTime }
         : timing.anyAttack != null
         ? { attack: "any attack" as const, time: lead + timing.anyAttack }
@@ -403,10 +413,11 @@ function doesDamage(ashes: Ashes, skill: string) {
     ...Object.values(skillData?.classes ?? {}),
     ...Object.values(skillData?.unique ?? {}),
   ];
+  // (or poise damage: e.g. the Verdigris Greatshield's Moore's Charge only does poise damage)
   return versions.some((hits) =>
     [...(hits?.main ?? []), ...(hits?.followUps.flatMap((followUp) => followUp.hits) ?? [])].some(
-      ([motionValue, , , , details]) =>
-        [motionValue, details?.flat, details?.buff]
+      ([motionValue, , poiseMotionValue, , details]) =>
+        [motionValue, details?.flat, details?.buff, poiseMotionValue, details?.poise]
           .flat()
           .some((value) => value != null && value > 0),
     ),
@@ -511,6 +522,13 @@ function getBuiltInSkills(ashes: Ashes) {
  * Skills always followed up, so the picker only offers them with each follow-up (e.g. Spinning
  * Strikes with its R1 or R2), not on their own
  */
+/**
+ * Skills whose follow-up is its own way of using it, not something done after it: each is offered
+ * alone (e.g. the Shield of Night's Revenge of the Night, or its guard counter's bigger hit alone:
+ * tested in game, the counter doesn't also do the skill's own hit)
+ */
+const separateFollowUpSkills: ReadonlySet<string> = new Set(["Revenge of the Night"]);
+
 const followUpOnlySkills: ReadonlySet<string> = new Set([
   "Ghostflame Call",
   "Ghostflame Ignition",
@@ -583,6 +601,15 @@ function getSkillChoices(
       ...followUps.map((followUp) => ({
         value: withFollowUp(name, followUp),
         label: `${name} (${followUp} follow-up)`,
+      })),
+    ];
+  }
+  if (separateFollowUpSkills.has(name)) {
+    return [
+      ...(builtIn ? [] : [{ value: name, label: name }]),
+      ...followUps.map((followUp) => ({
+        value: withFollowUp(name, followUp),
+        label: `${name} ${followUp}`,
       })),
     ];
   }
@@ -907,7 +934,7 @@ export function getAshAttack(
     };
   }
   // A loop's follow-up is on its own: how many passes come before it is up to the player
-  if (followUp && isLoopSkill(ashes, skill)) {
+  if (followUp && (isLoopSkill(ashes, skill) || separateFollowUpSkills.has(skill))) {
     return {
       skill,
       attack: {

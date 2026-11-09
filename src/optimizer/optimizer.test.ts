@@ -4831,6 +4831,132 @@ describe("Ashes of War", () => {
     expect(seal).toEqual({ unavailableReason: "No skill" });
   });
 
+  it("matches shields' own skills in game", () => {
+    // Tested in game with 99 in every stat on the training dummy
+    const skillHits = (weaponName: string, skill: string) => {
+      const weapon = getWeapon(weaponName);
+      const result = getAshAttack(ashes, movesets, weapon, skill, false);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+      })
+        .attackSteps!.flat()
+        .map((hit) => [Math.floor(hit.damage), hit.stance, hit.status]);
+    };
+    // The Smithscript Shield's Discus Hurl (+25): 263 and 627, 5 poise each
+    expect(skillHits("Smithscript Shield", "Discus Hurl")).toEqual([
+      [263, 5, {}],
+      [627, 5, {}],
+    ]);
+    // The Coil Shield's Viper Bite (+10): 638, 11 poise, and 322 poison
+    expect(skillHits("Coil Shield", "Viper Bite")).toEqual([
+      [638, 11, { [AttackPowerType.POISON]: 322 }],
+    ]);
+    // The Visage Shield's Tongues of Fire (+10): 501 and 13 poise each breath
+    expect(skillHits("Visage Shield", "Tongues of Fire")).toEqual([[501, 13, {}]]);
+    // The Visage Shield's Tongues of Fire, held: a breath every 60.75 frames (measured; its first 87
+    // after L2), each pass of its loop starting with one
+    const tongues = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Visage Shield"),
+      "Tongues of Fire",
+      false,
+    );
+    if (!("attack" in tongues)) throw new Error(tongues.unavailableReason);
+    expect(tongues.attack.stepTimes![0].hits).toEqual([0]);
+    expect(tongues.attack.cycleTimes![0] * 60).toBeCloseTo(60.75, 0);
+    // The Shield of Night's Revenge of the Night, and its guard counter on its own, which only does
+    // its bigger hit (tested in game: damage and poise right)
+    const night = getAshAttacks(ashes, movesets, getWeapon("Shield of Night"), "", false);
+    expect(
+      night.map(({ ash, variant }) => [
+        variant?.label,
+        "attack" in ash ? ash.attack.steps.flat().map((hit) => hit.flatPoise) : [],
+      ]),
+    ).toEqual([
+      ["Revenge of the Night", [3]],
+      ["Revenge of the Night Guard Counter", [15]],
+    ]);
+    // The Erdtree Greatshield's Golden Retaliation (+10) on Rennala's second phase (109.3 defense,
+    // 40% holy negation): its projectile's 831; its explosion is shown, not counted
+    const retaliationWeapon = getWeapon("Erdtree Greatshield");
+    const retaliation = getAshAttack(
+      ashes,
+      movesets,
+      retaliationWeapon,
+      "Golden Retaliation",
+      false,
+    );
+    if (!("attack" in retaliation)) throw new Error(retaliation.unavailableReason);
+    const retaliationHits = optimizeBuild({
+      weapon: retaliationWeapon,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [
+          damageType,
+          { defense: 109.3, negation: damageType === AttackPowerType.HOLY ? 40 : 0 },
+        ]),
+      ),
+      physicalNegation: { standard: -10, slash: 0, strike: -10, pierce: -10 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: retaliation.attack,
+    }).attackSteps!.flat();
+    expect(
+      retaliationHits.map((hit) => [Math.floor(hit.damage), hit.kind, !!hit.notCounted]),
+    ).toEqual([
+      [831, "Projectile", false],
+      [498, "Explosion", true],
+    ]);
+    // The Verdigris Greatshield's Moore's Charge only does poise damage: 30 charged
+    const moore = getAshAttack(ashes, movesets, getWeapon("Verdigris Greatshield"), "", false);
+    if (!("attack" in moore)) throw new Error(moore.unavailableReason);
+    expect(
+      moore.attack.steps
+        .flat()
+        .reduce((total, hit) => total + (moore.attack.poiseBase * hit.poiseMotionValue) / 100, 0),
+    ).toBeCloseTo(30);
+    expect(skillHits("Verdigris Greatshield", "Moore's Charge").map(([damage]) => damage)).toEqual(
+      Array(6).fill(0),
+    );
+    // Its hits from its animation, matched by their poise: 72 to 152 frames after L2 (71 to 151 in
+    // game), used again every 198 (as in game)
+    expect(moore.attack.stepTimes![0].hits.map((time) => Math.round(time * 60))).toEqual([
+      72, 86, 100, 114, 150, 152,
+    ]);
+    expect(Math.round(moore.attack.cycleTimes![0] * 60)).toBe(198);
+    // The Madding Hand's Madding Spear-Hand Strike (+10): 730 and 15 poise (its 305 madness untested)
+    expect(
+      skillHits("Madding Hand", "Madding Spear-Hand Strike").map(([damage, poise]) => [
+        damage,
+        poise,
+      ]),
+    ).toEqual([[730, 15]]);
+    // The Golden Lion Shield's Roaring Bash (+10): 467, its first strike alone
+    expect(skillHits("Golden Lion Shield", "Roaring Bash").map(([damage]) => damage)).toEqual([
+      467,
+    ]);
+  });
+
   it("has bows' skills, firing their ammunition", () => {
     const steps = (weaponName: string, choice: string) => {
       const result = getAshAttack(ashes, movesets, getWeapon(weaponName), choice, false);
@@ -4913,6 +5039,33 @@ describe("Ashes of War", () => {
       return result.attack.steps[0][0].statusMotionValue;
     };
     expect([rancor("Bloodbone Arrow"), rancor("Arrow")]).toEqual([45, 75]);
+    // Through and Through on the Golem Greatbow +10 with Great Arrows: 1091 (tested in game)
+    const golemBow = withAmmo(
+      getWeapon("Golem Greatbow"),
+      ammo.find((group) => group.names.includes("Great Arrow"))!,
+    );
+    const through = getAshAttack(ashes, movesets, golemBow, "Through and Through", false);
+    if (!("attack" in through)) throw new Error(through.unavailableReason);
+    expect(
+      Math.floor(
+        optimizeBuild({
+          weapon: golemBow,
+          regularUpgradeLevel: 25,
+          twoHanding: true,
+          startLevel: 9,
+          currentLevel: 9,
+          attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+          bonusAttributes: noBonus,
+          objective: "totalAttack",
+          defenses: Object.fromEntries(
+            allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+          ),
+          physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+          limits: { ...noLimits, maxLevels: 0 },
+          attack: through.attack,
+        }).attackSteps![0][0].damage,
+      ),
+    ).toBe(1091);
     // Enchanted Shot on the Albinauric Bow +25 with Bloodbone Arrows does 418 and 82 blood loss
     // (tested in game, 99 in every stat)
     const albinauric = withAmmo(
@@ -4967,6 +5120,20 @@ describe("Ashes of War", () => {
         .flat()
         .map((hit) => hit.motionValue),
     ).toEqual([80]);
+    // The One-Eyed Shield's Flame Spit: raising the shield, then spitting, its hit 122 frames after
+    // the press and the next 278 after it (measured in game)
+    const spit = getAshAttack(ashes, movesets, getWeapon("One-Eyed Shield"), "Flame Spit", false);
+    if (!("attack" in spit)) throw new Error(spit.unavailableReason);
+    expect(spit.attack.steps[0]).toHaveLength(1);
+    expect(Math.round(spit.attack.stepTimes![0].hits[0] * 60)).toBe(122);
+    expect(Math.round(spit.attack.cycleTimes![0] * 60)).toBe(278);
+    // The Golden Lion Shield's Roaring Bash hits once, 150% (tested in game at +10 with 99 in every
+    // stat: 467)
+    expect(
+      steps("Golden Lion Shield", "Roaring Bash")
+        .flat()
+        .map((hit) => hit.motionValue),
+    ).toEqual([150]);
     // Fan Shot fires 8 arrows, 2 of which can hit one target
     expect(steps("Ansbach's Longbow", "Fan Shot").flat()).toHaveLength(2);
   });

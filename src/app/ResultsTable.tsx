@@ -103,9 +103,11 @@ function AttackHits({
   timings: TooltipTimings;
   label: string;
 }) {
-  // When each step starts, from the start of the chain (as far as the steps' lengths are known)
+  // When each step starts, from the start of the chain (as far as the steps' lengths are known),
+  // or for a loop, from the press (after its opening)
+  const opening = stepTimes?.[0]?.opening;
   const stepStarts: (number | undefined)[] = [];
-  let elapsed: number | undefined = 0;
+  let elapsed: number | undefined = opening ?? 0;
   for (const times of stepTimes ?? []) {
     stepStarts.push(elapsed);
     elapsed = elapsed != null && times.cycle != null ? elapsed + times.cycle : undefined;
@@ -243,6 +245,13 @@ function AttackHits({
             </TableRow>
           </TableHead>
           <TableBody>
+            {opening != null && (showHitTimes || showNextChain) && (
+              <TableRow>
+                <TableCell sx={cellSx} colSpan={99}>
+                  Loop starts at {formatSeconds(opening)}
+                </TableCell>
+              </TableRow>
+            )}
             {rows.map(({ label, hit, hitAt, approximate, next, roll, block }) => (
               <TableRow key={label}>
                 <TableCell sx={cellSx}>{label}</TableCell>
@@ -298,6 +307,8 @@ function AttackHits({
                 <TableCell sx={cellSx} colSpan={99}>
                   {repeatFrom
                     ? `Back to step ${repeatFrom + 1} at ${formatSeconds(chainTime!)}`
+                    : opening != null
+                    ? `Next pass at ${formatSeconds(chainTime!)}`
                     : `Next chain at ${formatSeconds(chainTime!)}`}
                 </TableCell>
               </TableRow>

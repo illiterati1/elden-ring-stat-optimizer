@@ -439,6 +439,11 @@ export interface StepTimes {
   lead: number;
   hits: number[];
   /**
+   * For a loop (its hits and cycle being one pass of it), when it starts after the press, e.g. Wild
+   * Strikes' opening swing's
+   */
+  opening?: number;
+  /**
    * Each of the step's hits' own time, where known separately from its animation's hits (e.g. a
    * projectile's repeated hits), and which are approximate
    */

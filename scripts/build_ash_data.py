@@ -355,6 +355,8 @@ ROW_KINDS = {
     "301217905": "Explosion",
     "301217910": "Projectile",
     "700000421": "Ground Fire",
+    "303208905": "Projectile",
+    "303208906": "Explosion",
     "30000835": "Ground Fire",
     "30000836": "Ground Fire",
     "301302900": "Large Skull",
@@ -368,7 +370,17 @@ ROW_KINDS = {
 # ground fire only burns where the stream hits the ground (tested in game at +25 with 99 in every
 # stat: its other numbers right), and so does the Steel-Wire Torch's Firebreather's (tested in game),
 # and St. Trina's Torch's Fires of Slumber's (its sleep)
-NOT_COUNTED_ROWS = {"700000421", "302003902", "302003906", "300000591", "302404901"}
+NOT_COUNTED_ROWS = {
+    "700000421",
+    "302003902",
+    "302003906",
+    "300000591",
+    "302404901",
+    # The Erdtree Greatshield's Golden Retaliation's explosion (Bullet 2843, spawned where its
+    # projectile hits, growing to 1 m in 0.2s) doesn't hit the target its projectile did (tested in
+    # game on Rennala's second phase: 831, the projectile's alone)
+    "303208906",
+}
 
 # Hits left out of the hits and total but whose damage is shown in the skill's note, by AtkId: the
 # Greatsword of Radahn (Lord)'s Promised Consort's small light projectiles (tested in game on the
@@ -559,6 +571,14 @@ POISE_ONLY_ROWS = {
     # St. Trina's Torch's Fires of Slumber, which only builds up sleep
     "302404900",
     "302404901",
+    # The Verdigris Greatshield's Moore's Charge, which only does poise (and stamina) damage: 30
+    # charged (tested in game), its 4 charging hits' 75% of the shield's 6, its last 125%, and its
+    # shockwave 75%
+    "700000190",
+    "700000191",
+    "700000192",
+    "700000193",
+    "700000198",
 }
 ROW_REPEATS = {
     # Surge of Faith's rows no animation uses (901, 902, 925), its lacking FP version's (920-922,
@@ -599,6 +619,11 @@ ROW_REPEATS = {
     **{f"3021129{row}": 0 for row in range(10, 15)},
     "302112901": 0,
     "302112904": 0,
+    # The Golden Lion Shield's Roaring Bash: its "(Left)" rows are its left handed version, the same,
+    # and its [2] doesn't hit (tested in game at +10 with 99 in every stat: 467, its [1] alone)
+    "700000352": 0,
+    "700000355": 0,
+    "700000357": 0,
     # St. Trina's Torch's Fires of Slumber's fire hits a target again every 0.4s (Bullet 2825's
     # dmgHitRecordLifeTime), 2.5 times as often as Firebreather's (1s), counted once on the same
     # stream: counted twice (seen in game: its numbers right, hitting more often than the others)
@@ -630,6 +655,9 @@ ROW_REPEATS = {
     # Siluria's Tree's charged Siluria's Woe hits with its bullet close or ranged, not both
     # (301702910 left out; tested in game at +25 with 99 in every stat: one 2225)
     "301702910": 0,
+    # The One-Eyed Shield's Flame Spit hits with its bullet or its AoE, not both (the same damage and
+    # poise, tested in game; 303215901 left out)
+    "303215901": 0,
     # The Serpent-Hunter's Great-Serpent Hunt only hits with its two thrusts (301703950, 951); its "?"
     # rows don't (tested in game at +25 with 99 in every stat: 2075, then 2195)
     **{f"3017039{row}": 0 for row in ["00", "01", "05", "55", "75"]},
@@ -1262,7 +1290,20 @@ READY_TIMES = {"Repeating Fire": 80 / 60}
 # Cancels measured in game where the animations' disagree (by skill and part, from the animation's
 # start): Repeating Fire can be used again 261 frames after the last (its first bolts at 361 and 622),
 # 181 into its fire animation after its 80 readying, not the 198 its TAE's L2 cancel says
-CANCEL_FITS = {("Repeating Fire", ""): {"L2": 181 / 60}}
+# The One-Eyed Shield's Flame Spit can be used again at its spit's L2 flags (164 frames in, after
+# 112 of raising the shield: the next hit 278 frames after the last), not 4 frames earlier as its
+# early jump table window (131175 and 131176) would have it; Sword Dance's on a Claymore did start
+# that early (tested in game), so which do isn't known
+CANCEL_FITS = {
+    ("Repeating Fire", ""): {"L2": 181 / 60},
+    ("Flame Spit", ""): {"L2": (112 + 164) / 60},
+}
+# Held skills timed as loops, measured in game at 60 fps (by skill and part): when each pass's hits
+# land in it ("hits"), how long each pass takes ("loop"), and how long until the first ("opening"),
+# like Wild Strikes' loop. The Visage Shield's Tongues of Fire breathes
+# fire while L2 is held (its start, 40000, then its loop, 40003): hits at 405, 466, 527, 587, and
+# 648 from an L2 at 318 (its release's roll cancel 73 frames after letting go)
+LOOP_FITS = {("Tongues of Fire", ""): {"hits": [0], "loop": 60.75 / 60, "opening": 87 / 60}}
 # Skills not timed until they're measured
 UNTIMED_SKILLS = set()
 # Skills whose main attack is several animations in a row, each from when it starts after the
@@ -1272,6 +1313,10 @@ UNTIMED_SKILLS = set()
 # the start (with the step's 2 frames' delay). Held, the finish starts 3 frames after the release
 ANIMATION_SEQUENCES = {
     "Prelate's Charge": [(40000, 0), (40004, 109 / 60)],
+    # The One-Eyed Shield's Flame Spit: raising the shield (40000), then spitting (40004) 112 frames
+    # in (measured in game: tapped, its hit 122 frames after the press, the next 278 after it, the
+    # spit's L2 cancel 164 frames in)
+    "Flame Spit": [(40000, 0), (40004, 112 / 60)],
 }
 # Projectile hits' times measured in game, where the animations only say when the projectile is
 # created (by skill and part, each hit's from the animation's start, or None to use the animation's):
@@ -1327,8 +1372,9 @@ def get_window_attacks(behaviors, bullets, attacks, variation, judge):
     return [atk for atk, _ in get_window_hits(behaviors, bullets, attacks, variation, judge)]
 
 
-def get_window_hits(behaviors, bullets, attacks, variation, judge):
+def get_window_hits(behaviors, bullets, attacks, variation, judge, poise_only=False):
     """
+    @param poise_only also return rows that only do poise damage
     @returns get_window_attacks's rows, each with the BulletParam row it's a projectile's (or None)
     """
     behavior = get_window_behavior(behaviors, variation, judge)
@@ -1351,7 +1397,11 @@ def get_window_hits(behaviors, bullets, attacks, variation, judge):
         (attacks[atk_id], bullet)
         for atk_id, bullet in atk_ids
         if atk_id in attacks
-        and (any(get_motion_values(attacks[atk_id])) or any(float(attacks[atk_id][field]) for field in FLAT_ATTACK_FIELDS))
+        and (
+            any(get_motion_values(attacks[atk_id]))
+            or any(float(attacks[atk_id][field]) for field in FLAT_ATTACK_FIELDS)
+            or (poise_only and float(attacks[atk_id]["atkSuperArmorCorrection"]))
+        )
     ]
 
 
@@ -1454,6 +1504,7 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
     # projectile (BulletParam row, or None)
     animation_hits = {}
     window_hits = {}
+    poise_hits = {}
     for anim_id in file[0]:
         if not SKILL_ANIMATIONS[0] <= anim_id < SKILL_ANIMATIONS[1] or anim_id % 10 >= LACKING_FP_ANIMATION:
             continue
@@ -1471,6 +1522,17 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
                 starts.append(start)
         animation_hits[anim_id] = (signatures, sorted(starts))
         window_hits[anim_id] = sorted(own_hits, key=lambda hit: hit[0])
+        # Its poise-only hits (poise motion values, and when they start), to match skills that only
+        # do poise damage by (e.g. Moore's Charge)
+        poise_hits[anim_id] = sorted(
+            (start, round(float(atk["atkSuperArmorCorrection"])), bullet)
+            for start, _, judge, *_ in animations.get_windows(number, anim_id) or []
+            for atk, bullet in get_window_hits(
+                behaviors, bullets, steps.game.attacks, variation, judge, poise_only=True
+            )
+            if not any(get_motion_values(atk))
+            and not any(float(atk[field]) for field in FLAT_ATTACK_FIELDS)
+        )
 
     def range_of(anim_id):
         return anim_id // 100 * 100 - SKILL_ANIMATIONS[0]
@@ -1484,20 +1546,46 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
             for hit in part_hits
         )
         wanted.pop(hit_signature([0], [0] * 5), None)
+        # A part that only does poise damage is matched by its poise instead (e.g. Moore's Charge:
+        # tested in game, its hits 71, 85, 99, 113, 149, and 151 frames after L2, a frame before its
+        # animation's, and used again every 198, as its L2 cancel says)
+        poise_only = not wanted
+        if poise_only:
+            wanted = Counter(round(hit[2]) for hit in part_hits if hit[2])
+
+        def signatures_of(anim_id):
+            if poise_only:
+                return [poise for _, poise, _ in poise_hits[anim_id]]
+            return animation_hits[anim_id][0]
+
+        def windows_of(anim_id):
+            return poise_hits[anim_id] if poise_only else window_hits[anim_id]
+
+        def starts_of(anim_id):
+            if poise_only:
+                return sorted({start for start, _, _ in poise_hits[anim_id]})
+            return animation_hits[anim_id][1]
+
         best = None
         # (or else any, for a bow's skill: the Lion Greatbow's Radahn's Rain is only in 44560)
         bow_skill = variation in BOW_AMMO_VARIATIONS.values()
         for wanted_range in dict.fromkeys([skill_range, 0, *([None] if bow_skill else [])]):
-            for anim_id, (signatures, _) in sorted(animation_hits.items()):
+            for anim_id in sorted(animation_hits):
                 if wanted_range is not None and range_of(anim_id) != wanted_range:
                     continue
-                score = sum((Counter(signatures) & wanted).values())
+                score = sum((Counter(signatures_of(anim_id)) & wanted).values())
                 if score and (best is None or score > best[0]):
                     best = (score, anim_id)
             if best:
                 break
         if not best:
-            return None
+            # Measured instead, where its hits can't be matched to its animations (LOOP_FITS)
+            fit = LOOP_FITS.get((name, label))
+            return fit and {
+                "hits": [round(time, 3) for time in fit["hits"]],
+                "loop": round(fit["loop"], 3),
+                **({"opening": round(fit["opening"], 3)} if "opening" in fit else {}),
+            }
         anim_id = best[1]
         # Its animations, each with when it starts (ANIMATION_SEQUENCES), the last one's cancels
         # counting
@@ -1510,11 +1598,11 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         def real(time):
             return round(animations.to_real_time(number, anim_id, time) + offset, 3)
 
-        starts = animation_hits[anim_id][1]
+        starts = starts_of(anim_id)
         all_hits = [
             (round(animations.to_real_time(number, segment, start) + segment_start, 3), signature, bullet)
             for segment, segment_start in segments
-            for start, signature, bullet in window_hits[segment]
+            for start, signature, bullet in windows_of(segment)
         ]
         all_hits.sort(key=lambda hit: hit[0])
         timing = {
@@ -1522,7 +1610,7 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
                 {
                     round(animations.to_real_time(number, segment, start) + segment_start, 3)
                     for segment, segment_start in segments
-                    for start in animation_hits[segment][1]
+                    for start in starts_of(segment)
                 }
             )
         }
@@ -1536,9 +1624,13 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         last = {}
         fits = HIT_TIME_FITS.get((name, label), [])
         for i, hit in enumerate(part_hits):
-            signature = hit_signature(
-                hit[0] if isinstance(hit[0], list) else [hit[0]],
-                (hit[4].get("flat") if len(hit) > 4 else None) or [0] * 5,
+            signature = (
+                round(hit[2])
+                if poise_only
+                else hit_signature(
+                    hit[0] if isinstance(hit[0], list) else [hit[0]],
+                    (hit[4].get("flat") if len(hit) > 4 else None) or [0] * 5,
+                )
             )
             index = next(
                 (
@@ -1609,6 +1701,14 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
                 timing[cancel] = real(cancels[cancel])
         for cancel, time in CANCEL_FITS.get((name, label), {}).items():
             timing[cancel] = round(time, 3)
+        if (name, label) in LOOP_FITS:
+            fit = LOOP_FITS[(name, label)]
+            return {
+                "hits": [round(time, 3) for time in fit["hits"]],
+                "loop": round(fit["loop"], 3),
+                **({"opening": round(fit["opening"], 3)} if "opening" in fit else {}),
+                **({"stamina": timing["stamina"]} if "stamina" in timing else {}),
+            }
         if any(len(hit) > 4 and hit[4].get("kind") == "Loop" for hit in part_hits) and len(starts) > 1:
             # Evenly spaced hits, looping: each pass is as many of their gaps as hits
             gaps = (real(starts[-1]) - real(starts[0])) / (len(starts) - 1)  # (one animation)
