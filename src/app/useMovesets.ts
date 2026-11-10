@@ -148,13 +148,24 @@ function getStepTimes(
       step.anyAttack < ownCancel
         ? undefined
         : ownCancel;
-    const repeat = own ?? step.anyAttack ?? step.end;
+    // Without an any attack cancel, an attack that isn't repeated with its own button goes on at
+    // its R1 or R2 cancel, whichever's first (e.g. the Greatsword's rolling R1 and guard counter,
+    // which only have those); a chain waits for its own (or the animation's end: the Backhand
+    // Blade's R2 2 can go on to an R1 sooner, but not an R2)
+    const rightHand =
+      step.anyAttack ??
+      (button
+        ? undefined
+        : ([step.cancels?.R1, step.cancels?.R2]
+            .filter((time) => time != null)
+            .sort((a, b) => a! - b!)[0] as number | undefined));
+    const repeat = own ?? rightHand ?? step.end;
     // (a powerstance L1 chain goes on at its L1 cancel: the R1/R2 cancel is the right hand's)
     const next =
       own != null && (button === "L1" || step.anyAttack == null || own <= step.anyAttack)
         ? { attack: button!, time: lead + own }
-        : step.anyAttack != null
-        ? { attack: "R1/R2" as const, time: lead + step.anyAttack }
+        : rightHand != null
+        ? { attack: "R1/R2" as const, time: lead + rightHand }
         : undefined;
     return {
       lead,
@@ -561,12 +572,13 @@ export function getAttackData(
 ): AttackData | undefined {
   const moveset = movesets[weapon.weaponName];
   if (!moveset) return undefined;
-  // A catalyst's R1 casts its spell, so its melee strikes (its moveset's R1 chain) are its R2
+  // A catalyst's R1 casts its spell, so its melee strikes (its moveset's R1 chain) are its R2, and
+  // its jumping R1 is a jumping cast (its moveset has no jumping R1 animation)
   if (
     weapon.weaponType === WeaponType.GLINTSTONE_STAFF ||
     weapon.weaponType === WeaponType.SACRED_SEAL
   ) {
-    if (attack === "R1") return undefined;
+    if (attack === "R1" || attack === "Jumping R1") return undefined;
     if (attack === "R2") attack = "R1";
   }
   // Only ranged weapons shoot

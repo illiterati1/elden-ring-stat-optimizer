@@ -53,7 +53,7 @@ import json
 import os
 import re
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(__file__))
 from build_moveset_data import (  # noqa: E402
@@ -68,7 +68,7 @@ from build_moveset_data import (  # noqa: E402
 )
 from extract_fmg import read_fmg  # noqa: E402
 from game_attacks import get_motion_values  # noqa: E402
-from check_animations import CHARGING_LAG  # noqa: E402
+from check_animations import CHARGING_LAG, CHARGING_SPEFFECT  # noqa: E402
 
 # EquipParamGem canMountWep_* flags, by weapon type (EquipParamWeapon wepType). SpearLarge and
 # Sorcery aren't used.
@@ -1308,6 +1308,10 @@ CANCEL_FITS = {
 LOOP_FITS = {("Tongues of Fire", ""): {"hits": [0], "loop": 60.75 / 60, "opening": 87 / 60}}
 # Skills not timed until they're measured
 UNTIMED_SKILLS = set()
+# The weapon's buffed R2s' animations (get_moveset_part_timing): one and two handed, from here
+BUFFED_R2_ANIMATIONS = (30600, 32600)
+BUFFED_R2_ANIMATION_COUNT = 100
+BUFFED_R2_BLOCK = 20
 # Skills whose main attack is several animations in a row, each from when it starts after the
 # first's start (measured in game): Prelate's Charge pressed once does its start (40000) and then its
 # finish (40004), without its charging loop (40003, while held): its initial attack 75 frames after
@@ -1488,7 +1492,94 @@ def get_bow_skill_hits(steps, file_number, variation, behaviors, bullets, name=N
     return []
 
 
-def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=None):
+def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
+    """
+    A skill's follow-ups that are the weapon's own R2s with the skill's buff, in the weapon's moveset
+    rather than the skill's animations: e.g. War Cry's R2s. Each moveset has blocks of them (one
+    handed from 030600, two handed from 032600, 20 apart: Barbaric Roar's and Shriek of Milos'
+    030600, War Cry's and Braggart's Roar's 030620), each a charged R2 #1, its tapped R2 #1 5 later,
+    then R2 #2's 10 later, with the skill's behaviors (judges 39xx). The block whose hits match the
+    most of the follow-ups' is theirs, since single hits match several.
+    @param files the weapon's moveset files (EquipParamWeapon spAtkcategory and wepmotionCategory),
+    and the skill's own (e.g. Golden Tempering's)
+    @param parts the follow-ups: (key, label, hits, hands: "1h", "2h", or None for either)
+    @returns each follow-up's timing (see get_skill_timing) by key, where it matched
+    """
+    animations = steps.animations
+    # Each animation's windows: its file, and each hit's start and signature
+    windows = {}
+    for number in files:
+        file = animations.get_file(number)
+        for anim_id in file[0] if file else []:
+            in_range = any(base <= anim_id < base + BUFFED_R2_ANIMATION_COUNT for base in BUFFED_R2_ANIMATIONS)
+            if anim_id in windows or not in_range:
+                continue
+            hits = [
+                (start, hit_signature(get_motion_values(atk), [float(atk[field]) for field in FLAT_ATTACK_FIELDS]))
+                for start, _, judge, *_ in animations.get_windows(number, anim_id) or []
+                for atk, _ in get_window_hits(behaviors, bullets, steps.game.attacks, variation, judge)
+            ]
+            windows[anim_id] = (number, hits)
+
+    def wanted_of(part_hits):
+        wanted = Counter(
+            hit_signature(
+                hit[0] if isinstance(hit[0], list) else [hit[0]],
+                (hit[4].get("flat") if len(hit) > 4 else None) or [0] * 5,
+            )
+            for hit in part_hits
+        )
+        wanted.pop(hit_signature([0], [0] * 5), None)
+        return wanted
+
+    def offset_of(label):
+        step = re.search(r"#(\d+)", label)
+        return (int(step.group(1)) - 1 if step else 0) * 10 + (0 if label.startswith("Charged") else 5)
+
+    def score(anim_id, wanted):
+        hits = windows.get(anim_id, (None, []))[1]
+        return sum((Counter(signature for _, signature in hits) & wanted).values())
+
+    result = {}
+    for hands, lowest in [("1h", BUFFED_R2_ANIMATIONS[0]), ("2h", BUFFED_R2_ANIMATIONS[1])]:
+        own = [part for part in parts if part[3] in (hands, None if hands == "1h" else hands)]
+        if not own:
+            continue
+        bases = range(lowest, lowest + BUFFED_R2_ANIMATION_COUNT, BUFFED_R2_BLOCK)
+        best = max(bases, key=lambda base: sum(score(base + offset_of(label), wanted_of(hits)) for _, label, hits, _ in own))
+        for key, label, part_hits, _ in own:
+            anim_id = best + offset_of(label)
+            if not score(anim_id, wanted_of(part_hits)):
+                continue
+            number, hits = windows[anim_id]
+
+            def real(time):
+                return round(animations.to_real_time(number, anim_id, time), 3)
+
+            timing = {"hits": sorted({real(start) for start, _ in hits})}
+            # A tapped R2 starts once its charged one's charging window opens, like the weapon's own
+            # R2s
+            charging = animations.get_effect_start([number], anim_id - 5, CHARGING_SPEFFECT)
+            if charging is not None and not label.startswith("Charged"):
+                timing = {
+                    "start": round(animations.to_real_time(number, anim_id - 5, charging) + CHARGING_LAG, 3),
+                    **timing,
+                }
+            stamina = sum(
+                float((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
+                for _, _, judge, *_ in animations.get_windows(number, anim_id) or []
+            )
+            if stamina:
+                timing["stamina"] = round(stamina, 2)
+            cancels = animations.get_cancels(number, anim_id)
+            for cancel in ["L2", "R1", "R2", "anyAttack", "roll", "block"]:
+                if cancel in cancels:
+                    timing[cancel] = real(cancels[cancel])
+            result[key] = timing
+    return result
+
+
+def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=None, weapon_files=()):
     """
     @param steps check_animations.py's Steps
     @param number the skill's animation file
@@ -1497,6 +1588,8 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
     @param hits a version of the skill (main and followUps)
     @param behaviors BehaviorParam_PC rows, and bullets BulletParam rows, by ID
     @param name the skill's name, for LANDING_TIMES, UNTIMED_SKILLS, and HIT_TIME_FITS
+    @param weapon_files the weapon's (or its class's) moveset files, for follow-ups that are its own
+    attacks with the skill's buff (get_moveset_part_timing)
     @returns the version's timing, by weapon animation range (see get_skill_range; "0" is the
     default) and part ("" for the main attack, or the follow-up's label): each part's animation's
     hits, its stamina cost, when it can be cancelled into another skill ("L2"), "R1", "R2", any
@@ -1562,16 +1655,32 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         poise_only = not wanted
         if poise_only:
             wanted = Counter(round(hit[2]) for hit in part_hits if hit[2])
+        # A part that only does status (e.g. Deadly Poison Spray's) is its main animation's windows,
+        # each hit one in order (approximate: its projectiles' or clouds' rows have no attack)
+        status_only = not wanted
+        # Matched by motion value alone where the hits' flat attack doesn't match the animations'
+        # rows' (e.g. Great-Serpent Hunt's: the rows' 100 physical isn't in its hits)
+        loose = False
+
+        def key(signature):
+            return signature[0] if loose and not poise_only and signature is not None else signature
 
         def signatures_of(anim_id):
             if poise_only:
                 return [poise for _, poise, _ in poise_hits[anim_id]]
-            return animation_hits[anim_id][0]
+            return [key(signature) for signature in animation_hits[anim_id][0]]
 
         def windows_of(anim_id):
+            if status_only:
+                return [
+                    (start, None, None)
+                    for start in sorted(start for start, *_ in animations.get_windows(number, anim_id) or [])
+                ]
             return poise_hits[anim_id] if poise_only else window_hits[anim_id]
 
         def starts_of(anim_id):
+            if status_only:
+                return sorted({start for start, _, _ in windows_of(anim_id)})
             if poise_only:
                 return sorted({start for start, _, _ in poise_hits[anim_id]})
             return animation_hits[anim_id][1]
@@ -1579,13 +1688,26 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         best = None
         # (or else any, for a bow's skill: the Lion Greatbow's Radahn's Rain is only in 44560)
         bow_skill = variation in BOW_AMMO_VARIATIONS.values()
-        for wanted_range in dict.fromkeys([skill_range, 0, *([None] if bow_skill else [])]):
-            for anim_id in sorted(animation_hits):
-                if wanted_range is not None and range_of(anim_id) != wanted_range:
-                    continue
-                score = sum((Counter(signatures_of(anim_id)) & wanted).values())
-                if score and (best is None or score > best[0]):
-                    best = (score, anim_id)
+        for loose in [False, True] if not poise_only else [False]:
+            wanted_keys = wanted if poise_only else Counter({key(signature): 0 for signature in wanted})
+            if not poise_only:
+                for signature, count in wanted.items():
+                    wanted_keys[key(signature)] += count
+            for wanted_range in dict.fromkeys([skill_range, 0, *([None] if bow_skill else [])]):
+                for anim_id in sorted(animation_hits):
+                    if wanted_range is not None and range_of(anim_id) != wanted_range:
+                        continue
+                    if status_only:
+                        # The range's first animation with windows
+                        if windows_of(anim_id) and anim_id % 10 == 0:
+                            best = (1, anim_id)
+                            break
+                        continue
+                    score = sum((Counter(signatures_of(anim_id)) & wanted_keys).values())
+                    if score and (best is None or score > best[0]):
+                        best = (score, anim_id)
+                if best:
+                    break
             if best:
                 break
         if not best:
@@ -1638,18 +1760,22 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         fits = HIT_TIME_FITS.get((name, label), [])
         for i, hit in enumerate(part_hits):
             signature = (
-                round(hit[2])
+                None
+                if status_only
+                else round(hit[2])
                 if poise_only
-                else hit_signature(
-                    hit[0] if isinstance(hit[0], list) else [hit[0]],
-                    (hit[4].get("flat") if len(hit) > 4 else None) or [0] * 5,
+                else key(
+                    hit_signature(
+                        hit[0] if isinstance(hit[0], list) else [hit[0]],
+                        (hit[4].get("flat") if len(hit) > 4 else None) or [0] * 5,
+                    )
                 )
             )
             index = next(
                 (
                     j
                     for j, (_, other, _) in enumerate(all_hits)
-                    if j not in taken and other == signature
+                    if j not in taken and (other if poise_only or status_only else key(other)) == signature
                 ),
                 None,
             )
@@ -1740,16 +1866,39 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
                 )
         return timing
 
-    parts = [("", hits["main"])] if hits["main"] else []
-    parts += [(follow_up["label"], follow_up["hits"]) for follow_up in hits["followUps"]]
-    ranges = sorted({range_of(anim_id) for anim_id in animation_hits})
+    # Each part's key: its label, and a follow-up for one or two handing only its hands too (e.g.
+    # War Cry's "R2 #1|2h"), since their hits differ
+    parts = [("", "", hits["main"], None)] if hits["main"] else []
+    parts += [
+        (
+            f"{follow_up['label']}|{follow_up['hands']}" if follow_up.get("hands") else follow_up["label"],
+            follow_up["label"],
+            follow_up["hits"],
+            follow_up.get("hands"),
+        )
+        for follow_up in hits["followUps"]
+    ]
+    ranges = sorted({range_of(anim_id) for anim_id in animation_hits}) or [0]
+    # Follow-ups that are the weapon's R2s with the skill's buff (none of the skill's animations'
+    # hits match theirs), from the weapon's moveset
+    unmatched = [
+        part
+        for part in parts
+        if part[1] and not any(animation_hits and part_timing(part[1], part[2], r) for r in ranges)
+    ]
+    moveset_timings = (
+        get_moveset_timings(steps, [number, *weapon_files], variation, unmatched, behaviors, bullets)
+        if unmatched and weapon_files
+        else {}
+    )
     result = {}
     for skill_range in ranges:
         by_part = {}
-        for label, part_hits in parts:
-            timing = part_timing(label, part_hits, skill_range)
+        for key, label, part_hits, hands in parts:
+            timing = part_timing(label, part_hits, skill_range) if animation_hits else None
+            timing = timing or moveset_timings.get(key)
             if timing:
-                by_part[label] = timing
+                by_part[key] = timing
         # Only ranges with their own timings
         if by_part and (skill_range == 0 or by_part != result.get("0")):
             result[str(skill_range)] = by_part
@@ -2406,10 +2555,14 @@ def main():
         int(row["id"]): row for row in read_csv(os.path.join(data_dir, "BehaviorParam_PC-vanilla.csv"))
     }
     bullet_rows = {int(row["id"]): row for row in read_csv(os.path.join(data_dir, "Bullet-vanilla.csv"))}
-    # Each weapon class's behavior variation (its weapons' share it, in 100s)
+    # Each weapon class's behavior variation (its weapons' share it, in 100s), and its moveset file
+    # (most of its weapons')
     class_variations = {}
+    class_files = defaultdict(Counter)
     for row in weapons.values():
         class_variations.setdefault(int(row["wepType"]), int(row["behaviorVariationId"]) // 100 * 100)
+        if int(row["wepmotionCategory"]):
+            class_files[int(row["wepType"])][int(row["wepmotionCategory"])] += 1
     # Bows' skills, which the sheet doesn't have: each fires the ammunition its own way (its
     # animation's projectile behaviors use the ammunition's behavior variation, see
     # BOW_AMMO_VARIATIONS), so a version for each class of bow that can use it
@@ -2490,7 +2643,19 @@ def main():
                 if group == "classes" and int(key) in BOW_AMMO_VARIATIONS
                 else class_variations.get(int(key), 0)
                 if group == "classes"
+                # (an Ash of War for one class only uses its class's, e.g. the perfume bottles' Wall of
+                # Sparks: its rows are only theirs)
+                else class_variations.get(ash_mounts[name][0], 0)
+                if len(ash_mounts.get(name, [])) == 1
                 else 0
+            )
+            # The weapon's moveset files, or its class's
+            weapon_files = (
+                [n for n in (int(row["spAtkcategory"]), int(row["wepmotionCategory"])) if n]
+                if row
+                else [class_files[int(key)].most_common(1)[0][0]]
+                if group == "classes" and class_files.get(int(key))
+                else []
             )
             timing = get_skill_timing(
                 steps,
@@ -2500,6 +2665,7 @@ def main():
                 behavior_rows,
                 bullet_rows,
                 name,
+                weapon_files,
             )
             if timing:
                 hits["timing"] = timing

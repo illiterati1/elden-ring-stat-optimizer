@@ -12550,3 +12550,48 @@ describe("powerstance off hand weapons", () => {
     expect(mainFire[1]).toEqual(plain[1]);
   });
 });
+
+describe("timing coverage", () => {
+  const movesets: Movesets = JSON.parse(
+    readFileSync(new URL("../../public/movesets.json", import.meta.url), "utf8"),
+  );
+  const ashes: Ashes = JSON.parse(
+    readFileSync(new URL("../../public/ashes.json", import.meta.url), "utf8"),
+  );
+  const ashAttack = (weapon: string, choice: string, twoHanding = false) => {
+    const result = getAshAttack(ashes, movesets, getWeapon(weapon), choice, twoHanding);
+    if (!("attack" in result)) throw new Error(result.unavailableReason);
+    return result.attack;
+  };
+
+  it("times roars' buffed R2 chains from the weapon's moveset, by hands", () => {
+    // War Cry's R2s are each moveset's 030620s (Barbaric Roar's the 030600s, with three hits on R2
+    // #1), going on with R2 (from the animations, untested)
+    const warCry = ashAttack("Greataxe", withFollowUp("War Cry", "R2 chain"));
+    expect(warCry.stepTimes).toHaveLength(2);
+    expect(warCry.stepTimes![0].next).toEqual({ attack: "R2", time: expect.any(Number) });
+    expect(warCry.cycleTimes).toHaveLength(2);
+    expect(warCry.stamina!.every((cost) => cost != null && cost > 0)).toBe(true);
+    const barbaric = ashAttack("Greataxe", withFollowUp("Barbaric Roar", "R2 chain"));
+    expect(barbaric.stepTimes![0].hits).toHaveLength(3);
+    const twoHanded = ashAttack("Greataxe", withFollowUp("War Cry", "R2 chain"), true);
+    expect(twoHanded.stamina![0]).toBeGreaterThan(warCry.stamina![0]!);
+  });
+
+  it("times weapon attacks without an any attack cancel at their R1 or R2 cancel", () => {
+    // The Greatsword's rolling R1 can only go on to an R1 or R2 (its R1 at 1.0s)
+    const rolling = getAttackData(movesets, getWeapon("Greatsword"), "Rolling R1", false, 0.5)!;
+    expect(rolling.cycleTimes![0]).toBeCloseTo(1.0 + 1 / 30);
+  });
+
+  it("leaves out catalysts' jumping R1s (a jumping cast)", () => {
+    expect(
+      getAttackData(movesets, getWeapon("Glintstone Staff"), "Jumping R1", false, 0.5),
+    ).toBeUndefined();
+  });
+
+  it("costs a jumping attack's landing stamina when its hit costs none", () => {
+    const jumping = getAttackData(movesets, getWeapon("Backhand Blade"), "Jumping R2", false, 0.5)!;
+    expect(jumping.stamina![0]).toBeGreaterThan(0);
+  });
+});

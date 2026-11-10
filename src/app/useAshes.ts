@@ -117,7 +117,26 @@ interface SkillPartTiming {
 interface SkillStepPart {
   label: string;
   next?: "R1" | "R2" | "L2";
+  /** The button the last step repeats with (an L2 for most skills) */
+  repeat?: "R1" | "R2" | "L2";
   noRepeat?: boolean;
+}
+
+/**
+ * @returns a part's timing: its own for the hands (a follow-up for one or two handing only, keyed
+ * "label|hands", e.g. War Cry's "R2 #1|2h"), or else its label's, for the weapon's animation range
+ * or else the default one
+ */
+function getPartTiming(hits: SkillHits, skillRange: number, label: string, hands?: "1h" | "2h") {
+  const own = hits.timing?.[String(skillRange)] ?? {};
+  const fallback = hits.timing?.["0"] ?? {};
+  const handsKey = hands && `${label}|${hands}`;
+  return (
+    (handsKey && (own[handsKey] ?? fallback[handsKey])) ||
+    own[label] ||
+    fallback[label] ||
+    undefined
+  );
 }
 
 /**
@@ -130,12 +149,11 @@ function getSkillStepTimes(
   hits: SkillHits,
   skillRange: number,
   parts: SkillStepPart[],
+  hands?: "1h" | "2h",
 ): StepTimes[] | undefined {
-  const own = hits.timing?.[String(skillRange)] ?? {};
-  const fallback = hits.timing?.["0"] ?? {};
-  const timings = parts.map(({ label }) => own[label] ?? fallback[label]);
+  const timings = parts.map(({ label }) => getPartTiming(hits, skillRange, label, hands));
   if (!timings.length || timings.some((timing) => !timing)) return undefined;
-  return parts.map(({ label, next: button, noRepeat }, i) => {
+  return parts.map(({ label, next: button, repeat, noRepeat }, i) => {
     const timing = timings[i]!;
     // Each counted hit's own time (see SkillPartTiming hitTimes), if the part's hits are known
     const partHits = label
@@ -156,7 +174,7 @@ function getSkillStepTimes(
     // An uncharged version starts once it's released, or else a step starts a frame after its press
     const lead = timing.start ?? stepStartDelay;
     const last = i === parts.length - 1;
-    const nextButton = last ? "L2" : button;
+    const nextButton = last ? repeat ?? "L2" : button;
     const buttonTime = nextButton ? timing[nextButton] : undefined;
     // A skill again (L2) waits for its own cancel, even if any attack can start sooner (tested in
     // game: the One-Eyed Shield's Flame Spit, used again 278 frames after its last, at its L2 cancel
@@ -194,16 +212,15 @@ function withSkillTiming(
   skillRange: number,
   parts: SkillStepPart[],
   staminaRate = 1,
+  hands?: "1h" | "2h",
 ): Pick<AttackData, "stepTimes" | "cycleTimes" | "stamina"> {
-  const stepTimes = getSkillStepTimes(hits, skillRange, parts);
+  const stepTimes = getSkillStepTimes(hits, skillRange, parts, hands);
   if (!stepTimes) return {};
   const cycleTimes = stepTimes.every((step) => step.cycle != null)
     ? stepTimes.map((step) => step.cycle!)
     : undefined;
-  const own = hits.timing?.[String(skillRange)] ?? {};
-  const fallback = hits.timing?.["0"] ?? {};
   const stamina = parts.map(({ label }) => {
-    const cost = (own[label] ?? fallback[label])?.stamina;
+    const cost = getPartTiming(hits, skillRange, label, hands)?.stamina;
     return cost != null ? Math.round(cost * staminaRate * 100) / 100 : undefined;
   });
   return {
@@ -366,9 +383,16 @@ const chainSuffix = " chain";
 const weaponAttackSkills: ReadonlySet<string> = new Set(["Flare, O Serpent"]);
 
 /**
+ * Skills whose follow-ups are the weapon's R2s with the skill's buff (in the skill's own animations),
+ * repeated with R2 rather than the skill
+ */
+const buffedAttackSkills: ReadonlySet<string> = new Set(["Golden Tempering"]);
+
+/**
  * Skills that put a weapon buff on the weapon and change its R2s while it lasts: their R2 and charged
- * R2 chains are the weapon's R2s with the buff picked (getBuffedR2Chain), so the picker only offers
- * the skill's own attack, if it does damage (e.g. Regal Roar's shockwave)
+ * R2 chains are the weapon's R2s with the buff picked (App.tsx's r2Skill), so the picker only offers
+ * the skill's own attack, if it does damage (e.g. Regal Roar's shockwave). Their R2s are timed from
+ * the weapon's moveset (build_ash_data.py's get_moveset_timings), going on and repeated with R2.
  */
 export const buffedR2Skills: ReadonlySet<string> = new Set([
   "War Cry",
@@ -841,7 +865,7 @@ function getSkillAttack(
   const skillRange = info.skillRange ?? 0;
   // Each call's timing, with its weapon's stamina rate
   const timingOf = (parts: SkillStepPart[]) =>
-    withSkillTiming(hits, skillRange, parts, info.staminaRate);
+    withSkillTiming(hits, skillRange, parts, info.staminaRate, hands);
   // The skill's own weapon buff's flat attack (e.g. Sacred Blade's 90 holy), for the breakdown
   const skillBuff = [...hits.main, ...hits.followUps.flatMap((followUp) => followUp.hits)].find(
     ([, , , , details]) => details?.buff,
@@ -914,7 +938,14 @@ function getSkillAttack(
         // Some chains go back to a later step, not the first
         ...(chainRepeatSteps[skill] != null && { repeatFrom: chainRepeatSteps[skill]! - 1 }),
         // Each step goes on to the next with another skill
-        ...timingOf(steps.map(({ label }) => ({ label, next: "L2" as const }))),
+        // (a buffed R2 chain's with R2s, like the weapon's own R2s)
+        ...timingOf(
+          steps.map(({ label }) =>
+            buffedR2Skills.has(skill)
+              ? { label, next: "R2" as const, repeat: "R2" as const }
+              : { label, next: "L2" as const },
+          ),
+        ),
       },
     };
   }
@@ -953,8 +984,22 @@ function getSkillAttack(
         ...ownBuff,
         ...notedHit,
         ...followUpNote,
-        // The skill's own animation (not a weapon attack it's added to)
-        ...(!weaponAttack && timingOf([{ label: followUp!.label }])),
+        // A weapon attack it's added to has that attack's first step's timing (repeated as the
+        // weapon's attack is, e.g. the Serpent Flail's R2 at its R2 cancel); or else the skill's own
+        // animation's (repeated with its button where it's the weapon's attack with the skill's
+        // buff, e.g. Golden Tempering's R2s)
+        ...(weaponAttack?.stepTimes?.[0] && {
+          stepTimes: [weaponAttack.stepTimes[0]],
+          ...(weaponAttack.cycleTimes && { cycleTimes: [weaponAttack.cycleTimes[0]!] }),
+          ...(weaponAttack.stamina && { stamina: [weaponAttack.stamina[0] ?? 0] }),
+        }),
+        ...(!weaponAttack &&
+          timingOf([
+            {
+              label: followUp!.label,
+              ...(buffedAttackSkills.has(skill) && { repeat: "R2" as const }),
+            },
+          ])),
       },
     };
   }
