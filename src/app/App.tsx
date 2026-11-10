@@ -150,6 +150,7 @@ export default function App() {
     enemyKey,
     enemyHp,
     criticalDamageRate,
+    poiseDamageRate,
     enemyRipostes,
     enemyTypes,
     attack: savedAttack,
@@ -694,6 +695,7 @@ export default function App() {
             physicalNegation,
             enemyHp: countedEnemyHp,
             criticalDamageRate,
+            poiseDamageRate,
             enemyTypes,
             // A weapon with a unique skill that can also be buffed (the Bonny Butchering Knife) only
             // gets the skill's buff, since they replace each other in game
@@ -776,6 +778,7 @@ export default function App() {
     physicalNegation,
     countedEnemyHp,
     criticalDamageRate,
+    poiseDamageRate,
     enemyTypes,
     offhandWeaponData,
     offhandUpgradeLevel,

@@ -63,7 +63,13 @@ function DefenseSettings({
 }: Props) {
   // Editing defenses by hand means they no longer match the picked enemy
   const editDefenses: UpdateAppState = (update) =>
-    onChange({ ...update, enemyKey: null, criticalDamageRate: 1, enemyRipostes: null });
+    onChange({
+      ...update,
+      enemyKey: null,
+      criticalDamageRate: 1,
+      poiseDamageRate: 1,
+      enemyRipostes: null,
+    });
 
   return (
     <Section id="enemy" title="Enemy">

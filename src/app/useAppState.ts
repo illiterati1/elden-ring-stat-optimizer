@@ -143,6 +143,8 @@ export interface AppState {
   readonly enemyHp: number;
   /** The picked enemy's damage multiplier for critical hits (1 for most) */
   readonly criticalDamageRate: number;
+  /** The picked enemy's poise damage multiplier (1 for most, e.g. 0.2 for ancient dragons) */
+  readonly poiseDamageRate: number;
   /** The picked enemy's ripostes, to only offer those, or null without an enemy */
   readonly enemyRipostes: readonly string[] | null;
   /** The enemy's types, for weapons and buffs that do more damage to them (e.g. dragons) */
@@ -256,6 +258,7 @@ const defaultAppState: AppState = {
   enemyKey: null,
   enemyHp: 0,
   criticalDamageRate: 1,
+  poiseDamageRate: 1,
   enemyRipostes: null,
   enemyTypes: [],
   showFriendlyEnemies: false,

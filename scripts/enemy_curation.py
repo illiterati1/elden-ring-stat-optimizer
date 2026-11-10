@@ -88,6 +88,8 @@ def stats_key(enemy):
         bool(enemy.get("neutral")),
         tuple(enemy["ripostes"]),
         enemy.get("criticalDamageRate", 1),
+        enemy.get("poiseDamageRate", 1),
+        enemy.get("poiseNote"),
     )
 
 

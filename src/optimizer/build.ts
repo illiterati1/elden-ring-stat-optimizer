@@ -125,6 +125,8 @@ export interface BuildRequest {
   enemyHp?: number;
   /** The enemy's damage multiplier for critical hits, e.g. 0.7 for Crucible Knights */
   criticalDamageRate?: number;
+  /** The enemy's poise damage multiplier, e.g. 0.2 for ancient dragons */
+  poiseDamageRate?: number;
   /** The enemy's types, for weapons and buffs that do more damage to them (e.g. dragons) */
   enemyTypes?: readonly EnemyType[];
   /**
@@ -848,20 +850,23 @@ function addBuffAttack(
 }
 
 /** An attack's stance damage: each step's hits added up, weighted by step */
-function getAttackStance(attack: AttackData) {
-  return attack.steps.reduce(
-    (total, step, i) =>
-      total +
-      attack.weights[i] *
-        step.reduce(
-          (sum, hit) =>
-            sum +
-            (((hit.poiseBase ?? attack.poiseBase) * hit.poiseMotionValue) / 100 +
-              (hit.flatPoise ?? 0)) *
-              getTickCount(hit),
-          0,
-        ),
-    0,
+function getAttackStance(attack: AttackData, poiseDamageRate = 1) {
+  return (
+    poiseDamageRate *
+    attack.steps.reduce(
+      (total, step, i) =>
+        total +
+        attack.weights[i] *
+          step.reduce(
+            (sum, hit) =>
+              sum +
+              (((hit.poiseBase ?? attack.poiseBase) * hit.poiseMotionValue) / 100 +
+                (hit.flatPoise ?? 0)) *
+                getTickCount(hit),
+            0,
+          ),
+      0,
+    )
   );
 }
 
@@ -985,6 +990,7 @@ function getAttackSteps(
   getHitDamageFor: (hit: AttackDataHit) => number,
   enemyHp: number | undefined,
   hitStatusOf?: (hit: AttackDataHit) => StatusBuildup,
+  poiseDamageRate = 1,
 ): AttackResultHit[][] {
   return attack.steps.map((step, stepIndex) =>
     step.map((hit, hitIndex) => {
@@ -999,7 +1005,9 @@ function getAttackSteps(
           ...(hit.tickInterval > 0 && { perSecond: damage / hit.tickInterval }),
         }),
         stance:
-          ((hit.poiseBase ?? attack.poiseBase) * hit.poiseMotionValue) / 100 + (hit.flatPoise ?? 0),
+          (((hit.poiseBase ?? attack.poiseBase) * hit.poiseMotionValue) / 100 +
+            (hit.flatPoise ?? 0)) *
+          poiseDamageRate,
         status,
         // Physical damage from the weapon's attack, flat attack (e.g. Beast's Roar's bullet), or a buff
         physicalType:
@@ -1120,6 +1128,7 @@ export function optimizeBuild(
     physicalNegation,
     enemyHp,
     criticalDamageRate = 1,
+    poiseDamageRate = 1,
     enemyTypes = [],
     offhand,
     buffs: requestedBuffs = [],
@@ -1566,6 +1575,7 @@ export function optimizeBuild(
           (hit) => hitDamage(hit, finalAttributes),
           enemyHp,
           hitStatusOf,
+          poiseDamageRate,
         )
       : undefined;
   const notedHitDamage =
@@ -1639,7 +1649,7 @@ export function optimizeBuild(
         : attack?.note,
     fixedSkill: attack?.fixedSkill,
     skillVariant,
-    attackStance: resultAttack ? getAttackStance(resultAttack) : undefined,
+    attackStance: resultAttack ? getAttackStance(resultAttack, poiseDamageRate) : undefined,
     attackStamina: attack ? getAttackStamina(attack) : undefined,
     attackDps:
       attack?.needsRequirements && objective !== "spellScaling" && ineffectiveAttributes.length > 0

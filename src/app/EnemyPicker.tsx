@@ -53,6 +53,7 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
       enemyKey: null,
       enemyHp: 0,
       criticalDamageRate: 1,
+      poiseDamageRate: 1,
       enemyRipostes: null,
       enemyTypes: [],
       defenses: {
@@ -80,6 +81,7 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
       enemyKey: getEnemyKey(newEnemy),
       enemyHp: newEnemy.hp,
       criticalDamageRate: newEnemy.criticalDamageRate ?? 1,
+      poiseDamageRate: newEnemy.poiseDamageRate ?? 1,
       enemyRipostes: newEnemy.ripostes,
       enemyTypes: newEnemy.types ?? [],
       defenses: {
@@ -126,6 +128,16 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
         <Typography variant="body2" color="text.secondary">
           Takes {Math.round((1 - enemy.criticalDamageRate) * 100)}% less damage from backstabs and
           ripostes
+        </Typography>
+      )}
+      {enemy?.poiseDamageRate != null && (
+        <Typography variant="body2" color="text.secondary">
+          Takes {enemy.poiseDamageRate}× poise damage
+        </Typography>
+      )}
+      {enemy?.poiseNote && (
+        <Typography variant="body2" color="text.secondary">
+          {enemy.poiseNote}
         </Typography>
       )}
       {enemy?.riposteNotes &&

@@ -19,6 +19,10 @@ export interface Enemy {
   neutral?: boolean;
   /** Damage multiplier for critical hits, if not 1 (e.g. 0.7 for Crucible Knights) */
   criticalDamageRate?: number;
+  /** Poise damage multiplier, if not 1 (e.g. 0.2 for ancient dragons), from its permanent SpEffects */
+  poiseDamageRate?: number;
+  /** How its poise differs otherwise, e.g. only on some body parts */
+  poiseNote?: string;
   /** The ripostes the player can do to it (e.g. ["Large Riposte"]), none if it can't be riposted */
   ripostes: string[];
   /** When some of its ripostes apply, e.g. { "Small Riposte": "when they fall from their horse" } */

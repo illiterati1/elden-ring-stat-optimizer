@@ -3220,8 +3220,54 @@ area lists its types, then where they're placed, by the nearest site of grace. D
 
 ## Stone Coffin Fissure
 
+- **Sentry Stone (Type 1)**: 1993 HP (NG+ 2146), NpcParam 59400087, 59401087
+- **Sentry Stone (Type 2)**: 1993 HP (NG+ 2146), NpcParam 59400487
 - **Thiollier (Type 1)**: 11798 HP (NG+ 11916), NpcParam 524190087, parts shown 0, 10, 11, 20
 - **Thiollier (Type 2)**: 11798 HP (NG+ 11916), NpcParam 524190087, parts shown 0, 10, 11, 20
+
+### Fissure Cross
+
+- 55 m NE, 45 m down: Sentry Stone (Type 1)
+- 56 m NE, 44 m down: Sentry Stone (Type 1)
+- 73 m NNE, 13 m down: Sentry Stone (Type 1)
+- 79 m NNE, 15 m down: Sentry Stone (Type 1)
+- 101 m N, 37 m down: Sentry Stone (Type 1)
+
+### Fissure Waypoint
+
+- 24 m SSW, 12 m up: Sentry Stone (Type 1)
+- 32 m SSW, 12 m up: Sentry Stone (Type 1)
+- 34 m SSW, 12 m up: Sentry Stone (Type 1)
+- 34 m S, 10 m up: Sentry Stone (Type 1)
+- 40 m SSW, 10 m up: Sentry Stone (Type 1)
+- 42 m SSW, 20 m up: Sentry Stone (Type 2)
+- 48 m SSW, 17 m up: Sentry Stone (Type 1)
+- 61 m SSW, 15 m up: Sentry Stone (Type 1)
+- 88 m SW, 12 m up: Sentry Stone (Type 1)
+- 89 m SW, 11 m up: Sentry Stone (Type 1)
+- 93 m SW, 12 m up: Sentry Stone (Type 1)
+- 95 m SW, 9 m up: Sentry Stone (Type 1)
+- 98 m SW, 10 m up: Sentry Stone (Type 1)
+- 99 m SW, 10 m up: Sentry Stone (Type 1)
+- 103 m SW, 7 m up: Sentry Stone (Type 1)
+- 103 m SSW, 10 m up: Sentry Stone (Type 2)
+- 104 m SW, 9 m up: Sentry Stone (Type 1)
+- 104 m SW, 7 m up: Sentry Stone (Type 1)
+- 106 m SSW: Sentry Stone (Type 2)
+- 107 m SW, 6 m up: Sentry Stone (Type 1)
+- 108 m SW, 9 m up: Sentry Stone (Type 1)
+- 111 m SW, 7 m up: Sentry Stone (Type 1)
+- 116 m SW, 6 m up: Sentry Stone (Type 1)
+- 120 m SSW, 8 m down: Sentry Stone (Type 1)
+- 122 m SSW, 9 m down: Sentry Stone (Type 1)
+- 125 m SSW, 12 m down: Sentry Stone (Type 1)
+- 129 m SSW, 12 m down: Sentry Stone (Type 1)
+- 136 m SSW, 12 m down: Sentry Stone (Type 1)
+- 136 m SSW, 13 m down: Sentry Stone (Type 1)
+- 146 m SSW, 14 m down: Sentry Stone (Type 1)
+- 149 m SSW, 14 m down: Sentry Stone (Type 1)
+- 153 m SSW: Sentry Stone (Type 2)
+- 156 m SSW, 8 m down: Sentry Stone (Type 1)
 
 ### Garden of Deep Purple
 

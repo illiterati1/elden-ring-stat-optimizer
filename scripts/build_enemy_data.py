@@ -317,7 +317,7 @@ ENEMY_EDITS = [
     # Liurnia's Albinaurics away from the Village of the Albinaurics are just Albinaurics (the user)
     ("rename", {"area": "Liurnia of the Lakes", "name_re": r"^Albinauric Frog"}, ("^.*$", "Albinauric")),
     ("rename", {"name_re": r"^Omen Monstrosity"}, (r"^Omen Monstrosity", "Omen")),
-    ("rename", {"name": "Godskin Apostle [Boss HP]"}, ("Godskin Apostle \[Boss HP\]", "Godskin Apostle [Boss]")),
+    ("rename", {"name": "Godskin Apostle [Boss HP]"}, (r"Godskin Apostle \[Boss HP\]", "Godskin Apostle [Boss]")),
     ("rename", {"area": "Stormhill", "name": "Death Rite Bird"}, "Death Bird"),
     ("rename", {"area": "Weeping Peninsula", "name": "Death Rite Bird"}, "Death Bird"),
     ("rename", {"area": "Stormhill", "name": "Heartbroken Maiden"}, "Roderika"),
@@ -428,6 +428,11 @@ BOSS_NPC_PARAM_IDS = {
     56200084,  # Tibia Mariner, Charo's Hidden Grave
 }
 NOT_BOSS_NAMES = set()
+
+# What a SpEffect's deleteCriteriaDamage (the damage that removes it) means, where known: the
+# Abductor Virgins' 14300 (5 poise per hit) and 14302 (15 more), which the user says lightning
+# staggers. Unnamed in the Paramdex; 10 is only on 14302. Untested
+POISE_DELETE_DAMAGE_TYPES = {1: "per hit", 10: "per lightning hit (untested)"}
 
 # Damage multipliers for critical hits (backstabs and ripostes), after defenses: Crucible Knights
 # take 30% less (tested in game: a Longsword riposte does 833 rather than 1190 at +25, and 274 at +0,
@@ -881,6 +886,47 @@ def main():
         ng_plus_hp = round(base_hp * ng_plus_rate)
         return defense, negation, hp, ng_plus_hp
 
+    def get_poise(row):
+        """
+        @returns an enemy's poise damage multiplier (SpEffectParam saReceiveDamageRate) from its
+        permanent SpEffects (e.g. 0.2 for ancient dragons, SpEffect 14857), and a note on how its
+        poise differs otherwise: a multiplier only on some body parts (applyPartsGroup, e.g. the
+        Giant Crayfish's 0.5), or none from attacks with a fixed amount per hit instead (an effect
+        removed by damage, deleteCriteriaDamage, that replaces itself with one that takes poise,
+        changeSaPoint: the Abductor Virgins'). Effects that apply to no one (every effectTarget off,
+        e.g. the Basilisk Eyes', applied by its scripts) are left out.
+        """
+        rate = 1
+        part_rates = []
+        per_hit = []
+        for field, effect_id in row.items():
+            effect = sp_effects.get(effect_id) if field.lower().startswith("speffectid") else None
+            if not effect or effect["effectEndurance"] != -1 or effect["saReceiveDamageRate"] == 1:
+                continue
+            if not any(effect[f"effectTarget{target}"] for target in ("Self", "Friend", "Enemy", "Player", "AI")):
+                continue
+            if effect["deleteCriteriaDamage"]:
+                replacement = sp_effects.get(effect["replaceSpEffectId"])
+                per_hit.append((effect["deleteCriteriaDamage"], replacement["changeSaPoint"] if replacement else 0))
+                rate *= effect["saReceiveDamageRate"]
+            elif effect["applyPartsGroup"]:
+                part_rates.append(effect["saReceiveDamageRate"])
+            else:
+                rate *= effect["saReceiveDamageRate"]
+        notes = []
+        if part_rates:
+            notes.append(f"Takes {min(part_rates):g}× poise damage on some body parts (others normal)")
+        if per_hit:
+            amounts = ", plus ".join(
+                f"{points:g} {POISE_DELETE_DAMAGE_TYPES.get(kind, f'per damage type {kind} hit')}"
+                for kind, points in sorted(per_hit)
+            )
+            notes.append(
+                f"Attacks do no poise damage; each hit takes a fixed amount instead: {amounts} "
+                f"({row['superArmorDurability']:g} poise)"
+            )
+        return round(rate, 3), " ".join(notes)
+
     def get_critical_damage_rate(row, name):
         model_rate = CRITICAL_DAMAGE_RATE_MODELS.get(row["id"] // 10000)
         name_rate = next(
@@ -945,7 +991,8 @@ def main():
             # so rows that look different stay apart (the user's call), e.g. the Academy's Glintstone
             # Sorcerers' two outfits
             appearance = tuple(i for i in range(32) if row[f"modelDispMask{i}"])
-            key = (name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance)
+            poise = get_poise(row)
+            key = (name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance, poise)
             riposte_override = next(
                 (ripostes for prefix, ripostes in RIPOSTE_NAME_OVERRIDES.items() if name.startswith(prefix)),
                 None,
@@ -970,6 +1017,8 @@ def main():
                         if (critical_rate := get_critical_damage_rate(row, name)) != 1
                         else {}
                     ),
+                    **({"poiseDamageRate": poise[0]} if poise[0] != 1 else {}),
+                    **({"poiseNote": poise[1]} if poise[1] else {}),
                     "ripostes": riposte_override
                     or get_ripostes(model_id := int(model[1:]) if re.fullmatch(r"c\d{4}", model) else -1),
                     **(
