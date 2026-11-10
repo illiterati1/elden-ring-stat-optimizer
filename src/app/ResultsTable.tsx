@@ -760,7 +760,9 @@ function ResultsTable({
                       ineffective &&
                         `Requires ${result.requirements[attribute]} ${getStatLabel(attribute)}`,
                       effective !== leveled &&
-                        `Counts as ${effective} (bonus stats and two handing included)`,
+                        `Counts as ${effective} (bonus stats${
+                          attribute === "str" ? " and two handing" : ""
+                        } included)`,
                       added > 0 && `+${added} levels`,
                     ].filter(Boolean);
                     const value = (
