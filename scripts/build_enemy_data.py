@@ -33,6 +33,7 @@ from collections import Counter, defaultdict
 sys.path.insert(0, os.path.dirname(__file__))
 from extract_fmg import read_fmg  # noqa: E402
 from extract_param import read_param  # noqa: E402
+from enemy_curation import apply_edits, identify, merge_identical, report, where_is  # noqa: E402
 
 REGULATION_VERSION = 11730034
 
@@ -89,6 +90,8 @@ CHARA_INIT_ATTRIBUTES = [
 # NpcParam team types for characters that aren't normally fought: none (story state copies), white
 # ghost (summonable helpers), and friendly NPC
 FRIENDLY_TEAM_TYPES = {0, 2, 26}
+# The team type of summonable helpers (white ghosts), left out (NpcParam rows 53xxxxxxx)
+SUMMON_TEAM_TYPE = 2
 
 # Wildlife that doesn't fight back much, shown in its own section. Team types don't tell them apart
 # (most are on the enemy team), so they're listed by name.
@@ -149,6 +152,274 @@ AREA_REGION_OVERRIDES = {
     "Stormhill Evergaol": "Stormhill",  # nearest a Limgrave grace
 }
 
+# Identifiers by hand for entries that share a name in an area, by area and NpcParam ID (see
+# enemy_curation.py identify), from the user's review
+ENEMY_LABELS = {
+    ("Limgrave", 40710009): "Summonwater Village",  # White Wolf
+    ("Limgrave", 40710010): "Murkwater Coast",
+    ("Divine Tower of Limgrave", 46601010): "Archer",  # Guardian Golem
+    ("Divine Tower of Limgrave", 46600010): "Halberd",
+    ("Ainsel River Main", 46500262): "Lake of Rot",  # Dragonkin Soldier
+    # Ainsel River Main (the user's review): the weaker Ainsel River enemies are south, the stronger
+    # north (the Lake of Rot side)
+    ("Ainsel River Main", 41500060): "Ainsel River",  # Basilisk
+    **{("Ainsel River Main", i): "Lake of Rot" for i in [41500862, 41500062]},
+    **{("Ainsel River Main", i): "South" for i in [37500060, 37501060, 37502060]},  # Clayman
+    **{("Ainsel River Main", i): "North" for i in [37500062, 37501062, 37502062]},
+    **{("Ainsel River Main", i): "South" for i in [42800060, 42800160, 42800360]},  # Giant Ant
+    **{("Ainsel River Main", i): "North" for i in [42800062, 42800462, 42800862]},
+    ("Ainsel River Main", 42801162): "Mount",
+    ("Ainsel River Main", 46202060): "South",  # Malformed Star
+    ("Ainsel River Main", 46202062): "North",
+    **{("Ainsel River Main", i): "" for i in [33200062, 33200162, 33200262, 33201062]},  # Silver Tear
+    **{("Ainsel River Main", i): "Lightning" for i in [33202062, 33202262]},
+    # Altus Plateau (an empty label keeps the plain name)
+    ("Altus Plateau", 30700030): "Cleaver",  # Dominula Celebrant
+    ("Altus Plateau", 30701030): "Lantern",
+    ("Altus Plateau", 30702030): "Sickle",
+    ("Altus Plateau", 30703030): "Skull",
+    ("Altus Plateau", 30704030): "Rib-Rake",
+    ("Altus Plateau", 21601030): "Greatbridge",  # Finger Reader Crone
+    ("Altus Plateau", 21601033): "Capital Outskirts",
+    ("Altus Plateau", 30601030): "Glaive",  # Giant Skeleton
+    ("Altus Plateau", 30600030): "Greataxe",
+    ("Altus Plateau", 46601030): "Archer",  # Guardian Golem
+    ("Altus Plateau", 46600030): "Halberd",
+    ("Altus Plateau", 43734030): "Crossbow",  # Leyndell Foot Soldier
+    **{("Altus Plateau", i): "" for i in [43730530, 43731530, 43730030, 43731730, 43731030, 43732530, 43736030, 43737030]},
+    ("Altus Plateau", 523480030): "Erdtree-Gazing Hill",  # Millicent
+    ("Altus Plateau", 523480230): "Dominula",
+    ("Altus Plateau", 36610030): "",  # Putrid Corpse (the other is renamed)
+    ("Altus Plateau", 40001030): "",  # Revenant Follower (Horseback), SSE of Old Altus Tunnel
+    ("Altus Plateau", 40001031): "Shaded Castle",
+    ("Altus Plateau", 40000030): "",  # Revenant Follower
+    ("Altus Plateau", 40000031): "Shaded Castle",
+    ("Altus Plateau", 40400031): "",  # Slug, beside the Slug (Thick Antenna)
+    **{("Altus Plateau", i): "" for i in [  # Wandering Noble
+        43000030, 43000130, 43001030, 43001230, 43002030, 43003030, 43004030, 43005030, 43005230,
+        43006030, 43006630, 43006130, 43006230,
+    ]},
+    **{("Altus Plateau", i): "Shaded Castle" for i in [43000131, 43001031, 43002031]},
+    ("Bellum Highway", 43724020): "Crossbow",  # Raya Lucaria Foot Soldier
+    # Plain names that don't need a type, beside a "(...)" version (like the Slug)
+    ("Bellum Highway", 40000020): "",  # Revenant Follower, beside (Cloakless)
+    ("Belurat, Tower Settlement", 52500088): "",  # Divine Bird Warrior
+    **{("Bellum Highway", i): "" for i in [43720020, 43722020, 43723020, 43727020]},
+    # Caelid (the user's review)
+    ("Caelid", 44702041): "",  # Abductor Virgin (its unscaled copy is left out)
+    ("Caelid", 42700040): "",  # Elder Lion
+    ("Caelid", 42700041): "Redmane Castle",
+    **{("Caelid", i): "" for i in [45500040, 45502040, 45501040, 45503040]},  # Giant Dog
+    ("Caelid", 30601040): "Glaive",  # Giant Skeleton
+    ("Caelid", 30600040): "Greataxe",
+    **{("Caelid", i): "Karolos/Olivinus" for i in [37020040, 37021140]},  # Glintstone Sorcerer
+    **{("Caelid", i): "Lazuli/Twinsage" for i in [37022140, 37023140, 37024040]},
+    ("Caelid", 523730040): "Left",  # Knight of the Great Jar
+    ("Caelid", 523740040): "Right",
+    ("Caelid", 523750040): "Middle",
+    **{("Caelid", i): "" for i in [42000040, 42000140]},  # Man-Bat
+    ("Caelid", 42000141): "Redmane Castle",
+    **{("Caelid", i): "" for i in [42017440, 42017640, 42017540, 42017740, 42017840]},  # Operatic Bat
+    ("Caelid", 42017441): "Redmane Castle",
+    **{("Caelid", i): "" for i in [  # Radahn Foot Soldier
+        43740540, 43740040, 43741040, 43743040, 43746040, 43747040,
+    ]},
+    **{("Caelid", i): "Redmane Castle" for i in [
+        43741541, 43741441, 43741841, 43740541, 43740041, 43742041, 43746041, 43747041,
+    ]},
+    **{("Caelid", i): "" for i in [  # Radahn Soldier
+        43140040, 43140340, 43140140, 43141040, 43141140, 43142040, 43143040,
+    ]},
+    **{("Caelid", i): "Redmane Castle" for i in [43140041, 43140341, 43141141, 43143041]},
+    **{("Caelid", i): "" for i in [43540040, 43541040, 43541140, 43542040]},  # Redmane Knight
+    **{("Caelid", i): "Redmane Castle" for i in [43540041, 43541041]},
+    ("Caelid", 41700140): "",  # Skeletal Slime
+    ("Caelid", 41700141): "Redmane Castle",
+    ("Caelid", 41610040): "",  # Stray Dog
+    ("Caelid", 41610041): "Redmane Castle",
+    ("Caelid", 46000040): "Pot",  # Troll
+    ("Caelid", 46003041): "Redmane Castle",
+    # Consecrated Snowfield
+    ("Consecrated Snowfield", 34703252): "Broken Club",  # Albinauric
+    **{("Consecrated Snowfield", i): "" for i in [
+        34701552, 34701652, 34702552, 34704352, 34700352, 34700452,
+    ]},
+    # Crumbling Farum Azula
+    **{("Crumbling Farum Azula", i): "" for i in [  # Beastman of Farum Azula (the Cleaver one's named)
+        39700072, 39700272, 39700472, 39700172, 39700372, 39703172, 39702072, 39702272, 39701272,
+        39702172, 39702372, 39703072,
+    ]},
+    # Ancient Dragons, by HP (four can be fought, of five spots)
+    **{("Crumbling Farum Azula", i): "12,312 HP" for i in [45100572, 45100072, 45100272, 45100172]},
+    **{("Crumbling Farum Azula", i): "20,529 HP" for i in [45102272, 45101272]},
+    ("Crumbling Farum Azula", 30611072): "Glaive",  # Giant Beast Skeleton
+    ("Crumbling Farum Azula", 30610072): "Greataxe",
+    # Capital Outskirts (the user's review)
+    ("Capital Outskirts", 46607033): "Archer",  # Guardian Golem
+    ("Capital Outskirts", 46600133): "Halberd",
+    **{("Capital Outskirts", i): "" for i in [  # Leyndell Foot Soldier
+        43731630, 43730030, 43730530, 43732030, 43736030, 43737030,
+    ]},
+    **{("Capital Outskirts", i): "Giant-Crusher Camp" for i in [43730033, 43737033]},
+    ("Capital Outskirts", 40400033): "",  # Slug (the other is renamed)
+    ("Capital Outskirts", 32510030): "Shield",  # Tree Sentinel
+    # Ancient Ruins of Rauh's Bloodfiends, by HP (the user)
+    **{("Ancient Ruins of Rauh", i): "4,552 HP" for i in [50800094, 50801094, 50802094]},
+    ("Ancient Ruins of Rauh", 50800194): "7,236 HP",
+    # Its two Mimic Tears share an NpcParam row, so they're labeled by their CharaInitParam builds
+    ("Ainsel River Main", "chara", 23682): "Greatsword",
+    ("Ainsel River Main", "chara", 23683): "Spear/Shield",
+    # Glintstone Sorcerers: the stronger ones are Twinsage, the weaker Karolos or Olivinus
+    ("Academy Crystal Cave", 37023020): "Twinsage",
+    ("Academy Crystal Cave", 37020020): "Karolos/Olivinus",
+    **{("Academy of Raya Lucaria", i): "Twinsage" for i in [37022024, 37023024, 37024024]},
+    **{("Academy of Raya Lucaria", i): "Karolos/Olivinus" for i in [37020024, 37021024]},
+    # The Man-Flies differ only in HP, as far as the user can see
+    ("Abandoned Ailing Village", 59000080): "1,353 HP",
+    ("Abandoned Ailing Village", 59000081): "1,653 HP",
+}
+
+# Names whose entries are told apart by stats alone, not looks (merged where their stats match), by
+# area, from the user's review
+MERGED_LOOKS = {("Ainsel River Main", "Silver Tear")}
+
+# Edits by hand to the picker's entries, from the user's review of each area, in order (see
+# enemy_curation.py apply_edits). Anywhere unless an area is given.
+ENEMY_EDITS = [
+    # Things that aren't enemies to fight, or aren't fought
+    *[("delete", {"name": name}) for name in [
+        "Merciless Chariot", "Ballista", "Trebuchet", "Walking Mausoleum", "Commoner (Ghost)",
+        "Wandering Noble (Ghost)", "Dragon-faced Flamethrower", "Balloon", "Unnamed Human",
+        "Defeated Godrick", "Vyke's Finger Maiden",
+    ]],
+    ("delete", {"name_re": r"Silent Spirit$"}),
+    ("delete", {"name": "Wandering Noble", "friendly": True}),
+    ("delete", {"area": "Roundtable Hold", "friendly": True}),
+    ("delete", {"area": "Academy of Raya Lucaria", "name": "Boc the Seamster", "friendly": True}),
+    ("delete", {"area": "Academy of Raya Lucaria", "name": "Rennala, Queen of the Full Moon", "friendly": True}),
+    # Friendly Sellens can't be fought (she's fought as an enemy in the Academy)
+    ("delete", {"name": "Sorceress Sellen", "friendly": True}),
+    ("delete", {"area": "Academy of Raya Lucaria", "name": "Sorcerer Thops"}),
+    ("delete", {"area": "Liurnia of the Lakes", "name": "Jarwight"}),
+    ("delete", {"area": "Liurnia of the Lakes", "name": "Finger Maiden Therolina"}),
+    ("delete", {"area": "Forlorn Hound Evergaol", "name": "Blaidd the Half-Wolf", "hp": 1506}),
+    ("delete", {"area": "Weeping Peninsula", "name": "Miranda Sprout", "hp": 0}),
+    # Ainsel River's Dragonkin Soldier with the Nokstella one's stats is it (its event versions)
+    ("rename", {"area": "Ainsel River Main", "ids": [46500060, 46500160]}, "Dragonkin Soldier of Nokstella"),
+    # Village of the Albinaurics' characters, placed near its grace
+    ("move", {"area": "Liurnia of the Lakes", "name": "Elder Albinauric"}, "Village of the Albinaurics"),
+    ("move", {"area": "Liurnia of the Lakes", "ids": [533340020]}, "Village of the Albinaurics"),
+    ("split", {"area": "Liurnia of the Lakes", "ids": [36708020]}, {36708020: "Old Albus"}),
+    ("move", {"area": "Liurnia of the Lakes", "ids": [36708020]}, "Village of the Albinaurics"),
+    # Names
+    ("rename", {"name": "Putrid Flesh", "dlc": False}, "Skeletal Slime"),
+    ("rename", {"name": "Crystalian"}, "Crystalian (Shattered)"),
+    # Liurnia's Albinaurics away from the Village of the Albinaurics are just Albinaurics (the user)
+    ("rename", {"area": "Liurnia of the Lakes", "name_re": r"^Albinauric Frog"}, ("^.*$", "Albinauric")),
+    ("rename", {"name_re": r"^Omen Monstrosity"}, (r"^Omen Monstrosity", "Omen")),
+    ("rename", {"name": "Godskin Apostle [Boss HP]"}, ("Godskin Apostle \[Boss HP\]", "Godskin Apostle [Boss]")),
+    ("rename", {"area": "Stormhill", "name": "Death Rite Bird"}, "Death Bird"),
+    ("rename", {"area": "Weeping Peninsula", "name": "Death Rite Bird"}, "Death Bird"),
+    ("rename", {"area": "Stormhill", "name": "Heartbroken Maiden"}, "Roderika"),
+    ("rename", {"area": "Ainsel River Main", "name": "Ulcerated Tree Spirit"}, "Putrid Tree Spirit"),
+    ("rename", {"area": "Ainsel River Main", "ids": [523680062]}, "Mimic Tear"),
+    ("rename", {"area": "Altus Plateau", "ids": [36612030]}, "Burning Putrid Corpse"),
+    # Caelid (the user's review): unscaled copies (NpcParam IDs ending 000) the user can't find in
+    # the game, their placements in ordinary spots
+    ("delete", {"area": "Caelid", "ids": [44702000]}),  # Abductor Virgin
+    ("delete", {"area": "Caelid", "ids": [45600000]}),  # Giant Crow
+    ("delete", {"area": "Caelid", "ids": [36610000]}),  # Putrid Corpse
+    ("delete", {"area": "Caelid", "ids": [45501000, 45502000, 45500000]}),  # Giant Dog (668 HP)
+    ("delete", {"area": "Caelid", "ids": [46003140]}),  # Troll
+    # The rest of the unscaled group by Deep Siofra Well
+    ("delete", {"area": "Caelid", "ids": [48200100]}),  # Omenkiller
+    ("delete", {"area": "Caelid", "ids": [37010000]}),  # White Veil Perfumer
+    ("rename", {"area": "Caelid", "ids": [36622040]}, "Large Burning Putrid Corpse"),
+    ("rename", {"area": "Caelid", "ids": [36626040]}, "Large Rotten Putrid Corpse"),
+    ("rename", {"area": "Caelid", "ids": [36612040]}, "Burning Putrid Corpse"),
+    ("rename", {"area": "Caelid", "ids": [36616040]}, "Rotten Putrid Corpse"),
+    # Limgrave's Troll (its params) placed at Caelid's edge
+    ("move", {"area": "Caelid", "ids": [46000010]}, "Limgrave"),
+    ("move", {"area": "Capital Outskirts", "ids": [46300030]}, "Altus Plateau"),  # Runebear
+    ("rename", {"area": "Capital Outskirts", "ids": [40403033]}, "Fire Slug"),
+    # Not bosses, though they drop runes like one (NpcParam isSoulGetByBoss; the user)
+    ("set", {"area": "Scadu Altus", "ids": [58301590]}, {"boss": None}),  # Messmer Soldier
+    ("set", {"area": "Scadu Altus", "ids": [58401290, 58401390]}, {"boss": None}),  # Black Knight
+    # Friendly Messmer Soldiers are story copies, not fought (the user)
+    ("delete", {"name": "Messmer Soldier", "friendly": True}),
+    # Consecrated Snowfield (the user's review): its Albinauric Frogs are merged with its Albinaurics
+    ("rename", {"area": "Consecrated Snowfield", "ids": [34700352, 34700452]}, ("^.*$", "Albinauric")),
+    ("rename", {"area": "Consecrated Snowfield", "ids": [34001852]}, ("^.*$", "Rotten Grave Warden Duelist (Hammer)")),
+    ("rename", {"area": "Consecrated Snowfield", "ids": [34000852]}, ("^.*$", "Rotten Grave Warden Duelist (Greataxe)")),
+    # Crumbling Farum Azula: its second Godskin Apostle isn't fought (the user)
+    ("delete", {"area": "Crumbling Farum Azula", "ids": [35600972]}),
+    # Cerulean Coast (the user's review)
+    # Its "Rams" are all neutral sheep (the user)
+    ("rename", {"area": "Cerulean Coast", "ids": [54500083, 54506083, 54503083]}, "Sheep"),
+    ("set", {"area": "Cerulean Coast", "ids": [54500083, 54506083, 54503083]}, {"neutral": True}),
+    ("move", {"area": "Cerulean Coast", "ids": [51100184]}, "Charo's Hidden Grave"),  # Spirit Eel
+    # Castle Ensis' stronger versions are Scadu Altus' (the user)
+    ("move", {"area": "Castle Ensis", "ids": [
+        56511890, 56510590, 58300490, 58300290, 58300690, 58300590,
+    ]}, "Scadu Altus"),
+    # Belurat's stronger Spider Scorpions are Enir-Ilim's (the user)
+    ("move", {"area": "Belurat, Tower Settlement", "ids": [51920094, 51930094]}, "Enir-Ilim"),
+    ("rename", {"area": "Moonlight Altar", "name": "Spiritcaller Snail"}, "Crystal Snail"),
+    # The only Royal Revenant is Kingsrealm Ruins'; Moonlight Altar's is in the Lunar Estate Ruins
+    ("move", {"area": "Moonlight Altar", "name": "Royal Revenant"}, "Lunar Estate Ruins"),
+    ("rename", {"name": "Royal Revenant", "area": "Lunar Estate Ruins"}, "Revenant"),
+    # Sections and areas
+    ("set", {"name": "Night's Cavalry Horse"}, {"boss": True}),
+    ("set", {"area": "Hallowhorn Grounds (Nokron)", "name": "Boar"}, {"neutral": True}),
+    ("move", {"area": "Limgrave", "name": "Guardian Golem"}, "Stormhill"),
+    ("region", {"area": "Highroad Cave"}, "Stormhill"),
+    ("move", {"area": "Malefactor's Evergaol", "friendly": True}, "Liurnia of the Lakes"),
+    ("move", {"area": "Caelid", "name_re": r"^Cleanrot Knight"}, "Swamp of Aeonia"),
+    # Caelid's Misbegotten Warrior fights beside the Crucible Knight
+    ("set", {"area": "Caelid", "name": "Misbegotten Warrior"}, {"sortName": "Crucible Knight [Boss] (Greatsword) 2"}),
+    # Caelem Ruins' two Mad Pumpkin Heads (identical but for their weapons)
+    ("split", {"area": "Caelem Ruins", "ids": [43400940]}, {
+        43400940: "Mad Pumpkin Head [Boss] (Flail)", 43401940: "Mad Pumpkin Head [Boss] (Hammer)",
+    }),
+]
+
+# Questions from the user's review: where entries are (area or None for anywhere, name, HP or None)
+WHERE_IS = [
+    ("Stranded Graveyard", "Banished Knight", None),
+    ("Stranded Graveyard", "Castle Exile", None),
+    ("Limgrave", "Godrick Foot Soldier", 124),
+    ("Limgrave", "Larval Land Octopus", 147),
+    ("Limgrave", "Miranda Sprout", 152),
+    ("Limgrave", "Yura, Hunter of Bloody Fingers", None),
+    ("Murkwater Cave", "Patches", None),
+    ("Stormveil Castle", "Banished Knight (Draconic)", None),
+    ("Hallowhorn Grounds (Siofra River)", "Ancestor Spirit", None),
+    (None, "Ancestral Follower", None),
+    (None, "Dragonkin Soldier", None),
+    ("Liurnia of the Lakes", "Guilty", None),
+    ("Liurnia of the Lakes", "Dung Eater", None),
+    ("Liurnia of the Lakes", "Nox Priest", None),
+    ("Liurnia of the Lakes", "Raya Lucaria Soldier", None),
+    ("Liurnia of the Lakes", "Scaly Misbegotten", None),
+    ("Liurnia of the Lakes", "Nepheli Loux, Warrior", None),
+    ("Liurnia of the Lakes", "Old Albus", None),
+    ("Liurnia of the Lakes", "Albinauric", None),
+    ("Village of the Albinaurics", "Albinauric", None),
+    ("Liurnia of the Lakes", "Elder Albinauric", None),
+    ("Liurnia of the Lakes", "Large Albinauric", None),
+    ("Liurnia of the Lakes", "Albinauric Frog", None),
+    ("Academy of Raya Lucaria", "Dragon", None),
+    ("Academy of Raya Lucaria", "Juvenile Scholar", None),
+    ("Caelid", "Omenkiller", None),
+    ("Caelid", "White Veil Perfumer", None),
+    ("Swamp of Aeonia", "Mad Pumpkin Head", None),
+    ("Swamp of Aeonia", "Kindred of Rot", None),
+    ("Swamp of Aeonia", "Polyanna, Adopted Daughter", None),
+    ("Greyoll's Dragonbarrow", "Gargoyle", None),
+    ("Nokron, Eternal City", "Troll", None),
+    (None, "Chief Bloodfiend", None),
+]
+
 # Bosses are named "... [Boss]" in the spreadsheet, or drop a boss's runes (NpcParam isSoulGetByBoss,
 # e.g. Rennala, whose name comes from the game's text). These are bosses with neither, by NpcParam ID,
 # and characters with one that aren't bosses on their own, by name.
@@ -156,7 +427,7 @@ BOSS_NPC_PARAM_IDS = {
     49500050,  # Tibia Mariner, Mountaintops of the Giants
     56200084,  # Tibia Mariner, Charo's Hidden Grave
 }
-NOT_BOSS_NAMES = {"Night's Cavalry Horse"}
+NOT_BOSS_NAMES = set()
 
 # Damage multipliers for critical hits (backstabs and ripostes), after defenses: Crucible Knights
 # take 30% less (tested in game: a Longsword riposte does 833 rather than 1190 at +25, and 274 at +0,
@@ -285,6 +556,11 @@ DLC_MAP_PREFIXES = ("m20_", "m21_", "m22_", "m25_", "m28_", "m40_", "m41_", "m42
 # spreadsheet places m42_01's enemies in the Ruined Forge of Starfall Past.
 MAP_ALIASES = {"m42_01": "m42_02"}
 
+# Maps that hold several regions, whose enemies are in the region (and an area of its name) of the
+# nearest grace in the map: m12_02 is both Siofra River and Nokron, Eternal City (the user's review:
+# Siofra's Ancestral Followers and Dragonkin Soldier were under Nokron)
+MAPS_SPLIT_BY_GRACE = {"m12_02"}
+
 # Maps with no place name or grace of their own: (area name, region name)
 MAP_OVERRIDES = {
     # The two Ancestor Spirit arenas. The lower HP spirit is the one under Siofra River.
@@ -383,7 +659,26 @@ def main():
     overworld_graces = defaultdict(list)
     map_graces = defaultdict(list)
     grace_regions_by_name = {}
+    # Every named grace's position, for describing where enemies are: overworld ones in meters
+    # across the whole overworld by area, others in their map's own coordinates by (area, x, z)
+    located_graces = defaultdict(list)
     for grace in graces:
+        grace_name = place_names.get(grace["textId1"])
+        if grace_name:
+            area_no, gx_no, gz_no = grace["areaNo"], grace["gridXNo"], grace["gridZNo"]
+            if area_no in (60, 61):
+                located_graces[area_no].append(
+                    (
+                        (gx_no + TILE_ORIGIN) * TILE_SIZE + grace["posX"],
+                        grace["posY"],
+                        (gz_no + TILE_ORIGIN) * TILE_SIZE + grace["posZ"],
+                        grace_name,
+                    )
+                )
+            else:
+                located_graces[(area_no, gx_no, gz_no)].append(
+                    (grace["posX"], grace["posY"], grace["posZ"], grace_name)
+                )
         area, x, z = grace["areaNo"], grace["gridXNo"], grace["gridZNo"]
         region = region_name(grace["bonfireSubCategoryId"])
         if not region:
@@ -449,6 +744,18 @@ def main():
         if map_name[:6] in MAP_OVERRIDES:
             return MAP_OVERRIDES[map_name[:6]]
 
+        if map_name[:6] in MAPS_SPLIT_BY_GRACE and position:
+            px, py, pz = position
+            candidates = located_graces[(area, x, z)]
+            if candidates:
+                grace = min(
+                    candidates,
+                    key=lambda g: (g[0] - px) ** 2 + ((g[1] - py) * HEIGHT_WEIGHT) ** 2 + (g[2] - pz) ** 2,
+                )
+                region = grace_regions_by_name.get(grace[3])
+                if region:
+                    return region, region
+
         regions = map_graces.get((area, x), [])
         name = place_names.get(area * 1000 + x * 10)
         if not name:
@@ -457,6 +764,33 @@ def main():
             return name, regions[0][0]
         # Dungeons with no grace inside usually have one with the same name at the entrance
         return name, grace_regions_by_name.get(name, name)
+
+    def locate(map_name, position):
+        """
+        @returns where a placement is relative to the nearest grace: (grace name, east, up, north
+        offsets in meters, True since every map's +x is east and +z north (the user: the Church of
+        Elleh's grace is a few degrees west of north of The First Step's, and the Tree Sentinel a few
+        degrees east; the other maps' match the game's compass too), or None if no grace shares its
+        map
+        """
+        if position is None:
+            return None
+        map_name = MAP_ALIASES.get(map_name[:6], map_name[:6]) + map_name[6:]
+        area, x, z, version = (int(part) for part in map_name[1:].split("_"))
+        px, py, pz = position
+        if area in (60, 61):
+            size = TILE_SIZE * 2 ** (version % 10)
+            wx, wz = (x + TILE_ORIGIN) * size + px, (z + TILE_ORIGIN) * size + pz
+            candidates, compass = located_graces[area], True
+        else:
+            wx, wz = px, pz
+            candidates, compass = located_graces[(area, x, z)], True
+        if not candidates:
+            return None
+        gx, gy, gz, grace_name = min(
+            candidates, key=lambda g: (g[0] - wx) ** 2 + ((g[1] - py) * 2) ** 2 + (g[2] - wz) ** 2
+        )
+        return grace_name, round(wx - gx, 1), round(py - gy, 1), round(wz - gz, 1), compass
 
     # Names for models the game has no name for, filled in by hand
     model_names = {}
@@ -504,17 +838,25 @@ def main():
         # doubles the Morne Tunnel Scaly Misbegotten's: 531 × 1.281 × 2 = 1360, tested in game).
         # Their damage taken multipliers aren't applied, since they're mostly situational (e.g.
         # Crystalians' shells, Rennala's barrier).
-        hp_rate = area_rate("maxHpRate")
+        other_rate = 1
         for field, effect_id in row.items():
             effect = sp_effects.get(effect_id) if field.lower().startswith("speffectid") else None
             if field != "spEffectID3" and effect and effect["effectEndurance"] == -1:
-                hp_rate *= effect["maxHpRate"]
+                other_rate *= effect["maxHpRate"]
+        hp_rate = area_rate("maxHpRate") * other_rate
+        # In NG+, its NG+ scaling effect (GameClearSpEffectID) multiplies its HP too: its multipliers
+        # get smaller the more its area scales, bringing every area to about the same (e.g. ×1.141 ×
+        # 3.122 = 3.56 in Limgrave, ×2.406 × 1.523 = 3.66 for a later area's). Untested; for the enemy
+        # locations list only. Enemies without one aren't scaled.
+        ng_plus_effect = sp_effects.get(row["GameClearSpEffectID"]) if row["GameClearSpEffectID"] > 0 else None
+        ng_plus_rate = hp_rate * (ng_plus_effect["maxHpRate"] if ng_plus_effect else 1)
 
         if chara_init is None:
             defense = [round(row[field] * area_rate(rate), 1) for field, rate in DEFENSES]
             negation = [round((1 - row[field]) * 100, 1) for field in NEGATIONS]
             hp = round(row["hp"] * hp_rate)
-            return defense, negation, hp
+            ng_plus_hp = round(row["hp"] * ng_plus_rate)
+            return defense, negation, hp, ng_plus_hp
 
         # Human enemies: defense from level and attributes, negation from armor
         level = sum(chara_init[attribute] for attribute in CHARA_INIT_ATTRIBUTES)
@@ -534,11 +876,10 @@ def main():
                 multiplier *= piece[field]
             negation.append(round((1 - multiplier) * 100, 1))
 
-        hp = round(
-            int(evaluate_graph(graphs[VIGOR_HP_GRAPH], chara_init["baseVit"]))
-            * hp_rate
-        )
-        return defense, negation, hp
+        base_hp = int(evaluate_graph(graphs[VIGOR_HP_GRAPH], chara_init["baseVit"]))
+        hp = round(base_hp * hp_rate)
+        ng_plus_hp = round(base_hp * ng_plus_rate)
+        return defense, negation, hp, ng_plus_hp
 
     def get_critical_damage_rate(row, name):
         model_rate = CRITICAL_DAMAGE_RATE_MODELS.get(row["id"] // 10000)
@@ -553,6 +894,7 @@ def main():
         return "[Boss]" in name or row["isSoulGetByBoss"] or row["id"] in BOSS_NPC_PARAM_IDS
 
     areas = {}
+    placements_by_enemy = defaultdict(list)
     # Each region's enemies' area scaling (HP multiplier), and how many of them are in the DLC
     region_scaling = defaultdict(list)
     region_dlc = defaultdict(int)
@@ -589,14 +931,21 @@ def main():
                 continue
             if row["id"] in EXCLUDED_NPC_PARAM_IDS:
                 continue
+            # Summons (white ghosts, e.g. Sorceress Sellen's 533160124) aren't fought (the user)
+            if row["teamType"] == SUMMON_TEAM_TYPE:
+                continue
 
             chara_init = chara_inits.get(int(placement["charaInitId"])) if model == "c0000" else None
-            defense, negation, hp = get_stats(row, chara_init)
+            defense, negation, hp, ng_plus_hp = get_stats(row, chara_init)
             area = areas.setdefault(area_name, {"name": area_name, "region": region, "enemies": {}})
             # Merge identical enemies, e.g. the same enemy placed several times
             friendly = row["teamType"] in FRIENDLY_TEAM_TYPES
             types = [enemy_type for field, enemy_type in ENEMY_TYPES.items() if row[field]]
-            key = (name, tuple(defense), tuple(negation), hp, friendly, tuple(types))
+            # Which parts of its model it shows (NpcParam modelDispMask0-31: e.g. an outfit or a weapon),
+            # so rows that look different stay apart (the user's call), e.g. the Academy's Glintstone
+            # Sorcerers' two outfits
+            appearance = tuple(i for i in range(32) if row[f"modelDispMask{i}"])
+            key = (name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance)
             riposte_override = next(
                 (ripostes for prefix, ripostes in RIPOSTE_NAME_OVERRIDES.items() if name.startswith(prefix)),
                 None,
@@ -607,6 +956,9 @@ def main():
                     "name": name,
                     "npcParamIds": [],
                     "hp": hp,
+                    # (for the enemy locations list only, not output)
+                    **({"ngPlusHp": ng_plus_hp} if ng_plus_hp else {}),
+                    "appearance": appearance,
                     "defense": defense,
                     "negation": negation,
                     **({"types": types} if types else {}),
@@ -629,10 +981,51 @@ def main():
             )
             if row["id"] not in enemy["npcParamIds"]:
                 enemy["npcParamIds"].append(row["id"])
+            # (for the enemy locations list only, not output)
+            enemy.setdefault("parts", {})[row["id"]] = list(appearance)
+            # (for labels by character build, not output)
+            if chara_init is not None and int(placement["charaInitId"]) not in enemy.setdefault("charaInits", []):
+                enemy["charaInits"].append(int(placement["charaInitId"]))
+            # Where it's placed (not output), for identifying enemies that share a name
+            placements_by_enemy[id(enemy)].append(
+                (placement["map"], locate(placement["map"], position), row["id"])
+            )
             if not friendly:
                 area_effect = sp_effects.get(row["spEffectID3"])
                 region_scaling[region].append(area_effect["maxHpRate"] if area_effect else 1)
                 region_dlc[region] += placement["map"].startswith(DLC_MAP_PREFIXES)
+
+    # Merge entries that differ only in their names, and identify those that share a name (see
+    # enemy_curation.py), listing those identified only by the nearest grace
+    def enemy_category(enemy):
+        return next((c for c in ["friendly", "boss", "neutral"] if enemy.get(c)), "enemy")
+
+    def is_dlc(enemy):
+        return any(
+            map_name.startswith(DLC_MAP_PREFIXES) for map_name, _, _ in placements_by_enemy[id(enemy)]
+        )
+
+    apply_edits(areas, placements_by_enemy, ENEMY_EDITS, is_dlc)
+    unresolved = []
+    for area in areas.values():
+        merge_identical(
+            area["enemies"],
+            placements_by_enemy,
+            {name for area_name, name in MERGED_LOOKS if area_name == area["name"]},
+        )
+        identify(area["name"], area["enemies"], placements_by_enemy, ENEMY_LABELS, unresolved)
+        # (by section: the picker lists friendly characters, bosses, etc. separately)
+        names = Counter(
+            (enemy_category(enemy), enemy["name"]) for enemy in area["enemies"].values()
+        )
+        for (_, name), count in names.items():
+            if count > 1:
+                print(f"Warning: {count} entries named {name} in {area['name']}")
+    locations_path = os.path.join(project_dir, "data", "enemy-locations.md")
+    with open(locations_path, "w", encoding="utf-8") as f:
+        f.write(report(unresolved, placements_by_enemy))
+        f.write(where_is(areas, placements_by_enemy, WHERE_IS))
+    print(f"{len(unresolved)} entries to identify -> {locations_path}")
 
     # Regions in order of difficulty, by their enemies' median area scaling, with the DLC's after the
     # base game's. Unscaled enemies don't count, since many regions have some (e.g. most of Moonlight
@@ -674,7 +1067,11 @@ def main():
                     ),
                     "enemies": sorted(
                         area["enemies"].values(),
-                        key=lambda e: (CATEGORY_ORDER.index(enemy_category(e)), e["name"], e["hp"]),
+                        key=lambda e: (
+                            CATEGORY_ORDER.index(enemy_category(e)),
+                            e.get("sortName", e["name"]),
+                            e["hp"],
+                        ),
                     ),
                 }
                 for area in areas.values()
@@ -687,6 +1084,16 @@ def main():
             ),
         )
     }
+    # Sort names are only for ordering
+    for area in output["areas"]:
+        for enemy in area["enemies"]:
+            enemy.pop("sortName", None)
+            enemy.pop("separate", None)
+            enemy.pop("ngPlusHp", None)
+            enemy.pop("appearance", None)
+            enemy.pop("parts", None)
+            enemy.pop("labeled", None)
+            enemy.pop("charaInits", None)
     out_path = os.path.join(project_dir, "public", "enemies.json")
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(output, f, separators=(",", ":"), ensure_ascii=False)

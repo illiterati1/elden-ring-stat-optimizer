@@ -25,25 +25,18 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
   const area = areas.find(({ name }) => name === enemyArea) ?? null;
   const enemy = area?.enemies.find((enemy) => getEnemyKey(enemy) === enemyKey) ?? null;
 
-  // Enemies with the same name but different stats (e.g. two encounters) get their HP appended,
-  // plus a number if that's still ambiguous
+  // Entries' names tell them apart (scripts/enemy_curation.py identifies those sharing a name).
+  // Only bosses are listed (or they're grouped, in debug mode), so their "[Boss]" tag is left out.
+  // A name still shared (none in the areas reviewed so far) gets the HP as a last resort.
   const enemyLabels = useMemo(() => {
     const labels = new Map<Enemy, string>();
-    const counts = new Map<string, number>();
     for (const enemy of area?.enemies ?? []) {
-      const sameName = area!.enemies.filter((other) => other.name === enemy.name);
-      // Only bosses are listed (or they're grouped, in debug mode), so their "[Boss]" tag is left out
-      let label = enemy.name.replace(" [Boss]", "");
-      if (sameName.length > 1) {
-        label += ` (${enemy.hp.toLocaleString()} HP`;
-        if (sameName.filter((other) => other.hp === enemy.hp).length > 1) {
-          const count = (counts.get(label) ?? 0) + 1;
-          counts.set(label, count);
-          label += `, #${count}`;
-        }
-        label += ")";
-      }
-      labels.set(enemy, label);
+      // (within its section: e.g. Witch-Hunter Jerren is both an enemy and a friendly character)
+      const sameName = area!.enemies.filter(
+        (other) => other.name === enemy.name && getEnemyCategory(other) === getEnemyCategory(enemy),
+      );
+      const label = enemy.name.replace(" [Boss]", "");
+      labels.set(enemy, sameName.length > 1 ? `${label} (${enemy.hp.toLocaleString()} HP)` : label);
     }
     return labels;
   }, [area]);
