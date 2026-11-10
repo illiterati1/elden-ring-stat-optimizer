@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Alert,
   Button,
@@ -811,6 +811,19 @@ export default function App() {
     planAttributes,
     startLevel,
   ]);
+
+  // Weapons that are no longer picked come off the chart, rather than coming back if they're picked
+  // again (or taking up its slots). Only after the selection changes, since on page load the data
+  // the weapons are picked from is still loading.
+  const selection = [selectedWeapons, weaponTypes, affinityIds, selectedAmmo, onlyBuffable];
+  const lastSelection = useRef(selection);
+  useEffect(() => {
+    if (selection.every((value, i) => value === lastSelection.current[i])) return;
+    lastSelection.current = selection;
+    const requested = new Set(requests.map((request) => request.weapon.name));
+    const kept = chartWeapons.filter((name) => requested.has(name));
+    if (kept.length < chartWeapons.length) updateAppState({ chartWeapons: kept });
+  });
 
   const { results, pending } = useBuildResults(requests);
 
