@@ -1118,12 +1118,19 @@ export default function App() {
         </Box>
 
         <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 4 }}>
-          Weapon data and damage calculations are adapted from the{" "}
+          Found a bug or inaccuracy? File an issue{" "}
           <Link
-            href="https://github.com/ThomasJClark/elden-ring-weapon-calculator"
+            href="https://github.com/illiterati1/elden-ring-stat-optimizer/issues"
             target="_blank"
             rel="noopener noreferrer"
           >
+            here
+          </Link>
+          .
+        </Typography>
+        <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1 }}>
+          Weapon data and damage calculations are adapted from the{" "}
+          <Link href="https://eldenring.tclark.io/" target="_blank" rel="noopener noreferrer">
             Elden Ring Weapon Calculator
           </Link>
           . Attack motion values come from the{" "}
