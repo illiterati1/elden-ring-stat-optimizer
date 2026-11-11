@@ -28,7 +28,13 @@ import {
   type BuffKind,
   type BuffType,
 } from "./useBuffs.ts";
-import { BuffOption, compareBuffs, groupByKind, typedKinds } from "./buffListing.tsx";
+import {
+  BuffOption,
+  getTypedBuffs,
+  groupBuffsByKind,
+  groupByKind,
+  typedKinds,
+} from "./buffListing.tsx";
 
 interface Props {
   buffs: readonly Buff[];
@@ -96,13 +102,7 @@ function BuffSettings({
   pickedWeapons,
   onChange,
 }: Props) {
-  const byKind = useMemo(() => {
-    const groups = new Map<BuffKind, Buff[]>();
-    for (const buff of [...buffs].sort(compareBuffs)) {
-      groups.set(buff.kind, [...(groups.get(buff.kind) ?? []), buff]);
-    }
-    return groups;
-  }, [buffs]);
+  const byKind = useMemo(() => groupBuffsByKind(buffs), [buffs]);
   const selected = buffs.filter((buff) => selectedBuffs.includes(getBuffKey(buff)));
   const selectedOf = (kinds: BuffKind[]) => selected.filter((buff) => kinds.includes(buff.kind));
   // A buff that needs no armor (the Lamenter's Mask) can't be picked while any armor is, and the
@@ -146,8 +146,7 @@ function BuffSettings({
   };
 
   /** Consumables, spells, skills, and spirit ashes of a stacking group */
-  const ofType = (type: BuffType) =>
-    typedKinds.flatMap(([kind]) => (byKind.get(kind) ?? []).filter((buff) => buff.type === type));
+  const ofType = (type: BuffType) => getTypedBuffs(byKind, type);
   const typedKindList = typedKinds.map(([kind]) => kind);
 
   const multiPicker = (

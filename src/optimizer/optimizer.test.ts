@@ -9,6 +9,7 @@ import getWeaponAttack, {
   type Weapon,
 } from "../calculator/calculator.ts";
 import { decodeRegulationData } from "../regulationData.ts";
+import { getTypedBuffs, groupBuffsByKind } from "../app/buffListing.tsx";
 import { allPhysicalTypes, getDamageAfterDefense, getDefenseMultiplier } from "./defense.ts";
 import { applyLimits, type Limits } from "./limits.ts";
 import { getCumulativeLevelUpCosts, getLevelUpCost } from "./runes.ts";
@@ -8009,6 +8010,25 @@ describe("Ashes of War", () => {
     expect(describeBuff(sacredOrder)).toBe(
       "×2 damage against those who live in death; ×1.1 damage",
     );
+  });
+
+  it("lists weapons' own skills' buffs first in the weapon buffs picker", () => {
+    const allBuffs = JSON.parse(
+      readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"),
+    ).buffs as Buff[];
+    const options = getTypedBuffs(groupBuffsByKind(allBuffs), "weapon");
+    const own = options.filter(isWeaponOnlyBuff);
+    expect(own.length).toBeGreaterThan(0);
+    // All of them, by name, then the other skills' (by name), spells', and items'
+    expect(options.slice(0, own.length)).toEqual(
+      [...own].sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    expect(options.slice(own.length).some(isWeaponOnlyBuff)).toBe(false);
+    expect(options.map((buff) => buff.name)).toEqual(
+      expect.arrayContaining(["Golden Tempering", "Sacred Blade", "Magic Grease"]),
+    );
+    expect(options[own.length].kind).toBe("skill");
+    expect(options.at(-1)!.kind).not.toBe("skill");
   });
 
   it("matches Euporia's luster tiers in game", () => {

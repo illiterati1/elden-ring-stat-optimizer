@@ -5,6 +5,7 @@ import {
   isWeaponOnlyBuff,
   type Buff,
   type BuffKind,
+  type BuffType,
 } from "./useBuffs.ts";
 
 // Kinds of buff in the stacking group pickers, in order, with their sections' labels
@@ -32,6 +33,26 @@ export function compareBuffs(a: Buff, b: Buff) {
     if (keyA[i] !== keyB[i]) return keyA[i] < keyB[i] ? -1 : 1;
   }
   return 0;
+}
+
+/** @returns buffs by kind, each kind's in order (compareBuffs) */
+export function groupBuffsByKind(buffs: readonly Buff[]) {
+  const groups = new Map<BuffKind, Buff[]>();
+  for (const buff of [...buffs].sort(compareBuffs)) {
+    groups.set(buff.kind, [...(groups.get(buff.kind) ?? []), buff]);
+  }
+  return groups;
+}
+
+/**
+ * @returns the consumables, spells, skills, spirit ashes, and weapon effects of a stacking group, as
+ * its picker lists them: by kind (typedKinds), each kind's in order (compareBuffs), so weapons' own
+ * skills' buffs come first
+ */
+export function getTypedBuffs(byKind: ReadonlyMap<BuffKind, Buff[]>, type: BuffType) {
+  return typedKinds.flatMap(([kind]) =>
+    (byKind.get(kind) ?? []).filter((buff) => buff.type === type),
+  );
 }
 
 /** @returns the label of the section a buff is listed in, by its kind */
