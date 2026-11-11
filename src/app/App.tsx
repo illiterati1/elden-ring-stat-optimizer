@@ -933,6 +933,10 @@ export default function App() {
             build on each other: one more level can move points between stats rather than just
             adding one. A level can also have several allocations with the same best value, of which
             only one is shown.
+            <Box sx={{ mt: 1 }}>
+              For mouse &amp; keyboard players: R1 is light attack, R2 is heavy attack, L1 is left
+              hand or powerstance attack, and L2 is weapon skill.
+            </Box>
           </Alert>
         )}
 
