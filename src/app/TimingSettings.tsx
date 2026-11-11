@@ -18,6 +18,8 @@ interface Props {
   showDps: AppState["showDps"];
   tooltipTimings: AppState["tooltipTimings"];
   chainLimit: AppState["chainLimit"];
+  /** Spell scaling has no attack to time, so values aren't per second */
+  spellScaling: boolean;
   /** The chosen attack is on horseback, where there's no rolling (so no time to dodge) */
   mounted: boolean;
   onChange: UpdateAppState;
@@ -43,7 +45,14 @@ const chainLimitModes: [ChainLimitSetting["mode"], string][] = [
  * Settings for attacks' timing: showing values per second, which timings the hits tooltip shows,
  * and cutting chains short
  */
-function TimingSettings({ showDps, tooltipTimings, chainLimit, mounted, onChange }: Props) {
+function TimingSettings({
+  showDps,
+  tooltipTimings,
+  chainLimit,
+  spellScaling,
+  mounted,
+  onChange,
+}: Props) {
   return (
     <Section
       id="timing"
@@ -54,6 +63,7 @@ function TimingSettings({ showDps, tooltipTimings, chainLimit, mounted, onChange
           title="Per second: scale values by time"
           inputProps={{ "aria-label": "Per second" }}
           checked={showDps}
+          disabled={spellScaling}
           onChange={(evt) => onChange({ showDps: evt.currentTarget.checked })}
         />
       }

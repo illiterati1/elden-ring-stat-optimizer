@@ -137,6 +137,7 @@ function BuildSettings({
   offhandBuffChoices,
   onChange,
 }: Props) {
+  const spellScaling = objective === "spellScaling";
   return (
     <Section id="weapon" title="Weapon">
       <Box display="grid" gridTemplateColumns="1fr 1fr" gap={1}>
@@ -300,10 +301,12 @@ function BuildSettings({
           }
         />
       </Box>
+      {/* Spell scaling has no attack to show these for */}
       <Box display="flex" flexWrap="wrap" columnGap={3}>
         <FormControlLabel
           label="Show poise"
           sx={{ mr: 0 }}
+          disabled={spellScaling}
           control={
             <Checkbox
               size="small"
@@ -315,6 +318,7 @@ function BuildSettings({
         <FormControlLabel
           label="Show stamina cost"
           sx={{ mr: 0 }}
+          disabled={spellScaling}
           control={
             <Checkbox
               size="small"
@@ -326,6 +330,7 @@ function BuildSettings({
         <FormControlLabel
           label="Show status"
           sx={{ mr: 0 }}
+          disabled={spellScaling}
           control={
             <Checkbox
               size="small"

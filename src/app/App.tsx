@@ -130,10 +130,10 @@ export default function App() {
     upgradeLevel,
     twoHanding,
     showScaling,
-    showStatus,
-    showStance,
-    showStamina,
-    showDps,
+    showStatus: savedShowStatus,
+    showStance: savedShowStance,
+    showStamina: savedShowStamina,
+    showDps: savedShowDps,
     tooltipTimings,
     chainLimit,
     showRequirements,
@@ -170,6 +170,12 @@ export default function App() {
     selectedAmmo,
     weaponTypes,
   } = appState;
+  // Spell scaling has no attack, so no poise, stamina, status, or timing (the settings are kept)
+  const spellScalingMode = objective === "spellScaling";
+  const showStatus = savedShowStatus && !spellScalingMode;
+  const showStance = savedShowStance && !spellScalingMode;
+  const showStamina = savedShowStamina && !spellScalingMode;
+  const showDps = savedShowDps && !spellScalingMode;
 
   const { weapons, loading, error } = useWeapons();
   const ammo = useAmmo();
@@ -960,9 +966,9 @@ export default function App() {
               upgradeLevel={upgradeLevel}
               twoHanding={twoHanding}
               showScaling={showScaling}
-              showStatus={showStatus}
-              showStance={showStance}
-              showStamina={showStamina}
+              showStatus={savedShowStatus}
+              showStance={savedShowStance}
+              showStamina={savedShowStamina}
               showRequirements={showRequirements}
               closedAlerts={closedAlerts}
               meetRequirements={meetRequirements}
@@ -991,7 +997,8 @@ export default function App() {
               onChange={updateAppState}
             />
             <TimingSettings
-              showDps={showDps}
+              showDps={savedShowDps}
+              spellScaling={spellScalingMode}
               tooltipTimings={tooltipTimings}
               chainLimit={chainLimit}
               mounted={mountedAttacks.has(attack)}
