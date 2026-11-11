@@ -302,28 +302,6 @@ function BuildSettings({
       </Box>
       <Box display="flex" flexWrap="wrap" columnGap={3}>
         <FormControlLabel
-          label="Show scaling"
-          sx={{ mr: 0 }}
-          control={
-            <Checkbox
-              size="small"
-              checked={showScaling}
-              onChange={(evt) => onChange({ showScaling: evt.currentTarget.checked })}
-            />
-          }
-        />
-        <FormControlLabel
-          label="Show status"
-          sx={{ mr: 0 }}
-          control={
-            <Checkbox
-              size="small"
-              checked={showStatus}
-              onChange={(evt) => onChange({ showStatus: evt.currentTarget.checked })}
-            />
-          }
-        />
-        <FormControlLabel
           label="Show poise"
           sx={{ mr: 0 }}
           control={
@@ -342,6 +320,28 @@ function BuildSettings({
               size="small"
               checked={showStamina}
               onChange={(evt) => onChange({ showStamina: evt.currentTarget.checked })}
+            />
+          }
+        />
+        <FormControlLabel
+          label="Show status"
+          sx={{ mr: 0 }}
+          control={
+            <Checkbox
+              size="small"
+              checked={showStatus}
+              onChange={(evt) => onChange({ showStatus: evt.currentTarget.checked })}
+            />
+          }
+        />
+        <FormControlLabel
+          label="Show scaling"
+          sx={{ mr: 0 }}
+          control={
+            <Checkbox
+              size="small"
+              checked={showScaling}
+              onChange={(evt) => onChange({ showScaling: evt.currentTarget.checked })}
             />
           }
         />
