@@ -6702,6 +6702,34 @@ describe("Ashes of War", () => {
     ).toEqual([[[1139, 30]]]);
   });
 
+  it("times War Cry's R2 chains", () => {
+    // Its buffed R2s on a Greataxe, chained as fast as possible in game (60 fps), from the R2 #1
+    // press: R2 #1's hit, R2 #2's, and the next R2 #1's. Measured one handed 57, 127, 225 (charged
+    // 142, 299, 483), and two handed 59, 129, 232 (charged 144, 301, 486)
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const chain = (version: string, twoHanding: boolean) => {
+      const ash = getAshAttack(
+        ashes,
+        movesets,
+        getWeapon("Greataxe"),
+        withFollowUp("War Cry", version),
+        twoHanding,
+      );
+      if (!("attack" in ash)) throw new Error(ash.unavailableReason);
+      const [first, second] = ash.attack.stepTimes!;
+      const [firstCycle, secondCycle] = ash.attack.cycleTimes!;
+      return [
+        first.hits[0],
+        firstCycle + second.hits[0],
+        firstCycle + secondCycle + first.hits[0],
+      ].map(frames);
+    };
+    expect(chain("R2 chain", false)).toEqual([58, 128, 228]);
+    expect(chain("Charged R2 chain", false)).toEqual([142, 298, 484]);
+    expect(chain("R2 chain", true)).toEqual([58, 128, 232]);
+    expect(chain("Charged R2 chain", true)).toEqual([142, 300, 484]);
+  });
+
   it("matches Dynast's Finesse in game", () => {
     // The Bloody Helice's skill, one chain labeled "Follow-up R2": its thrust, then the follow-up R2.
     // Tested in game at +25 with 99 in every stat on the training dummy (damage, poise, and blood loss)
