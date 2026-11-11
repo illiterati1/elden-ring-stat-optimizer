@@ -2987,6 +2987,24 @@ describe("Ashes of War", () => {
     expect(dragon.finalValue).toBe(1731);
     expect(dragon.attackStance).toBeCloseTo(28 * 0.2);
     expect(dragon.attackSteps![0][3].stance).toBeCloseTo(16 * 0.2);
+    const normal = optimizeBuild({
+      weapon,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: result.attack,
+    });
+    expect(normal.attackPoisePerSecond).toBeGreaterThan(0);
+    expect(dragon.attackPoisePerSecond).toBeCloseTo(normal.attackPoisePerSecond! * 0.2);
     // Palm Blast: uncharged 954 (20 poise), charged 1996 (36 poise)
     const palmBlast = (level: string) => {
       const palm = getAshAttack(ashes, movesets, weapon, withFollowUp("Palm Blast", level), false);

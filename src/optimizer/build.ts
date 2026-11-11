@@ -988,7 +988,7 @@ function getAttackStatusPerSecond(
 }
 
 /** An attack's poise damage per second repeated as fast as possible, like getAttackDps */
-function getAttackPoisePerSecond(attack: AttackData) {
+function getAttackPoisePerSecond(attack: AttackData, poiseDamageRate = 1) {
   const repeated = getRepeatedSteps(attack);
   if (!repeated) return undefined;
   const poise = attack.steps
@@ -1002,7 +1002,7 @@ function getAttackPoisePerSecond(attack: AttackData) {
           getTickCount(hit),
       0,
     );
-  return poise / repeated.time;
+  return (poiseDamageRate * poise) / repeated.time;
 }
 
 /**
@@ -1728,7 +1728,9 @@ export function optimizeBuild(
         : resultAttack && attackSteps
         ? getAttackDps(resultAttack, attackSteps)
         : undefined,
-    attackPoisePerSecond: resultAttack ? getAttackPoisePerSecond(resultAttack) : undefined,
+    attackPoisePerSecond: resultAttack
+      ? getAttackPoisePerSecond(resultAttack, poiseDamageRate)
+      : undefined,
     attackStaminaPerSecond: resultAttack ? getAttackStaminaPerSecond(resultAttack) : undefined,
     attackStepTimes: resultAttack?.stepTimes,
     ...(resultAttack?.repeatFrom && { attackRepeatFrom: resultAttack.repeatFrom }),
