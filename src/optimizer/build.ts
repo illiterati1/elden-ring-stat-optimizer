@@ -505,13 +505,19 @@ export interface StepTimes {
   block?: number;
   /** When moving can end it: the animations' "cancel - LS movement" flag (11) */
   move?: number;
+  /** When a jump (or crouch) can start: the animations' flag 32 */
+  jump?: number;
   /**
    * How long the step lasts when the attack is repeated as fast as possible, if known: until the
    * same button's next attack can start (or an R1/R2, after a chain's last step or for attacks that
    * can't be repeated back to back, or else the animation's end). For one-off attacks (running,
-   * backstep, guard counters, critical hits), until the earliest attack, roll, block, or movement.
+   * backstep, guard counters, critical hits), until the earliest attack, roll, block, movement, or
+   * jump.
+   * For the last step of a chain cut short (cutShort), until the chain is over instead.
    */
   cycle?: number;
+  /** The last step of a chain cut short, which doesn't start again: its cycle is when it's over */
+  cutShort?: true;
 }
 
 export interface AttackData {

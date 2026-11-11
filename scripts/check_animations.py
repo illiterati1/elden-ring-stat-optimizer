@@ -709,6 +709,7 @@ def get_timings(steps, param, moveset):
       - roll: when a roll can start
       - block: when blocking can start
       - move: when moving can end the animation
+      - jump: when a jump (or crouch) can start
       - landing: for jumping attacks, when any attack, a roll, blocking, moving, and another jump can start
         after landing (the lighter landing, JUMP_LANDING_OFFSET)
       - end: without a right hand attack cancel, when the animation ends, if it's been measured
@@ -755,7 +756,7 @@ def get_timings(steps, param, moveset):
                 )
                 if button_cancels:
                     timing["cancels"] = {name: round(time, 3) for time, name in button_cancels}
-                for name in ["rightHandAttack", "leftHandAttack", "roll", "block", "move"]:
+                for name in ["rightHandAttack", "leftHandAttack", "roll", "block", "move", "jump"]:
                     if name in cancels:
                         timing[name] = round(cancels[name], 3)
                 # Without a right hand attack cancel, the attack can only be repeated once it ends

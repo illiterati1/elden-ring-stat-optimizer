@@ -12710,12 +12710,22 @@ describe("powerstance off hand weapons", () => {
     const two = getAttackData(movesets, longsword, "R1", false, 0.5, false, { steps: 2 })!;
     expect(two.steps).toHaveLength(2);
     expect(two.weights[0] + two.weights[1]).toBeCloseTo(1);
-    expect(two.cycleTimes![1]).toBeCloseTo(1 / 30 + 0.767);
-    // Or the steps that fit a time budget, from the press until a roll can start after them: the
-    // second step's roll is at 1.37s, the third's at 2.03s
-    expect(
-      getAttackData(movesets, longsword, "R1", false, 0.5, false, { seconds: 1.6 })!.steps,
-    ).toHaveLength(2);
+    // It doesn't start again: its last step lasts until anything but an attack can follow it, its
+    // roll at 0.733s (before a jump at 0.767s, blocking at 0.833s, or moving at 0.933s)
+    expect(two.cycleTimes![1]).toBeCloseTo(1 / 30 + 0.733);
+    // Cut at the whole chain's length, it doesn't start again either; longer, it repeats as usual
+    const five = getAttackData(movesets, longsword, "R1", false, 0.5, false, { steps: 5 })!;
+    expect(five.stepTimes![4].cutShort).toBe(true);
+    expect(five.cycleTimes![4]).toBeLessThan(r1.cycleTimes![4]);
+    const six = getAttackData(movesets, longsword, "R1", false, 0.5, false, { steps: 6 })!;
+    expect(six.cycleTimes).toEqual(r1.cycleTimes);
+    expect(six.stepTimes![4].cutShort).toBeUndefined();
+    // Or the steps that fit a time to dodge, from the first attack until a roll can start after
+    // them: the second step's roll is at 1.37s, the third's at 2.03s
+    const dodge = getAttackData(movesets, longsword, "R1", false, 0.5, false, { seconds: 1.6 })!;
+    expect(dodge.steps).toHaveLength(2);
+    // Its last step lasts until the roll
+    expect(dodge.cycleTimes![1]).toBeCloseTo(1 / 30 + 0.733);
     expect(
       getAttackData(movesets, longsword, "R1", false, 0.5, false, { seconds: 2.1 })!.steps,
     ).toHaveLength(3);
@@ -12723,6 +12733,11 @@ describe("powerstance off hand weapons", () => {
     expect(
       getAttackData(movesets, longsword, "R1", false, 0.5, false, { seconds: 0.1 })!.steps,
     ).toHaveLength(1);
+    // Mounted chains can't roll, so a time to dodge doesn't limit them
+    const mounted = getAttackData(movesets, longsword, "Mounted R1/L1", false, 0.5)!;
+    expect(
+      getAttackData(movesets, longsword, "Mounted R1/L1", false, 0.5, false, { seconds: 0.1 })!,
+    ).toEqual(mounted);
 
     // Stamina per second: the chain's 60 over its 3.967s
     const result = optimizeBuild({

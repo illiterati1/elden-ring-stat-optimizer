@@ -29,6 +29,7 @@ hit's window opens], "cancels": when it can be cancelled into each of R1, R2, an
 seconds until a left hand attack can start (L1, or on horseback L1 or L2), "end": without
 it, seconds until the animation ends (if measured), "roll": seconds until a roll can start,
 "block": seconds until blocking can start, "move": seconds until moving can end the animation,
+"jump": seconds until a jump (or crouch) can start,
 "stamina": what the step costs, "leftStamina": how much of that the left hand's weapon costs
 (powerstance attacks), "sweetSpot": true if its hits are in
 a flail's sweet spot (×1.125 damage) }], each left out if the animation doesn't allow it (or costs

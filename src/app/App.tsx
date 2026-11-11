@@ -56,6 +56,7 @@ import useMovesets, {
   allAttacks,
   canTwoHand,
   getAttackData,
+  mountedAttacks,
   oneOffAttacks,
   riposteAttacks,
   withOffhandRows,
@@ -993,6 +994,7 @@ export default function App() {
               showDps={showDps}
               tooltipTimings={tooltipTimings}
               chainLimit={chainLimit}
+              mounted={mountedAttacks.has(attack)}
               onChange={updateAppState}
             />
             <BuffSettings
@@ -1085,6 +1087,7 @@ export default function App() {
                         showStamina={showStamina}
                         showDps={showDps}
                         tooltipTimings={tooltipTimingsShown}
+                        skill={attack === ashAttack}
                         showRequirements={showRequirements}
                         sortBy={sortBy}
                         reverse={reverse}

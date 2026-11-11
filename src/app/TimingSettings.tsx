@@ -18,46 +18,43 @@ interface Props {
   showDps: AppState["showDps"];
   tooltipTimings: AppState["tooltipTimings"];
   chainLimit: AppState["chainLimit"];
+  /** The chosen attack is on horseback, where there's no rolling (so no time to dodge) */
+  mounted: boolean;
   onChange: UpdateAppState;
 }
 
 // The hits tooltip's timings, each cumulative from the start of the chain
 const tooltipTimingLabels: [keyof TooltipTimings, string][] = [
   ["hits", "Hit times"],
+  ["nextChain", "Same attack/skill"],
   ["cancel", "Earliest attack"],
   ["roll", "Roll"],
   ["block", "Block"],
   ["move", "Movement"],
-  ["nextChain", "Same attack"],
 ];
 
 const chainLimitModes: [ChainLimitSetting["mode"], string][] = [
   ["none", "Whole chain"],
   ["steps", "Steps"],
-  ["seconds", "Seconds"],
+  ["seconds", "Time to dodge"],
 ];
 
 /**
  * Settings for attacks' timing: showing values per second, which timings the hits tooltip shows,
  * and cutting chains short
  */
-function TimingSettings({ showDps, tooltipTimings, chainLimit, onChange }: Props) {
+function TimingSettings({ showDps, tooltipTimings, chainLimit, mounted, onChange }: Props) {
   return (
     <Section
       id="timing"
       title="Timing"
       action={
-        <FormControlLabel
-          label="Per second"
-          title="Scale values by time"
-          sx={{ mr: 0 }}
-          control={
-            <Switch
-              size="small"
-              checked={showDps}
-              onChange={(evt) => onChange({ showDps: evt.currentTarget.checked })}
-            />
-          }
+        <Switch
+          size="small"
+          title="Per second: scale values by time"
+          inputProps={{ "aria-label": "Per second" }}
+          checked={showDps}
+          onChange={(evt) => onChange({ showDps: evt.currentTarget.checked })}
         />
       }
     >
@@ -102,7 +99,7 @@ function TimingSettings({ showDps, tooltipTimings, chainLimit, onChange }: Props
               }
             >
               {chainLimitModes.map(([mode, label]) => (
-                <MenuItem key={mode} value={mode}>
+                <MenuItem key={mode} value={mode} disabled={mounted && mode === "seconds"}>
                   {label}
                 </MenuItem>
               ))}
@@ -131,14 +128,25 @@ function TimingSettings({ showDps, tooltipTimings, chainLimit, onChange }: Props
             />
           )}
         </Box>
-        {chainLimit.mode === "seconds" && (
+        {chainLimit.mode === "seconds" && mounted && (
           <Typography variant="body2" color="text.secondary">
-            The steps that fit from the button press until a roll can start after them
+            Mounted attacks can't roll, so they use the whole chain
           </Typography>
         )}
-        {chainLimit.mode !== "none" && (
+        {chainLimit.mode === "seconds" && !mounted && (
           <Typography variant="body2" color="text.secondary">
-            A chain cut short starts again once an R1 or R2 can (at least one step)
+            The steps that fit from the first attack until a roll can start after them
+          </Typography>
+        )}
+        {chainLimit.mode === "steps" && (
+          <Typography variant="body2" color="text.secondary">
+            For time scaling, a chain cut short lasts until anything but an attack can follow its
+            last step (more steps than the chain has repeat it)
+          </Typography>
+        )}
+        {chainLimit.mode === "seconds" && !mounted && (
+          <Typography variant="body2" color="text.secondary">
+            For time scaling, a chain cut short lasts until a roll can start (at least one step)
           </Typography>
         )}
       </Box>

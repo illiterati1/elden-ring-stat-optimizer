@@ -448,6 +448,7 @@ function shiftStepTimes(step: StepTimes, by: number): StepTimes {
     ...(step.roll != null && { roll: step.roll + by }),
     ...(step.block != null && { block: step.block + by }),
     ...(step.move != null && { move: step.move + by }),
+    ...(step.jump != null && { jump: step.jump + by }),
     ...(step.cycle != null && { cycle: step.cycle + by }),
   };
 }
@@ -1103,7 +1104,7 @@ function getSkillAttack(
       );
       const last = i === stepCount - 1;
       // The last ends once anything can follow it (like one-off attacks), to cast the buff again
-      const freed = [step.earliest?.time, step.roll, step.block, step.move]
+      const freed = [step.earliest?.time, step.roll, step.block, step.move, step.jump]
         .filter((time): time is number => time != null)
         .sort((a, b) => a - b)[0];
       const timed: StepTimes = {

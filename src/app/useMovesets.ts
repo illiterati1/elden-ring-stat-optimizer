@@ -107,7 +107,7 @@ const repeatButtons: Partial<Record<AttackName, keyof NonNullable<StepTiming["ca
 };
 
 /** Mounted attacks, whose L1 and L2 are their R1 and R2 on the left side */
-const mountedAttacks: ReadonlySet<AttackName> = new Set([
+export const mountedAttacks: ReadonlySet<string> = new Set([
   "Mounted R1/L1",
   "Mounted R2/L2",
   "Mounted Charged R2/L2",
@@ -145,13 +145,15 @@ function earlier(a: number | undefined, b: number | undefined) {
 
 /**
  * @returns each step's times, or undefined if the timings don't have them all. A chain cut short
- * (lastStep) ends with a right hand attack (R1/R2), not its next step.
+ * (cutShort, the limit that cut it) doesn't start again: cut to a number of steps, its last step
+ * lasts until anything but an attack can follow it (a roll, blocking, moving, or a jump); cut to a
+ * time to dodge, until a roll can start.
  */
 function getStepTimes(
   attack: AttackName,
   timing: StepTiming[] | undefined,
   stepCount: number,
-  cutShort = false,
+  cutShort?: ChainLimit,
 ): StepTimes[] | undefined {
   if (!timing || timing.length < stepCount) return undefined;
   const button = repeatButtons[attack];
@@ -178,13 +180,14 @@ function getStepTimes(
       };
     }
     const lead = step.start ?? stepStartDelay;
+    const cut = cutShort != null && i === stepCount - 1;
     // Its own button's cancel, or for R1 and R2, the right hand attack cancel if that comes first (tested in game:
     // the Miséricorde's and the Pike's two handed R2 chains go on at the right hand attack cancel, long before their
     // R2 cancels: 26, 88, 142 and 52, 136, 232, 316 frames, 25, 86, 138 and 55, 143, 238, 321 in game;
     // powerstance L1 chains don't, e.g. the Short Spear's, 168 frames as its L1 cancels say, but go
     // on at the left hand attack cancel if that comes first, e.g. a Dagger's)
     const ownCancel =
-      button && !(cutShort && i === stepCount - 1)
+      button && !cut
         ? button === "L1"
           ? earlier(step.cancels?.L1, step.leftHandAttack)
           : step.cancels?.[button]
@@ -214,12 +217,19 @@ function getStepTimes(
       step.leftHandAttack,
       mounted,
     );
-    // A one-off attack is over once anything can follow it: an attack, a roll, a block, or moving
-    const freed = oneOffAttacks.has(attack)
-      ? [earliest && earliest.time - lead, step.roll, step.block, step.move]
-          .filter((time): time is number => time != null)
-          .sort((a, b) => a - b)[0]
-      : undefined;
+    // A one-off attack is over once anything can follow it: an attack, a roll, blocking, moving, or a
+    // jump (or crouch); the last step of a chain cut to a number of steps, once anything but an
+    // attack can; and one cut to a time to dodge, once a roll can start. (On horseback, only
+    // attacks: see below. A mounted chain cut to a number of steps goes on to a right hand attack.)
+    const anyButAttack = !mounted ? [step.roll, step.block, step.move, step.jump] : [];
+    const freed =
+      cut && "seconds" in cutShort
+        ? step.roll
+        : oneOffAttacks.has(attack) || cut
+        ? [...(cut ? [] : [earliest && earliest.time - lead]), ...anyButAttack]
+            .filter((time): time is number => time != null)
+            .sort((a, b) => a - b)[0]
+        : undefined;
     const repeat = freed ?? own ?? rightHand ?? step.end;
     return {
       lead,
@@ -231,36 +241,45 @@ function getStepTimes(
       ...(step.roll != null && !mounted && { roll: lead + step.roll }),
       ...(step.block != null && !mounted && { block: lead + step.block }),
       ...(step.move != null && !mounted && { move: lead + step.move }),
+      ...(step.jump != null && !mounted && { jump: lead + step.jump }),
       ...(repeat != null && { cycle: lead + repeat }),
+      ...(cut && { cutShort: true as const }),
     };
   });
 }
 
 /**
- * @returns how many of a chain's steps it's limited to: a number of steps, or the steps that fit a
- * time budget from the press until a roll can start after them, or on horseback a right hand
- * attack (at least one)
+ * @returns how many of a chain's steps it's limited to, and whether it's cut short (doesn't start
+ * again): a number of steps, cut short at the whole chain's length or less (more repeats the whole
+ * chain); or the steps that fit a time to dodge, from the first attack until a roll can start after
+ * them (at least one), cut short unless the whole chain fits. Mounted chains can't roll, so a time
+ * to dodge doesn't limit them.
  */
 function getChainLength(
   attack: AttackName,
   timing: StepTiming[] | undefined,
   stepCount: number,
   limit: ChainLimit | undefined,
-) {
-  if (!limit || !chainAttacks.has(attack)) return stepCount;
-  if ("steps" in limit) return Math.max(1, Math.min(stepCount, Math.floor(limit.steps)));
+): { length: number; cut: boolean } {
+  const whole = { length: stepCount, cut: false };
+  if (!limit || !chainAttacks.has(attack)) return whole;
+  if ("steps" in limit) {
+    const steps = Math.max(1, Math.floor(limit.steps));
+    return steps > stepCount ? whole : { length: steps, cut: true };
+  }
+  if (mountedAttacks.has(attack)) return whole;
   const times = getStepTimes(attack, timing, stepCount);
-  if (!times) return stepCount;
+  if (!times) return whole;
   let elapsed = 0;
   let count = 0;
   for (const step of times) {
-    const roll = step.roll ?? step.rightHandAttack;
-    if (roll == null || elapsed + roll > limit.seconds + 1e-9) break;
+    if (step.roll == null || elapsed + step.roll > limit.seconds + 1e-9) break;
     count++;
     if (step.cycle == null) break;
     elapsed += step.cycle;
   }
-  return Math.max(1, count);
+  const length = Math.max(1, count);
+  return { length, cut: length < stepCount };
 }
 
 /**
@@ -336,6 +355,8 @@ export interface StepTiming {
   block?: number;
   /** When moving can end the animation */
   move?: number;
+  /** When a jump (or crouch) can start */
+  jump?: number;
   /**
    * For jumping attacks, when an R1/R2, a roll, blocking, moving, and another jump can start after
    * landing (the time in the air depends on the jump, not the animations: see jumpAirTime)
@@ -724,9 +745,10 @@ export function getAttackData(
   const allSteps = moveset[hands]?.[attack];
   if (!allSteps) return undefined;
   const timing = moveset.timing?.[hands]?.[attack];
-  // A chain cut short ends with a right hand attack instead of its next step
-  const steps = allSteps.slice(0, getChainLength(attack, timing, allSteps.length, limit));
-  const stepTimes = getStepTimes(attack, timing, steps.length, steps.length < allSteps.length);
+  // A chain cut short doesn't go on to its next step or start again
+  const chain = getChainLength(attack, timing, allSteps.length, limit);
+  const steps = allSteps.slice(0, chain.length);
+  const stepTimes = getStepTimes(attack, timing, steps.length, chain.cut ? limit : undefined);
   const cycleTimes = stepTimes?.every((step) => step.cycle != null)
     ? stepTimes.map((step) => step.cycle!)
     : undefined;

@@ -50,6 +50,8 @@ interface Props {
   showDps: boolean;
   /** Timings shown in the hits tooltip */
   tooltipTimings: TooltipTimings;
+  /** The chosen attack is a skill (Ash of War) */
+  skill: boolean;
   sortBy: AppState["sortBy"];
   reverse: AppState["reverse"];
   onChange: UpdateAppState;
@@ -95,6 +97,7 @@ function AttackHits({
   repeatFrom,
   timings,
   label,
+  skill,
 }: {
   steps: AttackResultHit[][];
   stepTimes?: StepTimes[];
@@ -102,6 +105,8 @@ function AttackHits({
   repeatFrom?: number;
   timings: TooltipTimings;
   label: string;
+  /** The attack is a skill, repeated as the same skill rather than the same attack */
+  skill: boolean;
 }) {
   // When each step starts, from the start of the chain (as far as the steps' lengths are known),
   // or for a loop, from the press (after its opening)
@@ -346,11 +351,13 @@ function AttackHits({
             {showNextChain && (
               <TableRow>
                 <TableCell sx={cellSx} colSpan={99}>
-                  {repeatFrom
+                  {stepTimes?.[stepTimes.length - 1]?.cutShort
+                    ? `Chain over at ${formatSeconds(chainTime!)}`
+                    : repeatFrom
                     ? `Back to step ${repeatFrom + 1} at ${formatSeconds(chainTime!)}`
                     : loop
                     ? `Next pass at ${formatSeconds(chainTime!)}`
-                    : `Same attack at ${formatSeconds(chainTime!)}`}
+                    : `Same ${skill ? "skill" : "attack"} at ${formatSeconds(chainTime!)}`}
                 </TableCell>
               </TableRow>
             )}
@@ -400,6 +407,7 @@ function ResultsTable({
   showStamina,
   showDps,
   tooltipTimings,
+  skill,
   sortBy,
   reverse,
   onChange,
@@ -729,6 +737,7 @@ function ResultsTable({
                           stepTimes={result.attackStepTimes}
                           repeatFrom={result.attackRepeatFrom}
                           timings={tooltipTimings}
+                          skill={skill}
                           label={pointLabel === "damage" ? "Damage" : "AR"}
                         />
                       )}
