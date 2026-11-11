@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { allDamageTypes, AttackPowerType, type Weapon } from "../calculator/calculator.ts";
 import { allPhysicalTypes, type PhysicalType } from "../optimizer/defense.ts";
-import type { AttackData, AttackDataHit, HpDamage, StepTimes } from "../optimizer/build.ts";
+import {
+  getEarliestAttack,
+  type AttackData,
+  type AttackDataHit,
+  type HpDamage,
+  type StepTimes,
+} from "../optimizer/build.ts";
 import {
   allAttacks,
   getAttackData,
@@ -98,7 +104,7 @@ interface SkillPartTiming {
   L2?: number;
   R1?: number;
   R2?: number;
-  anyAttack?: number;
+  rightHandAttack?: number;
   roll?: number;
   block?: number;
   /** Its stamina cost (for a loop, each pass's), before the weapon's staminaRate */
@@ -176,17 +182,25 @@ function getSkillStepTimes(
     const last = i === parts.length - 1;
     const nextButton = last ? repeat ?? "L2" : button;
     const buttonTime = nextButton ? timing[nextButton] : undefined;
-    // A skill again (L2) waits for its own cancel, even if any attack can start sooner (tested in
+    // A skill again (L2) waits for its own cancel, even if a right hand attack can start sooner (tested in
     // game: the One-Eyed Shield's Flame Spit, used again 278 frames after its last, at its L2 cancel
-    // rather than its any attack cancel 10 frames earlier); an R1 or R2 follow-up can start at
+    // rather than its right hand attack cancel 10 frames earlier); an R1 or R2 follow-up can start at
     // either
     const next =
       buttonTime != null &&
-      (nextButton === "L2" || timing.anyAttack == null || buttonTime <= timing.anyAttack)
+      (nextButton === "L2" ||
+        timing.rightHandAttack == null ||
+        buttonTime <= timing.rightHandAttack)
         ? { attack: nextButton!, time: lead + buttonTime }
-        : timing.anyAttack != null
-        ? { attack: "R1/R2" as const, time: lead + timing.anyAttack }
+        : timing.rightHandAttack != null
+        ? { attack: "R1/R2" as const, time: lead + timing.rightHandAttack }
         : undefined;
+    // (skills' own L2 cancels, flags 103 and 104, aren't counted yet)
+    const earliest = getEarliestAttack(
+      lead,
+      { R1: timing.R1, R2: timing.R2 },
+      timing.rightHandAttack,
+    );
     return {
       lead,
       hits: timing.hits.map((time) => lead + time),
@@ -194,8 +208,8 @@ function getSkillStepTimes(
         hitTimes: counted.map((j) => (ownTimes[j] != null ? lead + ownTimes[j]! : undefined)),
         approximate: counted.map((j) => !!timing.approximate?.includes(j)),
       }),
-      ...(next && { next }),
-      ...(timing.anyAttack != null && { anyAttack: lead + timing.anyAttack }),
+      ...(earliest && { earliest }),
+      ...(timing.rightHandAttack != null && { rightHandAttack: lead + timing.rightHandAttack }),
       ...(timing.roll != null && { roll: lead + timing.roll }),
       ...(timing.block != null && { block: lead + timing.block }),
       ...(!(last && noRepeat) && next && { cycle: next.time }),

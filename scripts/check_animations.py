@@ -148,12 +148,18 @@ MOUNTED_CHARGED = {38100, 39100}
 # attack's next step, or the next attack), any right hand attack, or a roll (or backstep). The
 # first window of each is when that can start (or its early window's, EARLY_JUMP_TABLE_EVENT).
 ACTION_FLAG_EVENT = 0
-# Per DS Anim Studio's names: 117 is "cancel - L1 attack", 16 "cancel - LH attack" (powerstance
-# chains without 117 continue on it: a Dagger's powerstance L1 chain, tested in game on a recording,
-# each gap between hits within a frame), and 4 "cancel - RH attack" (R1 or R2, not any attack: kept
-# as "anyAttack" in the data; R1 and R2 chains go on at it, powerstance L1 chains and skills don't,
-# tested in game). Others not used here: 11 "cancel - LS movement", 107 quick goods (e.g. some
-# consumables), 31 goods, and 29 magic.
+# Per DS Anim Studio's names: 115 is "cancel - R1 attack", 116 "cancel - R2 attack", 117 "cancel -
+# L1 attack", and 4 "cancel - RH attack" and 16 "cancel - LH attack", any attack with that hand:
+# 4 is R1 or R2, not L1 ("rightHandAttack" in the data; R1 and R2 chains go on at it, powerstance
+# L1 chains and skills don't, tested in game), and 16 is L1, or on horseback L1 or L2
+# ("leftHandAttack"; powerstance chains without 117 go on at it: a Dagger's powerstance L1 chain,
+# tested in game on a recording, each gap between hits within a frame). 117 is on few animations
+# (mostly powerstance L1s and mounted attacks), usually before 16 when both are, and an L1 goes on
+# at the earlier (tested in game: a Greataxe's left hand L1 1 to 2, hits 59 and 58 frames apart,
+# 60 by its 117 and 66 by its 16, and an Uchigatana's powerstance L1 1 to 2, first hits 50 frames
+# apart at fastest, 50 by its 117 and 62 by its 16), even where 16 is first (a colossal sword's
+# powerstance running L1 into L1 1, first hits 99 frames apart, 100 by its 16 and 112 by its 117). Others not used here: 11 "cancel - LS movement", 107 quick goods (e.g.
+# some consumables), 31 goods, and 29 magic.
 # Blocking is 22, jumping (or crouching) 32, and skills (L2) 103 and 104 (103 is a quick one, for
 # some skills; per the user, from the animations). A skill's chain continues on L2 (tested in game:
 # Storm Blade's and Sword Dance's follow-ups).
@@ -161,8 +167,8 @@ CANCEL_FLAGS = {
     115: "R1",
     116: "R2",
     117: "L1",
-    16: "L1",
-    4: "anyAttack",
+    4: "rightHandAttack",
+    16: "leftHandAttack",
     26: "roll",
     22: "block",
     32: "jump",
@@ -186,7 +192,7 @@ EARLY_JUMP_TABLE_EVENT = 300
 # in real time: tested in game on recordings, the Giant-Crusher's two handed R1 chain took 257 frames
 # at 60 fps (257.5 with the speeds, 272 without), and a Dagger's powerstance L1 chain 192 and 194.
 ANIM_SPEED_EVENT = 608
-NEXT_ATTACKS = ["R1", "R2", "L1"]
+CANCEL_BUTTONS = ["R1", "R2", "L1"]
 # A jumping attack's landing is a separate animation: this many after the attack's, the lighter of
 # its landings (+42 is a slower one), e.g. the Longsword's one handed jumping R1 31030 lands in 31071
 JUMP_LANDING_OFFSET = 41
@@ -667,9 +673,9 @@ SHARED_ATTACK_ANIMATION_IDS = {
     "Powerstance Rolling L1": [34300],
     "Powerstance Backstep L1": [34400],
     "Powerstance Jumping L1": [34530],
-    "Mounted R1": [38000, 38010, 38020],
-    "Mounted R2": [38110],
-    "Mounted Charged R2": [38100],
+    "Mounted R1/L1": [38000, 38010, 38020],
+    "Mounted R2/L2": [38110],
+    "Mounted Charged R2/L2": [38100],
 }
 
 
@@ -693,14 +699,14 @@ def get_timings(steps, param, moveset):
         charging window opens, see CHARGING_SPEFFECT); the rest are from the step's start
       - hits: when each hit's window opens (the hits the windows make, see the module docstring,
         which may differ from the moveset's)
-      - next: the earliest attack it can be cancelled into, and when ({ "attack": "R1", "time" })
       - cancels: when it can be cancelled into each of R1, R2, and L1 that it can ({ "R1": time })
-      - anyAttack: when any right hand attack can start
+      - rightHandAttack: when any right hand attack can start
+      - leftHandAttack: when any left hand attack can start
       - roll: when a roll can start
       - block: when blocking can start
       - landing: for jumping attacks, when any attack, a roll, blocking, and another jump can start
         after landing (the lighter landing, JUMP_LANDING_OFFSET)
-      - end: without an any attack cancel, when the animation ends, if it's been measured
+      - end: without a right hand attack cancel, when the animation ends, if it's been measured
         (ANIMATION_FRAMES)
       - stamina: what the step costs: its windows' behaviors' stamina (BehaviorParam_PC stamina)
         times the weapon's staminaConsumptionRate
@@ -739,18 +745,16 @@ def get_timings(steps, param, moveset):
                         charged_file, _ = steps.animations.find(files, charged_id)
                         charging = steps.animations.to_real_time(charged_file, charged_id, charging)
                         timing = {"start": round(charging + CHARGING_LAG, 3), **timing}
-                next_attacks = [(cancels[name], name) for name in NEXT_ATTACKS if name in cancels]
-                if next_attacks:
-                    time, name = min(next_attacks)
-                    timing["next"] = {"attack": name, "time": round(time, 3)}
-                    # Each button's own, since an R2 can be cancelled into another as early as an R1
-                    # (e.g. the Broadsword's R2 2, both 1s), which next leaves out
-                    timing["cancels"] = {name: round(cancels[name], 3) for _, name in sorted(next_attacks)}
-                for name in ["anyAttack", "roll", "block"]:
+                button_cancels = sorted(
+                    (cancels[name], name) for name in CANCEL_BUTTONS if name in cancels
+                )
+                if button_cancels:
+                    timing["cancels"] = {name: round(time, 3) for time, name in button_cancels}
+                for name in ["rightHandAttack", "leftHandAttack", "roll", "block"]:
                     if name in cancels:
                         timing[name] = round(cancels[name], 3)
-                # Without an any attack cancel, the attack can only be repeated once it ends
-                if "anyAttack" not in cancels:
+                # Without a right hand attack cancel, the attack can only be repeated once it ends
+                if "rightHandAttack" not in cancels:
                     length = steps.animations.get_length(file_number, anim_id)
                     if length is not None:
                         timing["end"] = round(real(length), 3)
@@ -765,7 +769,7 @@ def get_timings(steps, param, moveset):
                         landing = {
                             name: round(steps.animations.to_real_time(landing_file, landing_id, time), 3)
                             for name, time in landing_cancels.items()
-                            if name in ("anyAttack", "roll", "block", "jump")
+                            if name in ("rightHandAttack", "roll", "block", "jump")
                         }
                         if landing:
                             timing["landing"] = landing

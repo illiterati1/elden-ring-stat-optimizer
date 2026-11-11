@@ -24,13 +24,14 @@ Output format, keyed by base weapon name:
 "timing" has each attack step's timing from the game's animations, if <Game>/chr/c0000.anibnd.dcx
 has been unpacked (see check_animations.py's get_timings), by hands and attack like the attacks: [{
 "start": for tapped R2s, seconds from the press until the step starts, "hits": [seconds when each
-hit's window opens], "next": { "attack": the earliest attack it can be cancelled into ("R1", "R2",
-or "L1"), "time" }, "cancels": when it can be cancelled into each of R1, R2, and L1 ({ "R1": time
-}), "anyAttack": seconds until any attack can start, "end": without it, seconds until the animation
-ends (if measured), "roll": seconds until a roll can start, "block": seconds until blocking can
-start, "stamina": what the step costs, "leftStamina": how much of that the left hand's weapon costs
-(powerstance attacks), "sweetSpot": true if its hits are in a flail's sweet spot (×1.125 damage) }],
-each left out if the animation doesn't allow it (or costs nothing, or has no sweet spot).
+hit's window opens], "cancels": when it can be cancelled into each of R1, R2, and L1 ({ "R1": time
+}), "rightHandAttack": seconds until a right hand attack (R1 or R2) can start, "leftHandAttack":
+seconds until a left hand attack can start (L1, or on horseback L1 or L2), "end": without
+it, seconds until the animation ends (if measured), "roll": seconds until a roll can start,
+"block": seconds until blocking can start, "stamina": what the step costs, "leftStamina": how much
+of that the left hand's weapon costs (powerstance attacks), "sweetSpot": true if its hits are in
+a flail's sweet spot (×1.125 damage) }], each left out if the animation doesn't allow it (or costs
+nothing, or has no sweet spot).
 "leftHandRows" has the weapon's own motion value, poise motion value, and stamina cost for each
 behavior judge ID of the left hand's powerstance hits ({ judge: [motion value, poise, stamina] }, see
 check_animations.py's get_left_hand_rows): the left hand's weapon's hits use its own attack rows.
@@ -84,8 +85,9 @@ ATTACKS = {
 #   riposte ("Riposte (Small PvE)") is a downward stab some enemies get, e.g. Mini Midra and Night's
 #   Cavalry knocked off their horse (tested in game)
 # - Powerstance: two weapons of the same class, or a paired weapon, attacking with L1, one handed
-# - Mounted: the right side's attacks (the left side's are the same, except the Messmer Soldier's
-#   Axe's charged attack: 163 rather than 180)
+# - Mounted: the right side's attacks, named with the left side's buttons too (R1/L1), since the
+#   left side's are the same (except the Messmer Soldier's Axe's charged attack: 163 rather than
+#   180); their timing is the right side's, going on with attacks on the same side
 SHARED_ATTACKS = {
     "Backstab": (["Backstab"], ["1h", "2h"]),
     "Riposte": (["Riposte"], ["1h", "2h"]),
@@ -96,9 +98,9 @@ SHARED_ATTACKS = {
     "Powerstance Rolling L1": (["Paired Rolling L1"], ["1h"]),
     "Powerstance Backstep L1": (["Paired Backstep L1"], ["1h"]),
     "Powerstance Jumping L1": (["Paired Jumping L1"], ["1h"]),
-    "Mounted R1": (["Mounted R1 1", "Mounted R1 2", "Mounted R1 3"], ["1h", "2h"]),
-    "Mounted R2": (["Mounted R2"], ["1h", "2h"]),
-    "Mounted Charged R2": (["Mounted Charged R2"], ["1h", "2h"]),
+    "Mounted R1/L1": (["Mounted R1 1", "Mounted R1 2", "Mounted R1 3"], ["1h", "2h"]),
+    "Mounted R2/L2": (["Mounted R2"], ["1h", "2h"]),
+    "Mounted Charged R2/L2": (["Mounted Charged R2"], ["1h", "2h"]),
 }
 
 # Attacks that never get two handing's Strength bonus. Tested in game: a backstab does the same two
@@ -122,11 +124,11 @@ CATEGORY_FALLBACKS = {
     "Powerstance Rolling L1": [121],
     "Powerstance Backstep L1": [121],
     "Powerstance Jumping L1": [102],
-    "Mounted R1": [101],
-    "Mounted R2": [101],
-    "Mounted Charged R2": [100, 101],
+    "Mounted R1/L1": [101],
+    "Mounted R2/L2": [101],
+    "Mounted Charged R2/L2": [100, 101],
 }
-FINAL_CHAIN_ATTACKS = {"R1", "Powerstance L1", "Mounted R1"}
+FINAL_CHAIN_ATTACKS = {"R1", "Powerstance L1", "Mounted R1/L1"}
 TWO_HANDED_CATEGORY = 120
 FINAL_CHAIN_CATEGORY = 104
 

@@ -137,14 +137,17 @@ function AttackHits({
         // Projectiles' times are when they're created, or measured at one distance
         approximate: !!(ownTimes && times?.approximate?.[j]),
         // The step's cancels, on its last hit
-        next: last && times?.next ? { ...times.next, time: at(i, times.next.time) } : undefined,
+        earliest:
+          last && times?.earliest
+            ? { ...times.earliest, time: at(i, times.earliest.time) }
+            : undefined,
         roll: last ? at(i, times?.roll) : undefined,
         block: last ? at(i, times?.block) : undefined,
       };
     }),
   );
   const showHitTimes = timings.hits && rows.some((row) => row.hitAt != null);
-  const showNext = timings.cancel && rows.some((row) => row.next?.time != null);
+  const showEarliest = timings.cancel && rows.some((row) => row.earliest?.time != null);
   const showRoll = timings.roll && rows.some((row) => row.roll != null);
   const showBlock = timings.block && rows.some((row) => row.block != null);
   const showNextChain = timings.nextChain && chainTime != null;
@@ -224,12 +227,12 @@ function AttackHits({
                   Hit at
                 </TableCell>
               )}
-              {showNext && (
+              {showEarliest && (
                 <TableCell
                   sx={cellSx}
-                  title="When the step can first be cancelled into another attack: its chain's next step, or a right hand attack (R1/R2)"
+                  title="When the step can first be cancelled into another attack, and which (R1/R2: either right hand attack)"
                 >
-                  Next attack
+                  Earliest attack
                 </TableCell>
               )}
               {showRoll && (
@@ -252,7 +255,7 @@ function AttackHits({
                 </TableCell>
               </TableRow>
             )}
-            {rows.map(({ label, hit, hitAt, approximate, next, roll, block }) => (
+            {rows.map(({ label, hit, hitAt, approximate, earliest, roll, block }) => (
               <TableRow key={label}>
                 <TableCell sx={cellSx}>{label}</TableCell>
                 {showKind && <TableCell sx={cellSx}>{hit.kind ?? "Weapon"}</TableCell>}
@@ -285,9 +288,11 @@ function AttackHits({
                     {hitAt != null ? `${approximate ? "~" : ""}${formatSeconds(hitAt)}` : ""}
                   </TableCell>
                 )}
-                {showNext && (
+                {showEarliest && (
                   <TableCell sx={cellSx}>
-                    {next?.time != null ? `${formatSeconds(next.time)} (${next.attack})` : ""}
+                    {earliest?.time != null
+                      ? `${formatSeconds(earliest.time)} (${earliest.attack})`
+                      : ""}
                   </TableCell>
                 )}
                 {showRoll && (

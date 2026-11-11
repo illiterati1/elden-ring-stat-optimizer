@@ -278,6 +278,13 @@ const defaultAppState: AppState = {
 
 const storageKey = "statCalculatorState";
 
+/** Attacks saved under an earlier name: mounted attacks are named with both sides' buttons */
+const renamedAttacks: Record<string, AttackChoice> = {
+  "Mounted R1": "Mounted R1/L1",
+  "Mounted R2": "Mounted R2/L2",
+  "Mounted Charged R2": "Mounted Charged R2/L2",
+};
+
 /**
  * Earlier versions stored the level limit as { enabled, value, absolute }, with a separate rune
  * budget limit
@@ -334,7 +341,7 @@ function getInitialAppState(): AppState {
         stored.attack &&
         stored.attack !== ("custom" as string) &&
         stored.attack !== ("base" as string)
-          ? stored.attack
+          ? renamedAttacks[stored.attack as string] ?? stored.attack
           : "R1",
       // Great Arrows and Radahn's Spears were one choice before Radahn's Spears got the Lion
       // Greatbow's bonus

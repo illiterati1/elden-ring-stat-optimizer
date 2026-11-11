@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { allDamageTypes, WeaponType, type Weapon } from "../calculator/calculator.ts";
 import { allPhysicalTypes } from "../optimizer/defense.ts";
-import type { AttackData, AttackDataHit, StepTimes } from "../optimizer/build.ts";
+import {
+  getEarliestAttack,
+  type AttackData,
+  type AttackDataHit,
+  type StepTimes,
+} from "../optimizer/build.ts";
 
 export const allAttacks = [
   "Standard Shot",
@@ -25,9 +30,10 @@ export const allAttacks = [
   "Powerstance Rolling L1",
   "Powerstance Backstep L1",
   "Powerstance Jumping L1",
-  "Mounted R1",
-  "Mounted R2",
-  "Mounted Charged R2",
+  // On horseback, the left side's attacks are the right side's (timed by the right side's)
+  "Mounted R1/L1",
+  "Mounted R2/L2",
+  "Mounted Charged R2/L2",
 ] as const;
 
 export type AttackName = typeof allAttacks[number];
@@ -49,7 +55,7 @@ export const chainAttacks: ReadonlySet<AttackName> = new Set([
   "R2",
   "Charged R2",
   "Powerstance L1",
-  "Mounted R1",
+  "Mounted R1/L1",
 ]);
 
 /** Critical hits, which some enemies take less damage from */
@@ -71,13 +77,20 @@ export const riposteAttacks: ReadonlySet<string> = new Set([
  * The button repeated for an attack's DPS, for attacks that can be repeated back to back (a chain
  * starts again after its last step). Others are repeated once a right hand attack (R1/R2) can start.
  */
-const repeatButtons: Partial<Record<AttackName, NonNullable<StepTiming["next"]>["attack"]>> = {
+const repeatButtons: Partial<Record<AttackName, keyof NonNullable<StepTiming["cancels"]>>> = {
   R1: "R1",
   R2: "R2",
   "Charged R2": "R2",
   "Powerstance L1": "L1",
-  "Mounted R1": "R1",
+  "Mounted R1/L1": "R1",
 };
+
+/** Mounted attacks, whose L1 and L2 are their R1 and R2 on the left side */
+const mountedAttacks: ReadonlySet<AttackName> = new Set([
+  "Mounted R1/L1",
+  "Mounted R2/L2",
+  "Mounted Charged R2/L2",
+]);
 
 /**
  * Each step starts about a frame after the cancel into it opens. Tested in game on 60 fps
@@ -104,6 +117,11 @@ const jumpAirTime = 53 / 60;
 /** Chains cut short: to a number of steps, or the steps that fit a time budget */
 export type ChainLimit = { steps: number } | { seconds: number };
 
+/** @returns the earlier of two times, either of which may be unknown */
+function earlier(a: number | undefined, b: number | undefined) {
+  return a == null ? b : b == null ? a : Math.min(a, b);
+}
+
 /**
  * @returns each step's times, or undefined if the timings don't have them all. A chain cut short
  * (lastStep) ends with a right hand attack (R1/R2), not its next step.
@@ -122,56 +140,63 @@ function getStepTimes(
     const { landing } = step;
     if (landing) {
       const lead = jumpAttackStart + stepStartDelay;
-      const next = landing.anyAttack != null ? jumpAirTime + landing.anyAttack : undefined;
+      const rightHandAttack =
+        landing.rightHandAttack != null ? jumpAirTime + landing.rightHandAttack : undefined;
+      const earliest = getEarliestAttack(0, undefined, rightHandAttack);
       const repeat = landing.jump;
       return {
         lead,
         hits: step.hits.map((time) => lead + time),
-        ...(next != null && { next: { attack: "R1/R2" as const, time: next } }),
-        ...(next != null && { anyAttack: next }),
+        ...(earliest && { earliest }),
+        ...(rightHandAttack != null && { rightHandAttack }),
         ...(landing.roll != null && { roll: jumpAirTime + landing.roll }),
         ...(landing.block != null && { block: jumpAirTime + landing.block }),
         ...(repeat != null && { cycle: jumpAirTime + repeat }),
       };
     }
     const lead = step.start ?? stepStartDelay;
-    // Its own button's cancel, or for R1 and R2, any attack's if that comes first (tested in game:
-    // the Miséricorde's and the Pike's two handed R2 chains go on at any attack's, long before their
+    // Its own button's cancel, or for R1 and R2, the right hand attack cancel if that comes first (tested in game:
+    // the Miséricorde's and the Pike's two handed R2 chains go on at the right hand attack cancel, long before their
     // R2 cancels: 26, 88, 142 and 52, 136, 232, 316 frames, 25, 86, 138 and 55, 143, 238, 321 in game;
-    // powerstance L1 chains don't, e.g. the Short Spear's, 168 frames as its L1 cancels say)
+    // powerstance L1 chains don't, e.g. the Short Spear's, 168 frames as its L1 cancels say, but go
+    // on at the left hand attack cancel if that comes first, e.g. a Dagger's)
     const ownCancel =
-      button && !(cutShort && i === stepCount - 1) ? step.cancels?.[button] : undefined;
+      button && !(cutShort && i === stepCount - 1)
+        ? button === "L1"
+          ? earlier(step.cancels?.L1, step.leftHandAttack)
+          : step.cancels?.[button]
+        : undefined;
     const own =
       ownCancel != null &&
       (button === "R1" || button === "R2") &&
-      step.anyAttack != null &&
-      step.anyAttack < ownCancel
+      step.rightHandAttack != null &&
+      step.rightHandAttack < ownCancel
         ? undefined
         : ownCancel;
-    // Without an any attack cancel, an attack that isn't repeated with its own button goes on at
+    // Without a right hand attack cancel, an attack that isn't repeated with its own button goes on at
     // its R1 or R2 cancel, whichever's first (e.g. the Greatsword's rolling R1 and guard counter,
     // which only have those); a chain waits for its own (or the animation's end: the Backhand
     // Blade's R2 2 can go on to an R1 sooner, but not an R2)
     const rightHand =
-      step.anyAttack ??
+      step.rightHandAttack ??
       (button
         ? undefined
         : ([step.cancels?.R1, step.cancels?.R2]
             .filter((time) => time != null)
             .sort((a, b) => a! - b!)[0] as number | undefined));
     const repeat = own ?? rightHand ?? step.end;
-    // (a powerstance L1 chain goes on at its L1 cancel: the R1/R2 cancel is the right hand's)
-    const next =
-      own != null && (button === "L1" || step.anyAttack == null || own <= step.anyAttack)
-        ? { attack: button!, time: lead + own }
-        : rightHand != null
-        ? { attack: "R1/R2" as const, time: lead + rightHand }
-        : undefined;
+    const earliest = getEarliestAttack(
+      lead,
+      step.cancels,
+      step.rightHandAttack,
+      step.leftHandAttack,
+      mountedAttacks.has(attack),
+    );
     return {
       lead,
       hits: step.hits.map((time) => lead + time),
-      ...(next && { next }),
-      ...(step.anyAttack != null && { anyAttack: lead + step.anyAttack }),
+      ...(earliest && { earliest }),
+      ...(step.rightHandAttack != null && { rightHandAttack: lead + step.rightHandAttack }),
       ...(step.roll != null && { roll: lead + step.roll }),
       ...(step.block != null && { block: lead + step.block }),
       ...(repeat != null && { cycle: lead + repeat }),
@@ -196,7 +221,7 @@ function getChainLength(
   let elapsed = 0;
   let count = 0;
   for (const step of times) {
-    const roll = step.roll ?? step.anyAttack;
+    const roll = step.roll ?? step.rightHandAttack;
     if (roll == null || elapsed + roll > limit.seconds + 1e-9) break;
     count++;
     if (step.cycle == null) break;
@@ -265,12 +290,14 @@ export interface StepTiming {
   hitStamina?: number[];
   /** True if its hits are in a flail's sweet spot (flailSweetSpotRate) */
   sweetSpot?: true;
-  next?: { attack: "R1" | "R2" | "L1"; time: number };
   /** When it can be cancelled into each of R1, R2, and L1 that it can */
   cancels?: Partial<Record<"R1" | "R2" | "L1", number>>;
-  /** Without an R1/R2 cancel (anyAttack), when the animation ends */
+  /** Without an R1/R2 cancel (rightHandAttack), when the animation ends */
   end?: number;
-  anyAttack?: number;
+  /** When any right hand attack (R1 or R2) can start */
+  rightHandAttack?: number;
+  /** When any left hand attack can start (L1, or on horseback L1 or L2) */
+  leftHandAttack?: number;
   roll?: number;
   /** When blocking can start */
   block?: number;
@@ -278,7 +305,7 @@ export interface StepTiming {
    * For jumping attacks, when an R1/R2, a roll, blocking, and another jump can start after landing
    * (the time in the air depends on the jump, not the animations: see jumpAirTime)
    */
-  landing?: { anyAttack?: number; roll?: number; block?: number; jump?: number };
+  landing?: { rightHandAttack?: number; roll?: number; block?: number; jump?: number };
 }
 
 /** A weapon's basic attacks, generated by scripts/build_moveset_data.py */
@@ -520,8 +547,8 @@ function getBowShotTimes(weapon: Weapon, count = 1): StepTimes | undefined {
     hits: shot.spacing
       ? Array.from({ length: count }, (_, i) => lead + shot.release + i * shot.spacing!)
       : [lead + shot.release],
-    next: { attack: "R1/R2", time: shot.cycle },
-    anyAttack: shot.cycle,
+    earliest: { attack: "R1/R2", time: shot.cycle },
+    rightHandAttack: shot.cycle,
     roll: shot.roll,
     block: shot.block,
     cycle: shot.cycle,
@@ -550,8 +577,8 @@ function getJumpLandingShotTimes(): StepTimes {
   return {
     lead: stepStartDelay,
     hits: [jumpShotHit, jumpShotHit + landingShotDelay],
-    next: { attack: "R1/R2", time: jumpLandingShotPair },
-    anyAttack: jumpLandingShotPair,
+    earliest: { attack: "R1/R2", time: jumpLandingShotPair },
+    rightHandAttack: jumpLandingShotPair,
     cycle: jumpLandingShotPair,
   };
 }
@@ -652,7 +679,7 @@ export function getAttackData(
   const allSteps = moveset[hands]?.[attack];
   if (!allSteps) return undefined;
   const timing = moveset.timing?.[hands]?.[attack];
-  // A chain cut short ends with any attack instead of its next step
+  // A chain cut short ends with a right hand attack instead of its next step
   const steps = allSteps.slice(0, getChainLength(attack, timing, allSteps.length, limit));
   const stepTimes = getStepTimes(attack, timing, steps.length, steps.length < allSteps.length);
   const cycleTimes = stepTimes?.every((step) => step.cycle != null)

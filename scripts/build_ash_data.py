@@ -1572,7 +1572,7 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
             if stamina:
                 timing["stamina"] = round(stamina, 2)
             cancels = animations.get_cancels(number, anim_id)
-            for cancel in ["L2", "R1", "R2", "anyAttack", "roll", "block"]:
+            for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block"]:
                 if cancel in cancels:
                     timing[cancel] = real(cancels[cancel])
             result[key] = timing
@@ -1835,7 +1835,7 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         if stamina:
             timing["stamina"] = round(stamina, 2)
         cancels = animations.get_cancels(number, anim_id)
-        for cancel in ["L2", "R1", "R2", "anyAttack", "roll", "block"]:
+        for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block"]:
             if cancel in cancels:
                 timing[cancel] = real(cancels[cancel])
         for cancel, time in CANCEL_FITS.get((name, label), {}).items():
@@ -1852,17 +1852,20 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
             # Evenly spaced hits, looping: each pass is as many of their gaps as hits
             gaps = (real(starts[-1]) - real(starts[0])) / (len(starts) - 1)  # (one animation)
             timing["loop"] = round(gaps * len(starts), 3)
-            # Its opening: the animation before it without hits, until any attack can start (it
-            # goes on to the loop then: tested in game, Wild Strikes' first hit)
+            # Its opening: the animation before it without hits, until a right hand attack can start
+            # (it goes on to the loop then: tested in game, Wild Strikes' first hit)
             opening = [
                 other
                 for other, (signatures, _) in animation_hits.items()
                 if not signatures and range_of(other) == range_of(anim_id) and other < anim_id
             ]
             opening_cancels = animations.get_cancels(number, max(opening)) if opening else {}
-            if "anyAttack" in opening_cancels:
+            if "rightHandAttack" in opening_cancels:
                 timing["opening"] = round(
-                    animations.to_real_time(number, max(opening), opening_cancels["anyAttack"]), 3
+                    animations.to_real_time(
+                        number, max(opening), opening_cancels["rightHandAttack"]
+                    ),
+                    3,
                 )
         return timing
 

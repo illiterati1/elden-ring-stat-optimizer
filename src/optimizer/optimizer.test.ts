@@ -1917,7 +1917,7 @@ describe("attacks", () => {
     const r2 = dps("R2", true);
     expect(r2.dps).toBeCloseTo(r2.damage / 2.3, 0);
     expect(r2.poisePerSecond).toBeCloseTo(r2.poise / 2.3, 1);
-    // Attacks that can't be repeated back to back (e.g. running ones) last until any attack can
+    // Attacks that can't be repeated back to back (e.g. running ones) last until a right hand attack can
     // start: the running R1 1.03s, and the step start delay
     const running = dps("Running R1", false);
     expect(running.dps).toBeCloseTo(running.damage / (1.03 + 1 / 30), 0);
@@ -2118,7 +2118,7 @@ describe("attacks", () => {
     expect(motionValues("Backstab")).toEqual([[382.2]]);
     expect(motionValues("Riposte", true)).toEqual([[546]]);
     expect(motionValues("Large Riposte")).toEqual([[157.3, 517.4]]);
-    expect(motionValues("Mounted R1")).toEqual([[110], [110], [110]]);
+    expect(motionValues("Mounted R1/L1")).toEqual([[110], [110], [110]]);
     // Powerstance is always one handed
     expect(canTwoHand(movesets, dagger, "Powerstance L1")).toBe(false);
     expect(motionValues("Powerstance L1", true)[0]).toEqual([80, 80, 80]);
@@ -8835,8 +8835,8 @@ describe("Ashes of War", () => {
         .map((hit) => hit.damageRates);
     const sweetSpot = allDamageTypes.map(() => 1.125);
     expect(rates("R1")).toEqual([sweetSpot, sweetSpot, sweetSpot, sweetSpot]);
-    expect(rates("Mounted R2")).toEqual([sweetSpot]);
-    expect(rates("Mounted Charged R2")).toEqual([undefined]);
+    expect(rates("Mounted R2/L2")).toEqual([sweetSpot]);
+    expect(rates("Mounted Charged R2/L2")).toEqual([undefined]);
     expect(rates("Backstab")).toEqual([undefined, undefined]);
     const spin = getAshAttack(ashes, movesets, weapon, "Spinning Chain", false);
     if (!("attack" in spin)) throw new Error(spin.unavailableReason);
@@ -12391,7 +12391,7 @@ describe("powerstance off hand weapons", () => {
     expect(r2.cycleTimes![1]).toBeCloseTo(1.366);
     const charged = getAttackData(movesets, getWeapon("Broadsword"), "Charged R2", false, 0.5)!;
     expect(charged.cycleTimes).toHaveLength(2);
-    // The Backhand Blade's one handed R2 2 has no R2 or any attack cancel, so it's repeated when the
+    // The Backhand Blade's one handed R2 2 has no R2 or right hand attack cancel, so it's repeated when the
     // animation ends (57 frames, 1.9s, read in DS Anim Studio), 0.333s after the press
     const backhand = getAttackData(movesets, getWeapon("Backhand Blade"), "R2", false, 0.5)!;
     expect(backhand.cycleTimes![1]).toBeCloseTo(2.233);
@@ -12429,10 +12429,10 @@ describe("powerstance off hand weapons", () => {
     expect(chainFrames("Longsword", "Charged R2", true)).toBeCloseTo(240, 0);
   });
 
-  it("goes on at any attack's cancel when it's before the attack's own", () => {
+  it("goes on at the right hand attack cancel when it's before the attack's own", () => {
     // Tested in game on 60 fps recordings, frames after the first press: the Miséricorde's two
-    // handed R2 chain 25, 86, 138, 199 (#2's R2 cancel 142 frames in, any attack's 46), the Pike's 55,
-    // 143, 238, 321 (#1's R2 cancel 156 frames in, any attack's 54), and the Death Knight's Twin Axes'
+    // handed R2 chain 25, 86, 138, 199 (#2's R2 cancel 142 frames in, right hand attack cancel 46), the Pike's 55,
+    // 143, 238, 321 (#1's R2 cancel 156 frames in, right hand attack cancel 54), and the Death Knight's Twin Axes'
     // two handed R1 chain (no R1 cancels) 35, 56, 102, 125, 172, 175, 222, 258, 260, then 329
     const hitFrames = (weapon: string, attack: AttackChoice, loops = 1) => {
       const data = getAttackData(movesets, getWeapon(weapon), attack, true, 0.5)!;
@@ -12460,17 +12460,20 @@ describe("powerstance off hand weapons", () => {
     // cancel at 0.567s, a roll at 0.8s, and blocking at 0.9s
     const first = r1.stepTimes![0];
     expect(first.hits[0]).toBeCloseTo(1 / 30 + 0.433);
-    expect(first.next).toEqual({ attack: "R1", time: expect.closeTo(1 / 30 + 0.567) });
+    expect(first.earliest).toEqual({ attack: "R1", time: expect.closeTo(1 / 30 + 0.567) });
     expect(first.roll).toBeCloseTo(1 / 30 + 0.8);
     expect(first.block).toBeCloseTo(1 / 30 + 0.9);
-    // The last step is followed by a right hand attack (R1/R2), which starts the chain again
-    expect(r1.stepTimes![4].next!.attack).toBe("R1/R2");
+    // The last step's earliest attack is an L1 (1.333s), before an R2 (1.4s) or either right hand
+    // attack (1.467s)
+    expect(r1.stepTimes![4].earliest).toEqual({
+      attack: "L1",
+      time: expect.closeTo(1 / 30 + 1.333),
+    });
 
-    // Cut to two steps, the second ends with any attack too
+    // Cut to two steps
     const two = getAttackData(movesets, longsword, "R1", false, 0.5, false, { steps: 2 })!;
     expect(two.steps).toHaveLength(2);
     expect(two.weights[0] + two.weights[1]).toBeCloseTo(1);
-    expect(two.stepTimes![1].next!.attack).toBe("R1/R2");
     expect(two.cycleTimes![1]).toBeCloseTo(1 / 30 + 0.767);
     // Or the steps that fit a time budget, from the press until a roll can start after them: the
     // second step's roll is at 1.37s, the third's at 2.03s
@@ -12591,7 +12594,7 @@ describe("timing coverage", () => {
     // #1), going on with R2 (from the animations, untested)
     const warCry = ashAttack("Greataxe", withFollowUp("War Cry", "R2 chain"));
     expect(warCry.stepTimes).toHaveLength(2);
-    expect(warCry.stepTimes![0].next).toEqual({ attack: "R2", time: expect.any(Number) });
+    expect(warCry.stepTimes![0].earliest).toEqual({ attack: "R2", time: expect.any(Number) });
     expect(warCry.cycleTimes).toHaveLength(2);
     expect(warCry.stamina!.every((cost) => cost != null && cost > 0)).toBe(true);
     const barbaric = ashAttack("Greataxe", withFollowUp("Barbaric Roar", "R2 chain"));
@@ -12600,7 +12603,7 @@ describe("timing coverage", () => {
     expect(twoHanded.stamina![0]).toBeGreaterThan(warCry.stamina![0]!);
   });
 
-  it("times weapon attacks without an any attack cancel at their R1 or R2 cancel", () => {
+  it("times weapon attacks without a right hand attack cancel at their R1 or R2 cancel", () => {
     // The Greatsword's rolling R1 can only go on to an R1 or R2 (its R1 at 1.0s)
     const rolling = getAttackData(movesets, getWeapon("Greatsword"), "Rolling R1", false, 0.5)!;
     expect(rolling.cycleTimes![0]).toBeCloseTo(1.0 + 1 / 30);

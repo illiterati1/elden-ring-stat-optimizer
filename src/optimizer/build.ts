@@ -436,6 +436,43 @@ export function getHpDamage({ rate, ticks, flat = 0 }: HpDamage, enemyHp: number
  * A step's timing, in seconds from when its button is pressed (in a chain, when the cancel into it
  * opens): when its hits land, and when it can be cancelled into other actions
  */
+/**
+ * @returns the earliest attack a step can be cancelled into and when (lead plus the cancel's time),
+ * from its R1, R2, and L1 cancels and its right and left hand attack cancels (R1 or R2, and L1);
+ * buttons whose cancels open together are joined, e.g. "R1/L1". A mounted attack's buttons are
+ * pairs (R1/L1, R2/L2), going on with an attack on the same side: its R1 and R2 cancels, joined
+ * with ", " if together, since switching sides takes longer.
+ */
+export function getEarliestAttack(
+  lead: number,
+  cancels: Partial<Record<"R1" | "R2" | "L1", number>> | undefined,
+  rightHandAttack: number | undefined,
+  leftHandAttack?: number,
+  mounted = false,
+): StepTimes["earliest"] {
+  const min = (...times: (number | undefined)[]) => {
+    const known = times.filter((time): time is number => time != null);
+    return known.length ? Math.min(...known) : undefined;
+  };
+  const buttons: [string, number | undefined][] = mounted
+    ? [
+        ["R1/L1", min(cancels?.R1, rightHandAttack)],
+        ["R2/L2", min(cancels?.R2, rightHandAttack)],
+      ]
+    : [
+        ["R1", min(cancels?.R1, rightHandAttack)],
+        ["R2", min(cancels?.R2, rightHandAttack)],
+        ["L1", min(cancels?.L1, leftHandAttack)],
+      ];
+  const time = min(...buttons.map(([, time]) => time));
+  if (time == null) return undefined;
+  const attack = buttons
+    .filter(([, buttonTime]) => buttonTime != null && buttonTime - time < 1e-6)
+    .map(([button]) => button)
+    .join(mounted ? ", " : "/");
+  return { attack, time: lead + time };
+}
+
 export interface StepTimes {
   /** Until its animation starts: a tapped R2's start, or else the step start delay */
   lead: number;
@@ -451,13 +488,16 @@ export interface StepTimes {
    */
   hitTimes?: (number | undefined)[];
   approximate?: boolean[];
-  /** The earliest attack it can be cancelled into (its chain's next step, or a right hand attack) */
-  next?: { attack: "R1" | "R2" | "L1" | "L2" | "R1/R2"; time: number };
+  /**
+   * The earliest attack it can be cancelled into, and when: the buttons whose cancels open first,
+   * joined if they open together (e.g. "R1/R2" for a right hand attack cancel, or "R1/L1")
+   */
+  earliest?: { attack: string; time: number };
   /**
    * When any right hand attack (R1 or R2) can start: the animations' "cancel - RH attack" flag (4),
-   * named anyAttack in the data
+   * named rightHandAttack in the data
    */
-  anyAttack?: number;
+  rightHandAttack?: number;
   roll?: number;
   block?: number;
   /**

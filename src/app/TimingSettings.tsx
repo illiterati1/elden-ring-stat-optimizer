@@ -23,7 +23,7 @@ interface Props {
 // The hits tooltip's timings, each cumulative from the start of the chain
 const tooltipTimingLabels: [keyof TooltipTimings, string][] = [
   ["hits", "Hit times"],
-  ["cancel", "Next attack"],
+  ["cancel", "Earliest attack"],
   ["roll", "Roll"],
   ["block", "Block"],
   ["nextChain", "Next chain"],
