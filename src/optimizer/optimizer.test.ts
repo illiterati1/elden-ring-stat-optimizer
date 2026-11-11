@@ -8010,6 +8010,10 @@ describe("Ashes of War", () => {
     expect(describeBuff(sacredOrder)).toBe(
       "×2 damage against those who live in death; ×1.1 damage",
     );
+    // Shriek of Sorrow's rate for each HP range, from the lowest HP's
+    expect(describeBuff(find("Shriek of Sorrow"))).toBe(
+      "1.25-1.1x physical damage depending on HP, +5 STR scaling",
+    );
   });
 
   it("lists weapons' own skills' buffs first in the weapon buffs picker", () => {

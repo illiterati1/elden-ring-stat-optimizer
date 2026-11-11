@@ -345,6 +345,24 @@ const enemyTypeNames: Record<EnemyType, string> = {
 /** @returns a short description of what a buff does, e.g. "×1.15 damage (skills)" */
 export function describeBuff(buff: Buff) {
   const effects = isWeaponOnlyBuff(buff) ? Object.values(buff.weapons!)[0] ?? [] : buff.effects;
+  // A buff with a damage rate for each HP range (Shriek of Sorrow), from the lowest HP's to the
+  // highest's, with the damage types it's for and any scaling bonus, e.g. "1.25-1.1x physical damage
+  // depending on HP, +5 Strength scaling"
+  if (effects.length > 1 && effects.every((effect) => effect.hp && effect.damageRates)) {
+    const rates = effects.map((effect) => Math.max(...effect.damageRates!));
+    const [first] = effects;
+    const types = first.damageRates!.flatMap((rate, damageType) =>
+      rate !== 1 ? [damageTypeNames[damageType]] : [],
+    );
+    const damage =
+      types.length === first.damageRates!.length ? "damage" : `${types.join(", ")} damage`;
+    return [
+      `${rates[0]}-${rates[rates.length - 1]}x ${damage} depending on HP`,
+      ...Object.entries(first.scalingBonus ?? {}).map(
+        ([stat, bonus]) => `+${Math.round(bonus * 100)} ${statNames[stat]} scaling`,
+      ),
+    ].join(", ");
+  }
   return effects
     .map((effect) => {
       const parts = [
