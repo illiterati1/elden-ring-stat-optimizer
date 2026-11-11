@@ -12,6 +12,7 @@ import {
 import { allAttributes, type Weapon } from "../calculator/calculator.ts";
 import { getStatLabel } from "../optimizer/startingClasses.ts";
 import Section from "./Section.tsx";
+import DismissableNote from "./DismissableNote.tsx";
 import NumberTextField from "./NumberTextField.tsx";
 import type { AppState, UpdateAppState } from "./useAppState.ts";
 import {
@@ -50,6 +51,8 @@ interface Props {
   leftHandWeapon: string | null;
   /** Names of the weapons picked by name or type, for buffs only some weapons get */
   pickedWeapons: ReadonlySet<string>;
+  /** Alerts and notes the user closed */
+  closedAlerts: AppState["closedAlerts"];
   onChange: UpdateAppState;
 }
 
@@ -100,6 +103,7 @@ function BuffSettings({
   health,
   leftHandWeapon,
   pickedWeapons,
+  closedAlerts,
   onChange,
 }: Props) {
   const byKind = useMemo(() => groupBuffsByKind(buffs), [buffs]);
@@ -480,13 +484,18 @@ function BuffSettings({
           {inactive.map((buff) => `${buff.name} (not a counterattack)`).join(", ")}
         </Typography>
       )}
-      <Typography variant="body2" color="text.secondary" mt={0.5}>
+      <DismissableNote
+        id="buffsNote"
+        closedAlerts={closedAlerts}
+        onChange={onChange}
+        sx={{ mt: 0.5 }}
+      >
         Buffs that only apply to some attacks (e.g. the Axe Talisman&apos;s charged attacks) only
         apply to the chosen attack&apos;s hits of that kind. Weapon buffs only apply to buffable
         weapons, Ashes of War&apos;s to weapons that can take them, and unique skills&apos; only to
         their own weapons. Status buildup from buffs adds to the weapon&apos;s and scales the same
         way, e.g. poison, blood loss, and sleep with the weapon&apos;s Arcane scaling.
-      </Typography>
+      </DismissableNote>
     </Section>
   );
 }

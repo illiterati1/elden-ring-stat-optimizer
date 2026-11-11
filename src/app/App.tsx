@@ -1012,6 +1012,7 @@ export default function App() {
                   : null
               }
               pickedWeapons={pickedWeapons}
+              closedAlerts={closedAlerts}
               onChange={updateAppState}
             />
             <LimitSettings
@@ -1020,6 +1021,7 @@ export default function App() {
               pointLabel={pointLabel}
               currentLevel={startLevel}
               planLevel={planLevel}
+              closedAlerts={closedAlerts}
               onChange={updateAppState}
             />
             <DefenseSettings
@@ -1029,6 +1031,7 @@ export default function App() {
               enemyKey={enemyKey}
               enemyHp={enemyHp}
               enemyTypes={enemyTypes}
+              closedAlerts={closedAlerts}
               onChange={updateAppState}
             />
             {/* Brings back any alerts the user closed */}

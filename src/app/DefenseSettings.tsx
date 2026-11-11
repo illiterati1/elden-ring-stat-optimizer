@@ -9,6 +9,7 @@ import {
 import NumberTextField from "./NumberTextField.tsx";
 import EnemyPicker from "./EnemyPicker.tsx";
 import Section from "./Section.tsx";
+import DismissableNote from "./DismissableNote.tsx";
 import {
   allPhysicalTypes,
   type AppState,
@@ -25,6 +26,8 @@ interface Props {
   enemyKey: AppState["enemyKey"];
   enemyHp: AppState["enemyHp"];
   enemyTypes: AppState["enemyTypes"];
+  /** Alerts and notes the user closed */
+  closedAlerts: AppState["closedAlerts"];
   onChange: UpdateAppState;
 }
 
@@ -59,6 +62,7 @@ function DefenseSettings({
   enemyKey,
   enemyHp,
   enemyTypes,
+  closedAlerts,
   onChange,
 }: Props) {
   // Editing defenses by hand means they no longer match the picked enemy
@@ -206,11 +210,16 @@ function DefenseSettings({
             ];
           })}
         </Box>
-        <Typography variant="body2" color="text.secondary" mt={1.5}>
+        <DismissableNote
+          id="enemyNote"
+          closedAlerts={closedAlerts}
+          onChange={onChange}
+          sx={{ mt: 1.5 }}
+        >
           Negative negation is a weakness. Each hit&apos;s physical damage type, from the attack
           chosen in the Weapon panel, picks which physical negation applies. Doesn&apos;t apply to
           spell scaling.
-        </Typography>
+        </DismissableNote>
       </>
     </Section>
   );

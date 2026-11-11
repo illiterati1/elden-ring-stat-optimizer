@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import NumberTextField from "./NumberTextField.tsx";
 import Section from "./Section.tsx";
+import DismissableNote from "./DismissableNote.tsx";
 import type {
   AppState,
   LevelLimitMode,
@@ -25,6 +26,8 @@ interface Props {
   currentLevel: number;
   /** The planned stats' level, which leveling starts from */
   planLevel: number;
+  /** Alerts and notes the user closed */
+  closedAlerts: AppState["closedAlerts"];
   onChange: UpdateAppState;
 }
 
@@ -76,7 +79,15 @@ const levelLimitFields: Record<LevelLimitMode, { label: string; max: number; ste
 /**
  * Form controls for the conditions that decide when to stop leveling
  */
-function LimitSettings({ limits, fastMode, pointLabel, currentLevel, planLevel, onChange }: Props) {
+function LimitSettings({
+  limits,
+  fastMode,
+  pointLabel,
+  currentLevel,
+  planLevel,
+  closedAlerts,
+  onChange,
+}: Props) {
   const update = <K extends keyof LimitSettingsState>(
     key: K,
     patch: Partial<LimitSettingsState[K]>,
@@ -190,11 +201,16 @@ function LimitSettings({ limits, fastMode, pointLabel, currentLevel, planLevel, 
           chart, and the minimum gain and target value don&apos;t apply.
         </Typography>
       )}
-      <Typography variant="body2" color="text.secondary" mt={1.5}>
+      <DismissableNote
+        id="levelingNote"
+        closedAlerts={closedAlerts}
+        onChange={onChange}
+        sx={{ mt: 1.5 }}
+      >
         Levels and runes are counted from your current level, including any needed to reach your
         planned stats. Gains are averaged over stretches where a requirement takes several levels to
         reach.
-      </Typography>
+      </DismissableNote>
     </Section>
   );
 }
