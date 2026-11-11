@@ -10,8 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 1 | Barbaric Roar's R2 chain (after the roar; R2 #1 is 3 hits) | Greataxe | 1h: R2 #1 hits 80, 114, 164; R2 #2 298; next R2 #1 440. 2h: 78, 110, 162; 294; 430 |
-| 2 | Barbaric Roar's charged R2 chain | Greataxe | 1h: R2 #1 hits 100, 132, 188; R2 #2 336; next R2 #1 504. 2h: 98, 132, 188; 336; 500 |
 | 3 | Golden Tempering's R2, repeated | Ornamental Straight Sword | Hit 43, then every 69 |
 | 4 | Golden Tempering's charged R2, repeated | Ornamental Straight Sword | First hit 73, last 213, then every 239 |
 | 5 | Flare, O Serpent's R2, repeated | Serpent Flail | Hit 41, then every 81 |

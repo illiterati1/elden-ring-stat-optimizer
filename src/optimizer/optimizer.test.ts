@@ -6730,6 +6730,36 @@ describe("Ashes of War", () => {
     expect(chain("Charged R2 chain", true)).toEqual([142, 300, 484]);
   });
 
+  it("times Barbaric Roar's R2 chains", () => {
+    // Its buffed R2s on a Greataxe, chained as fast as possible in game (60 fps), from the R2 #1
+    // press: R2 #1's three hits, R2 #2's, and the next R2 #1's first. Measured one handed 84, 115,
+    // 165, 297, 441 (charged 103, 135, 190, 335, 506), and two handed 83, 116, 166, 293, 432 (charged
+    // 106, 138, 192, 338, 508): the cycles within 3 frames, R2 #1's hits up to 8 frames later than
+    // their windows (more two handed, though its animations' windows are 2-4 frames sooner)
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const chain = (version: string, twoHanding: boolean) => {
+      const ash = getAshAttack(
+        ashes,
+        movesets,
+        getWeapon("Greataxe"),
+        withFollowUp("Barbaric Roar", version),
+        twoHanding,
+      );
+      if (!("attack" in ash)) throw new Error(ash.unavailableReason);
+      const [first, second] = ash.attack.stepTimes!;
+      const [firstCycle, secondCycle] = ash.attack.cycleTimes!;
+      return [
+        ...first.hits,
+        firstCycle + second.hits[0],
+        firstCycle + secondCycle + first.hits[0],
+      ].map(frames);
+    };
+    expect(chain("R2 chain", false)).toEqual([80, 114, 164, 298, 440]);
+    expect(chain("Charged R2 chain", false)).toEqual([100, 132, 188, 336, 504]);
+    expect(chain("R2 chain", true)).toEqual([78, 110, 162, 294, 430]);
+    expect(chain("Charged R2 chain", true)).toEqual([98, 132, 188, 336, 500]);
+  });
+
   it("matches Dynast's Finesse in game", () => {
     // The Bloody Helice's skill, one chain labeled "Follow-up R2": its thrust, then the follow-up R2.
     // Tested in game at +25 with 99 in every stat on the training dummy (damage, poise, and blood loss)
