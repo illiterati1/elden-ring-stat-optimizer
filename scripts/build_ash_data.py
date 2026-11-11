@@ -1344,6 +1344,12 @@ STANCE_OPENINGS = {
     "Wing Stance": (40050, ["R1", "R2"]),
 }
 STANCE_ONCE = {("Muleta", "R2 #1"), ("Muleta", "Charged R2 #1"), ("Wing Stance", "R1")}
+# Skills whose versions are the weapon's own attacks with something added (useAshes.ts
+# weaponAttackSkills), used up by that attack, so each is the skill (its cast, without hits) and then
+# the attack, and the skill again from the attack's L2 cancel (per the user: Flare, O Serpent's buff
+# is spent on one R2). By version: the weapon's attack it's timed from. The cast's timing is the ""
+# part's, and each attack's L2 cancel its version's, by hands ("label|hands")
+WEAPON_ATTACK_SKILLS = {"Flare, O Serpent": {"R2 / Running R2": "R2", "Charged R2": "Charged R2"}}
 # The delay from a press until its animation starts (useMovesets.ts stepStartDelay)
 STEP_START_DELAY = 2 / 60
 # Skills not timed until they're measured
@@ -2627,7 +2633,7 @@ def main():
         skills[name]["label"] = label
 
     # Each version's timing, from its skill's animations
-    from check_animations import Steps  # noqa: E402
+    from check_animations import Steps, get_animation_id  # noqa: E402
 
     steps = Steps(game_dir, project_dir)
     behavior_rows = {
@@ -2754,6 +2760,31 @@ def main():
                 weapon_files,
                 skill_speed_types[skill_id] == QUICK_SKILL_SPEED_TYPE,
             )
+            # The skill's cast, and the weapon's attacks' L2 cancels (WEAPON_ATTACK_SKILLS)
+            if name in WEAPON_ATTACK_SKILLS and row:
+                cast_file = SKILL_ANIMATION_FILE_BASE + skill_animation_types[skill_id]
+                quick = skill_speed_types[skill_id] == QUICK_SKILL_SPEED_TYPE
+                anims = steps.animations
+                cast = {
+                    cancel: round(anims.to_real_time(cast_file, SKILL_ANIMATIONS[0], time), 3)
+                    for cancel, time in get_l2_cancels(
+                        anims.get_cancels(cast_file, SKILL_ANIMATIONS[0]), quick
+                    ).items()
+                    if cancel in ("L2", "R2", "rightHandAttack", "roll", "block", "move")
+                }
+                timing = {"0": {**(timing or {}).get("0", {}), "": {"hits": [], **cast}}}
+                for label, attack in WEAPON_ATTACK_SKILLS[name].items():
+                    for hands in ("1h", "2h"):
+                        anim_id = get_animation_id(attack, hands, 0)
+                        attack_file, _ = anims.find(weapon_files, anim_id)
+                        if attack_file is None:
+                            continue
+                        cancels = get_l2_cancels(anims.get_cancels(attack_file, anim_id), quick)
+                        if "L2" in cancels:
+                            timing["0"][f"{label}|{hands}"] = {
+                                "hits": [],
+                                "L2": round(anims.to_real_time(attack_file, anim_id, cancels["L2"]), 3),
+                            }
             if timing:
                 hits["timing"] = timing
 
