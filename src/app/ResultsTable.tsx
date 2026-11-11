@@ -132,7 +132,6 @@ function AttackHits({
           : null);
       return {
         step: i,
-        label: step.length > 1 ? `${i + 1}.${j + 1}` : `${i + 1}`,
         hit,
         hitAt: hitTime != null ? at(i, hitTime) : undefined,
         // Projectiles' times are when they're created, or measured at one distance
@@ -141,7 +140,7 @@ function AttackHits({
     }),
   );
   // In order of when they hit (a hit without a time stays after the one before it), e.g. a
-  // projectile landing after the next step's swing
+  // projectile landing after the next step's swing, and numbered in that order
   let previousTime = -Infinity;
   const sortedHitRows = hitRows
     .map((row, index) => {
@@ -152,11 +151,16 @@ function AttackHits({
     .map(({ row }) => row);
   // Each step's cancels, on its last hit to land
   const lastRows = new Map(sortedHitRows.map((row, index) => [row.step, index]));
+  // Each hit numbered within its step in that order ("step.hit")
+  const hitNumbers = new Map<number, number>();
   const rows = sortedHitRows.map((row, index) => {
     const times = stepTimes?.[row.step];
     const last = lastRows.get(row.step) === index;
+    const number = (hitNumbers.get(row.step) ?? 0) + 1;
+    hitNumbers.set(row.step, number);
     return {
       ...row,
+      label: steps[row.step].length > 1 ? `${row.step + 1}.${number}` : `${row.step + 1}`,
       earliest:
         last && times?.earliest
           ? { ...times.earliest, time: at(row.step, times.earliest.time) }
