@@ -8918,36 +8918,63 @@ describe("Ashes of War", () => {
       );
     expect([normal("R1", all99), normal("R2", all99)]).toEqual([644, 811]);
     expect([normal("R1", low), normal("R2", low)]).toEqual([493, 618]);
-    // Its R2 and running R2 are the same, one entry
-    expect(
-      getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
-        ({ variant }) => variant?.short,
-      ),
-    ).toEqual(["R2 / Running R2", "Charged R2", "Jumping R2"]);
-    const r2 = getAshAttack(
-      ashes,
-      movesets,
-      weapon,
-      withFollowUp("Flare, O Serpent", "R2 / Running R2"),
-      false,
-    );
-    if (!("attack" in r2)) throw new Error(r2.unavailableReason);
-    expect(r2.attack.ownWeaponBuff).toBe(true);
-    const hits = firstHit(r2.attack, all99);
+    // Its buff (picked in the Buffs panel) changes the flail's R2s while it lasts, so it has no
+    // entries of its own: with it, the R2s are the flail's own with the buff and the fire
+    const own = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
+    expect(own).toEqual({
+      unavailableReason: "Flare, O Serpent does no damage itself: pick its buff for its R2s",
+    });
+    const changed = (attack: string) => {
+      const result = getAshAttack(
+        ashes,
+        movesets,
+        weapon,
+        withFollowUp("Flare, O Serpent", `${attack} chain`),
+        false,
+      );
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return result.attack;
+    };
+    const r2 = changed("R2");
+    expect(r2.ownWeaponBuff).toBe(true);
+    const hits = firstHit(r2, all99);
     expect(hits.map((hit) => [Math.floor(hit.damage), hit.stance])).toEqual([
       [915, 12],
       [550, 7],
     ]);
-    // Its buff is a weapon buff on all its attacks (in the Buffs panel), 90 fire for 30 seconds, and
-    // while it lasts each R2 fires, so its R2 repeats like the flail's own
+    // Each R2 of the chain fires, timed as the flail's own R2s
+    const ownR2 = getAttackData(movesets, weapon, "R2", false, 0.5)!;
+    expect(r2.steps.map((step) => step.length)).toEqual(ownR2.steps.map((step) => step.length + 1));
+    expect(r2.cycleTimes).toEqual(ownR2.cycleTimes);
+    for (const attack of ["Running R2", "Charged R2", "Jumping R2"]) {
+      expect(changed(attack).steps[0].at(-1)!.kind).toBe("Bullet");
+    }
+    expect(
+      getAshAttack(ashes, movesets, weapon, withFollowUp("Flare, O Serpent", "R1 chain"), false),
+    ).toEqual({
+      unavailableReason: "Flare, O Serpent doesn't change the R1",
+    });
+    // Repeated, its buff is cast again when it runs out: 62 frames every 30 seconds
+    expect(r2.upkeep).toEqual({ cast: 1.033, duration: 30 });
+    const dps = (attack: AttackData) =>
+      optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: all99,
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        limits: { ...noLimits, maxLevels: 0 },
+        attack,
+      }).attackDps!;
+    expect(dps(r2) / dps({ ...r2, upkeep: undefined })).toBeCloseTo((30 - 1.033) / 30, 6);
     const buff = (
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
         .buffs as Buff[]
     ).find((candidate) => candidate.name === "Flare, O Serpent")!;
     expect(buff.weapons).toEqual({ "Serpent Flail": [{ flat: [0, 0, 90, 0, 0], group: 162 }] });
-    expect(r2.attack.cycleTimes).toEqual(
-      getAttackData(movesets, weapon, "R2", false, 0.5)!.cycleTimes!.slice(0, 1),
-    );
   });
 
   it("gives flails' sweet spot only where their animations have it", () => {

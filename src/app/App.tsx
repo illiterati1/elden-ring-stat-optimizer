@@ -45,7 +45,9 @@ import useAshes, {
   getAshAttack,
   getAshAttacks,
   getAshChoices,
+  getSkillUpkeep,
   parseAshChoice,
+  weaponAttackSkills,
   withFollowUp,
   type AshAttack,
   type SkillVariant,
@@ -609,6 +611,8 @@ export default function App() {
               buffedR2Skills.has(weaponBuff.name)
             ? weaponBuff.name
             : undefined;
+        // (or for a skill that changes the weapon's own attacks, e.g. Flare, O Serpent's R2s, that
+        // attack with the skill's hits added)
         const skillChain =
           attackActive && r2Skill && attack !== ashAttack && attack !== "Standard Shot"
             ? getAshAttack(
@@ -619,11 +623,20 @@ export default function App() {
                 weaponTwoHanding,
                 chainWeight,
                 sumChains,
+                limit,
               )
             : undefined;
         const uniqueSkillChain =
-          skillChain && "attack" in skillChain && skillChain.attack.chain
+          skillChain &&
+          "attack" in skillChain &&
+          (skillChain.attack.chain || weaponAttackSkills.has(r2Skill!))
             ? skillChain.attack
+            : undefined;
+        // A weapon's own skill's buff that has to be cast again when it runs out (e.g. Flare, O
+        // Serpent's), picked: all its attacks spend some time casting it
+        const upkeep =
+          uniqueSkillEffects && fixedSkill
+            ? getSkillUpkeep(ashes, weapon.weaponName, fixedSkill)
             : undefined;
         return skillAttacks.map(({ ash, variant }): BuildRequest => {
           const chosenAttackData = !attackActive
@@ -645,20 +658,24 @@ export default function App() {
           // A skill's enemy debuff is picked separately, so it's noted when it isn't
           const debuffName =
             chosenAttackData?.fixedSkill && skillDebuffs[chosenAttackData.fixedSkill];
+          const withUpkeep =
+            chosenAttackData && upkeep && !chosenAttackData.upkeep
+              ? { ...chosenAttackData, upkeep }
+              : chosenAttackData;
           const attackData =
-            chosenAttackData &&
+            withUpkeep &&
             debuffName &&
             !selectedBuffs.some((buff) => buff.kind === "debuff" && buff.name === debuffName)
               ? {
-                  ...chosenAttackData,
+                  ...withUpkeep,
                   note: [
-                    chosenAttackData.note,
+                    withUpkeep.note,
                     `Doesn't count the ${debuffName} enemy debuff the skill applies: pick it in the enemy debuffs`,
                   ]
                     .filter(Boolean)
                     .join(". "),
                 }
-              : chosenAttackData;
+              : withUpkeep;
           // The skill the attack is, if any: the chosen skill, or the one whose R2s these are
           const attackSkill =
             ash && "attack" in ash

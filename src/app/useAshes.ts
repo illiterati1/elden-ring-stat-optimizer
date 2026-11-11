@@ -6,6 +6,7 @@ import {
   type AttackData,
   type AttackDataHit,
   type HpDamage,
+  type SkillUpkeep,
   type StepTimes,
 } from "../optimizer/build.ts";
 import {
@@ -13,6 +14,7 @@ import {
   getAttackData,
   stepStartDelay,
   type AttackName,
+  type ChainLimit,
   type Movesets,
 } from "./useMovesets.ts";
 
@@ -76,6 +78,8 @@ interface SkillHits {
   followUps: { label: string; hands?: "1h" | "2h"; hits: AshHit[]; note?: string }[];
   /** True if this version puts its own weapon buff on the weapon, e.g. the Dragon Halberd's */
   weaponBuff?: boolean;
+  /** For a buff that changes the weapon's own attacks, casting it again (see AttackData upkeep) */
+  upkeep?: SkillUpkeep;
   /** A note shown with this version's results, e.g. the Wing of Astel's Nebula's */
   note?: string;
   /**
@@ -424,11 +428,22 @@ const chainBuffs: Partial<
 const chainSuffix = " chain";
 
 /**
- * Skills whose versions are the weapon's own attacks with something added, e.g. the Serpent Flail's
- * Flare, O Serpent's R2s fire a flame: each version is that attack's first step (with the skill's
- * weapon buff) and the skill's hits for it
+ * Skills whose buff changes some of the weapon's own attacks while it lasts, e.g. the Serpent Flail's
+ * Flare, O Serpent's R2s each fire a flame. Picked as a buff, the weapon's attacks its versions are
+ * named after ("R2 / Running R2", "Charged R2", "Jumping R2") are those attacks with the skill's hits
+ * added to each step (asked for as "<attack> chain"), casting the buff again when it runs out
+ * (SkillHits upkeep); the skill itself does no damage.
  */
-const weaponAttackSkills: ReadonlySet<string> = new Set(["Flare, O Serpent"]);
+export const weaponAttackSkills: ReadonlySet<string> = new Set(["Flare, O Serpent"]);
+
+/**
+ * @returns casting a weapon's own skill's buff again when it runs out, for a skill that has to be
+ * (SkillHits upkeep, e.g. Flare, O Serpent's), or undefined
+ */
+export function getSkillUpkeep(ashes: Ashes, weaponName: string, skill: string) {
+  const skillData = ashes.skills[skill];
+  return (skillData?.unique?.[weaponName] ?? skillData?.generic)?.upkeep;
+}
 
 /**
  * Skills whose follow-ups are the weapon's R2s with the skill's buff (in the skill's own animations),
@@ -772,6 +787,8 @@ export function getAshAttack(
   chainWeight = 0.5,
   /** For chains, add up the steps rather than taking their weighted average */
   sumChains = false,
+  /** For the weapon's own chains a skill changes (weaponAttackSkills), how far they go */
+  limit?: ChainLimit,
 ): AshAttack {
   const result = getSkillAttack(
     ashes,
@@ -781,6 +798,7 @@ export function getAshAttack(
     twoHanding,
     chainWeight,
     sumChains,
+    limit,
   );
   // A skill can't be used at all without the weapon's requirements
   return "attack" in result
@@ -797,6 +815,7 @@ function getSkillAttack(
   twoHanding: boolean,
   chainWeight: number,
   sumChains: boolean,
+  limit?: ChainLimit,
 ): AshAttack {
   const [ash, countedFollowUp] = parseAshChoice(choice);
   const info = ashes.weapons[weapon.weaponName];
@@ -898,7 +917,8 @@ function getSkillAttack(
   const counted = skill === ash ? countedFollowUp : undefined;
   // A skill whose R2s are the weapon's R2s with its buff is just its own attack unless one of those
   // chains is asked for (getBuffedR2Chain), which the buff picked applies to like any other attack
-  const ownAttackOnly = buffedR2Skills.has(skill) && !counted?.endsWith(chainSuffix);
+  const ownAttackOnly =
+    (buffedR2Skills.has(skill) || weaponAttackSkills.has(skill)) && !counted?.endsWith(chainSuffix);
   if (
     ownAttackOnly &&
     !hits.main.some(([motionValue, , , , details]) =>
@@ -1009,6 +1029,48 @@ function getSkillAttack(
     };
   }
 
+  // The weapon's own attack, changed by the skill's buff (weaponAttackSkills): each step with the
+  // buff and the skill's hits for that attack
+  if (weaponAttackSkills.has(skill) && counted?.endsWith(chainSuffix)) {
+    const attackName = counted.slice(0, -chainSuffix.length);
+    const version = followUps.find(({ label }) => label.split(" / ").includes(attackName));
+    const weaponAttack =
+      version && (allAttacks as readonly string[]).includes(attackName)
+        ? getAttackData(
+            movesets,
+            weapon,
+            attackName as AttackName,
+            twoHanding,
+            chainWeight,
+            sumChains,
+            limit,
+          )
+        : undefined;
+    if (!version || !weaponAttack) {
+      return { unavailableReason: `${skill} doesn't change the ${attackName}` };
+    }
+    const skillHits = countedHits(version.hits).map(toHit);
+    return {
+      skill,
+      attack: {
+        ...weaponAttack,
+        steps: weaponAttack.steps.map((step) => [
+          ...step.map((hit) => ({
+            ...hit,
+            ...(skillBuff && {
+              buffAttack: skillBuff.map((value) => (value * (hit.buffMotionValue ?? 100)) / 100),
+            }),
+          })),
+          ...skillHits,
+        ]),
+        ...ownBuff,
+        ...notedHit,
+        ...(version.note && { note: version.note }),
+        ...(hits.upkeep && { upkeep: hits.upkeep }),
+      },
+    };
+  }
+
   const followUp = counted
     ? followUps.find(({ label }) => label === counted)
     : !hits.main.length
@@ -1020,49 +1082,29 @@ function getSkillAttack(
   // The chosen follow-up's note, e.g. that it can hit more than counted
   const followUpNote = followUp?.note && { note: followUp.note };
   if (!hits.main.length) {
-    // A stance's attack is its follow-up, after the weapon's own attack it's named after for some (the
-    // first, e.g. "R2 / Running R2")
-    const attackName = followUp!.label.split(" / ")[0];
-    const weaponAttack =
-      weaponAttackSkills.has(skill) && (allAttacks as readonly string[]).includes(attackName)
-        ? getAttackData(movesets, weapon, attackName as AttackName, twoHanding, chainWeight)
-        : undefined;
-    const weaponHits = (weaponAttack?.steps[0] ?? []).map((hit) => ({
-      ...hit,
-      ...(skillBuff && {
-        buffAttack: skillBuff.map((value) => (value * (hit.buffMotionValue ?? 100)) / 100),
-      }),
-    }));
+    // A stance's attack is its follow-up
     return {
       skill,
       attack: {
-        steps: [[...weaponHits, ...countedHits(followUp!.hits).map(toHit)]],
+        steps: [countedHits(followUp!.hits).map(toHit)],
         weights: [1],
         stepLabels: [`${skill} ${followUp!.label}`],
         poiseBase,
         ...ownBuff,
         ...notedHit,
         ...followUpNote,
-        // A weapon attack it's added to has that attack's first step's timing (repeated as the
-        // weapon's attack is, e.g. the Serpent Flail's R2 at its R2 cancel); or else the skill's own
-        // animation's (repeated with its button where it's the weapon's attack with the skill's
-        // buff, e.g. Golden Tempering's R2s)
-        ...(weaponAttack?.stepTimes?.[0] && {
-          stepTimes: [weaponAttack.stepTimes[0]],
-          ...(weaponAttack.cycleTimes && { cycleTimes: [weaponAttack.cycleTimes[0]!] }),
-          ...(weaponAttack.stamina && { stamina: [weaponAttack.stamina[0] ?? 0] }),
-        }),
-        ...(!weaponAttack &&
-          timingOf([
-            {
-              label: followUp!.label,
-              ...(buffedAttackSkills.has(skill) && { repeat: "R2" as const }),
-              // (or a stance's attack, with its button, e.g. Wing Stance's R1)
-              ...(getStanceRepeat(skill, followUp!.label) && {
-                repeat: getStanceRepeat(skill, followUp!.label),
-              }),
-            },
-          ])),
+        // The skill's own animation's timing (repeated with its button where it's the weapon's attack
+        // with the skill's buff, e.g. Golden Tempering's R2s)
+        ...timingOf([
+          {
+            label: followUp!.label,
+            ...(buffedAttackSkills.has(skill) && { repeat: "R2" as const }),
+            // (or a stance's attack, with its button, e.g. Wing Stance's R1)
+            ...(getStanceRepeat(skill, followUp!.label) && {
+              repeat: getStanceRepeat(skill, followUp!.label),
+            }),
+          },
+        ]),
       },
     };
   }

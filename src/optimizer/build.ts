@@ -571,6 +571,18 @@ export interface AttackData {
    * are only done once (e.g. Storm Blade's first)
    */
   repeatFrom?: number;
+  /**
+   * A buff the attack needs cast again when it runs out (e.g. Flare, O Serpent's): how long casting it
+   * takes and how long it lasts, in seconds. Repeated, part of the time goes to casting it.
+   */
+  upkeep?: SkillUpkeep;
+}
+
+export interface SkillUpkeep {
+  /** From the press until any attack can follow */
+  cast: number;
+  /** How long the buff lasts */
+  duration: number;
 }
 
 /** One hit of an attack with the final stats */
@@ -918,12 +930,19 @@ function getAttackStance(attack: AttackData, poiseDamageRate = 1) {
 
 /**
  * @returns the steps an attack repeats (from its repeatFrom step, or all of them) and how long they
- * take, or undefined if the timing isn't known
+ * take (with any time spent casting its buff again, AttackData upkeep), or undefined if the timing
+ * isn't known
  */
 function getRepeatedSteps(attack: AttackData) {
   if (!attack.cycleTimes) return undefined;
   const from = attack.repeatFrom ?? 0;
-  const time = attack.cycleTimes.slice(from).reduce((sum, stepTime) => sum + stepTime, 0);
+  const steps = attack.cycleTimes.slice(from).reduce((sum, stepTime) => sum + stepTime, 0);
+  // With a buff cast again whenever it runs out, the steps only take up the time it's on
+  const upkeep = attack.upkeep;
+  const time =
+    upkeep && upkeep.duration > upkeep.cast
+      ? (steps * upkeep.duration) / (upkeep.duration - upkeep.cast)
+      : steps;
   return time > 0 ? { from, time } : undefined;
 }
 

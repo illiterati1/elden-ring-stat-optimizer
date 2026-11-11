@@ -1344,6 +1344,12 @@ STANCE_OPENINGS = {
     "Wing Stance": (40050, ["R1", "R2"]),
 }
 STANCE_ONCE = {("Muleta", "R2 #1"), ("Muleta", "Charged R2 #1"), ("Wing Stance", "R1")}
+# Skills whose buff changes some of the weapon's own attacks while it lasts (useAshes.ts
+# weaponAttackSkills), so it has to be applied again: the SpEffect that lasts as long as it does.
+# Each version gets its "upkeep": how long casting it takes (from the press until any attack can
+# follow) and how long it lasts, in seconds. Flare, O Serpent: 20000851 renews its 90 fire
+# (20000852) for 30 seconds
+BUFF_UPKEEP = {"Flare, O Serpent": 20000851}
 # The delay from a press until its animation starts (useMovesets.ts stepStartDelay)
 STEP_START_DELAY = 2 / 60
 # Skills not timed until they're measured
@@ -2756,6 +2762,18 @@ def main():
             )
             if timing:
                 hits["timing"] = timing
+            # Casting a buff again (BUFF_UPKEEP)
+            if name in BUFF_UPKEEP:
+                cast_file = SKILL_ANIMATION_FILE_BASE + skill_animation_types[skill_id]
+                anims = steps.animations
+                cast = anims.get_cancels(cast_file, SKILL_ANIMATIONS[0]).get("rightHandAttack")
+                if cast is not None:
+                    hits["upkeep"] = {
+                        "cast": round(
+                            STEP_START_DELAY + anims.to_real_time(cast_file, SKILL_ANIMATIONS[0], cast), 3
+                        ),
+                        "duration": float(sp_effects[str(BUFF_UPKEEP[name])]["effectEndurance"]),
+                    }
 
     for skill in skills.values():
         if skill["generic"] is None:
