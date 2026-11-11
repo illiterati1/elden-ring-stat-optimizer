@@ -916,6 +916,16 @@ export default function App() {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
           Enter your current stats and the weapons you're considering to see where your next levels
           should go. Patch 1.17.2.
+          <br />
+          This is still a work in progress, see{" "}
+          <Link
+            href="https://github.com/illiterati1/elden-ring-stat-optimizer/blob/main/known-issues.md"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            known issues
+          </Link>
+          .
         </Typography>
         {!closedAlerts.includes("levels") && (
           <Alert severity="warning" onClose={() => closeAlert("levels")} sx={{ mb: 3 }}>
