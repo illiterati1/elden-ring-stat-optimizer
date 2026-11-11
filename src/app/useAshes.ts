@@ -1080,6 +1080,8 @@ function getSkillAttack(
     });
     const versionHits = (label: string) =>
       countedHits(followUps.find((followUp) => followUp.label === label)?.hits ?? []);
+    // TODO: only count the left hand weapon's (powerstancing) when it's the same weapon, e.g. a second
+    // Serpent Flail, and stop the chain earlier without them (e.g. after the L1 chain's #1)
     const steps = weaponAttack.steps
       .slice(0, stepCount)
       .map((step, i) => [
