@@ -915,7 +915,7 @@ export default function App() {
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
           Enter your current stats and the weapons you're considering to see where your next levels
-          should go. Patch 1.17.
+          should go. Patch 1.17.2 (regulation 1.17.3).
         </Typography>
         {!closedAlerts.includes("levels") && (
           <Alert severity="warning" onClose={() => closeAlert("levels")} sx={{ mb: 3 }}>
@@ -1114,9 +1114,8 @@ export default function App() {
             rel="noopener noreferrer"
           >
             Weapon Art Damage Guide
-          </Link>{" "}
-          (with theory from u/sleepless_sheeple). Enemy data is extracted from the game files, with
-          names cross-referenced against a{" "}
+          </Link>
+          . Enemy data is extracted from the game files, with names cross-referenced against a{" "}
           <Link
             href="https://docs.google.com/spreadsheets/d/1BVwmKqB8pvuyJkSTGYOM2kAJxFMQ0jVsc6aKYz_Upes"
             target="_blank"
