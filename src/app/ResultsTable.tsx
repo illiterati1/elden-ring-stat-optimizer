@@ -116,7 +116,7 @@ function AttackHits({
   const chainTime = stepTimes ? elapsed : undefined;
   const at = (stepIndex: number, time: number | undefined) =>
     stepStarts[stepIndex] != null && time != null ? stepStarts[stepIndex]! + time : undefined;
-  const rows = steps.flatMap((step, i) =>
+  const hitRows = steps.flatMap((step, i) =>
     step.map((hit, j) => {
       const times = stepTimes?.[i];
       // Each hit's own time if known, or if the animations have as many, or else the step's first's
@@ -130,24 +130,42 @@ function AttackHits({
           : j === 0
           ? times.hits[0]
           : null);
-      const last = j === step.length - 1;
       return {
+        step: i,
         label: step.length > 1 ? `${i + 1}.${j + 1}` : `${i + 1}`,
         hit,
         hitAt: hitTime != null ? at(i, hitTime) : undefined,
         // Projectiles' times are when they're created, or measured at one distance
         approximate: !!(ownTimes && times?.approximate?.[j]),
-        // The step's cancels, on its last hit
-        earliest:
-          last && times?.earliest
-            ? { ...times.earliest, time: at(i, times.earliest.time) }
-            : undefined,
-        roll: last ? at(i, times?.roll) : undefined,
-        block: last ? at(i, times?.block) : undefined,
-        move: last ? at(i, times?.move) : undefined,
       };
     }),
   );
+  // In order of when they hit (a hit without a time stays after the one before it), e.g. a
+  // projectile landing after the next step's swing
+  let previousTime = -Infinity;
+  const sortedHitRows = hitRows
+    .map((row, index) => {
+      previousTime = row.hitAt ?? previousTime;
+      return { row, time: previousTime, index };
+    })
+    .sort((a, b) => a.time - b.time || a.index - b.index)
+    .map(({ row }) => row);
+  // Each step's cancels, on its last hit to land
+  const lastRows = new Map(sortedHitRows.map((row, index) => [row.step, index]));
+  const rows = sortedHitRows.map((row, index) => {
+    const times = stepTimes?.[row.step];
+    const last = lastRows.get(row.step) === index;
+    return {
+      ...row,
+      earliest:
+        last && times?.earliest
+          ? { ...times.earliest, time: at(row.step, times.earliest.time) }
+          : undefined,
+      roll: last ? at(row.step, times?.roll) : undefined,
+      block: last ? at(row.step, times?.block) : undefined,
+      move: last ? at(row.step, times?.move) : undefined,
+    };
+  });
   const showHitTimes = timings.hits && rows.some((row) => row.hitAt != null);
   const showEarliest = timings.cancel && rows.some((row) => row.earliest?.time != null);
   const showRoll = timings.roll && rows.some((row) => row.roll != null);
