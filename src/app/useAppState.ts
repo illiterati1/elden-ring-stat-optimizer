@@ -66,7 +66,7 @@ export interface TooltipTimings {
   readonly roll: boolean;
   /** When each step can be blocked out of */
   readonly block: boolean;
-  /** When the next chain can start */
+  /** When the same attack can start again (the next chain) */
   readonly nextChain: boolean;
 }
 

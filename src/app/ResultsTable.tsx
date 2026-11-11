@@ -314,7 +314,7 @@ function AttackHits({
                     ? `Back to step ${repeatFrom + 1} at ${formatSeconds(chainTime!)}`
                     : opening != null
                     ? `Next pass at ${formatSeconds(chainTime!)}`
-                    : `Next chain at ${formatSeconds(chainTime!)}`}
+                    : `Same attack at ${formatSeconds(chainTime!)}`}
                 </TableCell>
               </TableRow>
             )}

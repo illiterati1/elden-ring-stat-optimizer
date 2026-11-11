@@ -26,7 +26,7 @@ const tooltipTimingLabels: [keyof TooltipTimings, string][] = [
   ["cancel", "Earliest attack"],
   ["roll", "Roll"],
   ["block", "Block"],
-  ["nextChain", "Next chain"],
+  ["nextChain", "Same attack"],
 ];
 
 const chainLimitModes: [ChainLimitSetting["mode"], string][] = [
