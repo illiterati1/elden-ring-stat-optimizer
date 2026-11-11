@@ -915,7 +915,7 @@ export default function App() {
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
           Enter your current stats and the weapons you're considering to see where your next levels
-          should go. Patch 1.17.2 (regulation 1.17.3).
+          should go. Patch 1.17.2.
         </Typography>
         {!closedAlerts.includes("levels") && (
           <Alert severity="warning" onClose={() => closeAlert("levels")} sx={{ mb: 3 }}>
