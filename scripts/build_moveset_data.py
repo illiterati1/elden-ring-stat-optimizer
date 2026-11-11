@@ -28,8 +28,9 @@ hit's window opens], "cancels": when it can be cancelled into each of R1, R2, an
 }), "rightHandAttack": seconds until a right hand attack (R1 or R2) can start, "leftHandAttack":
 seconds until a left hand attack can start (L1, or on horseback L1 or L2), "end": without
 it, seconds until the animation ends (if measured), "roll": seconds until a roll can start,
-"block": seconds until blocking can start, "stamina": what the step costs, "leftStamina": how much
-of that the left hand's weapon costs (powerstance attacks), "sweetSpot": true if its hits are in
+"block": seconds until blocking can start, "move": seconds until moving can end the animation,
+"stamina": what the step costs, "leftStamina": how much of that the left hand's weapon costs
+(powerstance attacks), "sweetSpot": true if its hits are in
 a flail's sweet spot (×1.125 damage) }], each left out if the animation doesn't allow it (or costs
 nothing, or has no sweet spot).
 "leftHandRows" has the weapon's own motion value, poise motion value, and stamina cost for each

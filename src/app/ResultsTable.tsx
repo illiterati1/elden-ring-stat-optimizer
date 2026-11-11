@@ -143,6 +143,7 @@ function AttackHits({
             : undefined,
         roll: last ? at(i, times?.roll) : undefined,
         block: last ? at(i, times?.block) : undefined,
+        move: last ? at(i, times?.move) : undefined,
       };
     }),
   );
@@ -150,6 +151,7 @@ function AttackHits({
   const showEarliest = timings.cancel && rows.some((row) => row.earliest?.time != null);
   const showRoll = timings.roll && rows.some((row) => row.roll != null);
   const showBlock = timings.block && rows.some((row) => row.block != null);
+  const showMove = timings.move && rows.some((row) => row.move != null);
   const showNextChain = timings.nextChain && chainTime != null;
   // Damage over time is shown per second, or per tick if its interval isn't known (just 0 for ticks
   // that only build up status, e.g. Chilling Mist's cloud)
@@ -245,6 +247,11 @@ function AttackHits({
                   Block
                 </TableCell>
               )}
+              {showMove && (
+                <TableCell sx={cellSx} align="right" title="When moving can end the step">
+                  Move
+                </TableCell>
+              )}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -255,7 +262,7 @@ function AttackHits({
                 </TableCell>
               </TableRow>
             )}
-            {rows.map(({ label, hit, hitAt, approximate, earliest, roll, block }) => (
+            {rows.map(({ label, hit, hitAt, approximate, earliest, roll, block, move }) => (
               <TableRow key={label}>
                 <TableCell sx={cellSx}>{label}</TableCell>
                 {showKind && <TableCell sx={cellSx}>{hit.kind ?? "Weapon"}</TableCell>}
@@ -303,6 +310,11 @@ function AttackHits({
                 {showBlock && (
                   <TableCell sx={cellSx} align="right">
                     {block != null ? formatSeconds(block) : ""}
+                  </TableCell>
+                )}
+                {showMove && (
+                  <TableCell sx={cellSx} align="right">
+                    {move != null ? formatSeconds(move) : ""}
                   </TableCell>
                 )}
               </TableRow>

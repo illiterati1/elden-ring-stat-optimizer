@@ -500,6 +500,8 @@ export interface StepTimes {
   rightHandAttack?: number;
   roll?: number;
   block?: number;
+  /** When moving can end it: the animations' "cancel - LS movement" flag (11) */
+  move?: number;
   /**
    * How long the step lasts when the attack is repeated as fast as possible, if known: until the
    * same button's next attack can start (or an R1/R2, after a chain's last step or for attacks that

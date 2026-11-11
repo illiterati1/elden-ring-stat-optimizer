@@ -107,6 +107,8 @@ interface SkillPartTiming {
   rightHandAttack?: number;
   roll?: number;
   block?: number;
+  /** When moving can end it */
+  move?: number;
   /** Its stamina cost (for a loop, each pass's), before the weapon's staminaRate */
   stamina?: number;
   /** For a loop, how long each pass takes */
@@ -212,6 +214,7 @@ function getSkillStepTimes(
       ...(timing.rightHandAttack != null && { rightHandAttack: lead + timing.rightHandAttack }),
       ...(timing.roll != null && { roll: lead + timing.roll }),
       ...(timing.block != null && { block: lead + timing.block }),
+      ...(timing.move != null && { move: lead + timing.move }),
       ...(!(last && noRepeat) && next && { cycle: next.time }),
     };
   });

@@ -12463,13 +12463,14 @@ describe("powerstance off hand weapons", () => {
     });
   });
 
-  it("leaves rolling and blocking out of mounted attacks' timing", () => {
+  it("leaves rolling, blocking, and moving out of mounted attacks' timing", () => {
     for (const attack of ["Mounted R1/L1", "Mounted R2/L2", "Mounted Charged R2/L2"] as const) {
       for (const weapon of ["Uchigatana", "Greatsword", "Short Spear"]) {
         const data = getAttackData(movesets, getWeapon(weapon), attack, false, 0.5)!;
         for (const step of data.stepTimes!) {
           expect(step.roll).toBeUndefined();
           expect(step.block).toBeUndefined();
+          expect(step.move).toBeUndefined();
         }
       }
     }
@@ -12479,12 +12480,13 @@ describe("powerstance off hand weapons", () => {
     const longsword = getWeapon("Longsword");
     const r1 = getAttackData(movesets, longsword, "R1", false, 0.5)!;
     // From the R1 1's press (the step start delay, then its animation): its hit at 0.433s, its R1
-    // cancel at 0.567s, a roll at 0.8s, and blocking at 0.9s
+    // cancel at 0.567s, a roll at 0.8s, blocking at 0.9s, and moving at 0.967s
     const first = r1.stepTimes![0];
     expect(first.hits[0]).toBeCloseTo(1 / 30 + 0.433);
     expect(first.earliest).toEqual({ attack: "R1", time: expect.closeTo(1 / 30 + 0.567) });
     expect(first.roll).toBeCloseTo(1 / 30 + 0.8);
     expect(first.block).toBeCloseTo(1 / 30 + 0.9);
+    expect(first.move).toBeCloseTo(1 / 30 + 0.967);
     // The last step's earliest attack is an L1 (1.333s), before an R2 (1.4s) or either right hand
     // attack (1.467s)
     expect(r1.stepTimes![4].earliest).toEqual({

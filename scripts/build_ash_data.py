@@ -1572,7 +1572,7 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
             if stamina:
                 timing["stamina"] = round(stamina, 2)
             cancels = animations.get_cancels(number, anim_id)
-            for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block"]:
+            for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block", "move"]:
                 if cancel in cancels:
                     timing[cancel] = real(cancels[cancel])
             result[key] = timing
@@ -1593,7 +1593,7 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
     @returns the version's timing, by weapon animation range (see get_skill_range; "0" is the
     default) and part ("" for the main attack, or the follow-up's label): each part's animation's
     hits, its stamina cost, when it can be cancelled into another skill ("L2"), "R1", "R2", any
-    attack, a roll, or blocking, and for an uncharged version, when it starts after the press
+    attack, a roll, blocking, or moving ("move"), and for an uncharged version, when it starts after the press
     ("start", see SKILL_CHARGING_SPEFFECT), in seconds of real time (see Animations.to_real_time); a loop (a main attack of
     "Loop" hits, e.g. Wild Strikes') also has "loop", how long each pass takes, and "opening", how
     long until it starts. Each part's animation is the one whose hits (motion value and flat attack)
@@ -1835,7 +1835,7 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         if stamina:
             timing["stamina"] = round(stamina, 2)
         cancels = animations.get_cancels(number, anim_id)
-        for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block"]:
+        for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block", "move"]:
             if cancel in cancels:
                 timing[cancel] = real(cancels[cancel])
         for cancel, time in CANCEL_FITS.get((name, label), {}).items():

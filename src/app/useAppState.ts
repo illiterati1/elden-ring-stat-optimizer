@@ -66,6 +66,8 @@ export interface TooltipTimings {
   readonly roll: boolean;
   /** When each step can be blocked out of */
   readonly block: boolean;
+  /** When moving can end each step */
+  readonly move: boolean;
   /** When the same attack can start again (the next chain) */
   readonly nextChain: boolean;
 }
@@ -224,7 +226,14 @@ const defaultAppState: AppState = {
   showStance: true,
   showStamina: false,
   showDps: false,
-  tooltipTimings: { hits: true, cancel: true, roll: true, block: false, nextChain: true },
+  tooltipTimings: {
+    hits: true,
+    cancel: true,
+    roll: true,
+    block: false,
+    move: false,
+    nextChain: true,
+  },
   chainLimit: { mode: "none", steps: 3, seconds: 2 },
   showRequirements: false,
   closedAlerts: [],

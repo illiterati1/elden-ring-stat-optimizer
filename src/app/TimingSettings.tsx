@@ -26,6 +26,7 @@ const tooltipTimingLabels: [keyof TooltipTimings, string][] = [
   ["cancel", "Earliest attack"],
   ["roll", "Roll"],
   ["block", "Block"],
+  ["move", "Movement"],
   ["nextChain", "Same attack"],
 ];
 

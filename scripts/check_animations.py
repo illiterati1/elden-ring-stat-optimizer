@@ -160,8 +160,8 @@ ACTION_FLAG_EVENT = 0
 # apart at fastest, 50 by its 117 and 62 by its 16), even where 16 is first (a colossal sword's
 # powerstance running L1 into L1 1, first hits 99 frames apart, 100 by its 16 and 112 by its 117,
 # and an Uchigatana's one handed R1 5, which only has 16, into powerstance L1 1, 66 frames apart,
-# 68 by its 16). Others not used here: 11 "cancel - LS movement", 107 quick goods (e.g.
-# some consumables), 31 goods, and 29 magic.
+# 68 by its 16). 11 "cancel - LS movement" is when moving (the left stick) ends the animation
+# ("move"). Others not used here: 107 quick goods (e.g. some consumables), 31 goods, and 29 magic.
 # Blocking is 22, jumping (or crouching) 32, and skills (L2) 103 and 104 (103 is a quick one, for
 # some skills; per the user, from the animations). A skill's chain continues on L2 (tested in game:
 # Storm Blade's and Sword Dance's follow-ups).
@@ -173,6 +173,7 @@ CANCEL_FLAGS = {
     16: "leftHandAttack",
     26: "roll",
     22: "block",
+    11: "move",
     32: "jump",
     103: "L2",
     104: "L2",
@@ -706,7 +707,8 @@ def get_timings(steps, param, moveset):
       - leftHandAttack: when any left hand attack can start
       - roll: when a roll can start
       - block: when blocking can start
-      - landing: for jumping attacks, when any attack, a roll, blocking, and another jump can start
+      - move: when moving can end the animation
+      - landing: for jumping attacks, when any attack, a roll, blocking, moving, and another jump can start
         after landing (the lighter landing, JUMP_LANDING_OFFSET)
       - end: without a right hand attack cancel, when the animation ends, if it's been measured
         (ANIMATION_FRAMES)
@@ -752,7 +754,7 @@ def get_timings(steps, param, moveset):
                 )
                 if button_cancels:
                     timing["cancels"] = {name: round(time, 3) for time, name in button_cancels}
-                for name in ["rightHandAttack", "leftHandAttack", "roll", "block"]:
+                for name in ["rightHandAttack", "leftHandAttack", "roll", "block", "move"]:
                     if name in cancels:
                         timing[name] = round(cancels[name], 3)
                 # Without a right hand attack cancel, the attack can only be repeated once it ends
@@ -771,7 +773,7 @@ def get_timings(steps, param, moveset):
                         landing = {
                             name: round(steps.animations.to_real_time(landing_file, landing_id, time), 3)
                             for name, time in landing_cancels.items()
-                            if name in ("rightHandAttack", "roll", "block", "jump")
+                            if name in ("rightHandAttack", "roll", "block", "move", "jump")
                         }
                         if landing:
                             timing["landing"] = landing
