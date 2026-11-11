@@ -10,8 +10,7 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 3 | Golden Tempering's R2, repeated | Ornamental Straight Sword | Hit 43, then every 69 |
-| 4 | Golden Tempering's charged R2, repeated | Ornamental Straight Sword | First hit 73, last 213, then every 239 |
+| 4 | Golden Tempering's charged R2, repeated, holding R2 down through each R2 cancel | Ornamental Straight Sword | First hit 73, last 213, then every 239 (its R2 cancel). Tested once: hits right, but the next first hit 248 after the last (its right hand attack cancel's 249), maybe from re-pressing R2 |
 | 5 | Flare, O Serpent's R2, repeated | Serpent Flail | Hit 41, then every 81 |
 | 6 | Flare, O Serpent's charged R2, repeated | Serpent Flail | Hit 122, then every 166 |
 | 7 | Deadly Poison Spray, repeated (status only, approximate) | Deadly Poison Perfume Bottle | First hit 42, then every 146 |

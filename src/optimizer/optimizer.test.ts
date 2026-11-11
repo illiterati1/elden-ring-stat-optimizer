@@ -6760,6 +6760,23 @@ describe("Ashes of War", () => {
     expect(chain("Charged R2 chain", true)).toEqual([98, 132, 188, 336, 500]);
   });
 
+  it("times Golden Tempering's R2s", () => {
+    // The Ornamental Straight Sword's R2 with its skill's buff, repeated as fast as possible in game
+    // (60 fps): R2 pressed at 2161, hits at 2202, 2270, and 2342 (each at the last's R2 cancel). Its
+    // charged R2's first hit 74 frames after the press and its last 216 (73 and 213 calculated)
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const ash = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Ornamental Straight Sword"),
+      withFollowUp("Golden Tempering", "R2"),
+      false,
+    );
+    if (!("attack" in ash)) throw new Error(ash.unavailableReason);
+    expect(frames(ash.attack.stepTimes![0].hits[0])).toBe(43);
+    expect(ash.attack.cycleTimes!.map(frames)).toEqual([69]);
+  });
+
   it("matches Dynast's Finesse in game", () => {
     // The Bloody Helice's skill, one chain labeled "Follow-up R2": its thrust, then the follow-up R2.
     // Tested in game at +25 with 99 in every stat on the training dummy (damage, poise, and blood loss)
