@@ -962,6 +962,15 @@ export default function App() {
               plannedStats={plannedStats}
               onChange={updateAppState}
             />
+            <LimitSettings
+              limits={limits}
+              fastMode={fastMode}
+              pointLabel={pointLabel}
+              currentLevel={startLevel}
+              planLevel={planLevel}
+              closedAlerts={closedAlerts}
+              onChange={updateAppState}
+            />
             <BuildSettings
               upgradeLevel={upgradeLevel}
               twoHanding={twoHanding}
@@ -1019,15 +1028,6 @@ export default function App() {
                   : null
               }
               pickedWeapons={pickedWeapons}
-              closedAlerts={closedAlerts}
-              onChange={updateAppState}
-            />
-            <LimitSettings
-              limits={limits}
-              fastMode={fastMode}
-              pointLabel={pointLabel}
-              currentLevel={startLevel}
-              planLevel={planLevel}
               closedAlerts={closedAlerts}
               onChange={updateAppState}
             />
