@@ -335,7 +335,7 @@ function BuildSettings({
           }
         />
         <FormControlLabel
-          label="Show stamina"
+          label="Show stamina cost"
           sx={{ mr: 0 }}
           control={
             <Checkbox
