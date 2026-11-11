@@ -11598,6 +11598,19 @@ describe("Ashes of War", () => {
     // 689; the R2 76 three times, its fireballs 473, 489, and 554, and a flame pillar 219, which can
     // hit several times (one counted, with a note)
     const weapon = getWeapon("Rellana's Twin Blades");
+    // Its R1 chain chained as fast as possible (60 fps): first hits at 1526, 1585, 1672, then 1801
+    // (each step at its R1 cancel, then L2 and the stance's R1 again; the repeat 3 frames sooner)
+    const r1Chain = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).find(
+      ({ variant }) => variant?.short === "R1 chain",
+    )!.ash;
+    if (!("attack" in r1Chain)) throw new Error(r1Chain.unavailableReason);
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const r1Steps = r1Chain.attack.stepTimes!;
+    const r1Cycles = r1Chain.attack.cycleTimes!;
+    const firstHit = (i: number) =>
+      r1Cycles.slice(0, i).reduce((sum, time) => sum + time, 0) + r1Steps[i].hits[0];
+    expect([1, 2].map((i) => frames(firstHit(i) - firstHit(0)))).toEqual([58, 146]);
+    expect(frames(r1Cycles.reduce((sum, time) => sum + time, 0))).toBe(278);
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false, 0.5, true).map(
       ({ ash, variant }) => {
         if (!("attack" in ash)) throw new Error(ash.unavailableReason);
