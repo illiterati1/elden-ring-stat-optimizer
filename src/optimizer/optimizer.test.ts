@@ -1917,10 +1917,10 @@ describe("attacks", () => {
     const r2 = dps("R2", true);
     expect(r2.dps).toBeCloseTo(r2.damage / 2.3, 0);
     expect(r2.poisePerSecond).toBeCloseTo(r2.poise / 2.3, 1);
-    // Attacks that can't be repeated back to back (e.g. running ones) last until a right hand attack can
-    // start: the running R1 1.03s, and the step start delay
+    // One-off attacks (e.g. running ones) last until anything can follow them: the running R1 until
+    // its roll at 0.996s (before its right hand attack at 1.03s), and the step start delay
     const running = dps("Running R1", false);
-    expect(running.dps).toBeCloseTo(running.damage / (1.03 + 1 / 30), 0);
+    expect(running.dps).toBeCloseTo(running.damage / (0.996 + 1 / 30), 0);
   });
 
   it("gives attacks' stamina costs", () => {

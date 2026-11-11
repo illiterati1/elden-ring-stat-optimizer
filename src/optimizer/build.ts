@@ -505,7 +505,8 @@ export interface StepTimes {
   /**
    * How long the step lasts when the attack is repeated as fast as possible, if known: until the
    * same button's next attack can start (or an R1/R2, after a chain's last step or for attacks that
-   * can't be repeated back to back, or else the animation's end)
+   * can't be repeated back to back, or else the animation's end). For one-off attacks (running,
+   * backstep, guard counters, critical hits), until the earliest attack, roll, block, or movement.
    */
   cycle?: number;
 }

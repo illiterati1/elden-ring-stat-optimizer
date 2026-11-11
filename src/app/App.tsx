@@ -54,6 +54,7 @@ import useMovesets, {
   allAttacks,
   canTwoHand,
   getAttackData,
+  oneOffAttacks,
   riposteAttacks,
   withOffhandRows,
   type ChainLimit,
@@ -869,6 +870,12 @@ export default function App() {
       sortedResults.some((result) => (result.attackSteps?.flat().length ?? 0) > 1));
   const objectiveLabel = objectiveOptions.find(([value]) => value === objective)![1];
   // The Ash of War isn't named, since weapons with a fixed skill use their own (named by their hits)
+  // One-off attacks (running, backstep, guard counters, critical hits) don't say when they could
+  // start again
+  const tooltipTimingsShown = useMemo(
+    () => (oneOffAttacks.has(attack) ? { ...tooltipTimings, nextChain: false } : tooltipTimings),
+    [attack, tooltipTimings],
+  );
   const valueLabel = objectiveLabel + (attackMode && attack !== ashAttack ? ` (${attack})` : "");
   const pointLabel = objective === "spellScaling" ? "scaling" : "damage";
   const notApplicableLabel =
@@ -1042,7 +1049,7 @@ export default function App() {
                         showStance={showStance}
                         showStamina={showStamina}
                         showDps={showDps}
-                        tooltipTimings={tooltipTimings}
+                        tooltipTimings={tooltipTimingsShown}
                         showRequirements={showRequirements}
                         sortBy={sortBy}
                         reverse={reverse}

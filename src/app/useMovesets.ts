@@ -74,8 +74,27 @@ export const riposteAttacks: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Attacks done once from a run, a backstep, a block, or a critical hit: the hits tooltip leaves out
+ * when the same attack could start again, and their values per second last until the earliest
+ * attack, roll, block, or movement can start
+ */
+export const oneOffAttacks: ReadonlySet<string> = new Set([
+  "Running R1",
+  "Running R2",
+  "Backstep R1",
+  "Guard Counter",
+  "Backstab",
+  "Riposte",
+  "Large Riposte",
+  "Small Riposte",
+  "Powerstance Running L1",
+  "Powerstance Backstep L1",
+]);
+
+/**
  * The button repeated for an attack's DPS, for attacks that can be repeated back to back (a chain
- * starts again after its last step). Others are repeated once a right hand attack (R1/R2) can start.
+ * starts again after its last step). One-off attacks (oneOffAttacks) last until anything can
+ * follow them, and others are repeated once a right hand attack (R1/R2) can start.
  */
 const repeatButtons: Partial<Record<AttackName, keyof NonNullable<StepTiming["cancels"]>>> = {
   R1: "R1",
@@ -188,7 +207,6 @@ function getStepTimes(
         : ([step.cancels?.R1, step.cancels?.R2]
             .filter((time) => time != null)
             .sort((a, b) => a! - b!)[0] as number | undefined));
-    const repeat = own ?? rightHand ?? step.end;
     const earliest = getEarliestAttack(
       lead,
       step.cancels,
@@ -196,6 +214,13 @@ function getStepTimes(
       step.leftHandAttack,
       mounted,
     );
+    // A one-off attack is over once anything can follow it: an attack, a roll, a block, or moving
+    const freed = oneOffAttacks.has(attack)
+      ? [earliest && earliest.time - lead, step.roll, step.block, step.move]
+          .filter((time): time is number => time != null)
+          .sort((a, b) => a - b)[0]
+      : undefined;
+    const repeat = freed ?? own ?? rightHand ?? step.end;
     return {
       lead,
       hits: step.hits.map((time) => lead + time),
