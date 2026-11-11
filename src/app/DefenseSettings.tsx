@@ -43,7 +43,7 @@ const enemyTypeLabels: Record<EnemyType, [label: string, title: string]> = {
   ],
   ancientDragon: [
     "Ancient dragon",
-    "e.g. Lansseax and Fortissax: dragon weapons and greases do more damage, less than to other dragons",
+    "e.g. Lansseax and Fortissax: dragon weapons and greases do more damage, less than to other dragons, and they take 0.2× poise damage",
   ],
   star: [
     "Star creature",
@@ -65,13 +65,14 @@ function DefenseSettings({
   closedAlerts,
   onChange,
 }: Props) {
-  // Editing defenses by hand means they no longer match the picked enemy
+  // Editing defenses by hand means they no longer match the picked enemy. Every ancient dragon
+  // takes 0.2x poise damage (from a permanent SpEffect), so that type keeps it.
   const editDefenses: UpdateAppState = (update) =>
     onChange({
       ...update,
       enemyKey: null,
       criticalDamageRate: 1,
-      poiseDamageRate: 1,
+      poiseDamageRate: (update.enemyTypes ?? enemyTypes).includes("ancientDragon") ? 0.2 : 1,
       enemyRipostes: null,
     });
 
