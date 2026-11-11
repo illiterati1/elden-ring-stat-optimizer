@@ -83,6 +83,8 @@ const repeatButtons: Partial<Record<AttackName, keyof NonNullable<StepTiming["ca
   "Charged R2": "R2",
   "Powerstance L1": "L1",
   "Mounted R1/L1": "R1",
+  "Mounted R2/L2": "R2",
+  "Mounted Charged R2/L2": "R2",
 };
 
 /** Mounted attacks, whose L1 and L2 are their R1 and R2 on the left side */

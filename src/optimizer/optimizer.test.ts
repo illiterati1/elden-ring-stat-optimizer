@@ -12453,6 +12453,16 @@ describe("powerstance off hand weapons", () => {
     ]);
   });
 
+  it("repeats mounted R2s with R2, like charged R2s on foot", () => {
+    // The Uchigatana's mounted R2: its R2 cancel at 1s, its right hand attack cancel at 1.1s
+    const r2 = getAttackData(movesets, getWeapon("Uchigatana"), "Mounted R2/L2", false, 0.5)!;
+    expect(r2.cycleTimes![0]).toBeCloseTo(1 / 30 + 1);
+    expect(r2.stepTimes![0].earliest).toEqual({
+      attack: "R2/L2",
+      time: expect.closeTo(1 / 30 + 1),
+    });
+  });
+
   it("times each step's hits and cancels, and cuts chains short", () => {
     const longsword = getWeapon("Longsword");
     const r1 = getAttackData(movesets, longsword, "R1", false, 0.5)!;
