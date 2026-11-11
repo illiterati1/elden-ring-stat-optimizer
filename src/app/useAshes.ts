@@ -319,10 +319,12 @@ const stanceR2Skills: ReadonlySet<string> = new Set(["Dynast's Finesse", "Dynast
 
 /**
  * Stances' attacks (or chains, by their first step) that go back to it with its button, not through
- * the stance again (build_ash_data.py STANCE_ONCE). Tested in game: Muleta's R2 #2 goes on to R2 #1
+ * the stance again (build_ash_data.py STANCE_ONCE). Tested in game: Muleta's R2 #2 goes on to R2 #1,
+ * and Wing Stance's R1 to another R1 (or R2)
  */
 const stanceRepeats: Partial<Record<string, readonly string[]>> = {
   Muleta: ["R2 #1", "Charged R2 #1"],
+  "Wing Stance": ["R1"],
 };
 
 /** @returns the button a stance's attack (or chain) is repeated with, if not through the stance */
@@ -1055,6 +1057,10 @@ function getSkillAttack(
             {
               label: followUp!.label,
               ...(buffedAttackSkills.has(skill) && { repeat: "R2" as const }),
+              // (or a stance's attack, with its button, e.g. Wing Stance's R1)
+              ...(getStanceRepeat(skill, followUp!.label) && {
+                repeat: getStanceRepeat(skill, followUp!.label),
+              }),
             },
           ])),
       },

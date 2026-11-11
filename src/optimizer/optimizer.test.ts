@@ -5849,6 +5849,15 @@ describe("Ashes of War", () => {
     // and 501 with 5.5, 2.75, and 8.25 poise and 94 blood loss each; the R2 1558 with 30.25 poise and
     // 118 blood loss
     const weapon = getWeapon("Blood Milady");
+    // Timed from the Ash of War's animations (not the Milady's own skill's): its R1 goes on to another
+    // R1 (or R2) at its R1 cancel (tested in game), so the stance comes only before the first, 34 frames
+    // from L2 to the R1
+    const r1 = getAshAttack(ashes, movesets, weapon, withFollowUp("Wing Stance", "R1"), false);
+    if (!("attack" in r1)) throw new Error(r1.unavailableReason);
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    expect(frames(r1.attack.stepTimes![0].opening!)).toBe(34);
+    expect(r1.attack.stepTimes![0].hits.map(frames)).toEqual([36, 52, 72]);
+    expect(r1.attack.cycleTimes!.map(frames)).toEqual([104]);
     const build = (followUp: string) => {
       const result = getAshAttack(
         ashes,

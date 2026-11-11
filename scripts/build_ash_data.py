@@ -1325,15 +1325,17 @@ LOOP_FITS = {("Tongues of Fire", ""): {"hits": [0], "loop": 60.75 / 60, "opening
 # right hand attack cancel (52). Untested: Dynastic Sickleplay's step is one of 40080-40088 by
 # direction (40080 assumed); Muleta's and Moon-and-Fire Stance's stance starts in 40050.
 # Chains in STANCE_ONCE don't go back through the stance: their last step goes on to their first with
-# its button (tested in game: Muleta's R2 #2 chains back to R2 #1), so the stance is an "opening"
+# its button (tested in game: Muleta's R2 #2 chains back to R2 #1, and Wing Stance's R1 into another
+# R1 or R2), so the stance is an "opening"
 # instead, from the press until its button's (in the app, before the chain's first step only)
 STANCE_OPENINGS = {
     "Dynast's Finesse": (40000, ["R2 #1"]),
     "Dynastic Sickleplay": (40080, ["#1"]),
     "Muleta": (40050, ["R1", "R2 #1", "Charged R2 #1"]),
     "Moon-and-Fire Stance": (40050, ["R1 #1", "R2"]),
+    "Wing Stance": (40050, ["R1", "R2"]),
 }
-STANCE_ONCE = {("Muleta", "R2 #1"), ("Muleta", "Charged R2 #1")}
+STANCE_ONCE = {("Muleta", "R2 #1"), ("Muleta", "Charged R2 #1"), ("Wing Stance", "R1")}
 # The delay from a press until its animation starts (useMovesets.ts stepStartDelay)
 STEP_START_DELAY = 2 / 60
 # Skills not timed until they're measured
@@ -2697,7 +2699,14 @@ def main():
             if not hits:
                 continue
             row = weapons.get(key) if group == "unique" else None
-            skill_id = int(row["swordArtsParamId"]) if row else ash_skill_ids.get(name)
+            # A weapon's version of an Ash of War that isn't its own skill (e.g. the sheet's Milady
+            # Wing Stance: the Milady's own is Impaling Thrust) is the Ash of War's
+            own_skill = row and int(row["swordArtsParamId"])
+            skill_id = (
+                own_skill
+                if row and weapon_skills.get(key, {}).get("skill") == name
+                else ash_skill_ids.get(name, own_skill)
+            )
             if skill_id not in skill_animation_types:
                 continue
             # A class's version uses its class's behavior variation (e.g. 1400 for curved swords'
