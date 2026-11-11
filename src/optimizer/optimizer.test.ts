@@ -6702,6 +6702,17 @@ describe("Ashes of War", () => {
     ]);
     const result = variants[0].ash;
     if (!result || !("attack" in result)) throw new Error();
+    // Chained as fast as possible (60 fps): the thrust's hit at 1674, the follow-up R2's at 1726 and
+    // 1751 (pressed at the thrust's R2 cancel), and the next thrust's at 1890 (L2 at the follow-up's
+    // L2 cancel, its backstep, then R2 at the backstep's cancel)
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const [thrust, followUp] = result.attack.stepTimes!;
+    const thrustCycle = result.attack.cycleTimes![0];
+    const chainCycle = thrustCycle + result.attack.cycleTimes![1];
+    expect(followUp.hits.map((time) => frames(thrustCycle + time - thrust.hits[0]))).toEqual([
+      52, 78,
+    ]);
+    expect(frames(chainCycle)).toBe(1890 - 1674);
     const build = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,
@@ -10724,6 +10735,15 @@ describe("Ashes of War", () => {
     // Leontiel's Greatsword's fixed skill: the R1, and R2 and charged R2 chains, each followed by the
     // same second R2. Tested in game on a +10 with 99 in every stat on the training dummy.
     const weapon = getWeapon("Leontiel's Greatsword");
+    // Its R2 #2 chains back to R2 #1 with R2 (tested in game), so the stance comes only before the
+    // first: the R2 chain's R2 pressed 22 frames after L2, then each step at its R2 cancel
+    const r2Chain = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).find(
+      ({ variant }) => variant?.short === "R2 chain",
+    )!.ash;
+    if (!("attack" in r2Chain)) throw new Error(r2Chain.unavailableReason);
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    expect(frames(r2Chain.attack.stepTimes![0].opening!)).toBe(22);
+    expect(r2Chain.attack.cycleTimes!.map(frames)).toEqual([108, 112]);
     const build = (buffs: BuffEffect[] = []) =>
       Object.fromEntries(
         getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false, 0.5, true).map(

@@ -106,6 +106,7 @@ function AttackHits({
   // When each step starts, from the start of the chain (as far as the steps' lengths are known),
   // or for a loop, from the press (after its opening)
   const opening = stepTimes?.[0]?.opening;
+  const loop = !!stepTimes?.[0]?.loop;
   const stepStarts: (number | undefined)[] = [];
   let elapsed: number | undefined = opening ?? 0;
   for (const times of stepTimes ?? []) {
@@ -258,7 +259,8 @@ function AttackHits({
             {opening != null && (showHitTimes || showNextChain) && (
               <TableRow>
                 <TableCell sx={cellSx} colSpan={99}>
-                  Loop starts at {formatSeconds(opening)}
+                  {loop ? "Loop starts" : "Step 1 starts (after the stance)"} at{" "}
+                  {formatSeconds(opening)}
                 </TableCell>
               </TableRow>
             )}
@@ -324,7 +326,7 @@ function AttackHits({
                 <TableCell sx={cellSx} colSpan={99}>
                   {repeatFrom
                     ? `Back to step ${repeatFrom + 1} at ${formatSeconds(chainTime!)}`
-                    : opening != null
+                    : loop
                     ? `Next pass at ${formatSeconds(chainTime!)}`
                     : `Same attack at ${formatSeconds(chainTime!)}`}
                 </TableCell>

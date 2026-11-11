@@ -113,7 +113,10 @@ interface SkillPartTiming {
   stamina?: number;
   /** For a loop, how long each pass takes */
   loop?: number;
-  /** For a loop, how long until it starts */
+  /**
+   * For a loop, how long until it starts; for a stance's chain that doesn't go back through the
+   * stance, how long from the press until its first step's (e.g. Muleta's R2)
+   */
   opening?: number;
 }
 
@@ -176,6 +179,7 @@ function getSkillStepTimes(
         lead: 0,
         hits: timing.hits,
         cycle: timing.loop,
+        loop: true,
         ...(timing.opening != null && { opening: timing.opening }),
       };
     }
@@ -216,6 +220,7 @@ function getSkillStepTimes(
       ...(timing.block != null && { block: lead + timing.block }),
       ...(timing.move != null && { move: lead + timing.move }),
       ...(!(last && noRepeat) && next && { cycle: next.time }),
+      ...(i === 0 && timing.opening != null && { opening: timing.opening }),
     };
   });
 }
@@ -257,9 +262,13 @@ const chainRepeatSteps: Partial<Record<string, number>> = {
   "Surge of Faith": 2,
 };
 
-/** The button a follow-up is done with, going on to it from the main attack */
+/**
+ * The button a follow-up is done with, going on to it from the main attack (held for a charged one,
+ * e.g. Muleta's "Charged R2 #1")
+ */
 function getFollowUpButton(label: string): SkillStepPart["next"] {
-  return label.startsWith("R1") ? "R1" : label.startsWith("R2") ? "R2" : "L2";
+  const attack = label.replace(/^Charged /, "");
+  return attack.startsWith("R1") ? "R1" : attack.startsWith("R2") ? "R2" : "L2";
 }
 
 /**
@@ -299,6 +308,26 @@ function getSkillHits(
     return { ...hits, main: skillData.generic.main };
   }
   return hits;
+}
+
+/**
+ * Skills that are a stance (or a step) whose chain's attacks are R2s from it, though not labeled
+ * "R2 ...", used again with L2: the first attack starts after the stance (build_ash_data.py
+ * STANCE_OPENINGS). Tested in game: Dynast's Finesse
+ */
+const stanceR2Skills: ReadonlySet<string> = new Set(["Dynast's Finesse", "Dynastic Sickleplay"]);
+
+/**
+ * Stances' attacks (or chains, by their first step) that go back to it with its button, not through
+ * the stance again (build_ash_data.py STANCE_ONCE). Tested in game: Muleta's R2 #2 goes on to R2 #1
+ */
+const stanceRepeats: Partial<Record<string, readonly string[]>> = {
+  Muleta: ["R2 #1", "Charged R2 #1"],
+};
+
+/** @returns the button a stance's attack (or chain) is repeated with, if not through the stance */
+function getStanceRepeat(skill: string, label: string) {
+  return stanceRepeats[skill]?.includes(label) ? getFollowUpButton(label) : undefined;
 }
 
 /**
@@ -956,11 +985,22 @@ function getSkillAttack(
         ...(chainRepeatSteps[skill] != null && { repeatFrom: chainRepeatSteps[skill]! - 1 }),
         // Each step goes on to the next with another skill
         // (a buffed R2 chain's with R2s, like the weapon's own R2s)
+        // (a stance's with its next attack's button, R1 or R2, and the chain again from the stance,
+        // with L2)
         ...timingOf(
-          steps.map(({ label }) =>
+          steps.map(({ label }, i) =>
             buffedR2Skills.has(skill)
               ? { label, next: "R2" as const, repeat: "R2" as const }
-              : { label, next: "L2" as const },
+              : {
+                  label,
+                  next: stanceR2Skills.has(skill)
+                    ? ("R2" as const)
+                    : getFollowUpButton(steps[i + 1]?.label ?? ""),
+                  // (one that goes back to its first step with its button, after the stance once)
+                  ...(getStanceRepeat(skill, steps[0]!.label) && {
+                    repeat: getStanceRepeat(skill, steps[0]!.label),
+                  }),
+                },
           ),
         ),
       },

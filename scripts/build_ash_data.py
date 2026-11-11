@@ -1315,6 +1315,27 @@ CANCEL_FITS = {
 # fire while L2 is held (its start, 40000, then its loop, 40003): hits at 405, 466, 527, 587, and
 # 648 from an L2 at 318 (its release's roll cancel 73 frames after letting go)
 LOOP_FITS = {("Tongues of Fire", ""): {"hits": [0], "loop": 60.75 / 60, "opening": 87 / 60}}
+# Skills that are a stance (or a step) without hits of their own, whose attacks are R1s or R2s from it:
+# the stance's animation, and the follow-ups that start a chain (or are on their own), which start once
+# the stance's cancel for their button (R1 for "R1 ..." follow-ups, else R2; or else any right hand
+# attack's) opens, after the press's delay (STEP_START_DELAY) and their own start (a tapped R2's,
+# or STEP_START_DELAY). Tested in game at 60 fps: Dynast's Finesse (Bloody Helice) chained as fast as
+# possible, its thrust hit at 1674, the follow-up R2's at 1726 and 1751 (at the thrust's R2 cancel,
+# 40), then the next thrust at 1890, after L2 at the follow-up's L2 cancel (118) and the backstep's
+# right hand attack cancel (52). Untested: Dynastic Sickleplay's step is one of 40080-40088 by
+# direction (40080 assumed); Muleta's and Moon-and-Fire Stance's stance starts in 40050.
+# Chains in STANCE_ONCE don't go back through the stance: their last step goes on to their first with
+# its button (tested in game: Muleta's R2 #2 chains back to R2 #1), so the stance is an "opening"
+# instead, from the press until its button's (in the app, before the chain's first step only)
+STANCE_OPENINGS = {
+    "Dynast's Finesse": (40000, ["R2 #1"]),
+    "Dynastic Sickleplay": (40080, ["#1"]),
+    "Muleta": (40050, ["R1", "R2 #1", "Charged R2 #1"]),
+    "Moon-and-Fire Stance": (40050, ["R1 #1", "R2"]),
+}
+STANCE_ONCE = {("Muleta", "R2 #1"), ("Muleta", "Charged R2 #1")}
+# The delay from a press until its animation starts (useMovesets.ts stepStartDelay)
+STEP_START_DELAY = 2 / 60
 # Skills not timed until they're measured
 UNTIMED_SKILLS = set()
 # The weapon's buffed R2s' animations (get_moveset_part_timing): one and two handed, from here
@@ -1927,6 +1948,25 @@ def get_skill_timing(
             timing = timing or moveset_timings.get(key)
             if timing:
                 by_part[key] = timing
+        # A stance's first attacks start after the stance (STANCE_OPENINGS)
+        if name in STANCE_OPENINGS and skill_range == 0:
+            stance, firsts = STANCE_OPENINGS[name]
+            stance_cancels = animations.get_cancels(number, stance)
+            for first in firsts:
+                button = "R1" if first.startswith("R1") else "R2"
+                cancel = stance_cancels.get(button, stance_cancels.get("rightHandAttack"))
+                if first in by_part and cancel is not None:
+                    stance_time = STEP_START_DELAY + animations.to_real_time(number, stance, cancel)
+                    by_part[first] = (
+                        {**by_part[first], "opening": round(stance_time, 3)}
+                        if (name, first) in STANCE_ONCE
+                        else {
+                            **by_part[first],
+                            "start": round(
+                                stance_time + by_part[first].get("start", STEP_START_DELAY), 3
+                            ),
+                        }
+                    )
         # Only ranges with their own timings
         if by_part and (skill_range == 0 or by_part != result.get("0")):
             result[str(skill_range)] = by_part

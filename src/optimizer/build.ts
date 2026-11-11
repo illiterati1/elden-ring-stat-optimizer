@@ -479,9 +479,12 @@ export interface StepTimes {
   hits: number[];
   /**
    * For a loop (its hits and cycle being one pass of it), when it starts after the press, e.g. Wild
-   * Strikes' opening swing's
+   * Strikes' opening swing's; or for a stance's chain that doesn't go back through the stance, when
+   * its first step is pressed, after the stance (e.g. Muleta's R2s)
    */
   opening?: number;
+  /** True for a loop's pass */
+  loop?: boolean;
   /**
    * Each of the step's hits' own time, where known separately from its animation's hits (e.g. a
    * projectile's repeated hits), and which are approximate
