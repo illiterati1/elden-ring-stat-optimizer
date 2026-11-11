@@ -1099,7 +1099,24 @@ export default function App() {
           >
             Elden Ring Weapon Calculator
           </Link>
-          . Enemy data is extracted from the game files, with names cross-referenced against a{" "}
+          . Attack motion values come from the{" "}
+          <Link
+            href="https://docs.google.com/spreadsheets/d/1j4bpTbsnp5Xsgw9TP2xv6d8R4qk0ErpE9r_5LGIDraU"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            ER - Motion Values and Attack Data
+          </Link>{" "}
+          spreadsheet, and skill damage follows the{" "}
+          <Link
+            href="https://www.reddit.com/r/Eldenring/comments/ttvy6m/weapon_art_damage_guide_v2/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Weapon Art Damage Guide
+          </Link>{" "}
+          (with theory from u/sleepless_sheeple). Enemy data is extracted from the game files, with
+          names cross-referenced against a{" "}
           <Link
             href="https://docs.google.com/spreadsheets/d/1BVwmKqB8pvuyJkSTGYOM2kAJxFMQ0jVsc6aKYz_Upes"
             target="_blank"
@@ -1108,6 +1125,15 @@ export default function App() {
             community datamining spreadsheet
           </Link>
           . ELDEN RING is a trademark of FromSoftware.
+        </Typography>
+        <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1 }}>
+          <Link
+            href="https://github.com/illiterati1/elden-ring-stat-optimizer"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Source code on GitHub
+          </Link>
         </Typography>
       </Box>
     </ThemeProvider>

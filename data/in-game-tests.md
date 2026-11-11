@@ -43,6 +43,12 @@ At +25 with 99 in every stat, on a 123.2-defense target with no negation.
 | 23 | The Carian Sorcery Sword's Impaling Thrust, and its R1s (the mod drops its INT scaling) | Impaling Thrust 1035 |
 | 24 | Euporia Vortex's Luster Tiers (fitted in the mod, cause unknown) | Tier 1 2530 (projectiles alone 2117), Tier 2 6921 (5345); at 89 STR/DEX and 25 FAI, 1676 and 4416 |
 
+## Discrepancies to look into
+
+| # | Test | In game | Calculated |
+|---|---|---|---|
+| 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all | 2674 (2672 in tests: each swing 786 with the buff's 90 fire, each explosion 550). Next: each hit's damage, to see which one is ~20 low |
+
 ## Not timed: need measurements
 
 Nothing to compare yet; measure from the press, as above.
