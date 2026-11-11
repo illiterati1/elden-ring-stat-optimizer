@@ -136,6 +136,7 @@ function getStepTimes(
 ): StepTimes[] | undefined {
   if (!timing || timing.length < stepCount) return undefined;
   const button = repeatButtons[attack];
+  const mounted = mountedAttacks.has(attack);
   return timing.slice(0, stepCount).map((step, i) => {
     // From the jump press: the attack, and its landing recovery once it lands; repeated by jumping
     // again
@@ -192,15 +193,16 @@ function getStepTimes(
       step.cancels,
       step.rightHandAttack,
       step.leftHandAttack,
-      mountedAttacks.has(attack),
+      mounted,
     );
     return {
       lead,
       hits: step.hits.map((time) => lead + time),
       ...(earliest && { earliest }),
       ...(step.rightHandAttack != null && { rightHandAttack: lead + step.rightHandAttack }),
-      ...(step.roll != null && { roll: lead + step.roll }),
-      ...(step.block != null && { block: lead + step.block }),
+      // (on horseback there's no rolling or blocking, though the animations have their flags)
+      ...(step.roll != null && !mounted && { roll: lead + step.roll }),
+      ...(step.block != null && !mounted && { block: lead + step.block }),
       ...(repeat != null && { cycle: lead + repeat }),
     };
   });
@@ -208,7 +210,8 @@ function getStepTimes(
 
 /**
  * @returns how many of a chain's steps it's limited to: a number of steps, or the steps that fit a
- * time budget from the press until a roll can start after them (at least one)
+ * time budget from the press until a roll can start after them, or on horseback a right hand
+ * attack (at least one)
  */
 function getChainLength(
   attack: AttackName,

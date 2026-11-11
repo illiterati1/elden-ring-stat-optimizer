@@ -12463,6 +12463,18 @@ describe("powerstance off hand weapons", () => {
     });
   });
 
+  it("leaves rolling and blocking out of mounted attacks' timing", () => {
+    for (const attack of ["Mounted R1/L1", "Mounted R2/L2", "Mounted Charged R2/L2"] as const) {
+      for (const weapon of ["Uchigatana", "Greatsword", "Short Spear"]) {
+        const data = getAttackData(movesets, getWeapon(weapon), attack, false, 0.5)!;
+        for (const step of data.stepTimes!) {
+          expect(step.roll).toBeUndefined();
+          expect(step.block).toBeUndefined();
+        }
+      }
+    }
+  });
+
   it("times each step's hits and cancels, and cuts chains short", () => {
     const longsword = getWeapon("Longsword");
     const r1 = getAttackData(movesets, longsword, "R1", false, 0.5)!;

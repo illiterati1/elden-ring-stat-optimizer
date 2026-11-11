@@ -158,7 +158,9 @@ ACTION_FLAG_EVENT = 0
 # at the earlier (tested in game: a Greataxe's left hand L1 1 to 2, hits 59 and 58 frames apart,
 # 60 by its 117 and 66 by its 16, and an Uchigatana's powerstance L1 1 to 2, first hits 50 frames
 # apart at fastest, 50 by its 117 and 62 by its 16), even where 16 is first (a colossal sword's
-# powerstance running L1 into L1 1, first hits 99 frames apart, 100 by its 16 and 112 by its 117). Others not used here: 11 "cancel - LS movement", 107 quick goods (e.g.
+# powerstance running L1 into L1 1, first hits 99 frames apart, 100 by its 16 and 112 by its 117,
+# and an Uchigatana's one handed R1 5, which only has 16, into powerstance L1 1, 66 frames apart,
+# 68 by its 16). Others not used here: 11 "cancel - LS movement", 107 quick goods (e.g.
 # some consumables), 31 goods, and 29 magic.
 # Blocking is 22, jumping (or crouching) 32, and skills (L2) 103 and 104 (103 is a quick one, for
 # some skills; per the user, from the animations). A skill's chain continues on L2 (tested in game:
