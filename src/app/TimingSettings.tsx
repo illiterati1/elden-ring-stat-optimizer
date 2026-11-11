@@ -7,6 +7,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Switch,
   Typography,
 } from "@mui/material";
 import NumberTextField from "./NumberTextField.tsx";
@@ -42,19 +43,25 @@ const chainLimitModes: [ChainLimitSetting["mode"], string][] = [
  */
 function TimingSettings({ showDps, tooltipTimings, chainLimit, onChange }: Props) {
   return (
-    <Section id="timing" title="Timing">
-      <Box display="grid" gap={1}>
+    <Section
+      id="timing"
+      title="Timing"
+      action={
         <FormControlLabel
           label="Per second"
-          title="Damage, poise, stamina, and status per second, repeating the attack as fast as the game allows (a chain starts again after its last step)"
+          title="Scale values by time"
+          sx={{ mr: 0 }}
           control={
-            <Checkbox
+            <Switch
               size="small"
               checked={showDps}
               onChange={(evt) => onChange({ showDps: evt.currentTarget.checked })}
             />
           }
         />
+      }
+    >
+      <Box display="grid" gap={1}>
         <Typography variant="body2" color="text.secondary">
           In the hits tooltip, from the start of the chain
         </Typography>

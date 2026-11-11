@@ -5,6 +5,7 @@ interface Props {
   /** Identifies the panel, to remember whether it's collapsed */
   id: string;
   title: ReactNode;
+  /** Shown beside the title, even while the panel is collapsed */
   action?: ReactNode;
   children?: ReactNode;
 }
@@ -53,7 +54,7 @@ export default function Section({ id, title, action, children }: Props) {
             {title}
           </Typography>
         </ButtonBase>
-        {!collapsed && action}
+        {action}
       </Box>
       {children && (
         <Collapse in={!collapsed}>
