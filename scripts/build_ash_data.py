@@ -1325,8 +1325,9 @@ LOOP_FITS = {("Tongues of Fire", ""): {"hits": [0], "loop": 60.75 / 60, "opening
 # right hand attack cancel (52). Dynastic Sickleplay's step is one of 40080-40088 by direction: its R2
 # opens at 42 in 40080-40083 and 46 in 40085-40088; chained as fast as possible with a neutral
 # backstep, its #1 hit every 291 frames (290 with 42, 294 with 46), and its #2's hits about 3 frames
-# sooner after #1's than its windows (#1's sickle landing late in its window?). Untested: Muleta's
-# and Moon-and-Fire Stance's stance starts in 40050.
+# sooner after #1's than its windows (#1's sickle landing late in its window?). Muleta's and
+# Moon-and-Fire Stance's stance starts in 40050 (Muleta's R2 chain tested: R2 #1 hit 75 frames after
+# the R2 press, R2 #2 87 after it, and the next R2 #1 219 after the last, each within a frame).
 # Chains in STANCE_ONCE don't go back through the stance: their last step goes on to their first with
 # its button (tested in game: Muleta's R2 #2 chains back to R2 #1, and Wing Stance's R1 into another
 # R1 or R2), so the stance is an "opening"

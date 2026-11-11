@@ -10755,6 +10755,12 @@ describe("Ashes of War", () => {
     const frames = (seconds: number) => Math.round(seconds * 60);
     expect(frames(r2Chain.attack.stepTimes![0].opening!)).toBe(22);
     expect(r2Chain.attack.cycleTimes!.map(frames)).toEqual([108, 112]);
+    // Measured at 60 fps: R2 pressed at 1410, R2 #1's hit at 1485, R2 #2's at 1572, then 1704 and 1791
+    const [first, second] = r2Chain.attack.stepTimes!;
+    const [firstCycle, secondCycle] = r2Chain.attack.cycleTimes!;
+    expect(frames(first.hits[0])).toBe(74);
+    expect(frames(firstCycle + second.hits[0] - first.hits[0])).toBe(88);
+    expect(frames(firstCycle + secondCycle)).toBe(220);
     const build = (buffs: BuffEffect[] = []) =>
       Object.fromEntries(
         getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false, 0.5, true).map(
