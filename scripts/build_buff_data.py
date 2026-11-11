@@ -219,7 +219,7 @@ EXCLUDED_SPELLS = {"Litany of Proper Death"}
 
 # Notes for weapons' own skills' buffs, which are shown with whose skill they are otherwise
 FIXED_SKILL_NOTES = {
-    "Shriek of Milos": "Sword of Milos's skill. Its enemy debuff is separate, in the enemy debuffs",
+    "Shriek of Milos": "Sword of Milos's skill. Its debuff is separate",
 }
 
 # Attack subcategories the app gives hits rather than the data: 105 ammunition (bows' arrows and
@@ -352,7 +352,7 @@ DEBUFF_NOTES = {
     "Flower Dragonbolt (charged)": "Flowerstone Gavel's skill",
     "Knowledge Above All": "Scepter of the All-Knowing's skill",
     "Soul Stifler": "Winged Greathorn's skill",
-    "Shriek of Milos": "Sword of Milos's skill. Its weapon buff is separate, in the weapon buffs",
+    "Shriek of Milos": "Sword of Milos's skill. Its weapon buff is separate",
 }
 
 
