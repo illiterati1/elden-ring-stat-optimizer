@@ -127,6 +127,7 @@ STACKING_KINDS = {"consumable", "tear", "spell", "skill", "spirit", "debuff"}
 
 # Consumables' and spells' stacking groups, by spCategory (others stack with everything: "unique")
 BUFF_TYPES = {162: "weapon", 151: "body", 160: "aura"}
+WEAPON_BUFF_GROUP = 162
 LEFT_HAND_WEAPON_BUFF = 163
 
 # Buffs the params don't link to their item, skill, or spirit, by kind and name: their effects
@@ -187,8 +188,14 @@ UNFOLLOWED = {"Sacred Bloody Flesh"}
 # Unique weapons' own skill buffs their skills' animations don't name, by weapon: the Stormhawk Axe's
 # Thunderstorm's 120 lightning for 40 seconds (1511; tested in game: its lightning strikes), and
 # Mohgwyn's Sacred Spear's Bloodboon Ritual's 30 fire for 20 seconds (1627, which the game's scripts
-# apply: no param or animation names it)
-EXTRA_UNIQUE_SKILL_BUFFS = {"Stormhawk Axe": 1511, "Mohgwyn's Sacred Spear": 1627}
+# apply: no param or animation names it), and the Serpent Flail's Flare, O Serpent's 90 fire, on all
+# its attacks (20000852, 0.1 seconds, renewed every 0.05 seconds for 30 seconds by 20000851, so too
+# short to be found as a buff)
+EXTRA_UNIQUE_SKILL_BUFFS = {
+    "Stormhawk Axe": 1511,
+    "Mohgwyn's Sacred Spear": 1627,
+    "Serpent Flail": 20000852,
+}
 
 # Weapon buffs only one weapon gets from its own passive, by name: Euporia's luster tiers (19881 and
 # 19883, from its resident effects' build-up: 95 and 120 holy; tested in game at +25 with 99 in every
@@ -758,7 +765,12 @@ def main():
         if row["gemMountType"] == "2" or skill_id not in skill_types:
             continue
         if weapon_name in EXTRA_UNIQUE_SKILL_BUFFS:
-            effects = get_effects([EXTRA_UNIQUE_SKILL_BUFFS[weapon_name]], follow=False)
+            # (a weapon buff, like the others, even where its effect's category isn't 162, e.g. Flare,
+            # O Serpent's 20)
+            effects = [
+                {**effect, "group": WEAPON_BUFF_GROUP}
+                for effect in get_effects([EXTRA_UNIQUE_SKILL_BUFFS[weapon_name]], follow=False)
+            ]
         else:
             effects = get_skill_effects(skill_types[skill_id])
         if effects:

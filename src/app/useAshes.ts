@@ -423,28 +423,6 @@ const chainBuffs: Partial<
 
 const chainSuffix = " chain";
 
-/** @returns a step's times without its cycle (not repeated) */
-function withoutCycle({ cycle: _cycle, ...step }: StepTimes): StepTimes {
-  return step;
-}
-
-/** @returns a step's times, all later by some time (e.g. after a skill's cast) */
-function shiftStepTimes(step: StepTimes, by: number): StepTimes {
-  const later = (time: number | undefined) => (time != null ? time + by : undefined);
-  return {
-    ...step,
-    lead: step.lead + by,
-    hits: step.hits.map((time) => time + by),
-    ...(step.hitTimes && { hitTimes: step.hitTimes.map(later) }),
-    ...(step.earliest && { earliest: { ...step.earliest, time: step.earliest.time + by } }),
-    ...(step.rightHandAttack != null && { rightHandAttack: step.rightHandAttack + by }),
-    ...(step.roll != null && { roll: step.roll + by }),
-    ...(step.block != null && { block: step.block + by }),
-    ...(step.move != null && { move: step.move + by }),
-    ...(step.cycle != null && { cycle: step.cycle + by }),
-  };
-}
-
 /**
  * Skills whose versions are the weapon's own attacks with something added, e.g. the Serpent Flail's
  * Flare, O Serpent's R2s fire a flame: each version is that attack's first step (with the skill's
@@ -1049,20 +1027,6 @@ function getSkillAttack(
       weaponAttackSkills.has(skill) && (allAttacks as readonly string[]).includes(attackName)
         ? getAttackData(movesets, weapon, attackName as AttackName, twoHanding, chainWeight)
         : undefined;
-    // A skill used up by the weapon's attack (e.g. Flare, O Serpent's, by one R2): its cast first,
-    // then the attack once the cast's R2 (or any right hand attack) cancel opens, and the skill again
-    // at the attack's L2 cancel (build_ash_data.py WEAPON_ATTACK_SKILLS)
-    const cast = weaponAttack && getPartTiming(hits, skillRange, "");
-    const castTime = cast && (cast.R2 ?? cast.rightHandAttack);
-    const attackL2 = getPartTiming(hits, skillRange, followUp!.label, hands)?.L2;
-    const weaponStep = weaponAttack?.stepTimes?.[0];
-    const castStep =
-      weaponStep && castTime != null && attackL2 != null
-        ? shiftStepTimes(
-            { ...weaponStep, cycle: weaponStep.lead + attackL2 },
-            stepStartDelay + castTime,
-          )
-        : undefined;
     const weaponHits = (weaponAttack?.steps[0] ?? []).map((hit) => ({
       ...hit,
       ...(skillBuff && {
@@ -1079,15 +1043,15 @@ function getSkillAttack(
         ...ownBuff,
         ...notedHit,
         ...followUpNote,
-        // A weapon attack it's added to has that attack's first step's timing, after the skill's cast
-        // and repeated with the skill (castStep; or without the timing to go back to the skill, e.g.
-        // after a jumping R2's landing, not repeated: the attack alone would be without its buff); or
-        // else the skill's own animation's (repeated with its button where it's the weapon's attack
-        // with the skill's buff, e.g. Golden Tempering's R2s)
-        ...(castStep
-          ? { stepTimes: [castStep], cycleTimes: [castStep.cycle!] }
-          : weaponStep && { stepTimes: [withoutCycle(weaponStep)] }),
-        ...(weaponAttack?.stamina && { stamina: [weaponAttack.stamina[0] ?? 0] }),
+        // A weapon attack it's added to has that attack's first step's timing (repeated as the
+        // weapon's attack is, e.g. the Serpent Flail's R2 at its R2 cancel); or else the skill's own
+        // animation's (repeated with its button where it's the weapon's attack with the skill's
+        // buff, e.g. Golden Tempering's R2s)
+        ...(weaponAttack?.stepTimes?.[0] && {
+          stepTimes: [weaponAttack.stepTimes[0]],
+          ...(weaponAttack.cycleTimes && { cycleTimes: [weaponAttack.cycleTimes[0]!] }),
+          ...(weaponAttack.stamina && { stamina: [weaponAttack.stamina[0] ?? 0] }),
+        }),
         ...(!weaponAttack &&
           timingOf([
             {

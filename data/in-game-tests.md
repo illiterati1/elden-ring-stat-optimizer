@@ -10,8 +10,8 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 5 | Flare, O Serpent: L2, then R2, repeated (its buff is spent on one R2) | Serpent Flail | R2 hit 103 after L2 (2h 101), then every 149 (2h 147) |
-| 6 | Flare, O Serpent: L2, then charged R2, repeated | Serpent Flail | Hit 184 after L2 (2h 186), then every 240 |
+| 5 | Flare, O Serpent's R2, repeated | Serpent Flail | Hit 41, then every 81 |
+| 6 | Flare, O Serpent's charged R2, repeated | Serpent Flail | Hit 122, then every 166 |
 | 7 | Deadly Poison Spray, repeated (status only, approximate) | Deadly Poison Perfume Bottle | First hit 42, then every 146 |
 | 8 | Fires of Slumber, repeated (status only, approximate) | St. Trina's Torch | First hit 60, then every 218 |
 | 9 | Great-Serpent Hunt's chain | Serpent-Hunter | #1 hit 154; #2 168 later, its hit 258; next #1's hit 518 |

@@ -8938,6 +8938,16 @@ describe("Ashes of War", () => {
       [915, 12],
       [550, 7],
     ]);
+    // Its buff is a weapon buff on all its attacks (in the Buffs panel), 90 fire for 30 seconds, and
+    // while it lasts each R2 fires, so its R2 repeats like the flail's own
+    const buff = (
+      JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
+        .buffs as Buff[]
+    ).find((candidate) => candidate.name === "Flare, O Serpent")!;
+    expect(buff.weapons).toEqual({ "Serpent Flail": [{ flat: [0, 0, 90, 0, 0], group: 162 }] });
+    expect(r2.attack.cycleTimes).toEqual(
+      getAttackData(movesets, weapon, "R2", false, 0.5)!.cycleTimes!.slice(0, 1),
+    );
   });
 
   it("gives flails' sweet spot only where their animations have it", () => {
