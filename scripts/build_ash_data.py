@@ -1296,6 +1296,15 @@ READY_TIMES = {"Repeating Fire": 80 / 60}
 # 112 of raising the shield: the next hit 278 frames after the last), not 4 frames earlier as its
 # early jump table window (131175 and 131176) would have it; Sword Dance's on a Claymore did start
 # that early (tested in game), so which do isn't known
+# Skills of this SwordArtsParam artsSpeedType can be used again at their animation's quick L2 cancel
+# (flag 103), the rest only at the normal one (104), measured in game at 60 fps, each skill used again
+# as soon as possible: Barbaric Roar (type 1) hit every 72 and 74 frames (103's early window at 72,
+# 104's at 84), Gravitas (type 2) 159 frames apart (104's early window at 157, 103's at 139). Sword
+# Dance (type 1; its 103 and 104 open together) went on 4 frames early, at its early window. Spot
+# checked: Braggart's Roar (type 2) 163 and 162 (104 at 162, 103 at 146), the Zamor Curved Sword's
+# Zamor Ice Storm (type 2) 177 and 176 (174 vs 156), and Spinning Weapon (type 1) on a Halberd 160
+# and 160 (103 at 158, 104 at 166)
+QUICK_SKILL_SPEED_TYPE = 1
 CANCEL_FITS = {
     ("Repeating Fire", ""): {"L2": 181 / 60},
     ("Flame Spit", ""): {"L2": (112 + 164) / 60},
@@ -1571,7 +1580,7 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
             )
             if stamina:
                 timing["stamina"] = round(stamina, 2)
-            cancels = animations.get_cancels(number, anim_id)
+            cancels = get_l2_cancels(animations.get_cancels(number, anim_id), True)
             for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block", "move"]:
                 if cancel in cancels:
                     timing[cancel] = real(cancels[cancel])
@@ -1579,7 +1588,22 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
     return result
 
 
-def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=None, weapon_files=()):
+def get_l2_cancels(cancels, quick):
+    """
+    @param cancels Animations.get_cancels's
+    @param quick whether the quick L2 cancel (flag 103) counts (QUICK_SKILL_SPEED_TYPE)
+    @returns the cancels with "L2" the one that counts (the quick one if there's no other)
+    """
+    cancels = dict(cancels)
+    quick_time = cancels.pop("quickL2", None)
+    if quick_time is not None and (quick or "L2" not in cancels):
+        cancels["L2"] = min(quick_time, cancels.get("L2", quick_time))
+    return cancels
+
+
+def get_skill_timing(
+    steps, number, variation, hits, behaviors, bullets, name=None, weapon_files=(), quick_l2=True
+):
     """
     @param steps check_animations.py's Steps
     @param number the skill's animation file
@@ -1590,6 +1614,7 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
     @param name the skill's name, for LANDING_TIMES, UNTIMED_SKILLS, and HIT_TIME_FITS
     @param weapon_files the weapon's (or its class's) moveset files, for follow-ups that are its own
     attacks with the skill's buff (get_moveset_part_timing)
+    @param quick_l2 whether it can be used again at its quick L2 cancel (QUICK_SKILL_SPEED_TYPE)
     @returns the version's timing, by weapon animation range (see get_skill_range; "0" is the
     default) and part ("" for the main attack, or the follow-up's label): each part's animation's
     hits, its stamina cost, when it can be cancelled into another skill ("L2"), "R1", "R2", any
@@ -1834,7 +1859,7 @@ def get_skill_timing(steps, number, variation, hits, behaviors, bullets, name=No
         )
         if stamina:
             timing["stamina"] = round(stamina, 2)
-        cancels = animations.get_cancels(number, anim_id)
+        cancels = get_l2_cancels(animations.get_cancels(number, anim_id), quick_l2)
         for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block", "move"]:
             if cancel in cancels:
                 timing[cancel] = real(cancels[cancel])
@@ -1924,6 +1949,7 @@ def main():
     skill_text_ids = {int(row["id"]): int(row["textId"]) for row in sword_arts}
     # Which file each skill's animations are in (see get_skill_timing)
     skill_animation_types = {int(row["id"]): int(row["swordArtsTypeNew"]) for row in sword_arts}
+    skill_speed_types = {int(row["id"]): int(row["artsSpeedType"]) for row in sword_arts}
     # Each Ash of War's skill (SwordArtsParam) by its name
     ash_skill_ids = {}
 
@@ -2669,6 +2695,7 @@ def main():
                 bullet_rows,
                 name,
                 weapon_files,
+                skill_speed_types[skill_id] == QUICK_SKILL_SPEED_TYPE,
             )
             if timing:
                 hits["timing"] = timing

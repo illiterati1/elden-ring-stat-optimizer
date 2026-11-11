@@ -162,9 +162,10 @@ ACTION_FLAG_EVENT = 0
 # and an Uchigatana's one handed R1 5, which only has 16, into powerstance L1 1, 66 frames apart,
 # 68 by its 16). 11 "cancel - LS movement" is when moving (the left stick) ends the animation
 # ("move"). Others not used here: 107 quick goods (e.g. some consumables), 31 goods, and 29 magic.
-# Blocking is 22, jumping (or crouching) 32, and skills (L2) 103 and 104 (103 is a quick one, for
-# some skills; per the user, from the animations). A skill's chain continues on L2 (tested in game:
-# Storm Blade's and Sword Dance's follow-ups).
+# Blocking is 22, jumping (or crouching) 32, and skills (L2) 103 ("quickL2") and 104 ("L2"): 103 is a
+# quick one, only for skills of SwordArtsParam artsSpeedType 1 (see build_ash_data.py
+# QUICK_SKILL_SPEED_TYPE). A skill's chain continues on L2 (tested in game: Storm Blade's and Sword
+# Dance's follow-ups).
 CANCEL_FLAGS = {
     115: "R1",
     116: "R2",
@@ -175,7 +176,7 @@ CANCEL_FLAGS = {
     22: "block",
     11: "move",
     32: "jump",
-    103: "L2",
+    103: "quickL2",
     104: "L2",
 }
 # The action flag marking a flail's sweet spot (×1.125 damage), at the start of most of its attacks'

@@ -5281,6 +5281,17 @@ describe("Ashes of War", () => {
     const [first, second] = dance.stepTimes!;
     expect(first.hits.map(frames)).toEqual([62, 86]);
     expect(frames(dance.cycleTimes![0] + second.hits[0]) - frames(first.hits[1])).toBe(76);
+    // Used again as soon as possible, a skill of artsSpeedType 1 goes at its quick L2 cancel (flag
+    // 103), others at the normal one (104): Barbaric Roar's roars 72 and 74 frames apart, Gravitas's
+    // first hits 159 (its quick cancel would be 139)
+    // (the roar itself isn't an attack to pick, so from its data)
+    expect(frames((ashes.skills["Barbaric Roar"].generic!.timing as any)["0"][""].L2)).toBe(72);
+    expect(frames(times("Claymore", "Gravitas").cycleTimes![0])).toBe(159);
+    // Spot checks: Braggart's Roar (type 2) roars 163 and 162 frames apart, the Zamor Curved Sword's
+    // Zamor Ice Storm (type 2) 177 and 176, and Spinning Weapon (type 1) on a Halberd 160 and 160
+    expect(frames((ashes.skills["Braggart's Roar"].generic!.timing as any)["0"][""].L2)).toBe(162);
+    expect(frames(times("Zamor Curved Sword", "Zamor Ice Storm").cycleTimes![0])).toBe(176);
+    expect(frames(times("Halberd", "Spinning Weapon").cycleTimes![0])).toBe(160);
     // Wild Strikes' loop, on a Claymore: a hit every 38 frames
     const loop = times("Claymore", "Wild Strikes");
     expect(frames(loop.cycleTimes![0])).toBe(76);
