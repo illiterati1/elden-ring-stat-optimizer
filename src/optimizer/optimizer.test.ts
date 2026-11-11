@@ -32,6 +32,7 @@ import {
   getAshAttack,
   getAshAttacks,
   getAshChoices,
+  getSkillUpkeep,
   withFollowUp,
   type Ashes,
 } from "../app/useAshes.ts";
@@ -8918,11 +8919,12 @@ describe("Ashes of War", () => {
       );
     expect([normal("R1", all99), normal("R2", all99)]).toEqual([644, 811]);
     expect([normal("R1", low), normal("R2", low)]).toEqual([493, 618]);
-    // Its buff (picked in the Buffs panel) changes the flail's R2s while it lasts, so it has no
-    // entries of its own: with it, the R2s are the flail's own with the buff and the fire
+    // Its buff (picked in the Buffs panel) adds an explosion to some of the flail's attacks, so it has
+    // no entries of its own: with it, those are the flail's own with the buff and the explosion
     const own = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     expect(own).toEqual({
-      unavailableReason: "Flare, O Serpent does no damage itself: pick its buff for its R2s",
+      unavailableReason:
+        "Flare, O Serpent does no damage itself: pick its buff for the attacks it changes",
     });
     const changed = (attack: string) => {
       const result = getAshAttack(
@@ -8942,20 +8944,45 @@ describe("Ashes of War", () => {
       [915, 12],
       [550, 7],
     ]);
-    // Each R2 of the chain fires, timed as the flail's own R2s
-    const ownR2 = getAttackData(movesets, weapon, "R2", false, 0.5)!;
-    expect(r2.steps.map((step) => step.length)).toEqual(ownR2.steps.map((step) => step.length + 1));
-    expect(r2.cycleTimes).toEqual(ownR2.cycleTimes);
-    for (const attack of ["Running R2", "Charged R2", "Jumping R2"]) {
-      expect(changed(attack).steps[0].at(-1)!.kind).toBe("Bullet");
+    // Each flail's explosion is spent on its first (the buff can't be cast again mid-chain), so each
+    // attack it changes stops after it: the cast, the attack, then the cast again once anything can
+    // follow (frames from the L2 press: the cast's 62, then the R2's swing and explosion)
+    const frames = (seconds: number | undefined) =>
+      seconds == null ? null : Math.round(seconds * 60);
+    expect(r2.steps.length).toBe(1);
+    expect(r2.stepTimes![0].hitTimes!.map(frames)).toEqual([103, 107]);
+    expect(r2.cycleTimes!.map(frames)).toEqual([139]);
+    expect(r2.upkeep).toBeUndefined();
+    const kinds = (attack: AttackData) =>
+      attack.steps.map((step) =>
+        step.map((hit) => `${hit.kind ?? "Weapon"}${hit.leftHand ? " (left)" : ""}`),
+      );
+    for (const attack of ["Running R2", "Charged R2", "Jumping R2", "Rolling R1"]) {
+      expect(kinds(changed(attack))).toEqual([["Weapon", "Bullet"]]);
     }
+    // Powerstanced, the left flail's too: the L1 chain's #1 (the right's) and #2 (the left's)
+    expect(kinds(changed("Powerstance L1"))).toEqual([
+      ["Weapon", "Weapon (left)", "Bullet"],
+      ["Weapon", "Weapon (left)", "Bullet (left)"],
+    ]);
+    expect(kinds(changed("Powerstance Rolling L1"))).toEqual([
+      ["Weapon", "Weapon (left)", "Bullet (left)", "Bullet"],
+    ]);
+    expect(
+      kinds(changed("Powerstance Running L1"))[0].filter((kind) => kind.startsWith("Bullet")),
+    ).toEqual(["Bullet"]);
     expect(
       getAshAttack(ashes, movesets, weapon, withFollowUp("Flare, O Serpent", "R1 chain"), false),
-    ).toEqual({
-      unavailableReason: "Flare, O Serpent doesn't change the R1",
+    ).toEqual({ unavailableReason: "Flare, O Serpent doesn't change the R1" });
+    // Its other attacks cast it again when it runs out: 62 frames every 30 seconds
+    expect(getSkillUpkeep(ashes, "Serpent Flail", "Flare, O Serpent")).toEqual({
+      cast: 1.033,
+      duration: 30,
     });
-    // Repeated, its buff is cast again when it runs out: 62 frames every 30 seconds
-    expect(r2.upkeep).toEqual({ cast: 1.033, duration: 30 });
+    const r1 = {
+      ...getAttackData(movesets, weapon, "R1", false, 0.5)!,
+      upkeep: { cast: 1.033, duration: 30 },
+    };
     const dps = (attack: AttackData) =>
       optimizeBuild({
         weapon,
@@ -8969,7 +8996,7 @@ describe("Ashes of War", () => {
         limits: { ...noLimits, maxLevels: 0 },
         attack,
       }).attackDps!;
-    expect(dps(r2) / dps({ ...r2, upkeep: undefined })).toBeCloseTo((30 - 1.033) / 30, 6);
+    expect(dps(r1) / dps({ ...r1, upkeep: undefined })).toBeCloseTo((30 - 1.033) / 30, 6);
     const buff = (
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
         .buffs as Buff[]

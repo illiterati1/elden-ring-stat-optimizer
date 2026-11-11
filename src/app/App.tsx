@@ -658,8 +658,12 @@ export default function App() {
           // A skill's enemy debuff is picked separately, so it's noted when it isn't
           const debuffName =
             chosenAttackData?.fixedSkill && skillDebuffs[chosenAttackData.fixedSkill];
+          // (not the attacks it changes, which already cast it each time)
           const withUpkeep =
-            chosenAttackData && upkeep && !chosenAttackData.upkeep
+            chosenAttackData &&
+            upkeep &&
+            !chosenAttackData.upkeep &&
+            !(chosenAttackData === uniqueSkillChain && weaponAttackSkills.has(r2Skill!))
               ? { ...chosenAttackData, upkeep }
               : chosenAttackData;
           const attackData =

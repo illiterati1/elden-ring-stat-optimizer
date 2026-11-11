@@ -12,6 +12,7 @@ import {
 import {
   allAttacks,
   getAttackData,
+  jumpAirTime,
   stepStartDelay,
   type AttackName,
   type ChainLimit,
@@ -80,6 +81,13 @@ interface SkillHits {
   weaponBuff?: boolean;
   /** For a buff that changes the weapon's own attacks, casting it again (see AttackData upkeep) */
   upkeep?: SkillUpkeep;
+  /**
+   * For a buff that changes the weapon's own attacks (weaponAttackSkills), the hits it adds to them,
+   * by attack and hands ("R2|1h"): each step's (until the last that has one), the version whose hit
+   * it is, when it hits after the step's start (or after landing), and whether it's the left hand
+   * weapon's
+   */
+  extraHits?: Record<string, { hit: string; time: number; landing?: boolean; left?: boolean }[][]>;
   /** A note shown with this version's results, e.g. the Wing of Astel's Nebula's */
   note?: string;
   /**
@@ -427,12 +435,30 @@ const chainBuffs: Partial<
 
 const chainSuffix = " chain";
 
+/** @returns a step's times, all later by some time (e.g. after a skill's cast) */
+function shiftStepTimes(step: StepTimes, by: number): StepTimes {
+  const later = (time: number | undefined) => (time != null ? time + by : undefined);
+  return {
+    ...step,
+    lead: step.lead + by,
+    hits: step.hits.map((time) => time + by),
+    ...(step.hitTimes && { hitTimes: step.hitTimes.map(later) }),
+    ...(step.earliest && { earliest: { ...step.earliest, time: step.earliest.time + by } }),
+    ...(step.rightHandAttack != null && { rightHandAttack: step.rightHandAttack + by }),
+    ...(step.roll != null && { roll: step.roll + by }),
+    ...(step.block != null && { block: step.block + by }),
+    ...(step.move != null && { move: step.move + by }),
+    ...(step.cycle != null && { cycle: step.cycle + by }),
+  };
+}
+
 /**
- * Skills whose buff changes some of the weapon's own attacks while it lasts, e.g. the Serpent Flail's
- * Flare, O Serpent's R2s each fire a flame. Picked as a buff, the weapon's attacks its versions are
- * named after ("R2 / Running R2", "Charged R2", "Jumping R2") are those attacks with the skill's hits
- * added to each step (asked for as "<attack> chain"), casting the buff again when it runs out
- * (SkillHits upkeep); the skill itself does no damage.
+ * Skills whose buff changes some of the weapon's own attacks, e.g. the Serpent Flail's Flare, O
+ * Serpent's explosions on its R2s, rolling R1s, and powerstance L1s. Picked as a buff, each attack
+ * it changes (SkillHits extraHits, asked for as "<attack> chain") is the skill's cast, then the
+ * weapon's attack with its hits added, until each weapon's is spent, ending once anything can follow
+ * to cast it again; the weapon's other attacks cast it again when it runs out (SkillHits upkeep). The
+ * skill itself does no damage.
  */
 export const weaponAttackSkills: ReadonlySet<string> = new Set(["Flare, O Serpent"]);
 
@@ -926,7 +952,9 @@ function getSkillAttack(
     )
   ) {
     return {
-      unavailableReason: `${skill} does no damage itself: pick its buff for its R2s`,
+      unavailableReason: `${skill} does no damage itself: pick its buff for ${
+        weaponAttackSkills.has(skill) ? "the attacks it changes" : "its R2s"
+      }`,
     };
   }
   const poiseBase = weapon.ammoPoise ?? movesets[weapon.weaponName]?.poise ?? 0;
@@ -1033,40 +1061,88 @@ function getSkillAttack(
   // buff and the skill's hits for that attack
   if (weaponAttackSkills.has(skill) && counted?.endsWith(chainSuffix)) {
     const attackName = counted.slice(0, -chainSuffix.length);
-    const version = followUps.find(({ label }) => label.split(" / ").includes(attackName));
+    const extraHits = hits.extraHits?.[`${attackName}|${twoHanding ? "2h" : "1h"}`];
     const weaponAttack =
-      version && (allAttacks as readonly string[]).includes(attackName)
-        ? getAttackData(
-            movesets,
-            weapon,
-            attackName as AttackName,
-            twoHanding,
-            chainWeight,
-            sumChains,
-            limit,
-          )
+      extraHits && (allAttacks as readonly string[]).includes(attackName)
+        ? getAttackData(movesets, weapon, attackName as AttackName, twoHanding, chainWeight)
         : undefined;
-    if (!version || !weaponAttack) {
+    const cast = hits.upkeep?.cast;
+    if (!extraHits || !weaponAttack || cast == null) {
       return { unavailableReason: `${skill} doesn't change the ${attackName}` };
     }
-    const skillHits = countedHits(version.hits).map(toHit);
+    // Only the steps until each weapon's has been spent, cast again before each time
+    const stepCount = Math.min(extraHits.length, weaponAttack.steps.length);
+    const withBuff = (hit: AttackDataHit) => ({
+      ...hit,
+      ...(skillBuff && {
+        buffAttack: skillBuff.map((value) => (value * (hit.buffMotionValue ?? 100)) / 100),
+      }),
+    });
+    const versionHits = (label: string) =>
+      countedHits(followUps.find((followUp) => followUp.label === label)?.hits ?? []);
+    const steps = weaponAttack.steps
+      .slice(0, stepCount)
+      .map((step, i) => [
+        ...step.map(withBuff),
+        ...extraHits[i].flatMap(({ hit, left }) =>
+          versionHits(hit).map((extra) => ({ ...toHit(extra), ...(left && { leftHand: true }) })),
+        ),
+      ]);
+    const stepTimes = weaponAttack.stepTimes?.slice(0, stepCount).map((step, i) => {
+      const weaponHits = weaponAttack.steps[i].length;
+      const ownTimes =
+        step.hitTimes?.length === weaponHits
+          ? step.hitTimes
+          : step.hits.length === weaponHits
+          ? step.hits
+          : [step.hits[0], ...Array(weaponHits - 1).fill(undefined)];
+      const extraTimes = extraHits[i].flatMap(({ hit, time, landing }) =>
+        versionHits(hit).map(() => (landing ? jumpAirTime : step.lead) + time),
+      );
+      const last = i === stepCount - 1;
+      // The last ends once anything can follow it (like one-off attacks), to cast the buff again
+      const freed = [step.earliest?.time, step.roll, step.block, step.move]
+        .filter((time): time is number => time != null)
+        .sort((a, b) => a - b)[0];
+      const timed: StepTimes = {
+        ...step,
+        hitTimes: [...ownTimes, ...extraTimes],
+        approximate: [
+          ...(step.approximate?.length === weaponHits
+            ? step.approximate
+            : Array(weaponHits).fill(false)),
+          ...extraTimes.map(() => true),
+        ],
+        ...(last && { cycle: freed ?? step.cycle }),
+      };
+      // From the skill's press: its cast first
+      return i === 0 ? shiftStepTimes(timed, cast) : timed;
+    });
+    const cycleTimes = stepTimes?.every((step) => step.cycle != null)
+      ? stepTimes.map((step) => step.cycle!)
+      : undefined;
+    const rawWeights = steps.map((_, i) => chainWeight ** i);
+    const totalWeight = rawWeights.reduce((sum, weight) => sum + weight, 0);
     return {
       skill,
       attack: {
         ...weaponAttack,
-        steps: weaponAttack.steps.map((step) => [
-          ...step.map((hit) => ({
-            ...hit,
-            ...(skillBuff && {
-              buffAttack: skillBuff.map((value) => (value * (hit.buffMotionValue ?? 100)) / 100),
-            }),
-          })),
-          ...skillHits,
-        ]),
+        steps,
+        weights: sumChains ? steps.map(() => 1) : rawWeights.map((weight) => weight / totalWeight),
+        ...(weaponAttack.stepLabels && { stepLabels: weaponAttack.stepLabels.slice(0, stepCount) }),
+        chain: stepCount > 1 || undefined,
+        ...(weaponAttack.stamina && { stamina: weaponAttack.stamina.slice(0, stepCount) }),
+        ...(weaponAttack.leftStamina && {
+          leftStamina: weaponAttack.leftStamina.slice(0, stepCount),
+        }),
+        ...(weaponAttack.hitStamina && { hitStamina: weaponAttack.hitStamina.slice(0, stepCount) }),
+        stepTimes,
+        cycleTimes,
+        repeatFrom: undefined,
         ...ownBuff,
         ...notedHit,
-        ...(version.note && { note: version.note }),
-        ...(hits.upkeep && { upkeep: hits.upkeep }),
+        // TODO: the note's wording is to be decided
+        note: `With ${skill} cast before each, until each weapon's fire is spent, then cast again once anything can follow`,
       },
     };
   }

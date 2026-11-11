@@ -133,7 +133,7 @@ export const stepStartDelay = 1 / 30;
  * same for every weapon and jumping attack. (An R1 after it is R1 2, tested on several weapons.)
  */
 const jumpAttackStart = 14 / 60;
-const jumpAirTime = 53 / 60;
+export const jumpAirTime = 53 / 60;
 
 /** Chains cut short: to a number of steps, or the steps that fit a time budget */
 export type ChainLimit = { steps: number } | { seconds: number };

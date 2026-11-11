@@ -1350,6 +1350,43 @@ STANCE_ONCE = {("Muleta", "R2 #1"), ("Muleta", "Charged R2 #1"), ("Wing Stance",
 # follow) and how long it lasts, in seconds. Flare, O Serpent: 20000851 renews its 90 fire
 # (20000852) for 30 seconds
 BUFF_UPKEEP = {"Flare, O Serpent": 20000851}
+# The extra hits a buff adds to the weapon's own attacks (useAshes.ts weaponAttackSkills), from the
+# weapon's animations: their windows' judge IDs, each the weapon it's from (the right hand's, or the
+# left hand's when powerstancing) and the skill's version whose hit it is. Flare, O Serpent's
+# explosions (AtkParam 701320360, or 701320361 charged, through Bullet 200002800-200002803) are in
+# the flails' animations (a34): R2s', running R2s', rolling R1s', jumping R2s' landings, and
+# powerstance L1s'. Each weapon's is spent on its first one (per the user, the buff can't be cast
+# again mid-chain), so each attack only counts each weapon's first and ends after it: e.g. the
+# powerstance L1 chain's #1 (the right flail's) and #2 (the left's). A jumping attack's are on its
+# landing: in the landings of the second of its jumping animations (031240 and 034540, 4 frames
+# after landing), assumed to be the ones played with the buff (031230's landing, 031271, has one too;
+# 034530's, 034571, doesn't)
+WEAPON_ATTACK_EXTRA_HITS = {
+    "Flare, O Serpent": {
+        "judges": {
+            7360: ("right", "R2 / Running R2"),
+            7361: ("right", "Charged R2"),
+            7362: ("right", "R2 / Running R2"),
+            7363: ("right", "Charged R2"),
+            7364: ("left", "R2 / Running R2"),
+            7365: ("left", "Charged R2"),
+        },
+        "attacks": [
+            "R2",
+            "Charged R2",
+            "Running R2",
+            "Rolling R1",
+            "Jumping R2",
+            "Powerstance L1",
+            "Powerstance Running L1",
+            "Powerstance Rolling L1",
+            "Powerstance Backstep L1",
+            "Powerstance Jumping L1",
+        ],
+    }
+}
+# The jumping animation played with such a buff, after the usual one (WEAPON_ATTACK_EXTRA_HITS)
+BUFFED_JUMP_OFFSET = 10
 # The delay from a press until its animation starts (useMovesets.ts stepStartDelay)
 STEP_START_DELAY = 2 / 60
 # Skills not timed until they're measured
@@ -2633,7 +2670,7 @@ def main():
         skills[name]["label"] = label
 
     # Each version's timing, from its skill's animations
-    from check_animations import Steps  # noqa: E402
+    from check_animations import JUMP_LANDING_OFFSET, Steps, get_animation_id  # noqa: E402
 
     steps = Steps(game_dir, project_dir)
     behavior_rows = {
@@ -2762,6 +2799,49 @@ def main():
             )
             if timing:
                 hits["timing"] = timing
+            # The buff's hits on the weapon's own attacks (WEAPON_ATTACK_EXTRA_HITS): by attack and
+            # hands, each step's (until the last that has one), when they hit after the step's start
+            # (or after landing, "landing")
+            if name in WEAPON_ATTACK_EXTRA_HITS and row:
+                extra = WEAPON_ATTACK_EXTRA_HITS[name]
+                anims = steps.animations
+                by_attack = {}
+                for attack in extra["attacks"]:
+                    for hands in ("1h",) if attack.startswith("Powerstance") else ("1h", "2h"):
+                        spent = set()
+                        step_hits = []
+                        for index in range(10):
+                            anim_id = get_animation_id(attack, hands, index)
+                            if anim_id is None:
+                                break
+                            landing = "Jumping" in attack
+                            if landing:
+                                anim_id += BUFFED_JUMP_OFFSET + JUMP_LANDING_OFFSET
+                            attack_file, _ = anims.find(weapon_files, anim_id)
+                            if attack_file is None:
+                                break
+                            found = []
+                            for start, _, judge, *_ in anims.get_windows(attack_file, anim_id) or []:
+                                side, label = extra["judges"].get(judge, (None, None))
+                                if side is None or side in spent:
+                                    continue
+                                spent.add(side)
+                                time = round(anims.to_real_time(attack_file, anim_id, start), 3)
+                                found.append(
+                                    {
+                                        "time": time,
+                                        "hit": label,
+                                        **({"landing": True} if landing else {}),
+                                        **({"left": True} if side == "left" else {}),
+                                    }
+                                )
+                            step_hits.append(found)
+                        while step_hits and not step_hits[-1]:
+                            step_hits.pop()
+                        if step_hits:
+                            by_attack[f"{attack}|{hands}"] = step_hits
+                if by_attack:
+                    hits["extraHits"] = by_attack
             # Casting a buff again (BUFF_UPKEEP)
             if name in BUFF_UPKEEP:
                 cast_file = SKILL_ANIMATION_FILE_BASE + skill_animation_types[skill_id]
