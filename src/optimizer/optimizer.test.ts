@@ -9940,6 +9940,8 @@ describe("Ashes of War", () => {
     const { ash } = variants[0];
     if (!("attack" in ash)) throw new Error(ash.unavailableReason);
     expect(ash.attack.stepLabels).toEqual(["Dynastic Sickleplay #1", "#2"]);
+    // Chained as fast as possible in game (60 fps), from a neutral backstep: #1 hit every 291 frames
+    expect(Math.round((ash.attack.cycleTimes![0] + ash.attack.cycleTimes![1]) * 60)).toBe(290);
     // Tested in game at +25 with 99 in every stat on a 123.2 defense target
     const weapon = getWeapon("Obsidian Lamina");
     expect(

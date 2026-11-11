@@ -1322,8 +1322,11 @@ LOOP_FITS = {("Tongues of Fire", ""): {"hits": [0], "loop": 60.75 / 60, "opening
 # or STEP_START_DELAY). Tested in game at 60 fps: Dynast's Finesse (Bloody Helice) chained as fast as
 # possible, its thrust hit at 1674, the follow-up R2's at 1726 and 1751 (at the thrust's R2 cancel,
 # 40), then the next thrust at 1890, after L2 at the follow-up's L2 cancel (118) and the backstep's
-# right hand attack cancel (52). Untested: Dynastic Sickleplay's step is one of 40080-40088 by
-# direction (40080 assumed); Muleta's and Moon-and-Fire Stance's stance starts in 40050.
+# right hand attack cancel (52). Dynastic Sickleplay's step is one of 40080-40088 by direction: its R2
+# opens at 42 in 40080-40083 and 46 in 40085-40088; chained as fast as possible with a neutral
+# backstep, its #1 hit every 291 frames (290 with 42, 294 with 46), and its #2's hits about 3 frames
+# sooner after #1's than its windows (#1's sickle landing late in its window?). Untested: Muleta's
+# and Moon-and-Fire Stance's stance starts in 40050.
 # Chains in STANCE_ONCE don't go back through the stance: their last step goes on to their first with
 # its button (tested in game: Muleta's R2 #2 chains back to R2 #1, and Wing Stance's R1 into another
 # R1 or R2), so the stance is an "opening"
