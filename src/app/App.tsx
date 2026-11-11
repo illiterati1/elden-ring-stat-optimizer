@@ -1109,7 +1109,7 @@ export default function App() {
           </Link>{" "}
           spreadsheet, and skill damage follows the{" "}
           <Link
-            href="https://www.reddit.com/r/Eldenring/comments/ttvy6m/weapon_art_damage_guide_v2/"
+            href="https://docs.google.com/document/d/17og1zLnCfdL9TFvTnI4A9Nf9EwkBbutishHPTGBDAE8"
             target="_blank"
             rel="noopener noreferrer"
           >
