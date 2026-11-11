@@ -6763,7 +6763,8 @@ describe("Ashes of War", () => {
   it("times Golden Tempering's R2s", () => {
     // The Ornamental Straight Sword's R2 with its skill's buff, repeated as fast as possible in game
     // (60 fps): R2 pressed at 2161, hits at 2202, 2270, and 2342 (each at the last's R2 cancel). Its
-    // charged R2's first hit 74 frames after the press and its last 216 (73 and 213 calculated)
+    // charged R2's first hit 74 frames after the press and its last 216 (73 and 213 calculated); re-pressing
+    // R2 for the next one (not holding it through the cancel) took 9 frames longer
     const frames = (seconds: number) => Math.round(seconds * 60);
     const ash = getAshAttack(
       ashes,
@@ -6775,6 +6776,16 @@ describe("Ashes of War", () => {
     if (!("attack" in ash)) throw new Error(ash.unavailableReason);
     expect(frames(ash.attack.stepTimes![0].hits[0])).toBe(43);
     expect(ash.attack.cycleTimes!.map(frames)).toEqual([69]);
+    // Charged, holding R2 down through its R2 cancel: first hits 239 frames apart (3347, 3586)
+    const charged = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Ornamental Straight Sword"),
+      withFollowUp("Golden Tempering", "Charged R2"),
+      false,
+    );
+    if (!("attack" in charged)) throw new Error(charged.unavailableReason);
+    expect(charged.attack.cycleTimes!.map(frames)).toEqual([239]);
   });
 
   it("matches Dynast's Finesse in game", () => {
