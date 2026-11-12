@@ -714,6 +714,10 @@ export default function App() {
           // A weapon's own skill's buff (picked by the skill's name), or a chosen skill that puts its
           // own weapon buff on the weapon (e.g. Sacred Blade), replaces the chosen weapon buff
           const ownWeaponBuff = !!uniqueSkillEffects || !!attackData?.ownWeaponBuff;
+          // A short weapon buff spell (e.g. Black Flame Blade) is cast again whenever it runs out
+          const buffUpkeep = weaponBuffApplies && !ownWeaponBuff ? weaponBuff?.upkeep : undefined;
+          const upkeptAttackData =
+            attackData && buffUpkeep ? { ...attackData, buffUpkeep } : attackData;
           return {
             unavailableReason:
               unavailableReason ??
@@ -728,9 +732,9 @@ export default function App() {
                 : `No ${attack} for this weapon`),
             // The left hand weapon's hits use its own attack rows
             attack:
-              usesOffhand && attackData
-                ? withOffhandRows(attackData, movesets, weapon.weaponName, offhand.weaponName)
-                : attackData,
+              usesOffhand && upkeptAttackData
+                ? withOffhandRows(upkeptAttackData, movesets, weapon.weaponName, offhand.weaponName)
+                : upkeptAttackData,
             physicalNegation,
             enemyHp: countedEnemyHp,
             criticalDamageRate,

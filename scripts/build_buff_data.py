@@ -74,6 +74,7 @@ from build_moveset_data import read_weapons  # noqa: E402
 from extract_fmg import read_fmg  # noqa: E402
 from extract_param import read_param  # noqa: E402
 from extract_tae import read_tae  # noqa: E402
+from check_animations import Animations  # noqa: E402
 
 REGULATION_VERSION = 11730034
 
@@ -362,6 +363,17 @@ DEBUFF_NOTES = {
 # costs. Black Flame Blade's black flame: 0.1% plus 1 every 0.1s for 2s, 21 ticks (tested in game:
 # 1575 on the training dummy's 74212 HP after a Longsword's R1, as the Queen's Black Flame's)
 HIT_HP_DAMAGE_EFFECTS = {1626001: "Black flame"}
+
+# Weapon buff spells short enough that casting them again takes up a real part of the time they're
+# on (see useAshes.ts SkillUpkeep): each one's animation file, a{400 + MagicParam refType}. Its
+# "upkeep" is how long casting it takes (the press, its start animation, 45100, then its release,
+# 45110, until an R1 can follow) and how long its effect lasts. Casting speed (Dex) isn't counted:
+# the start animation is taken at its full length. Black Flame Blade: 7 seconds.
+SPELL_UPKEEP = {"Black Flame Blade": 432}
+SPELL_START_ANIMATION = 45100
+SPELL_RELEASE_ANIMATION = 45110
+# The delay from a press until its animation starts (useMovesets.ts stepStartDelay)
+STEP_START_DELAY = 2 / 60
 
 # Golden Arrows' attack category (subCategory1), which bows' passive effects boost
 GOLDEN_ARROW_CATEGORY = 118
@@ -689,6 +701,20 @@ def main():
         if name not in DEBUFFS:
             add("tear" if name.endswith(" Tear") else "consumable", name, effects)
 
+    animations = Animations(game_dir)
+
+    def get_spell_upkeep(name, row):
+        number = SPELL_UPKEEP[name]
+        assert number == 400 + row["refType"], name
+        _, events, _, _ = read_tae(os.path.join(game_dir, TAE_DIR, f"a{number}.tae"))
+        # The start animation's length: where its events end (some run on forever)
+        start = max(end for _, end, _, _ in events[SPELL_START_ANIMATION] if end < 1e6)
+        release = animations.get_cancels(number, SPELL_RELEASE_ANIMATION)["rightHandAttack"]
+        cast = STEP_START_DELAY + animations.to_real_time(number, SPELL_START_ANIMATION, start)
+        cast += animations.to_real_time(number, SPELL_RELEASE_ANIMATION, release)
+        effect = next(row[f"refId{i}"] for i in range(1, 11) if row[f"refCategory{i}"] == 2)
+        return {"cast": round(cast, 3), "duration": float(sp_effects[effect]["effectEndurance"])}
+
     # Incantations and sorceries (spells' own buffs: refCategory 1 is a bullet, 2 an effect)
     for spell_id, row in sorted(param("Magic", "MagicParam").items()):
         name = goods_names.get(spell_id)
@@ -711,6 +737,7 @@ def main():
             name,
             [effect for effect in effects if set(effect) - {"poiseRate", "group"}],
             **({"requirements": requirements} if requirements else {}),
+            **({"upkeep": get_spell_upkeep(name, row)} if name in SPELL_UPKEEP else {}),
         )
 
     add("rune", "Godrick's Great Rune", get_effects([GODRICK_GREAT_RUNE]))

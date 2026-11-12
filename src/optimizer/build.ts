@@ -597,6 +597,8 @@ export interface AttackData {
    * takes and how long it lasts, in seconds. Repeated, part of the time goes to casting it.
    */
   upkeep?: SkillUpkeep;
+  /** A weapon buff spell cast again when it runs out (e.g. Black Flame Blade), like upkeep */
+  buffUpkeep?: SkillUpkeep;
 }
 
 export interface SkillUpkeep {
@@ -958,12 +960,15 @@ function getRepeatedSteps(attack: AttackData) {
   if (!attack.cycleTimes) return undefined;
   const from = attack.repeatFrom ?? 0;
   const steps = attack.cycleTimes.slice(from).reduce((sum, stepTime) => sum + stepTime, 0);
-  // With a buff cast again whenever it runs out, the steps only take up the time it's on
-  const upkeep = attack.upkeep;
-  const time =
-    upkeep && upkeep.duration > upkeep.cast
-      ? (steps * upkeep.duration) / (upkeep.duration - upkeep.cast)
-      : steps;
+  // With a buff cast again whenever it runs out, the steps only take up the time it's on (with
+  // two, each the part of the other's)
+  const time = [attack.upkeep, attack.buffUpkeep].reduce(
+    (total, upkeep) =>
+      upkeep && upkeep.duration > upkeep.cast
+        ? (total * upkeep.duration) / (upkeep.duration - upkeep.cast)
+        : total,
+    steps,
+  );
   return time > 0 ? { from, time } : undefined;
 }
 

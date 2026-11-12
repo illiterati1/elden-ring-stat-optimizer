@@ -25,6 +25,7 @@ from here.
 | 17 | Standard shot, repeated (assumed the Jar Cannon's) | Hand Ballista or Rabbath's Cannon | Hit 85, then every 264 |
 | 18 | Euporia Vortex, repeated | Euporia | Hits 88 to 144 (every 14), then every 176 |
 | 19 | Euporia Vortex's Luster Tier 1 and 2 versions | Euporia | Not timed yet |
+| 20 | Black Flame Blade, then R1 as soon as possible; also at low and high Dex (casting speed isn't counted) | Any buffable weapon, seal in the left hand | R1 press 112 after the cast press (start animation 70 frames at full length, release 40, plus 2) |
 
 ## Stamina
 

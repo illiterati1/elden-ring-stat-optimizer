@@ -29,3 +29,6 @@
 - **Ice Lightning Sword:** the stomp's lightning is about 4% lower than in game.
 - **Deflecting Hardtear:** not supported yet, so its attack power boost after a deflection
   can't be applied.
+- **Buff uptime:** buffs are assumed to always be on. Only Black Flame Blade's and Flare, O
+  Serpent's recast time is counted in damage per second, and Black Flame Blade's cast is timed at
+  its slowest: Dex's casting speed isn't counted yet.

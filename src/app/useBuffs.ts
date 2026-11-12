@@ -5,7 +5,7 @@ import {
   type Attributes,
   type EnemyType,
 } from "../calculator/calculator.ts";
-import type { BuffEffect } from "../optimizer/build.ts";
+import type { BuffEffect, SkillUpkeep } from "../optimizer/build.ts";
 
 export type BuffKind =
   | "talisman"
@@ -88,6 +88,11 @@ export interface Buff {
   skillOf?: string;
   /** For spells, the stats needed to cast them */
   requirements?: Partial<Attributes>;
+  /**
+   * For a weapon buff spell short enough to count casting it again (e.g. Black Flame Blade's 7
+   * seconds), how long casting it takes and how long it lasts (AttackData buffUpkeep)
+   */
+  upkeep?: SkillUpkeep;
   /** When it applies, if the data doesn't say, e.g. "Below 20% HP" */
   note?: string;
   /**
