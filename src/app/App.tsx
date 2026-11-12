@@ -26,7 +26,7 @@ import {
   startingClasses,
 } from "../optimizer/startingClasses.ts";
 import theme from "./theme.ts";
-import useAppState, { statusSortBy } from "./useAppState.ts";
+import useAppState, { minEquipWeight, statusSortBy } from "./useAppState.ts";
 import useWeapons from "./useWeapons.ts";
 import type { Weapon } from "../calculator/weapon.ts";
 import useBuffable, { isBuffable } from "./useBuffable.ts";
@@ -781,7 +781,8 @@ export default function App() {
             ...(weaponBuffApplies &&
               !ownWeaponBuff &&
               castingRequirements && { catalyst, catalystUpgradeLevel, castingRequirements }),
-            equipWeight,
+            // Saved settings from before the minimum may be lower
+            equipWeight: Math.max(equipWeight, minEquipWeight),
             weapon,
             regularUpgradeLevel: upgradeLevel,
             twoHanding: weaponTwoHanding,
@@ -945,8 +946,8 @@ export default function App() {
           .
           <br />
           Apologies to mobile users, this was developed with a desktop in mind and as a result much
-          of the more interesting data is in tooltips that don&apos;t display well on mobile. Support
-          for mobile is planned, just not quite there yet.
+          of the more interesting data is in tooltips that don&apos;t display well on mobile.
+          Support for mobile is planned, just not quite there yet.
         </Typography>
         {!closedAlerts.includes("levels") && (
           <Alert severity="warning" onClose={() => closeAlert("levels")} sx={{ mb: 3 }}>

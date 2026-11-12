@@ -17,6 +17,9 @@ import {
   type Stats,
 } from "../optimizer/startingClasses.ts";
 
+/** The least equip weight there can be with the Blue Dancer Charm on: the charm's own */
+export const minEquipWeight = 0.9;
+
 export interface LimitSetting {
   enabled: boolean;
   value: number;
@@ -217,7 +220,7 @@ const defaultAppState: AppState = {
   stackTier: 3,
   catalyst: "",
   catalystUpgradeLevel: 25,
-  equipWeight: 0,
+  equipWeight: minEquipWeight,
   health: 100,
   upgradeLevel: 25,
   twoHanding: false,
