@@ -27,3 +27,5 @@
   hits unless picked separately in Buffs.
 - **Deadly Poison Spray:** builds up much more poison in game than shown.
 - **Ice Lightning Sword:** the stomp's lightning is about 4% lower than in game.
+- **Deflecting Hardtear:** not supported yet, so its attack power boost after a deflection
+  can't be applied.
