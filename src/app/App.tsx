@@ -943,6 +943,10 @@ export default function App() {
             known issues
           </Link>
           .
+          <br />
+          Apologies to mobile users, this was developed with a desktop in mind and as a result much
+          of the more interesting data is in tooltips that don&apos;t display well on mobile. Support
+          for mobile is planned, just not quite there yet.
         </Typography>
         {!closedAlerts.includes("levels") && (
           <Alert severity="warning" onClose={() => closeAlert("levels")} sx={{ mb: 3 }}>
