@@ -49,6 +49,28 @@ At +25 with 99 in every stat, on a 123.2-defense target with no negation.
 |---|---|---|---|
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all | 2674 (2672 in tests: each swing 786 with the buff's 90 fire, each explosion 550). Next: each hit's damage, to see which one is ~20 low |
 
+## Roll-outs
+
+These skills have a roll window before their last hit (an early roll-out, skipping the hits after
+it) as well as one after. Black Flame Tornado's tap was tested (2026-11-11: early 111, after 192).
+The calculator now gives the roll after the last hit, and shows the early one on the line of the
+hit before it. Frames are from the press (for a chain step, from that step's press). Check both rolls.
+
+| # | Test | Weapon | Calculated |
+|---|---|---|---|
+| 26 | Alabaster Lords' Pull | Alabaster Lord's Sword | Hits 67, 115; early roll 105; roll after 155 |
+| 27 | Onyx Lords' Repulsion | Onyx Lord's Greatsword | Hits 80, 134; early 122; after 178 |
+| 28 | Eochaid's Dancing Blade, uncharged | Regalia of Eochaid (or Marais Executioner's Sword) | Hits 46 to 102 (every 8), 140; early 112; after 174 |
+| 29 | Eochaid's Dancing Blade, charged | Regalia of Eochaid | Hits 94 to 172, 206; early 180; after 244 |
+| 30 | Euporia Vortex, Luster Tier 2 | Euporia | Hits 88 to 250; early 162; after 250 |
+| 31 | Familial Rancor | Family Heads | Hits 72 to 116; early 110; after 116 |
+| 32 | Flame Dance | Giant's Red Braid | Hits 78, 116, 146, 176, 210; early 104 and 198; after 275 |
+| 33 | I Command Thee, Kneel! #1 | Axe of Godrick | Hits 70, 127; early 95; after 183 |
+| 34 | Savage Claws | Beast Claw | Hits 36, 50, 66, 84, 106, 144; early 94; after 178 |
+| 35 | Shadow Sunflower Headbutt #2 | Shadow Sunflower Blossom | Hits 56, 104; early 72; after 146 |
+| 36 | Spinning Wheel | Ghiza's Wheel | Hits 32 to 125; early 109; after 125 |
+| 37 | The Queen's Black Flame #1 | Godslayer's Greatsword | Hits 36, 138; early 86; after 186 |
+
 ## Not timed: need measurements
 
 Nothing to compare yet; measure from the press, as above.

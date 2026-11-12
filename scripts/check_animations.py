@@ -219,6 +219,8 @@ class Animations:
         # Each animation's speed changes (ANIM_SPEED_EVENT), by file: (start, end, speed at start,
         # speed at end)
         self.speeds = {}
+        # Every window of each cancel (CANCEL_FLAGS), by file and animation: (start, end)
+        self.cancel_windows = {}
 
     def get_file(self, number):
         if number not in self.files:
@@ -268,6 +270,7 @@ class Animations:
                     ]
                     last_end = max(cancel_ends) if cancel_ends else None
                     first = {}
+                    every = {}
                     for start, end, event_type, params in sorted(events):
                         if event_type == ACTION_FLAG_EVENT:
                             flag = struct.unpack_from("<i", data, params)[0]
@@ -276,15 +279,18 @@ class Animations:
                                 continue
                             if name:
                                 # Starting early if an early window ends where it starts
-                                first[name] = min(
-                                    [start, first.get(name, start)]
+                                opens = min(
+                                    [start]
                                     + [
                                         early_start
                                         for early_start, early_end in early.get(flag, [])
                                         if abs(early_end - start) < 0.01
                                     ]
                                 )
+                                first[name] = min(opens, first.get(name, opens))
+                                every.setdefault(name, []).append((opens, end))
                     cancels[anim_id] = first
+                    self.cancel_windows.setdefault(number, {})[anim_id] = every
                 sweet_spots = {
                     anim_id: [
                         (start, end)
@@ -362,6 +368,20 @@ class Animations:
         if not cancels[anim_id] and anim_id in imports and depth < 4:
             return self.get_cancels(*imports[anim_id], depth + 1)
         return cancels[anim_id]
+
+    def get_cancel_windows(self, number, anim_id, depth=0):
+        """
+        @returns every window of each cancel (CANCEL_FLAGS) in an animation, following imports, as
+        (start, end), each starting early like get_cancels's: some skills have one before their last
+        hit, which skips it (e.g. Black Flame Tornado's release: a roll before its finisher)
+        """
+        file = self.get_file(number)
+        if not file or anim_id not in file[0]:
+            return {}
+        _, imports, cancels, _, _ = file
+        if not cancels[anim_id] and anim_id in imports and depth < 4:
+            return self.get_cancel_windows(*imports[anim_id], depth + 1)
+        return self.cancel_windows.get(number, {}).get(anim_id, {})
 
     def get_sweet_spots(self, number, anim_id, depth=0):
         """@returns an animation's sweet spot windows (SWEET_SPOT_FLAG), following imports"""

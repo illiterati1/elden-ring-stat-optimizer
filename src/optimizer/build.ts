@@ -502,6 +502,11 @@ export interface StepTimes {
    */
   rightHandAttack?: number;
   roll?: number;
+  /**
+   * When it can be rolled out of before its last hit, skipping the hits after (some skills, e.g.
+   * Black Flame Tornado's release before its finisher: tested in game)
+   */
+  earlyRolls?: number[];
   block?: number;
   /** When moving can end it: the animations' "cancel - LS movement" flag (11) */
   move?: number;

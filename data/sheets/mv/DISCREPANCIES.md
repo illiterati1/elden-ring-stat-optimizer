@@ -231,8 +231,20 @@ to check in game:
   wind-up and finisher 2449, one loop 4297, every loop 11689 (no weapon hits). Fits exactly: each
   loop is one loop hit (273) plus a full black flame burn (SpEffectParam 835: 0.1% of max HP every
   0.1 s for 2 s, 21 ticks of 75 = 1575, so 0.1% of 74212 rounded up), 1848 per loop, at most 5
-  loops; the finisher is 874 + 1575. The picker has "Tap" (finisher only, taken as the wind-up and
-  finisher result) and "Fully charged" (5 loops and the finisher); black flame counts with the enemy
+  loops; the finisher is 874 + 1575. Tapped up close it's 2881: two weapon swings of 216 (50%
+  motion values, AtkParam 300000305, which the sheet calls "Loop (Lacking FP)" but a669 40000 and
+  the release 40001 use with FP too) before the finisher. The picker has "Tap" (2 swings and the
+  finisher) and "Fully charged" (1 swing, 5 loops and the finisher: 11905 up close, tested); tapped timing
+  measured on a Twinblade: swings 68 and 84 frames after L2, finisher 144 (the start animation, then
+  the release 40001 from 78 frames in; ANIMATION_SEQUENCES, HIT_TIME_FITS), stamina 35, used again
+  212 frames after the press (CANCEL_FITS; the release's L2 cancel says 214). Its release has a
+  roll window before the finisher (111 frames after L2 in game, skipping it) and one after (about
+  192), so skills' roll is now the first roll window open once the last counted hit's window starts
+  (projectiles: when created; not for loops). That moved the roll of 15 other skill parts that
+  had one before their last hit (Flame Dance, Eochaid's Dancing Blade, Savage Claws, I Command
+  Thee Kneel #1, The Queen's Black Flame #1, Alabaster/Onyx Lords', Euporia Vortex Luster Tier 2,
+  Shadow Sunflower Headbutt #2, Spinning Wheel, Familial Rancor; untested). The finisher is an AoE
+  ("Final Hit AoE"), its time measured; black flame counts with the enemy
   picker's HP (HP_DAMAGE_EFFECTS in build_ash_data.py). Other skills' bullets with percent-HP
   effects (e.g. Destined Death, Corpse Wax Cutter, Blade of Death) are untested and not counted.
 - **To do: percent-HP effects in Shadow of the Erdtree.** Black flame and Destined Death (maybe

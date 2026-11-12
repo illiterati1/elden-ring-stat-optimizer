@@ -156,6 +156,20 @@ function AttackHits({
     .map(({ row }) => row);
   // Each step's cancels, on its last hit to land
   const lastRows = new Map(sortedHitRows.map((row, index) => [row.step, index]));
+  // Each step's early roll-outs (before its last hit, skipping the rest), on the last hit before
+  // each (by row)
+  const earlyRolls = new Map<number, number>();
+  stepTimes?.forEach((times, step) => {
+    for (const time of times?.earlyRolls ?? []) {
+      let before: number | undefined;
+      sortedHitRows.forEach((row, index) => {
+        if (row.step === step && row.hitAt != null && row.hitAt <= (at(step, time) ?? -Infinity)) {
+          before = index;
+        }
+      });
+      if (before != null && !earlyRolls.has(before)) earlyRolls.set(before, at(step, time)!);
+    }
+  });
   // Each hit numbered within its step in that order ("step.hit")
   const hitNumbers = new Map<number, number>();
   const rows = sortedHitRows.map((row, index) => {
@@ -170,7 +184,8 @@ function AttackHits({
         last && times?.earliest
           ? { ...times.earliest, time: at(row.step, times.earliest.time) }
           : undefined,
-      roll: last ? at(row.step, times?.roll) : undefined,
+      roll: last ? at(row.step, times?.roll) : earlyRolls.get(index),
+      earlyRoll: !last && earlyRolls.has(index),
       block: last ? at(row.step, times?.block) : undefined,
       move: last ? at(row.step, times?.move) : undefined,
     };
@@ -291,63 +306,71 @@ function AttackHits({
                 </TableCell>
               </TableRow>
             )}
-            {rows.map(({ label, hit, hitAt, approximate, earliest, roll, block, move }) => (
-              <TableRow key={label}>
-                <TableCell sx={cellSx}>{label}</TableCell>
-                {showKind && <TableCell sx={cellSx}>{hit.kind ?? "Weapon"}</TableCell>}
-                <TableCell sx={cellSx}>
-                  {hit.physicalType ? physicalTypeLabels[hit.physicalType] : "–"}
-                </TableCell>
-                <TableCell sx={cellSx} align="right">
-                  {formatHit(hit)}
-                </TableCell>
-                {hpDamageLabel && (
-                  <TableCell sx={cellSx} align="right">
-                    {hit.hpDamage ? formatValue(hit.hpDamage.damage) : "–"}
-                  </TableCell>
-                )}
-                <TableCell sx={cellSx} align="right">
-                  {formatStance(hit.stance)}
-                </TableCell>
-                {showStaminaColumn && (
-                  <TableCell sx={cellSx} align="right">
-                    {hit.stamina != null ? formatStamina(hit.stamina) : ""}
-                  </TableCell>
-                )}
-                {statusTypesShown.map(([statusType]) => (
-                  <TableCell key={statusType} sx={cellSx} align="right">
-                    {hit.status[statusType] ? formatStatus(hit, hit.status[statusType]!) : "–"}
-                  </TableCell>
-                ))}
-                {showHitTimes && (
-                  <TableCell sx={cellSx} align="right">
-                    {hitAt != null ? `${approximate ? "~" : ""}${formatSeconds(hitAt)}` : ""}
-                  </TableCell>
-                )}
-                {showEarliest && (
+            {rows.map(
+              ({ label, hit, hitAt, approximate, earliest, roll, earlyRoll, block, move }) => (
+                <TableRow key={label}>
+                  <TableCell sx={cellSx}>{label}</TableCell>
+                  {showKind && <TableCell sx={cellSx}>{hit.kind ?? "Weapon"}</TableCell>}
                   <TableCell sx={cellSx}>
-                    {earliest?.time != null
-                      ? `${formatSeconds(earliest.time)} (${earliest.attack})`
-                      : ""}
+                    {hit.physicalType ? physicalTypeLabels[hit.physicalType] : "–"}
                   </TableCell>
-                )}
-                {showRoll && (
                   <TableCell sx={cellSx} align="right">
-                    {roll != null ? formatSeconds(roll) : ""}
+                    {formatHit(hit)}
                   </TableCell>
-                )}
-                {showBlock && (
+                  {hpDamageLabel && (
+                    <TableCell sx={cellSx} align="right">
+                      {hit.hpDamage ? formatValue(hit.hpDamage.damage) : "–"}
+                    </TableCell>
+                  )}
                   <TableCell sx={cellSx} align="right">
-                    {block != null ? formatSeconds(block) : ""}
+                    {formatStance(hit.stance)}
                   </TableCell>
-                )}
-                {showMove && (
-                  <TableCell sx={cellSx} align="right">
-                    {move != null ? formatSeconds(move) : ""}
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
+                  {showStaminaColumn && (
+                    <TableCell sx={cellSx} align="right">
+                      {hit.stamina != null ? formatStamina(hit.stamina) : ""}
+                    </TableCell>
+                  )}
+                  {statusTypesShown.map(([statusType]) => (
+                    <TableCell key={statusType} sx={cellSx} align="right">
+                      {hit.status[statusType] ? formatStatus(hit, hit.status[statusType]!) : "–"}
+                    </TableCell>
+                  ))}
+                  {showHitTimes && (
+                    <TableCell sx={cellSx} align="right">
+                      {hitAt != null ? `${approximate ? "~" : ""}${formatSeconds(hitAt)}` : ""}
+                    </TableCell>
+                  )}
+                  {showEarliest && (
+                    <TableCell sx={cellSx}>
+                      {earliest?.time != null
+                        ? `${formatSeconds(earliest.time)} (${earliest.attack})`
+                        : ""}
+                    </TableCell>
+                  )}
+                  {showRoll && (
+                    <TableCell
+                      sx={cellSx}
+                      align="right"
+                      title={
+                        earlyRoll ? "An early roll out, skipping the step's later hits" : undefined
+                      }
+                    >
+                      {roll != null ? `${formatSeconds(roll)}${earlyRoll ? " (early)" : ""}` : ""}
+                    </TableCell>
+                  )}
+                  {showBlock && (
+                    <TableCell sx={cellSx} align="right">
+                      {block != null ? formatSeconds(block) : ""}
+                    </TableCell>
+                  )}
+                  {showMove && (
+                    <TableCell sx={cellSx} align="right">
+                      {move != null ? formatSeconds(move) : ""}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ),
+            )}
             {showNextChain && (
               <TableRow>
                 <TableCell sx={cellSx} colSpan={99}>

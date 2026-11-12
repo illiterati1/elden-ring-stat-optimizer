@@ -5350,6 +5350,20 @@ describe("Ashes of War", () => {
       74, 96, 111, 123, 122, 147,
     ]);
     expect(prelate.stamina).toEqual([76.32]);
+    // Black Flame Tornado tapped: its start's swing, then its release's swing and finisher (measured
+    // in game on a Twinblade: 68, 84, and 144 frames after L2), costing only those windows' stamina
+    const tornado = times("Twinblade", withFollowUp("Black Flame Tornado", "Tap"));
+    expect(tornado.stepTimes![0].hitTimes!.map((time) => frames(time!))).toEqual([68, 84, 144]);
+    expect(tornado.stamina).toEqual([35]);
+    // Used again 212 frames after the press (measured in game: its first swings 69 and 281 frames
+    // after an L2). Its release can be rolled out of before its finisher (111 frames after L2 in
+    // game), skipping it, so the roll counted is the next window's, after it (its early window: 190,
+    // about 192 in game)
+    expect(Math.round(tornado.cycleTimes![0] * 60)).toBe(212);
+    expect(frames(tornado.stepTimes![0].roll!)).toBe(190);
+    expect(tornado.stepTimes![0].earlyRolls!.map(frames)).toEqual([110]);
+    // Its finisher's time measured (an AoE around the player, landing when it's created)
+    expect(tornado.stepTimes![0].approximate).toEqual([false, false, false]);
   });
 
   it("matches Wild Strikes in game", () => {
@@ -12109,9 +12123,10 @@ describe("Ashes of War", () => {
     const labels = getAshChoices(ashes).map(({ label }) => label);
     expect(labels).toContain("Black Flame Tornado (Tap)");
     expect(labels).toContain("Black Flame Tornado (Fully charged)");
-    // Tested in game: a Standard Twinblade +25 with 99 in every stat does 2449 tapped and 11689
-    // fully charged (5 loops) on the training dummy (74212 HP). Each hit does 273 (loop) or 874
-    // (finisher), and its black flame 21 × 75.
+    // Tested in game: a Standard Twinblade +25 with 99 in every stat does 2881 tapped (two swings,
+    // 432 together, and the finisher) and 11905 fully charged (one swing, 5 loops, and the
+    // finisher) on the training dummy (74212 HP). Each bullet does 273 (loop) or 874 (finisher), and
+    // its black flame 21 × 75.
     const weapon = getWeapon("Twinblade");
     const build = (followUp: string, enemyHp?: number) => {
       const attack = getAshAttack(
@@ -12145,12 +12160,15 @@ describe("Ashes of War", () => {
         (sum, hit) => sum + Math.floor(hit.damage) + (hit.hpDamage?.damage ?? 0),
         0,
       );
-    expect(total(build("Tap", 74212))).toBe(2449);
-    expect(total(build("Fully charged", 74212))).toBe(11689);
+    const tap = build("Tap", 74212);
+    expect(total(tap)).toBe(2881);
+    const charged = build("Fully charged", 74212);
+    const swing = Math.floor(tap.attackSteps![0][0].damage);
+    expect(total(charged)).toBe(11905);
     expect(build("Fully charged", 74212).hpDamage).toEqual({ label: "Black flame", damage: 9450 });
     // Without an enemy, black flame isn't counted, and the result says so
     const unknown = build("Tap");
-    expect(Math.floor(unknown.finalValue)).toBe(874);
+    expect(Math.floor(unknown.finalValue)).toBe(874 + 2 * swing);
     expect(unknown.uncountedHpDamage).toEqual({
       label: "Black flame",
       rate: 0.001,

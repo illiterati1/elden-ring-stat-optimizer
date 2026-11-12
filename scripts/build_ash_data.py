@@ -287,12 +287,20 @@ MAIN_HIT_COUNTS = {"Blind Spot": 1, "Lightning Ram": 1}
 # Skills charged to repeat hits, split into a follow-up for each charge, with how many of each kind
 # of main hit it does. Tested in game: Black Flame Tornado does its finisher alone when tapped, and at
 # most 5 loops before it when fully charged.
+# Black Flame Tornado's swings (the sheet's "Loop (Lacking FP)" row, ROW_NAMES) are its start
+# animation's (a669 40000, 1.1s) and its release's (40001, at its start): tapped, both hit before the
+# finisher (tested in game: 2881 with a Standard Twinblade +25 at 99 in every stat on the training
+# dummy, 432 of it the swings); fully charged, only the first (tested in game: 11905 up close).
 CHARGE_VARIANTS = {
     "Black Flame Tornado": {
-        "Tap": [("Final Hit Bullet", 1)],
-        "Fully charged": [("Loop Bullet", 5), ("Final Hit Bullet", 1)],
+        "Tap": [("Swing", 2), ("Final Hit AoE", 1)],
+        "Fully charged": [("Swing", 1), ("Loop AoE", 5), ("Final Hit AoE", 1)],
     }
 }
+
+# Sheet rows renamed, by AtkId, where the sheet's name is wrong: Black Flame Tornado's "Loop (Lacking
+# FP)" is also its swing with FP (a669 40000's and 40001's judge 3305), not only its lacking-FP one
+ROW_NAMES = {"300000305": "Black Flame Tornado - Swing"}
 
 # Skills whose follow-up comes after either version of the main attack, as uncharged and charged
 # chains of the main attack then it (like Carian Sovereignty's; an empty label is the skill's name):
@@ -350,6 +358,9 @@ ROW_KINDS = {
     "300406910": "Explosion",
     "302404901": "Ground Fire",
     "300000591": "Ground Fire",
+    # Black Flame Tornado's loops and finisher: AoEs around the player
+    "300000300": "Loop AoE",
+    "300000301": "Final Hit AoE",
     "302305905": "Roar",
     "302305908": "Shockwave",
     "301217905": "Explosion",
@@ -1308,6 +1319,9 @@ QUICK_SKILL_SPEED_TYPE = 1
 CANCEL_FITS = {
     ("Repeating Fire", ""): {"L2": 181 / 60},
     ("Flame Spit", ""): {"L2": (112 + 164) / 60},
+    # Black Flame Tornado tapped, on a Twinblade: used again 212 frames after its press (its first
+    # swings 69 and 281 frames after an L2)
+    ("Black Flame Tornado", "Tap"): {"L2": 210 / 60},
 }
 # Held skills timed as loops, measured in game at 60 fps (by skill and part): when each pass's hits
 # land in it ("hits"), how long each pass takes ("loop"), and how long until the first ("opening"),
@@ -1410,6 +1424,10 @@ ANIMATION_SEQUENCES = {
     # L2 cancel goes on to #2, 96 frames in (measured in game: #1's hit 87 frames after L2, #2's 184,
     # the next #1's 368)
     ("Golden Crux", "#1"): [(40000, 0), (40004, 96 / 60)],
+    # Black Flame Tornado tapped: its start (40000), then its release (40001: a swing, then the
+    # finisher 64 frames in) 78 frames in (measured in game on a Twinblade: its swings 68 and 84
+    # frames after L2, the finisher 144; HIT_TIME_FITS has the second swing)
+    ("Black Flame Tornado", "Tap"): [(40000, 0), (40001, 78 / 60)],
 }
 # Projectile hits' times measured in game, where the animations only say when the projectile is
 # created (by skill and part, each hit's from the animation's start, or None to use the animation's):
@@ -1431,7 +1449,13 @@ HIT_TIME_FITS = {
     # Rain of Arrows' 12 land from 133 to 176 frames after the press on a Longbow (likewise; assumed
     # the same on other bows)
     ("Rain of Arrows", ""): [(131 + i * 43 / 11) / 60 for i in range(12)],
+    # Black Flame Tornado's second tapped swing, 84 frames after L2 (ANIMATION_SEQUENCES)
+    ("Black Flame Tornado", "Tap"): [None, 82 / 60, None],
 }
+# Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
+# index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created
+# (measured in game: 144 frames after L2)
+MEASURED_HIT_TIMES = {("Black Flame Tornado", "Tap"): {2}}
 
 
 def get_skill_range(row):
@@ -1591,6 +1615,7 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
     animations = steps.animations
     # Each animation's windows: its file, and each hit's start and signature
     windows = {}
+    poise_windows = {}
     for number in files:
         file = animations.get_file(number)
         for anim_id in file[0] if file else []:
@@ -1603,6 +1628,20 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
                 for atk, _ in get_window_hits(behaviors, bullets, steps.game.attacks, variation, judge)
             ]
             windows[anim_id] = (number, hits)
+            # and its windows whose attack does no damage (start and poise), for hits that don't
+            # (e.g. War Cry's charged R2s' first, its roar's ticks while charging: their rows have
+            # no poise either, the sheet's 3 notwithstanding)
+            poise_windows[anim_id] = []
+            for start, _, judge, *_ in animations.get_windows(number, anim_id) or []:
+                behavior = get_window_behavior(behaviors, variation, judge)
+                atk = behavior and behavior["refType"] == "0" and steps.game.attacks.get(int(behavior["refId"]))
+                if (
+                    atk
+                    and not any(get_motion_values(atk))
+                    and not any(float(atk[field]) for field in FLAT_ATTACK_FIELDS)
+                ):
+                    poise_windows[anim_id].append((start, round(float(atk["atkSuperArmorCorrection"]))))
+            poise_windows[anim_id].sort()
 
     def wanted_of(part_hits):
         wanted = Counter(
@@ -1640,6 +1679,45 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
                 return round(animations.to_real_time(number, anim_id, time), 3)
 
             timing = {"hits": sorted({real(start) for start, _ in hits})}
+            # Each hit's own time, its window's (the first of its kind not taken yet), where several
+            # share a window (e.g. Golden Tempering's R2: each hand's thrust)
+            if len(timing["hits"]) != len(part_hits):
+                ordered = sorted(hits)
+                taken = set()
+                poise_taken = set()
+                hit_times = []
+                for hit in part_hits:
+                    signature = hit_signature(
+                        hit[0] if isinstance(hit[0], list) else [hit[0]],
+                        (hit[4].get("flat") if len(hit) > 4 else None) or [0] * 5,
+                    )
+                    index = next(
+                        (j for j, (_, other) in enumerate(ordered) if j not in taken and other == signature),
+                        None,
+                    )
+                    if index is not None:
+                        taken.add(index)
+                        hit_times.append(real(ordered[index][0]))
+                        continue
+                    # or else a window without damage, with its poise if any has it
+                    free = [
+                        j for j in range(len(poise_windows.get(anim_id, []))) if j not in poise_taken
+                    ]
+                    poise_index = (
+                        next(
+                            (j for j in free if poise_windows[anim_id][j][1] == round(hit[2])),
+                            free[0] if free else None,
+                        )
+                        if signature == hit_signature([0], [0] * 5)
+                        else None
+                    )
+                    if poise_index is not None:
+                        poise_taken.add(poise_index)
+                    hit_times.append(
+                        real(poise_windows[anim_id][poise_index][0]) if poise_index is not None else None
+                    )
+                if any(time is not None for time in hit_times):
+                    timing["hitTimes"] = hit_times
             # A tapped R2 starts once its charged one's charging window opens, like the weapon's own
             # R2s
             charging = animations.get_effect_start([number], anim_id - 5, CHARGING_SPEFFECT)
@@ -1692,7 +1770,7 @@ def get_skill_timing(
     @returns the version's timing, by weapon animation range (see get_skill_range; "0" is the
     default) and part ("" for the main attack, or the follow-up's label): each part's animation's
     hits, its stamina cost, when it can be cancelled into another skill ("L2"), "R1", "R2", any
-    attack, a roll, blocking, or moving ("move"), and for an uncharged version, when it starts after the press
+    attack, a roll (after its last hit; "earlyRolls", any before it), blocking, or moving ("move"), and for an uncharged version, when it starts after the press
     ("start", see SKILL_CHARGING_SPEFFECT), in seconds of real time (see Animations.to_real_time); a loop (a main attack of
     "Loop" hits, e.g. Wild Strikes') also has "loop", how long each pass takes, and "opening", how
     long until it starts. Each part's animation is the one whose hits (motion value and flat attack)
@@ -1784,6 +1862,36 @@ def get_skill_timing(
                 return sorted({start for start, _, _ in poise_hits[anim_id]})
             return animation_hits[anim_id][1]
 
+        def release_of(anim_id):
+            """
+            @returns for an uncharged version's animation (the one after its charged one), when it
+            starts in the charged one: its charging window, CHARGING_LAG later (or None)
+            """
+            charged = anim_id - 1
+            if (
+                charged not in window_hits
+                or animations.get_effect_start([number], anim_id, SKILL_CHARGING_SPEFFECT) is not None
+            ):
+                return None
+            charging = animations.get_effect_start([number], charged, SKILL_CHARGING_SPEFFECT)
+            return None if charging is None else animations.to_real_time(number, charged, charging) + CHARGING_LAG
+
+        def before_release(anim_id, poise=False):
+            """
+            @returns an uncharged version's hits in its charged animation before it's released (e.g.
+            Kowtower's Resentment's first swing, Thundercloud Form's first lightning), each (time from
+            the release, signature or poise, projectile)
+            """
+            release = release_of(anim_id)
+            if release is None or status_only:
+                return []
+            charged = anim_id - 1
+            return [
+                (round(when - release, 3), signature, bullet)
+                for start, signature, bullet in (poise_hits if poise else window_hits)[charged]
+                if (when := animations.to_real_time(number, charged, start)) < release
+            ]
+
         best = None
         # (or else any, for a bow's skill: the Lion Greatbow's Radahn's Rain is only in 44560)
         bow_skill = variation in BOW_AMMO_VARIATIONS.values()
@@ -1802,7 +1910,8 @@ def get_skill_timing(
                             best = (1, anim_id)
                             break
                         continue
-                    score = sum((Counter(signatures_of(anim_id)) & wanted_keys).values())
+                    early = [] if poise_only else [key(signature) for _, signature, _ in before_release(anim_id)]
+                    score = sum((Counter(signatures_of(anim_id) + early) & wanted_keys).values())
                     if score and (best is None or score > best[0]):
                         best = (score, anim_id)
                 if best:
@@ -1832,27 +1941,54 @@ def get_skill_timing(
         def real(time):
             return round(animations.to_real_time(number, anim_id, time) + offset, 3)
 
+        # Each animation is cut off where the next starts (e.g. Black Flame Tornado's start, before its
+        # loops, when tapped)
+        ends = [next_start for _, next_start in segments[1:]] + [None]
+
+        def in_segment(i, time):
+            segment, segment_start = segments[i]
+            when = round(animations.to_real_time(number, segment, time) + segment_start, 3)
+            return when if ends[i] is None or when < ends[i] else None
+
         starts = starts_of(anim_id)
         all_hits = [
-            (round(animations.to_real_time(number, segment, start) + segment_start, 3), signature, bullet)
-            for segment, segment_start in segments
+            (when, signature, bullet)
+            for i, (segment, _) in enumerate(segments)
             for start, signature, bullet in windows_of(segment)
+            if (when := in_segment(i, start)) is not None
         ]
+        if len(segments) == 1:
+            all_hits += before_release(anim_id)
         all_hits.sort(key=lambda hit: hit[0])
         timing = {
             "hits": sorted(
                 {
-                    round(animations.to_real_time(number, segment, start) + segment_start, 3)
-                    for segment, segment_start in segments
+                    when
+                    for i, (segment, _) in enumerate(segments)
                     for start in starts_of(segment)
+                    if (when := in_segment(i, start)) is not None
                 }
+                | ({time for time, _, _ in before_release(anim_id)} if len(segments) == 1 and not poise_only else set())
             )
         }
         # Each of the part's hits' own time, in order: its window's (the first of its kind not taken
         # yet), or a projectile's again after it can hit the same target again (dmgHitRecordLifeTime),
         # or a measured one (HIT_TIME_FITS). Projectiles' are approximate: when they're created, not
         # when they reach the target
+        # (and the poise-only windows', for hits that only do poise)
+        all_poise_hits = sorted(
+            [
+                (when, poise, bullet)
+                for i, (segment, _) in enumerate(segments)
+                for start, poise, bullet in poise_hits[segment]
+                if (when := in_segment(i, start)) is not None
+            ]
+            + (before_release(anim_id, poise=True) if len(segments) == 1 else [])
+        )
+        poise_taken = set()
         hit_times = []
+        # and when each one's window starts in the animation (a projectile's when it's created)
+        window_times = []
         approximate = []
         taken = set()
         last = {}
@@ -1878,11 +2014,44 @@ def get_skill_timing(
                 ),
                 None,
             )
+            # or else a window with its motion value, whose row's flat attack the hit doesn't get (a
+            # weapon hit's fixed flat attack, e.g. The Queen's Black Flame's first swing's 60 fire)
+            if index is None and not poise_only and not status_only and signature[0]:
+                index = next(
+                    (
+                        j
+                        for j, (_, other, _) in enumerate(all_hits)
+                        if j not in taken and other[0] == signature[0]
+                    ),
+                    None,
+                )
             time = None
             bullet = None
             if index is not None:
                 taken.add(index)
                 time, _, bullet = all_hits[index]
+                window_times.append(time)
+            elif (
+                not poise_only
+                and not status_only
+                and signature == key(hit_signature([0], [0] * 5))
+                and hit[2]
+                and (
+                    poise_index := next(
+                        (
+                            j
+                            for j, (_, poise, _) in enumerate(all_poise_hits)
+                            if j not in poise_taken and poise == round(hit[2])
+                        ),
+                        None,
+                    )
+                )
+                is not None
+            ):
+                # A hit that only does poise (and status), by its poise (e.g. Claw Flick's first, 200)
+                poise_taken.add(poise_index)
+                time, _, bullet = all_poise_hits[poise_index]
+                window_times.append(time)
             elif signature in last and last[signature][1]:
                 previous, bullet = last[signature]
                 again = float(bullet.get("dmgHitRecordLifeTime") or 0)
@@ -1891,7 +2060,7 @@ def get_skill_timing(
                 time = round(fits[i], 3)
             if time is not None:
                 last[signature] = (time, bullet)
-                if bullet is not None:
+                if bullet is not None and i not in MEASURED_HIT_TIMES.get((name, label), ()):
                     approximate.append(i)
             hit_times.append(time)
         if any(time is not None for time in hit_times) and hit_times != timing["hits"]:
@@ -1924,19 +2093,50 @@ def get_skill_timing(
         bow = variation in BOW_AMMO_VARIATIONS.values()
         stamina = sum(
             float((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
-            for segment, _ in segments
-            for _, judge in (
+            for i, (segment, _) in enumerate(segments)
+            for start, judge in (
                 {(start, judge) for start, _, judge, *_ in animations.get_windows(number, segment) or []}
                 if bow
                 else [(start, judge) for start, _, judge, *_ in animations.get_windows(number, segment) or []]
             )
+            if in_segment(i, start) is not None
         )
+        # (and an uncharged version's windows in its charged animation before it's released)
+        release = release_of(anim_id) if len(segments) == 1 else None
+        if release is not None:
+            stamina += sum(
+                float((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
+                for start, _, judge, *_ in animations.get_windows(number, anim_id - 1) or []
+                if animations.to_real_time(number, anim_id - 1, start) < release
+            )
         if stamina:
             timing["stamina"] = round(stamina, 2)
         cancels = get_l2_cancels(animations.get_cancels(number, anim_id), quick_l2)
         for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block", "move"]:
             if cancel in cancels:
                 timing[cancel] = real(cancels[cancel])
+        # Rolling before the last hit skips it, so the roll is the first time a roll window is open
+        # once the last hit's window starts (tested in game: Black Flame Tornado's release has one
+        # before its finisher, 111 frames after a tapped L2, and the next after it, 192). A
+        # projectile's is when it's created, not when it lands (rolling doesn't stop it). Not for
+        # loops, which are rolled out of between passes (e.g. Wild Strikes')
+        looping = any(len(hit) > 4 and hit[4].get("kind") == "Loop" for hit in part_hits) and len(starts) > 1
+        last_hit = max(window_times, default=None)
+        roll_windows = animations.get_cancel_windows(number, anim_id).get("roll", [])
+        if not looping and last_hit is not None and "roll" in timing and timing["roll"] < last_hit:
+            after = [
+                max(real(start), last_hit) for start, end in roll_windows if real(end) > last_hit
+            ]
+            if after:
+                timing["roll"] = round(min(after), 3)
+            # and the earlier roll-outs, between its first hit and its last, which skip the hits
+            # after them (shown on the hit before)
+            first_hit = min([*window_times, *timing["hits"]])
+            early_rolls = sorted(
+                {round(real(start), 3) for start, _ in roll_windows if first_hit <= real(start) < last_hit}
+            )
+            if early_rolls:
+                timing["earlyRolls"] = early_rolls
         for cancel, time in CANCEL_FITS.get((name, label), {}).items():
             timing[cancel] = round(time, 3)
         if (name, label) in LOOP_FITS:
@@ -2278,6 +2478,8 @@ def main():
         for row in sheet_rows
     ]
     for row in sheet_rows + [{**sheet_rows[0], **extra} for extra in EXTRA_SHEET_ROWS]:
+        if row["AtkId"] in ROW_NAMES:
+            row = {**row, "Name": ROW_NAMES[row["AtkId"]]}
         name = row["Name"]
         if not name or re.search(r"\((lacking fp|far)\)", name, re.I):
             continue

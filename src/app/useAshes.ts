@@ -117,7 +117,10 @@ interface SkillPartTiming {
   R1?: number;
   R2?: number;
   rightHandAttack?: number;
+  /** When it can be rolled out of after its last hit */
   roll?: number;
+  /** When it can be rolled out of before its last hit, skipping the hits after (e.g. Flame Dance) */
+  earlyRolls?: number[];
   block?: number;
   /** When moving can end it */
   move?: number;
@@ -229,6 +232,7 @@ function getSkillStepTimes(
       ...(earliest && { earliest }),
       ...(timing.rightHandAttack != null && { rightHandAttack: lead + timing.rightHandAttack }),
       ...(timing.roll != null && { roll: lead + timing.roll }),
+      ...(timing.earlyRolls && { earlyRolls: timing.earlyRolls.map((time) => lead + time) }),
       ...(timing.block != null && { block: lead + timing.block }),
       ...(timing.move != null && { move: lead + timing.move }),
       ...(!(last && noRepeat) && next && { cycle: next.time }),
@@ -446,6 +450,7 @@ function shiftStepTimes(step: StepTimes, by: number): StepTimes {
     ...(step.earliest && { earliest: { ...step.earliest, time: step.earliest.time + by } }),
     ...(step.rightHandAttack != null && { rightHandAttack: step.rightHandAttack + by }),
     ...(step.roll != null && { roll: step.roll + by }),
+    ...(step.earlyRolls && { earlyRolls: step.earlyRolls.map((time) => time + by) }),
     ...(step.block != null && { block: step.block + by }),
     ...(step.move != null && { move: step.move + by }),
     ...(step.jump != null && { jump: step.jump + by }),
