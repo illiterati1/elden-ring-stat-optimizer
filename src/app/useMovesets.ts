@@ -154,6 +154,7 @@ function getStepTimes(
   timing: StepTiming[] | undefined,
   stepCount: number,
   cutShort?: ChainLimit,
+  catalyst = false,
 ): StepTimes[] | undefined {
   if (!timing || timing.length < stepCount) return undefined;
   const button = repeatButtons[attack];
@@ -166,7 +167,7 @@ function getStepTimes(
       const lead = jumpAttackStart + stepStartDelay;
       const rightHandAttack =
         landing.rightHandAttack != null ? jumpAirTime + landing.rightHandAttack : undefined;
-      const earliest = getEarliestAttack(0, undefined, rightHandAttack);
+      const earliest = getEarliestAttack(0, undefined, rightHandAttack, undefined, false, catalyst);
       const repeat = landing.jump;
       return {
         lead,
@@ -216,6 +217,7 @@ function getStepTimes(
       step.rightHandAttack,
       step.leftHandAttack,
       mounted,
+      catalyst,
     );
     // A one-off attack is over once anything can follow it: an attack, a roll, blocking, moving, or a
     // jump (or crouch); the last step of a chain cut to a number of steps, once anything but an
@@ -666,13 +668,15 @@ export function getAttackData(
   const moveset = movesets[weapon.weaponName];
   if (!moveset) return undefined;
   // A catalyst's R1 casts its spell, so its melee strikes (its moveset's R1 chain) are its R2, and
-  // its jumping R1 is a jumping cast (its moveset has no jumping R1 animation)
-  if (
+  // its jumping R1 is a jumping cast (its moveset has no jumping R1 animation). The same on
+  // horseback: its mounted R1 casts, and its mounted melee (its moveset's mounted R1) is its R2.
+  const catalyst =
     weapon.weaponType === WeaponType.GLINTSTONE_STAFF ||
-    weapon.weaponType === WeaponType.SACRED_SEAL
-  ) {
-    if (attack === "R1" || attack === "Jumping R1") return undefined;
+    weapon.weaponType === WeaponType.SACRED_SEAL;
+  if (catalyst) {
+    if (attack === "R1" || attack === "Jumping R1" || attack === "Mounted R1/L1") return undefined;
     if (attack === "R2") attack = "R1";
+    else if (attack === "Mounted R2/L2") attack = "Mounted R1/L1";
   }
   // Only ranged weapons shoot
   const standardShot = attack === "Standard Shot";
@@ -748,7 +752,13 @@ export function getAttackData(
   // A chain cut short doesn't go on to its next step or start again
   const chain = getChainLength(attack, timing, allSteps.length, limit);
   const steps = allSteps.slice(0, chain.length);
-  const stepTimes = getStepTimes(attack, timing, steps.length, chain.cut ? limit : undefined);
+  const stepTimes = getStepTimes(
+    attack,
+    timing,
+    steps.length,
+    chain.cut ? limit : undefined,
+    catalyst,
+  );
   const cycleTimes = stepTimes?.every((step) => step.cycle != null)
     ? stepTimes.map((step) => step.cycle!)
     : undefined;

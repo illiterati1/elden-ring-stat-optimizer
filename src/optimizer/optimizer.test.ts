@@ -10405,6 +10405,32 @@ describe("Ashes of War", () => {
     expect(hit("Poisoned Hand")).toEqual([[[616, 15]]]);
     expect(616 + Math.floor(74212 * 0.0014 + 14)).toBe(733);
   });
+  it("matches the Fire Knight's Fire Greatsword's Flame of the Redmanes in game", () => {
+    // The Ash of War on a Fire Knight's Greatsword (Colossal Sword) with the Fire affinity. Tested in
+    // game at +25 with 99 in every stat on the training dummy: 988 with 10 poise
+    const weapon = getWeapon("Fire Knight's Fire Greatsword");
+    const result = getAshAttack(ashes, movesets, weapon, "Flame of the Redmanes", false);
+    if (!("attack" in result)) throw new Error(result.unavailableReason);
+    const steps = optimizeBuild({
+      weapon,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: result.attack,
+    }).attackSteps!.map((step) =>
+      step.map((hit) => [Math.floor(hit.damage), +hit.stance.toFixed(1)]),
+    );
+    expect(steps).toEqual([[[988, 10]]]);
+  });
 
   it("matches Sleep Evermore in game", () => {
     // Thiollier's Hidden Needle's fixed skill, on an awake or sleeping target: on a sleeping one it also
@@ -12733,6 +12759,29 @@ describe("powerstance off hand weapons", () => {
       attack: "R2/L2",
       time: expect.closeTo(1 / 30 + 1),
     });
+  });
+
+  it("makes a catalyst's mounted melee strikes its mounted R2, since its mounted R1 casts", () => {
+    for (const name of ["Meteorite Staff", "Finger Seal"]) {
+      const weapon = getWeapon(name);
+      expect(getAttackData(movesets, weapon, "Mounted R1/L1", false, 0.5)).toBeUndefined();
+      expect(getAttackData(movesets, weapon, "Mounted R2/L2", false, 0.5)).toBeDefined();
+    }
+    // The Carian Sorcery Sword (a thrusting sword that casts) keeps its sword's mounted attacks
+    const sword = getWeapon("Carian Sorcery Sword");
+    for (const attack of ["Mounted R1/L1", "Mounted R2/L2"] as const) {
+      expect(getAttackData(movesets, sword, attack, false, 0.5)).toBeDefined();
+    }
+  });
+
+  it("labels a catalyst's melee chain's cancels with R2, the button that plays it", () => {
+    const staff = getWeapon("Gelmir Glintstone Staff");
+    const r2 = getAttackData(movesets, staff, "R2", false, 0.5)!;
+    expect(r2.stepTimes!.map((step) => step.earliest?.attack)).toEqual(["R2", "R2", "R2/L1"]);
+    const mounted = getAttackData(movesets, staff, "Mounted R2/L2", false, 0.5)!;
+    for (const step of mounted.stepTimes!) expect(step.earliest?.attack).toBe("R2/L2");
+    const jumping = getAttackData(movesets, staff, "Jumping R2", false, 0.5)!;
+    expect(jumping.stepTimes![0].earliest?.attack).toBe("R2");
   });
 
   it("leaves rolling, blocking, and moving out of mounted attacks' timing", () => {

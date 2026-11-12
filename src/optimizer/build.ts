@@ -449,12 +449,22 @@ export function getEarliestAttack(
   rightHandAttack: number | undefined,
   leftHandAttack?: number,
   mounted = false,
+  catalyst = false,
 ): StepTimes["earliest"] {
   const min = (...times: (number | undefined)[]) => {
     const known = times.filter((time): time is number => time != null);
     return known.length ? Math.min(...known) : undefined;
   };
-  const buttons: [string, number | undefined][] = mounted
+  // A catalyst's melee strikes are its moveset's R1s, played with R2 (its R1 casts, on the magic
+  // cancel, flag 29, not modeled), so its R1 cancel is when R2 can go on
+  const buttons: [string, number | undefined][] = catalyst
+    ? mounted
+      ? [["R2/L2", min(cancels?.R1, rightHandAttack)]]
+      : [
+          ["R2", min(cancels?.R1, rightHandAttack)],
+          ["L1", min(cancels?.L1, leftHandAttack)],
+        ]
+    : mounted
     ? [
         ["R1/L1", min(cancels?.R1, rightHandAttack)],
         ["R2/L2", min(cancels?.R2, rightHandAttack)],

@@ -289,13 +289,19 @@ export default function App() {
     return selectedWeapons.filter((name) => weaponNames.has(name));
   }, [weapons, selectedWeapons]);
 
-  // Weapons picked by name or type, for buffs only some weapons get (their own skills')
+  // Weapons picked by name or type, for buffs only some weapons get (their own skills'). Weapons
+  // that can cast count as staves or seals, like in the weapon selection.
   const pickedWeapons = useMemo(() => {
     const types = new Set(weaponTypes);
     return new Set([
       ...validSelectedWeapons,
       ...weapons
-        .filter((weapon) => types.has(weapon.weaponType))
+        .filter(
+          (weapon) =>
+            types.has(weapon.weaponType) ||
+            (weapon.sorceryTool && types.has(WeaponType.GLINTSTONE_STAFF)) ||
+            (weapon.incantationTool && types.has(WeaponType.SACRED_SEAL)),
+        )
         .map((weapon) => weapon.weaponName),
     ]);
   }, [weapons, validSelectedWeapons, weaponTypes]);
@@ -717,6 +723,8 @@ export default function App() {
                 ? undefined
                 : attack === "R1" && catalystTypes.includes(weapon.weaponType)
                 ? "A catalyst's R1 casts spells: its melee strikes are its R2"
+                : attack === "Mounted R1/L1" && catalystTypes.includes(weapon.weaponType)
+                ? "A catalyst's mounted R1 casts spells: its mounted melee strikes are its mounted R2"
                 : `No ${attack} for this weapon`),
             // The left hand weapon's hits use its own attack rows
             attack:
