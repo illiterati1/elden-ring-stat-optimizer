@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Button,
@@ -39,6 +39,7 @@ import useBuffs, {
   type Buff,
 } from "./useBuffs.ts";
 import BuffSettings from "./BuffSettings.tsx";
+import ReportIssueDialog from "./ReportIssueDialog.tsx";
 import useAshes, {
   ashAttack,
   buffedR2Skills,
@@ -118,6 +119,7 @@ function powerstancesWith(main: Weapon, offhand: Weapon) {
 
 export default function App() {
   const [appState, updateAppState] = useAppState();
+  const [reportOpen, setReportOpen] = useState(false);
   const {
     startingClass,
     stats,
@@ -1118,16 +1120,17 @@ export default function App() {
         </Box>
 
         <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 4 }}>
-          Found a bug or inaccuracy? File an issue{" "}
-          <Link
-            href="https://github.com/illiterati1/elden-ring-stat-optimizer/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            here
+          Found a bug or inaccuracy?{" "}
+          <Link component="button" variant="body2" onClick={() => setReportOpen(true)}>
+            Report it here
           </Link>
           .
         </Typography>
+        <ReportIssueDialog
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          appState={appState}
+        />
         <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1 }}>
           Weapon data and damage calculations are adapted from the{" "}
           <Link href="https://eldenring.tclark.io/" target="_blank" rel="noopener noreferrer">

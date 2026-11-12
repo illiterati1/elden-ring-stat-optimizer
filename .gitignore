@@ -13,3 +13,7 @@ npm-debug.log*
 
 # Python bytecode caches
 __pycache__/
+
+# Cloudflare local dev: secrets and cache
+.dev.vars
+.wrangler/
