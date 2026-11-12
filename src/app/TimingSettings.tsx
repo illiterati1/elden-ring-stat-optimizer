@@ -58,13 +58,19 @@ function TimingSettings({
       id="timing"
       title="Timing"
       action={
-        <Switch
-          size="small"
-          title="Per second: scale values by time"
-          inputProps={{ "aria-label": "Per second" }}
-          checked={showDps}
+        <FormControlLabel
+          label="DPS"
+          labelPlacement="start"
+          title="Scale values by time"
           disabled={spellScaling}
-          onChange={(evt) => onChange({ showDps: evt.currentTarget.checked })}
+          sx={{ mr: 0 }}
+          control={
+            <Switch
+              size="small"
+              checked={showDps}
+              onChange={(evt) => onChange({ showDps: evt.currentTarget.checked })}
+            />
+          }
         />
       }
     >
