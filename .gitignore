@@ -17,3 +17,8 @@ __pycache__/
 # Cloudflare local dev: secrets and cache
 .dev.vars
 .wrangler/
+
+# TypeScript build output from compiling vite.config.ts (tsconfig.node.json is composite)
+*.tsbuildinfo
+/vite.config.js
+/vite.config.d.ts
