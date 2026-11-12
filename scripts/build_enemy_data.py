@@ -174,11 +174,18 @@ ENEMY_LABELS = {
     **{("Ainsel River Main", i): "" for i in [33200062, 33200162, 33200262, 33201062]},  # Silver Tear
     **{("Ainsel River Main", i): "Lightning" for i in [33202062, 33202262]},
     # Altus Plateau (an empty label keeps the plain name)
-    ("Altus Plateau", 30700030): "Cleaver",  # Dominula Celebrant
-    ("Altus Plateau", 30701030): "Lantern",
-    ("Altus Plateau", 30702030): "Sickle",
-    ("Altus Plateau", 30703030): "Skull",
-    ("Altus Plateau", 30704030): "Rib-Rake",
+    # Dominula Celebrants (the same rows in Dominula, Windmill Village)
+    **{
+        (area, i): label
+        for area in ["Altus Plateau", "Dominula, Windmill Village"]
+        for i, label in {
+            30700030: "Cleaver",
+            30701030: "Lantern",
+            30702030: "Sickle",
+            30703030: "Skull",
+            30704030: "Rib-Rake",
+        }.items()
+    },
     ("Altus Plateau", 21601030): "Greatbridge",  # Finger Reader Crone
     ("Altus Plateau", 21601033): "Capital Outskirts",
     ("Altus Plateau", 30601030): "Glaive",  # Giant Skeleton
@@ -254,6 +261,33 @@ ENEMY_LABELS = {
     **{("Crumbling Farum Azula", i): "20,529 HP" for i in [45102272, 45101272]},
     ("Crumbling Farum Azula", 30611072): "Glaive",  # Giant Beast Skeleton
     ("Crumbling Farum Azula", 30610072): "Greataxe",
+    # Deeproot Depths: Fia's Champions share an NpcParam row, so they're labeled by their CharaInitParam
+    # builds (the user)
+    ("Deeproot Depths", "chara", 23711): "Staff",
+    ("Deeproot Depths", "chara", 23611): "Twinblade",
+    ("Deeproot Depths", "chara", 23701): "Greataxes",
+    # Dragon's Pit's Giant Beast Skeletons (the user)
+    **{("Dragon's Pit", i): "" for i in [53604181, 53603181, 53600181, 53601181]},
+    ("Dragon's Pit", 59311081): "Glaive",
+    ("Dragon's Pit", 59310081): "Greataxe",
+    # Elphael, Brace of the Haligtree (the user): the weaker ones are in the Haligtree, the stronger in
+    # Elphael; Millicent by her nearest grace
+    **{("Elphael, Brace of the Haligtree", i): "Haligtree" for i in [
+        33501154, 33500154, 33502154,  # Crystalian
+        44820054,  # Rotten Miranda Blossom
+        44830054, 44831054,  # Rotten Miranda Sprout
+    ]},
+    **{("Elphael, Brace of the Haligtree", i): "Elphael" for i in [
+        33501556, 33500556, 33502556, 44820056, 44831056,
+    ]},
+    ("Elphael, Brace of the Haligtree", 523480256): "Drainage Channel",  # Millicent
+    ("Elphael, Brace of the Haligtree", 523480056): "Prayer Room",
+    # Enir-Ilim's Divine Beast Warriors, by HP
+    **{("Enir-Ilim", i): "8,555 HP" for i in [52501289, 52501389]},
+    ("Enir-Ilim", 52501489): "10,613 HP",
+    # Divine Tower of East Altus's Leyndell Foot Soldiers (the user)
+    ("Divine Tower of East Altus", 43734050): "Crossbow",
+    ("Divine Tower of East Altus", 43737050): "",
     # Capital Outskirts (the user's review)
     ("Capital Outskirts", 46607033): "Archer",  # Guardian Golem
     ("Capital Outskirts", 46600133): "Halberd",
@@ -353,6 +387,17 @@ ENEMY_EDITS = [
     ("rename", {"area": "Consecrated Snowfield", "ids": [34000852]}, ("^.*$", "Rotten Grave Warden Duelist (Greataxe)")),
     # Crumbling Farum Azula: its second Godskin Apostle isn't fought (the user)
     ("delete", {"area": "Crumbling Farum Azula", "ids": [35600972]}),
+    # Elphael: the 8993 HP Mary, Eldest Sister (533870056) is the player's ally in the version where they
+    # fight Millicent with her; the one fought is 523870056, beside Millicent (the user)
+    ("delete", {"area": "Elphael, Brace of the Haligtree", "ids": [533870056]}),
+    # Enir-Ilim (the user): one Divine Bird Warrior; the rest (the greatsword ones, parts shown 23: the
+    # Divine Beast head) are Divine Beast Warriors. Its Fat Hornsent Inquisitor 53200000 is an unscaled
+    # copy (576 HP)
+    ("rename", {"area": "Enir-Ilim", "ids": [52500189]}, (r"^.*$", "Divine Bird Warrior")),
+    ("rename", {"area": "Enir-Ilim", "ids": [52501289, 52501389, 52501489]}, (r"^.*$", "Divine Beast Warrior")),
+    ("delete", {"area": "Enir-Ilim", "ids": [53200000]}),
+    # Deeproot Depths: the level 149 Fia's Champion (CharaInitParam 23612) isn't in the fight (the user)
+    ("delete", {"area": "Deeproot Depths", "name": "Fia's Champion", "hp": 1680}),
     # Cerulean Coast (the user's review)
     # Its "Rams" are all neutral sheep (the user)
     ("rename", {"area": "Cerulean Coast", "ids": [54500083, 54506083, 54503083]}, "Sheep"),
