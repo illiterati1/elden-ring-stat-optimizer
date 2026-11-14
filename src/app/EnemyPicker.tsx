@@ -26,7 +26,7 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
   const enemy = area?.enemies.find((enemy) => getEnemyKey(enemy) === enemyKey) ?? null;
 
   // Entries' names tell them apart (scripts/enemy_curation.py identifies those sharing a name).
-  // Only bosses are listed (or they're grouped, in debug mode), so their "[Boss]" tag is left out.
+  // Enemies are grouped by category, so bosses' "[Boss]" tag is left out.
   // A name still shared (none in the areas reviewed so far) gets the HP as a last resort.
   const enemyLabels = useMemo(() => {
     const labels = new Map<Enemy, string>();
@@ -115,8 +115,8 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
       <Autocomplete
         size="small"
         options={area?.enemies ?? []}
-        // In debug mode every enemy is listed, by category (in that order in the data)
-        groupBy={debug ? getEnemyCategory : undefined}
+        // Grouped by category (in that order in the data)
+        groupBy={getEnemyCategory}
         value={enemy}
         disabled={!area}
         getOptionLabel={(option) => enemyLabels.get(option) ?? option.name}
