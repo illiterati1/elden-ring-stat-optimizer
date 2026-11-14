@@ -680,8 +680,8 @@ def main():
             own=True,
         )
         # Bows' ×1.5 against those who live in death for Golden Arrows (category 118) only matters
-        # firing them from that bow, not for another weapon, so it isn't an off-hand buff (the user's
-        # call; TODO: apply it to the bow's own Golden Arrow shots)
+        # firing them from that bow, not for another weapon, so it isn't an off-hand buff (TODO:
+        # apply it to the bow's own Golden Arrow shots)
         effects = [effect for effect in effects if effect.get("categories") != [GOLDEN_ARROW_CATEGORY]]
         # Conditional ones are picked separately (weapon effects), since they don't always apply
         if name in NOTES or name in HP_CONDITIONS:

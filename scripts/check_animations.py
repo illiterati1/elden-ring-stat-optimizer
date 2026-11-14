@@ -257,8 +257,8 @@ class Animations:
                         if event_type == EARLY_JUMP_TABLE_EVENT:
                             flag = struct.unpack_from("<h", data, params)[0]
                             early.setdefault(flag, []).append((start, end))
-                    # Roll and R1/R2 cancel windows run until a little after the animation ends (per
-                    # the user, from DS Anim Studio: e.g. a036_034020, 124 frames), so a cancel
+                    # Roll and R1/R2 cancel windows run until a little after the animation ends (seen
+                    # in DS Anim Studio: e.g. a036_034020, 124 frames), so a cancel
                     # window starting after they've ended is after the animation's end and doesn't
                     # count (its L1 attack window from 148)
                     cancel_ends = [

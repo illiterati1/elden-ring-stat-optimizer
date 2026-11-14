@@ -166,7 +166,7 @@ MOTION_VALUE_FIXES = {
         for weapon in ["Dryleaf Arts", "Dane's Footwork"]
     },
 }
-# Steps that hit more times in game than the sheet lists, tested in game (the user): Dryleaf Arts'
+# Steps that hit more times in game than the sheet lists, tested in game: Dryleaf Arts'
 # two handed R1 6 hits twice, with both feet (its full chain does 4428 at +25 with 99 in every stat
 # on the training dummy); Dane's Footwork's two handed guard counter is both kicks and one of their
 # AoEs, 1616 in all on Margit at +10 with 99 in every stat (the sheet has the AoEs as alternates)

@@ -1,9 +1,9 @@
 """
-Cleaning up the enemy picker's entries (see build_enemy_data.py), per the user's review of each
+Cleaning up the enemy picker's entries (see build_enemy_data.py), from a review of each
 area: entries with identical stats are merged, entries sharing a name get an identifier, and edits
 by hand (ENEMY_EDITS) delete, rename, move, or label entries.
 
-Rules (from the user):
+Rules:
   - No HP or "#1" in names: entries that share a name in an area get a real identifier (a weapon,
     clothing, or a place), by hand where known, or else the nearest site of grace ("near ...")
   - Two entries that differ only in their name are merged: the simpler name if one is the other
@@ -120,8 +120,8 @@ def merged_name(names):
 
 def merge_identical(enemies, placements):
     """
-    Merges an area's entries that differ only in their names, in place, however they look (the user's
-    call: an entry per set of stats). Entries split or kept apart by hand ("separate") stay apart.
+    Merges an area's entries that differ only in their names, in place, however they look (an entry
+    per set of stats). Entries split or kept apart by hand ("separate") stay apart.
     """
     groups = {}
     for key, enemy in list(enemies.items()):
@@ -215,7 +215,7 @@ def identify(area_name, enemies, placements, labels, unresolved):
         for number, enemy in enumerate(
             sorted(group, key=lambda e: (e["hp"], e["npcParamIds"][0])), start=1
         ):
-            # Neutral wildlife is just marked with its HP (the user's call)
+            # Neutral wildlife is just marked with its HP
             if category(enemy) == "neutral":
                 enemy["name"] = with_identifier(enemy["name"], f"{enemy['hp']:,} HP")
                 continue

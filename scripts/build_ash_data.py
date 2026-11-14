@@ -1062,8 +1062,8 @@ CHAIN_SPLIT_KINDS = {"Stormcaller": ("Bullet", "AoE only")}
 # Flight's hit applies 1620, which only takes effect on a poisoned target and then applies 1621, 5%
 # of its max HP plus 250 (tested in game: 706, and 4666 on the poisoned training dummy, 74212 HP). The Poison Flower Blooms Twice's kick
 # applies 20000860, which on a poisoned or rotted target applies 20000861 (5% of its max HP plus 250)
-# in place of its 160 scarlet rot (20000862), so that version doesn't build up rot (the user's
-# estimate in game: about 5025 on the training dummy). Seen in game, though: on a target that's only
+# in place of its 160 scarlet rot (20000862), so that version doesn't build up rot (estimated
+# in game: about 5025 on the training dummy). Seen in game, though: on a target that's only
 # poisoned it still builds up rot, so this is right for a rotted target. Thiollier's Hidden Needle's
 # Sleep Evermore applies 20001040 (and 20001044, the same under another condition), which on a sleeping
 # target applies 20001041, 6.5% of its max HP plus 300 (tested in game at +25 with 99 in every stat:
@@ -1369,8 +1369,8 @@ BUFF_UPKEEP = {"Flare, O Serpent": 20000851}
 # left hand's when powerstancing) and the skill's version whose hit it is. Flare, O Serpent's
 # explosions (AtkParam 701320360, or 701320361 charged, through Bullet 200002800-200002803) are in
 # the flails' animations (a34): R2s', running R2s', rolling R1s', jumping R2s' landings, and
-# powerstance L1s'. Each weapon's is spent on its first one (per the user, the buff can't be cast
-# again mid-chain), so each attack only counts each weapon's first and ends after it: e.g. the
+# powerstance L1s'. Each weapon's is spent on its first one (the buff can't be cast again
+# mid-chain), so each attack only counts each weapon's first and ends after it: e.g. the
 # powerstance L1 chain's #1 (the right flail's) and #2 (the left's). A jumping attack's are on its
 # landing: in the landings of the second of its jumping animations (031240 and 034540, 4 frames
 # after landing), assumed to be the ones played with the buff (031230's landing, 031271, has one too;
@@ -2513,8 +2513,8 @@ def main():
             label = ROW_FOLLOW_UPS[row["AtkId"]]
         if version:
             label = f"{version} {label}" if label else version
-        # Releasing a charged skill early just does fewer of its hits, so it's left out (the user's
-        # finding: Charge Forth's "Early Release" follow-up wasn't right)
+        # Releasing a charged skill early just does fewer of its hits, so it's left out (Charge
+        # Forth's "Early Release" follow-up wasn't right in game)
         if label in DROPPED_FOLLOW_UPS:
             continue
         # Lightning that spreads through water only hits a target standing in it (tested in game:
