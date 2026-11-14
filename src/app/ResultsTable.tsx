@@ -547,11 +547,23 @@ function ResultsTable({
     (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "");
 
   return (
-    <TableContainer component={Paper}>
+    // Scrolls within the viewport's height, since the header can only stick to the top of the
+    // container that scrolls the table sideways
+    <TableContainer component={Paper} sx={{ maxHeight: "100vh" }}>
       <Table
         size="small"
-        // Match the row borders to the column group borders
-        sx={{ "& .MuiTableCell-root": { borderBottomColor: "divider" } }}
+        sx={{
+          // Match the row borders to the column group borders
+          "& .MuiTableCell-root": { borderBottomColor: "divider" },
+          // The whole header sticks, rather than each cell, since its second row (the attribute
+          // groups) sits under the first
+          "& .MuiTableHead-root": {
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            backgroundColor: "background.paper",
+          },
+        }}
       >
         <TableHead>
           <TableRow>
