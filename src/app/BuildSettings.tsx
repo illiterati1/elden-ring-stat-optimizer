@@ -299,7 +299,7 @@ function BuildSettings({
             />
           }
         />
-        <FormControl fullWidth size="small" disabled={spellScaling || !scadutreeBlessing}>
+        <FormControl fullWidth size="small" disabled={spellScaling}>
           <InputLabel id="scadutreeBlessingLevelLabel">Blessing Level</InputLabel>
           <Select
             labelId="scadutreeBlessingLevelLabel"
