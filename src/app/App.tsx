@@ -948,10 +948,16 @@ export default function App() {
             known issues
           </Link>
           .
-          <br />
-          Apologies to mobile users, this was developed with a desktop in mind and as a result much
-          of the more interesting data is in tooltips that don&apos;t display well on mobile.
-          Support for mobile is planned, just not quite there yet.
+          {/* Only on touch-first devices, where the tooltips this note is about don't work well */}
+          <Box
+            component="span"
+            sx={{ display: "none", "@media (hover: none)": { display: "inline" } }}
+          >
+            <br />
+            Apologies to mobile users, this was developed with a desktop in mind and as a result
+            much of the more interesting data is in tooltips that don&apos;t display well on mobile.
+            Support for mobile is planned, just not quite there yet.
+          </Box>
         </Typography>
         {!closedAlerts.includes("levels") && (
           <Alert severity="warning" onClose={() => closeAlert("levels")} sx={{ mb: 3 }}>
