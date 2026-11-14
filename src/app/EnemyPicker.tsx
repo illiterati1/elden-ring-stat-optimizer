@@ -3,7 +3,9 @@ import {
   Alert,
   Autocomplete,
   Box,
+  Checkbox,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
@@ -28,13 +30,14 @@ interface Props {
   enemyArea: AppState["enemyArea"];
   enemyKey: AppState["enemyKey"];
   ngPlus: AppState["ngPlus"];
+  radahnBeaten: AppState["radahnBeaten"];
   onChange: UpdateAppState;
 }
 
 /**
  * Pickers for an area, an enemy in it, and the NG+ level, which fill in the enemy defense fields
  */
-function EnemyPicker({ enemyArea, enemyKey, ngPlus, onChange }: Props) {
+function EnemyPicker({ enemyArea, enemyKey, ngPlus, radahnBeaten, onChange }: Props) {
   const { areas, error } = useEnemies();
 
   const area = areas.find(({ name }) => name === enemyArea) ?? null;
@@ -83,13 +86,13 @@ function EnemyPicker({ enemyArea, enemyKey, ngPlus, onChange }: Props) {
     });
   }
 
-  function selectEnemy(newEnemy: Enemy | null, newNgPlus = ngPlus) {
+  function selectEnemy(newEnemy: Enemy | null, newNgPlus = ngPlus, newRadahnBeaten = radahnBeaten) {
     // Clearing the enemy goes back to the area's defaults
     if (!newEnemy) {
       selectArea(area, newNgPlus);
       return;
     }
-    const stats = getEnemyStats(newEnemy, newNgPlus);
+    const stats = getEnemyStats(newEnemy, newNgPlus, newRadahnBeaten);
     const [phys, mag, fire, lightning, holy] = stats.defense.map(Math.round);
     const [standard, slash, strike, pierce, magN, fireN, lightningN, holyN] = newEnemy.negation.map(
       Math.round,
@@ -168,10 +171,28 @@ function EnemyPicker({ enemyArea, enemyKey, ngPlus, onChange }: Props) {
           ))}
         </Select>
       </FormControl>
-      {enemy && ngPlus > 0 && !enemy.ngPlus && (
+      {enemy && ngPlus === 1 && !enemy.ngPlus && (
         <Typography variant="body2" color="text.secondary">
-          Doesn&apos;t get stronger in NG+
+          Doesn&apos;t get stronger in NG+, only from NG+2
         </Typography>
+      )}
+      {ngPlus > 0 && (
+        <FormControlLabel
+          label="Beaten Promised Consort Radahn in an earlier journey"
+          title="Raises many of the DLC's enemies' HP (not their defenses)"
+          sx={{ mr: 0 }}
+          control={
+            <Checkbox
+              size="small"
+              checked={radahnBeaten}
+              onChange={(evt) => {
+                const newRadahnBeaten = evt.currentTarget.checked;
+                onChange({ radahnBeaten: newRadahnBeaten });
+                if (enemy) selectEnemy(enemy, ngPlus, newRadahnBeaten);
+              }}
+            />
+          }
+        />
       )}
       {enemy?.criticalDamageRate && (
         <Typography variant="body2" color="text.secondary">

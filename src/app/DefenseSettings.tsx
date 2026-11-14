@@ -27,6 +27,7 @@ interface Props {
   enemyHp: AppState["enemyHp"];
   enemyTypes: AppState["enemyTypes"];
   ngPlus: AppState["ngPlus"];
+  radahnBeaten: AppState["radahnBeaten"];
   /** Alerts and notes the user closed */
   closedAlerts: AppState["closedAlerts"];
   onChange: UpdateAppState;
@@ -64,6 +65,7 @@ function DefenseSettings({
   enemyHp,
   enemyTypes,
   ngPlus,
+  radahnBeaten,
   closedAlerts,
   onChange,
 }: Props) {
@@ -86,6 +88,7 @@ function DefenseSettings({
           enemyArea={enemyArea}
           enemyKey={enemyKey}
           ngPlus={ngPlus}
+          radahnBeaten={radahnBeaten}
           onChange={onChange}
         />
         <NumberTextField

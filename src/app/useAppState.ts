@@ -165,6 +165,11 @@ export interface AppState {
   readonly scadutreeBlessingLevel: number;
   /** The NG+ level the picked enemy's or area's HP and defenses are for (0 for NG, up to 7) */
   readonly ngPlus: number;
+  /**
+   * Whether Promised Consort Radahn was beaten in an earlier journey, which raises some of the DLC's
+   * enemies' HP in NG+
+   */
+  readonly radahnBeaten: boolean;
   readonly showFriendlyEnemies: boolean;
   /** An attack whose motion values are used, "base" for 100 motion values, or "ash" for a skill */
   readonly attack: AttackChoice | typeof ashAttack;
@@ -288,6 +293,7 @@ const defaultAppState: AppState = {
   scadutreeBlessing: false,
   scadutreeBlessingLevel: 20,
   ngPlus: 0,
+  radahnBeaten: false,
   showFriendlyEnemies: false,
   attack: "R1",
   ashOfWar: "",

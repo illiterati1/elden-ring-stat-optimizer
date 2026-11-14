@@ -7,8 +7,11 @@ export interface Enemy {
   hp: number;
   /** Physical, magic, fire, lightning, holy */
   defense: number[];
-  /** Its HP and defenses in NG+ (journey 2), if they scale */
-  ngPlus?: { hp: number; defense: number[] };
+  /**
+   * Its HP (unrounded) and defenses in NG+ (journey 2), if it has an NG+ scaling effect, and its HP multiplier in
+   * NG+ once Promised Consort Radahn has been beaten in an earlier journey, if any
+   */
+  ngPlus?: { hp: number; defense: number[]; radahnHpRate?: number };
   /** Standard, slash, strike, pierce, magic, fire, lightning, holy (percent) */
   negation: number[];
   /** Types some weapons and buffs do more damage to, e.g. "dragon" */
@@ -72,15 +75,21 @@ export function getNgPlusLabel(ngPlus: number) {
 }
 
 /**
- * @returns an enemy's HP and defenses at an NG+ level (0 for NG). Enemies whose stats don't scale
- * in NG+ (mostly wildlife) keep their NG ones.
+ * @returns an enemy's HP and defenses at an NG+ level (0 for NG). Enemies with no NG+ scaling
+ * effect (mostly wildlife) start from their NG stats, but later journeys still scale them.
  */
-export function getEnemyStats(enemy: Enemy, ngPlus: number) {
-  if (ngPlus === 0 || !enemy.ngPlus) return { hp: enemy.hp, defense: enemy.defense };
+export function getEnemyStats(enemy: Enemy, ngPlus: number, radahnBeaten: boolean) {
+  if (ngPlus === 0) return { hp: enemy.hp, defense: enemy.defense };
+  const {
+    hp,
+    defense,
+    radahnHpRate = 1,
+  } = enemy.ngPlus ?? { hp: enemy.hp, defense: enemy.defense };
   const rates = ngPlusRates[ngPlus];
   return {
-    hp: Math.round(enemy.ngPlus.hp * rates.hp),
-    defense: enemy.ngPlus.defense.map((defense) => defense * rates.defense),
+    // (NG+ HP is unrounded: the game rounds down after every multiplier)
+    hp: Math.floor(hp * (radahnBeaten ? radahnHpRate : 1) * rates.hp),
+    defense: defense.map((value) => value * rates.defense),
   };
 }
 

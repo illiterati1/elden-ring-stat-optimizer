@@ -39,6 +39,7 @@ import {
 } from "../app/useAshes.ts";
 import type { AttackData, BuildRequest } from "./build.ts";
 import { getDamage } from "./optimizer.ts";
+import { getEnemyStats, type EnemyArea } from "../app/useEnemies.ts";
 import {
   getEquipWeightRate,
   optimizeBuild,
@@ -13018,5 +13019,33 @@ describe("timing coverage", () => {
   it("costs a jumping attack's landing stamina when its hit costs none", () => {
     const jumping = getAttackData(movesets, getWeapon("Backhand Blade"), "Jumping R2", false, 0.5)!;
     expect(jumping.stamina![0]).toBeGreaterThan(0);
+  });
+});
+
+describe("NG+ enemy stats", () => {
+  const areas: EnemyArea[] = JSON.parse(
+    readFileSync(new URL("../../public/enemies.json", import.meta.url), "utf8"),
+  ).areas;
+  const findEnemy = (npcParamId: number) =>
+    areas.flatMap((area) => area.enemies).find((enemy) => enemy.npcParamIds.includes(npcParamId))!;
+
+  // Values from the datamining spreadsheet's NG+ tabs (see data/sheets/NG.csv)
+  it("scales enemies without an NG+ scaling effect from NG+2", () => {
+    const bear = findEnemy(60310010);
+    expect(getEnemyStats(bear, 1, false)).toEqual({ hp: 681, defense: bear.defense });
+    expect(getEnemyStats(bear, 2, false).hp).toBe(749);
+    expect(getEnemyStats(bear, 2, false).defense[0]).toBeCloseTo(102.5);
+    expect(getEnemyStats(bear, 7, false).hp).toBe(953);
+    expect(getEnemyStats(bear, 7, false).defense[0]).toBeCloseTo(130);
+  });
+
+  it("raises some DLC enemies' HP once Radahn is beaten", () => {
+    const inquisitor = findEnemy(53110586);
+    expect(getEnemyStats(inquisitor, 0, true).hp).toBe(inquisitor.hp);
+    expect(getEnemyStats(inquisitor, 1, false).hp).toBe(2464);
+    expect(getEnemyStats(inquisitor, 1, true).hp).toBe(2731);
+    expect(getEnemyStats(inquisitor, 7, false).hp).toBe(3450);
+    expect(getEnemyStats(inquisitor, 7, true).hp).toBe(3823);
+    expect(Math.round(getEnemyStats(inquisitor, 7, true).defense[0])).toBe(164);
   });
 });

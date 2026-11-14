@@ -170,6 +170,7 @@ export default function App() {
     enemyTypes,
     enemyInRealmOfShadow,
     ngPlus,
+    radahnBeaten,
     scadutreeBlessing: savedScadutreeBlessing,
     scadutreeBlessingLevel,
     attack: savedAttack,
@@ -1037,6 +1038,7 @@ export default function App() {
         enemyHp={enemyHp}
         enemyTypes={enemyTypes}
         ngPlus={ngPlus}
+        radahnBeaten={radahnBeaten}
         closedAlerts={closedAlerts}
         onChange={updateAppState}
       />

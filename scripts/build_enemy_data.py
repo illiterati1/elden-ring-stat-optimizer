@@ -1274,23 +1274,36 @@ def main():
         # In NG+, its NG+ scaling effect (GameClearSpEffectID) multiplies its HP and defenses too, on
         # top of its area scaling: its multipliers get smaller the more its area scales, bringing
         # every area to about the same (e.g. ×1.141 × 3.122 = 3.56 in Limgrave, ×2.406 × 1.523 = 3.66
-        # for a later area's). Later journeys multiply these by ClearCountCorrectParam (in the app).
-        # Enemies without one aren't scaled.
+        # for a later area's). Enemies without one (mostly wildlife) keep their NG stats in NG+.
+        # Later journeys multiply every enemy's NG+ stats by ClearCountCorrectParam (in the app).
+        # All checked against the datamining spreadsheet's NG+ tabs (see data/sheets/NG.csv).
         ng_plus_effect = sp_effects.get(row["GameClearSpEffectID"]) if row["GameClearSpEffectID"] > 0 else None
         ng_plus_rate = hp_rate * (ng_plus_effect["maxHpRate"] if ng_plus_effect else 1)
+        # Some of the DLC's enemies get another HP multiplier in NG+ once Promised Consort Radahn has
+        # been beaten in an earlier journey (dlcGameClearSpEffectID; it doesn't change defenses)
+        radahn_effect = sp_effects.get(row["dlcGameClearSpEffectID"]) if row["dlcGameClearSpEffectID"] > 0 else None
+        radahn_hp_rate = radahn_effect["maxHpRate"] if radahn_effect else 1
 
-        def ng_plus_defense(defense):
-            """@returns the NG+ defenses, or None without an NG+ scaling effect"""
+        def ng_plus_stats(hp, defense):
+            """
+            @returns the NG+ HP and defenses, with any HP multiplier after beating Radahn, or None
+            without an NG+ scaling effect
+            """
             if not ng_plus_effect:
                 return None
-            return [round(value * ng_plus_effect[rate], 1) for value, (_, rate) in zip(defense, DEFENSES)]
+            return {
+                # (unrounded: later journeys' multipliers apply before HP is rounded down)
+                "hp": round(hp, 3),
+                "defense": [round(value * ng_plus_effect[rate], 1) for value, (_, rate) in zip(defense, DEFENSES)],
+                **({"radahnHpRate": radahn_hp_rate} if radahn_hp_rate != 1 else {}),
+            }
 
         if chara_init is None:
             defense = [round(row[field] * area_rate(rate), 1) for field, rate in DEFENSES]
             negation = [round((1 - row[field]) * 100, 1) for field in NEGATIONS]
             hp = round(row["hp"] * hp_rate)
             ng_plus_hp = round(row["hp"] * ng_plus_rate)
-            return defense, negation, hp, ng_plus_hp, ng_plus_defense(defense)
+            return defense, negation, hp, ng_plus_hp, ng_plus_stats(row["hp"] * ng_plus_rate, defense)
 
         # Human enemies: defense from level and attributes, negation from armor
         level = sum(chara_init[attribute] for attribute in CHARA_INIT_ATTRIBUTES)
@@ -1313,7 +1326,7 @@ def main():
         base_hp = int(evaluate_graph(graphs[VIGOR_HP_GRAPH], chara_init["baseVit"]))
         hp = round(base_hp * hp_rate)
         ng_plus_hp = round(base_hp * ng_plus_rate)
-        return defense, negation, hp, ng_plus_hp, ng_plus_defense(defense)
+        return defense, negation, hp, ng_plus_hp, ng_plus_stats(base_hp * ng_plus_rate, defense)
 
     def get_poise(row):
         """
@@ -1415,8 +1428,7 @@ def main():
                 continue
 
             chara_init = chara_inits.get(int(placement["charaInitId"])) if model == "c0000" else None
-            defense, negation, hp, ng_plus_hp, ng_plus_def = get_stats(row, chara_init)
-            ng_plus = {"hp": ng_plus_hp, "defense": ng_plus_def} if ng_plus_def else None
+            defense, negation, hp, ng_plus_hp, ng_plus = get_stats(row, chara_init)
             area = areas.setdefault(area_name, {"name": area_name, "region": region, "enemies": {}})
             # Merge identical enemies, e.g. the same enemy placed several times
             friendly = row["teamType"] in FRIENDLY_TEAM_TYPES
@@ -1433,7 +1445,7 @@ def main():
             )
             key = (
                 name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance, poise,
-                weak_part_rate, ng_plus and (ng_plus["hp"], tuple(ng_plus["defense"])),
+                weak_part_rate, json.dumps(ng_plus),
             )
             riposte_override = next(
                 (ripostes for prefix, ripostes in RIPOSTE_NAME_OVERRIDES.items() if name.startswith(prefix)),
@@ -1450,7 +1462,7 @@ def main():
                     "appearance": appearance,
                     "defense": defense,
                     "negation": negation,
-                    # HP and defenses in NG+ (journey 2), if it scales
+                    # HP and defenses in NG+ (journey 2), if it has an NG+ scaling effect
                     **({"ngPlus": ng_plus} if ng_plus else {}),
                     **({"types": types} if types else {}),
                     **({"friendly": True} if friendly else {}),

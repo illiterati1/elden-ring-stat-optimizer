@@ -12,9 +12,8 @@
   Feeble Lord's Frenzied Flame can be repeated haven't been timed yet.
 - **Unverified timings:** many attack timings and stamina costs haven't been checked in game yet.
 - **Enemy picker:** only bosses are listed.
-- **NG+ stats:** enemies' NG+ HP and defenses are from the game's params but untested in game.
-  The DLC's second NG+ effect on some enemies (NpcParam dlcGameClearSpEffectID, HP and attack
-  only) isn't applied, since when it applies is unknown.
+- **NG+ stats:** enemies' NG+ HP and defenses match the datamining spreadsheet's, but haven't been
+  tested in game. HP after beating Radahn can be 1 off.
 - **Enemy status resistance:** enemies' status resistances aren't included, so status buildup
   can't be compared against them.
 - **Off by one:** some hits come out 1 lower than in game, mostly with stacked damage buffs or
