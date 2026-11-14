@@ -179,10 +179,7 @@ def identify(area_name, enemies, placements, labels, unresolved):
             del enemies[key]
 
     # The picker lists bosses, enemies, neutral, and friendly characters in their own sections, so a
-    # name only clashes within one
-    def category(enemy):
-        return next((c for c in ["friendly", "boss", "neutral"] if enemy.get(c)), "enemy")
-
+    # name only clashes within one (see category)
     def conflicts():
         by_name = {}
         for enemy in enemies.values():
@@ -221,6 +218,36 @@ def identify(area_name, enemies, placements, labels, unresolved):
                 continue
             enemy["name"] = with_identifier(enemy["name"], f"Type {number}")
             unresolved.append((area_name, enemy))
+
+
+def category(enemy):
+    """@returns the picker's section an entry is listed in (names only clash within one)"""
+    return next((c for c in ["friendly", "boss", "neutral"] if enemy.get(c)), "enemy")
+
+
+def drop_unneeded_identifiers(enemies, keep):
+    """
+    Drops the identifiers that tell nothing apart, in place: a weapon, gear, or kind on an entry whose
+    name no other entry in its section shares (or, for neutral wildlife, part of a combined name
+    like "Deer / Sheep"). Identifiers in keep (places) stay.
+    """
+    for enemy in enemies.values():
+        main, identifier = split_identifier(enemy["name"])
+        if identifier is None or identifier in keep:
+            continue
+        others = [
+            split_identifier(other["name"])[0]
+            for other in enemies.values()
+            if other is not enemy and category(other) == category(enemy)
+        ]
+        parts = set(main.split(" / "))
+        if main in others or (
+            category(enemy) == "neutral" and any(parts & set(other.split(" / ")) for other in others)
+        ):
+            continue
+        # (a combined name's parts once each: "Rat / Stray Dog / Stray Dog (Hairy)" is "Rat / Stray Dog")
+        main = " / ".join(dict.fromkeys(main.split(" / ")))
+        enemy["name"] = main + (BOSS_TAG if BOSS_TAG in enemy["name"] else "")
 
 
 def report(unresolved, placements):

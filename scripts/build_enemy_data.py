@@ -33,7 +33,7 @@ from collections import Counter, defaultdict
 sys.path.insert(0, os.path.dirname(__file__))
 from extract_fmg import read_fmg  # noqa: E402
 from extract_param import read_param  # noqa: E402
-from enemy_curation import apply_edits, identify, merge_identical, report, where_is, with_identifier  # noqa: E402
+from enemy_curation import apply_edits, drop_unneeded_identifiers, identify, merge_identical, report, where_is, with_identifier  # noqa: E402
 from enemy_curation import base_name as without_boss_tag  # noqa: E402
 
 REGULATION_VERSION = 11730034
@@ -123,6 +123,10 @@ RAM_ID = re.compile(r"5450[1245]\d{3}|545071\d\d|6060[1245]\d{3}")
 # Foot soldiers' crossbow rows (437x4xxx, weaker than the others): labeled "Crossbow",
 # leaving the other foot soldiers of their name in their area plain
 CROSSBOW_ID = re.compile(r"437\d4\d{3}")
+
+# Identifiers that are places, kept even where they tell nothing apart (other identifiers are dropped
+# there: weapons, gear, and kinds like "Frenzied"; enemy_curation.py drop_unneeded_identifiers)
+PLACE_IDENTIFIERS = {"Lake of Rot", "Ellac River", "Castle Sol", "Aureliette", "Agheel Lake South Camp"}
 
 # Weak spots (NpcParam weakPartsDamageRate) are noted for enemies whose weak spot takes more damage from
 # every attack (partsDamageType 1; 0 is arrows only, e.g. headshots), at least this much more (×1.5 is
@@ -271,7 +275,6 @@ ENEMY_LABELS = {
     ("Caelid", 41700140): "",  # Skeletal Slime
     ("Caelid", 41610040): "",  # Stray Dog
     ("Caelid", 46000040): "Pot",  # Troll
-    ("Caelid", 43401040): "Hammer",  # Mad Pumpkin Head
     # Consecrated Snowfield
     ("Consecrated Snowfield", 34703252): "Broken Club",  # Albinauric
     **{("Consecrated Snowfield", i): "" for i in [
@@ -1524,6 +1527,7 @@ def main():
         labels = {**crossbow_labels(area["name"], area["enemies"]), **ENEMY_LABELS}
         identify(area["name"], area["enemies"], placements_by_enemy, labels, unresolved)
         add_shattered(area["enemies"])
+        drop_unneeded_identifiers(area["enemies"], PLACE_IDENTIFIERS)
         # (by section: the picker lists friendly characters, bosses, etc. separately)
         names = Counter(
             (enemy_category(enemy), enemy["name"]) for enemy in area["enemies"].values()
