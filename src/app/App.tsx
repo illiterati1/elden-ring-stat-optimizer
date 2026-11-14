@@ -5,9 +5,13 @@ import {
   Box,
   CircularProgress,
   CssBaseline,
+  Drawer,
+  Fab,
+  IconButton,
   LinearProgress,
   Link,
   Stack,
+  SvgIcon,
   ThemeProvider,
   Typography,
 } from "@mui/material";
@@ -26,6 +30,7 @@ import {
   startingClasses,
 } from "../optimizer/startingClasses.ts";
 import theme from "./theme.ts";
+import { CloseIcon, useBackClosable, useTouch } from "./Details.tsx";
 import useAppState, { minEquipWeight, statusSortBy } from "./useAppState.ts";
 import useWeapons from "./useWeapons.ts";
 import type { Weapon } from "../calculator/weapon.ts";
@@ -120,6 +125,10 @@ function powerstancesWith(main: Weapon, offhand: Weapon) {
 export default function App() {
   const [appState, updateAppState] = useAppState();
   const [reportOpen, setReportOpen] = useState(false);
+  // On touch devices, the settings are in a drawer opened from a menu button, closed with the back
+  // button too
+  const touch = useTouch();
+  const settingsDrawer = useBackClosable();
   const {
     startingClass,
     stats,
@@ -928,10 +937,108 @@ export default function App() {
       ? "No damage"
       : `No ${damageTypeLabels.get(objective as AttackPowerType)} damage`;
 
+  const settings = (
+    <Stack spacing={2}>
+      <CharacterSettings
+        startingClass={startingClass}
+        stats={stats}
+        plannedStats={plannedStats}
+        onChange={updateAppState}
+      />
+      <LimitSettings
+        limits={limits}
+        fastMode={fastMode}
+        pointLabel={pointLabel}
+        currentLevel={startLevel}
+        planLevel={planLevel}
+        closedAlerts={closedAlerts}
+        onChange={updateAppState}
+      />
+      <BuildSettings
+        upgradeLevel={upgradeLevel}
+        twoHanding={twoHanding}
+        showScaling={showScaling}
+        showStatus={savedShowStatus}
+        showStance={savedShowStance}
+        showStamina={savedShowStamina}
+        showRequirements={showRequirements}
+        closedAlerts={closedAlerts}
+        meetRequirements={meetRequirements}
+        onlyBuffable={onlyBuffable}
+        weaponTypes={weaponTypes}
+        attack={attack}
+        chainWeight={chainWeight}
+        sumChains={sumChains}
+        hasChain={requests.some((request) => request.attack?.chain)}
+        ashOfWar={ashOfWar}
+        ashChoices={ashChoices}
+        attackChoices={attackChoices}
+        affinityIds={affinityIds}
+        ammo={ammo}
+        selectedAmmo={selectedAmmo}
+        pointLabel={pointLabel}
+        objective={objective}
+        offhandWeapon={offhandWeaponName}
+        offhandUpgradeLevel={offhandUpgradeLevel}
+        offhandAffinityId={offhandAffinityId}
+        offhandBuff={offhandBuffKey}
+        offhandWeaponChoices={offhandWeaponChoices}
+        offhandWeaponTypes={offhandWeaponTypes}
+        offhandAffinityChoices={offhandAffinityChoices}
+        offhandBuffChoices={offhandBuffChoices}
+        onChange={updateAppState}
+      />
+      <TimingSettings
+        showDps={savedShowDps}
+        spellScaling={spellScalingMode}
+        tooltipTimings={tooltipTimings}
+        chainLimit={chainLimit}
+        mounted={mountedAttacks.has(attack)}
+        onChange={updateAppState}
+      />
+      <BuffSettings
+        buffs={allBuffs}
+        selectedBuffs={selectedBuffKeys}
+        stackTier={stackTier}
+        catalysts={catalysts}
+        catalyst={catalystName}
+        catalystUpgradeLevel={catalystUpgradeLevel}
+        equipWeight={equipWeight}
+        health={health}
+        leftHandWeapon={
+          attack.startsWith("Powerstance") && offhandWeaponData ? offhandWeaponData.name : null
+        }
+        pickedWeapons={pickedWeapons}
+        closedAlerts={closedAlerts}
+        onChange={updateAppState}
+      />
+      <DefenseSettings
+        defenses={defenses}
+        physicalNegation={physicalNegation}
+        enemyArea={enemyArea}
+        enemyKey={enemyKey}
+        enemyHp={enemyHp}
+        enemyTypes={enemyTypes}
+        closedAlerts={closedAlerts}
+        onChange={updateAppState}
+      />
+      {/* Brings back any alerts the user closed */}
+      <Button
+        size="small"
+        sx={{ alignSelf: "flex-start" }}
+        disabled={closedAlerts.length === 0}
+        onClick={() => updateAppState({ closedAlerts: [] })}
+      >
+        Show all alerts
+      </Button>
+    </Stack>
+  );
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ maxWidth: 1600, mx: "auto", px: 2, py: 3 }}>
+      {/* Room at the bottom for the settings button on touch devices */}
+      <Box sx={{ maxWidth: 1600, mx: "auto", px: 2, pt: 3, pb: touch ? 10 : 3 }}>
         <Typography variant="h1" component="h1" sx={{ mb: 0.5 }}>
           Elden&nbsp;Ring Stat&nbsp;Optimizer
         </Typography>
@@ -948,15 +1055,14 @@ export default function App() {
             known issues
           </Link>
           .
-          {/* Only on touch-first devices, where the tooltips this note is about don't work well */}
           <Box
             component="span"
             sx={{ display: "none", "@media (hover: none)": { display: "inline" } }}
           >
+            {/* Only on touch-first devices, i.e. phones and tablets */}
             <br />
-            Apologies to mobile users, this was developed with a desktop in mind and as a result
-            much of the more interesting data is in tooltips that don&apos;t display well on mobile.
-            Support for mobile is planned, just not quite there yet.
+            Apologies to mobile users, this was developed with a desktop in mind, so some text may
+            be cut off. This will be fixed in the future.
           </Box>
         </Typography>
         {!closedAlerts.includes("levels") && (
@@ -975,107 +1081,12 @@ export default function App() {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: { xs: "1fr", lg: "400px 1fr" },
+            gridTemplateColumns: touch ? "1fr" : { xs: "1fr", lg: "400px 1fr" },
             gap: 2,
             alignItems: "start",
           }}
         >
-          <Stack spacing={2}>
-            <CharacterSettings
-              startingClass={startingClass}
-              stats={stats}
-              plannedStats={plannedStats}
-              onChange={updateAppState}
-            />
-            <LimitSettings
-              limits={limits}
-              fastMode={fastMode}
-              pointLabel={pointLabel}
-              currentLevel={startLevel}
-              planLevel={planLevel}
-              closedAlerts={closedAlerts}
-              onChange={updateAppState}
-            />
-            <BuildSettings
-              upgradeLevel={upgradeLevel}
-              twoHanding={twoHanding}
-              showScaling={showScaling}
-              showStatus={savedShowStatus}
-              showStance={savedShowStance}
-              showStamina={savedShowStamina}
-              showRequirements={showRequirements}
-              closedAlerts={closedAlerts}
-              meetRequirements={meetRequirements}
-              onlyBuffable={onlyBuffable}
-              weaponTypes={weaponTypes}
-              attack={attack}
-              chainWeight={chainWeight}
-              sumChains={sumChains}
-              hasChain={requests.some((request) => request.attack?.chain)}
-              ashOfWar={ashOfWar}
-              ashChoices={ashChoices}
-              attackChoices={attackChoices}
-              affinityIds={affinityIds}
-              ammo={ammo}
-              selectedAmmo={selectedAmmo}
-              pointLabel={pointLabel}
-              objective={objective}
-              offhandWeapon={offhandWeaponName}
-              offhandUpgradeLevel={offhandUpgradeLevel}
-              offhandAffinityId={offhandAffinityId}
-              offhandBuff={offhandBuffKey}
-              offhandWeaponChoices={offhandWeaponChoices}
-              offhandWeaponTypes={offhandWeaponTypes}
-              offhandAffinityChoices={offhandAffinityChoices}
-              offhandBuffChoices={offhandBuffChoices}
-              onChange={updateAppState}
-            />
-            <TimingSettings
-              showDps={savedShowDps}
-              spellScaling={spellScalingMode}
-              tooltipTimings={tooltipTimings}
-              chainLimit={chainLimit}
-              mounted={mountedAttacks.has(attack)}
-              onChange={updateAppState}
-            />
-            <BuffSettings
-              buffs={allBuffs}
-              selectedBuffs={selectedBuffKeys}
-              stackTier={stackTier}
-              catalysts={catalysts}
-              catalyst={catalystName}
-              catalystUpgradeLevel={catalystUpgradeLevel}
-              equipWeight={equipWeight}
-              health={health}
-              leftHandWeapon={
-                attack.startsWith("Powerstance") && offhandWeaponData
-                  ? offhandWeaponData.name
-                  : null
-              }
-              pickedWeapons={pickedWeapons}
-              closedAlerts={closedAlerts}
-              onChange={updateAppState}
-            />
-            <DefenseSettings
-              defenses={defenses}
-              physicalNegation={physicalNegation}
-              enemyArea={enemyArea}
-              enemyKey={enemyKey}
-              enemyHp={enemyHp}
-              enemyTypes={enemyTypes}
-              closedAlerts={closedAlerts}
-              onChange={updateAppState}
-            />
-            {/* Brings back any alerts the user closed */}
-            <Button
-              size="small"
-              sx={{ alignSelf: "flex-start" }}
-              disabled={closedAlerts.length === 0}
-              onClick={() => updateAppState({ closedAlerts: [] })}
-            >
-              Show all alerts
-            </Button>
-          </Stack>
+          {!touch && settings}
 
           <Stack spacing={2} sx={{ minWidth: 0 }}>
             {error ? (
@@ -1149,6 +1160,38 @@ export default function App() {
           </Link>
           .
         </Typography>
+        {touch && (
+          <>
+            <Fab
+              color="primary"
+              aria-label="Settings"
+              onClick={settingsDrawer.show}
+              sx={{ position: "fixed", right: 16, bottom: 16 }}
+            >
+              <SvgIcon>
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+              </SvgIcon>
+            </Fab>
+            <Drawer
+              anchor="left"
+              open={settingsDrawer.open}
+              onClose={settingsDrawer.hide}
+              // Kept mounted, so the settings keep any state of their own while it's closed
+              ModalProps={{ keepMounted: true }}
+              PaperProps={{ sx: { width: "min(400px, 90vw)", p: 2, pt: 1 } }}
+            >
+              <Box display="flex" alignItems="center" mb={1}>
+                <Typography variant="h6" component="h2" sx={{ flex: 1 }}>
+                  Settings
+                </Typography>
+                <IconButton aria-label="Close settings" onClick={settingsDrawer.hide}>
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+              {settings}
+            </Drawer>
+          </>
+        )}
         <ReportIssueDialog
           open={reportOpen}
           onClose={() => setReportOpen(false)}

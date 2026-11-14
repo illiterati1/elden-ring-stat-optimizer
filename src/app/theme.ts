@@ -94,6 +94,11 @@ export default createTheme({
       },
     },
     MuiTooltip: {
+      // On touch devices, shown on a tap rather than a long press, for long enough to read
+      defaultProps: {
+        enterTouchDelay: 0,
+        leaveTouchDelay: 4000,
+      },
       styleOverrides: {
         tooltip: {
           backgroundColor: colors.surfaceRaised,

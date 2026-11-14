@@ -21,7 +21,7 @@ import { limitReasonLabels, physicalTypeLabels, statusTypes } from "./uiUtils.ts
 import { getResultStatus } from "./results.ts";
 import { statusSortBy } from "./useAppState.ts";
 import BreakdownTable from "./BreakdownTable.tsx";
-import { colors } from "./theme.ts";
+import Details, { detailsBackground, tooltipCueSx } from "./Details.tsx";
 import type { AppState, SortBy, TooltipTimings, UpdateAppState } from "./useAppState.ts";
 import { maxSeries } from "./ValueChart.tsx";
 
@@ -98,6 +98,7 @@ function AttackHits({
   timings,
   label,
   skill,
+  title,
 }: {
   steps: AttackResultHit[][];
   stepTimes?: StepTimes[];
@@ -107,6 +108,8 @@ function AttackHits({
   label: string;
   /** The attack is a skill, repeated as the same skill rather than the same attack */
   skill: boolean;
+  /** The heading of the details drawer on touch devices */
+  title: string;
 }) {
   // When each step starts, from the start of the chain (as far as the steps' lengths are known),
   // or for a loop, from the press (after its opening)
@@ -232,14 +235,23 @@ function AttackHits({
   const showStaminaColumn = rows.some(({ hit }) => hit.stamina != null);
   const hpDamageLabel = rows.find(({ hit }) => hit.hpDamage)?.hit.hpDamage!.label;
   const cellSx = { color: "inherit", px: 1, py: 0.25 };
+  // The hit's label stays in view when the table scrolls sideways (in the drawer on touch devices)
+  const labelCellSx = {
+    ...cellSx,
+    position: "sticky",
+    left: 0,
+    zIndex: 1,
+    backgroundColor: detailsBackground,
+  };
   return (
-    <Tooltip
-      componentsProps={{ tooltip: { sx: { maxWidth: "none", p: 1 } } }}
-      title={
+    <Details
+      title={title}
+      triggerSx={{ whiteSpace: "nowrap" }}
+      content={
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell sx={cellSx}>Hit</TableCell>
+              <TableCell sx={labelCellSx}>Hit</TableCell>
               {showKind && <TableCell sx={cellSx}>Kind</TableCell>}
               <TableCell sx={cellSx}>Physical</TableCell>
               <TableCell sx={cellSx} align="right">
@@ -309,7 +321,7 @@ function AttackHits({
             {rows.map(
               ({ label, hit, hitAt, approximate, earliest, roll, earlyRoll, block, move }) => (
                 <TableRow key={label}>
-                  <TableCell sx={cellSx}>{label}</TableCell>
+                  <TableCell sx={labelCellSx}>{label}</TableCell>
                   {showKind && <TableCell sx={cellSx}>{hit.kind ?? "Weapon"}</TableCell>}
                   <TableCell sx={cellSx}>
                     {hit.physicalType ? physicalTypeLabels[hit.physicalType] : "–"}
@@ -389,20 +401,10 @@ function AttackHits({
       }
     >
       {/* Kept on one line, since wrapped chains are hard to read */}
-      <Box component="span" whiteSpace="nowrap" sx={tooltipCueSx}>
-        {steps.map(formatStep).join(" | ")}
-      </Box>
-    </Tooltip>
+      {steps.map(formatStep).join(" | ")}
+    </Details>
   );
 }
-
-/** A dotted underline marking values with a tooltip */
-const tooltipCueSx = {
-  textDecoration: "underline dotted",
-  textDecorationColor: colors.textSecondary,
-  textUnderlineOffset: "3px",
-  cursor: "help",
-};
 
 /** Status columns are narrow, so they're packed closer together than other columns */
 const statusCellSx = { px: 0.75 };
@@ -678,20 +680,20 @@ function ResultsTable({
                             <span>≈</span>
                           </Tooltip>
                         )}
-                        <Tooltip
-                          componentsProps={{ tooltip: { sx: { maxWidth: "none", p: 1 } } }}
-                          title={
+                        <Details
+                          title={`${result.weaponName}: ${valueLabel}`}
+                          content={
                             result.breakdown.length > 0 && (
                               <>
                                 {result.hpDamage && (
-                                  <Box sx={{ maxWidth: 360, mb: 1 }}>
+                                  <Box sx={{ maxWidth: 360, px: 1, mb: 1 }}>
                                     Includes {formatValue(result.hpDamage.damage)}{" "}
                                     {result.hpDamage.label.toLowerCase()} damage, a percentage of
                                     the enemy&apos;s max HP, which stats don&apos;t change.
                                   </Box>
                                 )}
                                 {result.uncountedHpDamage && (
-                                  <Box sx={{ maxWidth: 360, mb: 1 }}>
+                                  <Box sx={{ maxWidth: 360, px: 1, mb: 1 }}>
                                     {result.uncountedHpDamage.label} isn&apos;t counted: it does{" "}
                                     {result.uncountedHpDamage.rate * 100}% of the enemy&apos;s max
                                     HP
@@ -705,7 +707,7 @@ function ResultsTable({
                                 )}
                                 <BreakdownTable rows={result.breakdown} pointLabel={pointLabel} />
                                 {result.menuAttackPower && (
-                                  <Box sx={{ maxWidth: 360, mt: 1 }}>
+                                  <Box sx={{ maxWidth: 360, px: 1, mt: 1 }}>
                                     This is the attack power the game&apos;s menu shows, which uses
                                     the catalyst&apos;s own scaling, but its melee attacks scale
                                     like regular weapons (Strength and Dexterity), so it&apos;s
@@ -717,14 +719,12 @@ function ResultsTable({
                             )
                           }
                         >
-                          <Box component="span" sx={tooltipCueSx}>
-                            {showDps
-                              ? result.attackDps != null
-                                ? formatValue(result.attackDps)
-                                : "–"
-                              : formatValue(result.finalValue)}
-                          </Box>
-                        </Tooltip>
+                          {showDps
+                            ? result.attackDps != null
+                              ? formatValue(result.attackDps)
+                              : "–"
+                            : formatValue(result.finalValue)}
+                        </Details>
                         {(result.buffNote || result.uncountedHpDamage || result.attackNote) && (
                           <Tooltip
                             title={[
@@ -762,6 +762,7 @@ function ResultsTable({
                           timings={tooltipTimings}
                           skill={skill}
                           label={pointLabel === "damage" ? "Damage" : "AR"}
+                          title={`${result.weaponName}: hits`}
                         />
                       )}
                     </TableCell>
