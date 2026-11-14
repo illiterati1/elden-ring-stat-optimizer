@@ -140,6 +140,11 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
           {enemy.poiseNote}
         </Typography>
       )}
+      {enemy?.weakPartDamageRate != null && (
+        <Typography variant="body2" color="text.secondary">
+          Takes {enemy.weakPartDamageRate}× damage on its weak spot
+        </Typography>
+      )}
       {enemy?.riposteNotes &&
         Object.entries(enemy.riposteNotes).map(([riposte, note]) => (
           <Typography key={riposte} variant="body2" color="text.secondary">

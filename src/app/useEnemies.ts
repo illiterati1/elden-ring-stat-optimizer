@@ -23,6 +23,8 @@ export interface Enemy {
   poiseDamageRate?: number;
   /** How its poise differs otherwise, e.g. only on some body parts */
   poiseNote?: string;
+  /** Damage multiplier on its weak spot from every attack, if noted (e.g. 3 for Smith Golems) */
+  weakPartDamageRate?: number;
   /** The ripostes the player can do to it (e.g. ["Large Riposte"]), none if it can't be riposted */
   ripostes: string[];
   /** When some of its ripostes apply, e.g. { "Small Riposte": "when they fall from their horse" } */

@@ -90,6 +90,7 @@ def stats_key(enemy):
         enemy.get("criticalDamageRate", 1),
         enemy.get("poiseDamageRate", 1),
         enemy.get("poiseNote"),
+        enemy.get("weakPartDamageRate", 1),
     )
 
 
@@ -117,42 +118,17 @@ def merged_name(names):
     return combined
 
 
-def merge_identical(enemies, placements, merged_looks=()):
+def merge_identical(enemies, placements):
     """
-    Merges an area's entries that differ only in their names, in place. Entries of the same name that
-    look different (their model's parts shown) stay apart, and so does the rest of their group, but
-    only if that name is ambiguous anyway (shared by entries with different stats): otherwise looks
-    don't matter (the user's call: too many entries)
+    Merges an area's entries that differ only in their names, in place, however they look (the user's
+    call: an entry per set of stats). Entries split or kept apart by hand ("separate") stay apart.
     """
-    # Names shared by entries with different stats in the same section of the picker
-    def section(enemy):
-        return next((c for c in ["friendly", "boss", "neutral"] if enemy.get(c)), "enemy")
-
-    stats_by_name = {}
-    for enemy in enemies.values():
-        stats_by_name.setdefault((section(enemy), base_name(enemy["name"])), set()).add(stats_key(enemy))
-    # (except names whose looks are merged by hand)
-    ambiguous = {
-        name
-        for name, stats in stats_by_name.items()
-        if len(stats) > 1 and name[1] not in merged_looks
-    }
     groups = {}
     for key, enemy in list(enemies.items()):
-        # (entries split by hand stay apart)
         if enemy.get("separate"):
             continue
         groups.setdefault(stats_key(enemy), []).append(key)
     for keys in groups.values():
-        looks = {}
-        for key in keys:
-            name = (section(enemies[key]), base_name(enemies[key]["name"]))
-            if name in ambiguous:
-                looks.setdefault(name, set()).add(enemies[key].get("appearance"))
-        # (neutral wildlife is told apart by HP alone)
-        neutral = enemies[keys[0]].get("neutral")
-        if not neutral and any(len(appearances) > 1 for appearances in looks.values()):
-            continue
         if len(keys) < 2:
             continue
         first = enemies[keys[0]]
@@ -172,9 +148,9 @@ def identify(area_name, enemies, placements, labels, unresolved):
     """
     # Labels by hand apply wherever the NpcParam ID is
     for enemy in enemies.values():
-        label = next(
-            (labels[(area_name, i)] for i in enemy["npcParamIds"] if (area_name, i) in labels), None
-        )
+        # (rows labeled differently but merged for their stats get both labels, e.g. "Cleaver/Lantern")
+        found = {labels[(area_name, i)] for i in enemy["npcParamIds"] if (area_name, i) in labels}
+        label = "/".join(sorted(found - {""})) if found else None
         if label is None:
             label = next(
                 (
@@ -337,7 +313,7 @@ def apply_edits(areas, placements, edits, is_dlc):
       - ("delete", match)
       - ("rename", match, new name or (pattern, replacement), see rename)
       - ("set", match, fields): sets fields (e.g. {"boss": True}), removing those set to None
-      - ("move", match, area name): moves it to another area
+      - ("move", match, area name): moves it to another area (a new one, in its region, if there's none)
       - ("split", match, {NpcParam ID: name}): makes those IDs their own entries with those names
       - ("region", {"area": name}, region): moves an area to another region
     """
@@ -361,6 +337,7 @@ def apply_edits(areas, placements, edits, is_dlc):
                             enemy[field] = value
                 elif action == "move" and area["name"] != args[0]:
                     del area["enemies"][key]
+                    areas.setdefault(args[0], {"name": args[0], "region": area["region"], "enemies": {}})
                     areas[args[0]]["enemies"][(key, "moved", area["name"])] = enemy
                 elif action == "split":
                     for npc_param_id, name in args[0].items():

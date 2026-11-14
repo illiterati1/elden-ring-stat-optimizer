@@ -33,7 +33,8 @@ from collections import Counter, defaultdict
 sys.path.insert(0, os.path.dirname(__file__))
 from extract_fmg import read_fmg  # noqa: E402
 from extract_param import read_param  # noqa: E402
-from enemy_curation import apply_edits, identify, merge_identical, report, where_is  # noqa: E402
+from enemy_curation import apply_edits, identify, merge_identical, report, where_is, with_identifier  # noqa: E402
+from enemy_curation import base_name as without_boss_tag  # noqa: E402
 
 REGULATION_VERSION = 11730034
 
@@ -115,6 +116,28 @@ NEUTRAL_NAMES = {
 # like the rams that attack (c5450)
 MODEL_NAME_OVERRIDES = {6060: "Sheep"}
 
+# The rams: the other c5450 rows (54500xxx, 54503xxx, 54506xxx, 545070xx) and the base game's
+# other 6060xxxx rows are sheep (the user)
+RAM_ID = re.compile(r"5450[1245]\d{3}|545071\d\d|6060[1245]\d{3}")
+
+# Foot soldiers' crossbow rows (437x4xxx, weaker than the others; the user): labeled "Crossbow",
+# leaving the other foot soldiers of their name in their area plain
+CROSSBOW_ID = re.compile(r"437\d4\d{3}")
+
+# Weak spots (NpcParam weakPartsDamageRate) are noted for enemies whose weak spot takes more damage from
+# every attack (partsDamageType 1; 0 is arrows only, e.g. headshots), at least this much more (×1.5 is
+# common and often on models without one). Which part it is comes from the model, not the params.
+WEAK_PART_NOTE_MIN_RATE = 2
+
+# Crystalians' shells (a permanent SpEffect until it shatters): damage taken multipliers, by NEGATIONS
+# field. Each entry with one is listed whole and shattered ("... (Shattered)", its params' own
+# negation; the user)
+CRYSTAL_SHELL_SPEFFECT = 11550
+
+# Finger Reader Crones (2160xxxx, also Godwyn's Wet Nurse and the Keeper of Forbidden Lands) aren't
+# fought (the user)
+EXCLUDED_NPC_PARAM_ID = re.compile(r"2160\d{4}")
+
 # Names by NpcParam ID, e.g. for a boss's phases, which share a name
 NPC_PARAM_NAME_OVERRIDES = {
     20300024: "Rennala, Queen of the Full Moon (Phase 1)",
@@ -143,6 +166,17 @@ NPC_PARAM_AREA_OVERRIDES = {
     41300032: "Hermit Village",  # Demi-Human Queen, 72 m from the label
     35600030: "Dominula, Windmill Village",  # Godskin Apostle, 127 m away and 41 m higher
     48200920: "Village of the Albinaurics",  # Omenkiller, 170 m away
+    41610013: "Castle Morne",  # Stray Dog, also NW of Castle Morne Lift (the user)
+    43143041: "Redmane Castle",  # Radahn Soldier, also by the Impassable Greatbridge (the user)
+}
+
+# Areas of their own within a map, by the nearest grace (the user), e.g. Castle Morne in the Weeping
+# Peninsula: {map's area: {grace: area}}
+GRACE_AREA_OVERRIDES = {
+    "Weeping Peninsula": {
+        grace: "Castle Morne" for grace in ["Morne Moangrave", "Beside the Rampart Gaol", "Behind the Castle"]
+    },
+    "Caelid": {grace: "Redmane Castle" for grace in ["Chamber Outside the Plaza", "Redmane Castle Plaza"]},
 }
 
 # Overworld areas' regions, by hand, where the nearest grace is the wrong one
@@ -150,6 +184,7 @@ AREA_REGION_OVERRIDES = {
     "Wyndham Ruins": "Altus Plateau",  # nearest Mt. Gelmir's Seethewater River
     "Writheblood Ruins": "Altus Plateau",  # nearest a Mt. Gelmir grace
     "Stormhill Evergaol": "Stormhill",  # nearest a Limgrave grace
+    "Giants' Mountaintop Catacombs": "Mountaintops of the Giants",  # nearest a Flame Peak grace (the user)
 }
 
 # Identifiers by hand for entries that share a name in an area, by area and NpcParam ID (see
@@ -166,7 +201,11 @@ ENEMY_LABELS = {
     **{("Ainsel River Main", i): "Lake of Rot" for i in [41500862, 41500062]},
     **{("Ainsel River Main", i): "South" for i in [37500060, 37501060, 37502060]},  # Clayman
     **{("Ainsel River Main", i): "North" for i in [37500062, 37501062, 37502062]},
-    **{("Ainsel River Main", i): "South" for i in [42800060, 42800160, 42800360]},  # Giant Ant
+    **{("Ainsel River Main", i): "South" for i in [42800060, 42800160]},  # Giant Ant
+    # Giant Ant queens (428003xx: a ×10 weak spot; the user)
+    ("Ainsel River Main", 42800360): "Queen, South",
+    ("Deeproot Depths", 42800366): "Queen",
+    **{("Deeproot Depths", i): "" for i in [42800566, 42800466, 42800066, 42800166]},
     **{("Ainsel River Main", i): "North" for i in [42800062, 42800462, 42800862]},
     ("Ainsel River Main", 42801162): "Mount",
     ("Ainsel River Main", 46202060): "South",  # Malformed Star
@@ -186,8 +225,6 @@ ENEMY_LABELS = {
             30704030: "Rib-Rake",
         }.items()
     },
-    ("Altus Plateau", 21601030): "Greatbridge",  # Finger Reader Crone
-    ("Altus Plateau", 21601033): "Capital Outskirts",
     ("Altus Plateau", 30601030): "Glaive",  # Giant Skeleton
     ("Altus Plateau", 30600030): "Greataxe",
     ("Altus Plateau", 46601030): "Archer",  # Guardian Golem
@@ -210,12 +247,10 @@ ENEMY_LABELS = {
     ("Bellum Highway", 43724020): "Crossbow",  # Raya Lucaria Foot Soldier
     # Plain names that don't need a type, beside a "(...)" version (like the Slug)
     ("Bellum Highway", 40000020): "",  # Revenant Follower, beside (Cloakless)
-    ("Belurat, Tower Settlement", 52500088): "",  # Divine Bird Warrior
     **{("Bellum Highway", i): "" for i in [43720020, 43722020, 43723020, 43727020]},
     # Caelid (the user's review)
     ("Caelid", 44702041): "",  # Abductor Virgin (its unscaled copy is left out)
     ("Caelid", 42700040): "",  # Elder Lion
-    ("Caelid", 42700041): "Redmane Castle",
     **{("Caelid", i): "" for i in [45500040, 45502040, 45501040, 45503040]},  # Giant Dog
     ("Caelid", 30601040): "Glaive",  # Giant Skeleton
     ("Caelid", 30600040): "Greataxe",
@@ -225,27 +260,18 @@ ENEMY_LABELS = {
     ("Caelid", 523740040): "Right",
     ("Caelid", 523750040): "Middle",
     **{("Caelid", i): "" for i in [42000040, 42000140]},  # Man-Bat
-    ("Caelid", 42000141): "Redmane Castle",
     **{("Caelid", i): "" for i in [42017440, 42017640, 42017540, 42017740, 42017840]},  # Operatic Bat
-    ("Caelid", 42017441): "Redmane Castle",
     **{("Caelid", i): "" for i in [  # Radahn Foot Soldier
         43740540, 43740040, 43741040, 43743040, 43746040, 43747040,
-    ]},
-    **{("Caelid", i): "Redmane Castle" for i in [
-        43741541, 43741441, 43741841, 43740541, 43740041, 43742041, 43746041, 43747041,
     ]},
     **{("Caelid", i): "" for i in [  # Radahn Soldier
         43140040, 43140340, 43140140, 43141040, 43141140, 43142040, 43143040,
     ]},
-    **{("Caelid", i): "Redmane Castle" for i in [43140041, 43140341, 43141141, 43143041]},
     **{("Caelid", i): "" for i in [43540040, 43541040, 43541140, 43542040]},  # Redmane Knight
-    **{("Caelid", i): "Redmane Castle" for i in [43540041, 43541041]},
     ("Caelid", 41700140): "",  # Skeletal Slime
-    ("Caelid", 41700141): "Redmane Castle",
     ("Caelid", 41610040): "",  # Stray Dog
-    ("Caelid", 41610041): "Redmane Castle",
     ("Caelid", 46000040): "Pot",  # Troll
-    ("Caelid", 46003041): "Redmane Castle",
+    ("Caelid", 43401040): "Hammer",  # Mad Pumpkin Head (the user)
     # Consecrated Snowfield
     ("Consecrated Snowfield", 34703252): "Broken Club",  # Albinauric
     **{("Consecrated Snowfield", i): "" for i in [
@@ -266,25 +292,178 @@ ENEMY_LABELS = {
     ("Deeproot Depths", "chara", 23711): "Staff",
     ("Deeproot Depths", "chara", 23611): "Twinblade",
     ("Deeproot Depths", "chara", 23701): "Greataxes",
+    # Mountaintops of the Giants' Banished Knights (the user)
+    **{("Mountaintops of the Giants", i): "Castle Sol Rooftops" for i in [30101651, 30102651]},
+    **{("Mountaintops of the Giants", i): "Inner Castle Sol" for i in [30100451, 30101451]},  # Draconic
+    ("Mountaintops of the Giants", 40800051): "Castle Sol",  # Rat, beside the Rat / Stray Dog
+    ("Mountaintops of the Giants", 36703051): "Black Dumpling",  # Elder Albinauric
+    **{("Mountaintops of the Giants", i): "Screamer" for i in [36702051, 36702251]},
+    ("Mountaintops of the Giants", 46609050): "Archer",  # Guardian Golem
+    ("Mountaintops of the Giants", 46602050): "Halberd",
+    **{("Mountaintops of the Giants", i): "Red Wings" for i in [42000050, 42000150]},  # Man-Bat
+    **{("Mountaintops of the Giants", i): "Green Wings" for i in [42001050, 42001150]},
+    **{("Rivermouth Cave", i): "" for i in [50800490, 50801490]},  # Bloodfiend (the user)
+    ("Sainted Hero's Grave", 40000030): "",  # Revenant Follower, beside (Horseback) (the user)
+    **{("Ruin-Strewn Precipice", i): "" for i in [42017426, 42017526]},  # Operatic Bat (the user)
+    ("Ruin-Strewn Precipice", 42018026): "Crown",
+    ("Ruins of Unte", 52404191): "1,004 HP",  # Shadow Commoner (the user)
+    ("Ruins of Unte", 52407091): "1,925 HP",
+    # Rauh Base (the user)
+    **{("Rauh Base", i): "Rauh Base" for i in [50900090, 50900190]},  # Gravebird
+    **{("Rauh Base", i): "Scorpion River" for i in [50900295, 50900095]},
+    ("Rauh Base", 57901095): "Archer",  # Guardian Golem
+    ("Rauh Base", 57900095): "Halberd",
+    **{("Rauh Base", i): "" for i in [56510095, 56512095, 56512595]},  # Messmer Foot Soldier
+    **{("Rauh Base", i): "" for i in [62900095, 62901095]},  # Misbegotten
+    # Scadu Altus (the user)
+    **{("Scadu Altus", i): "" for i in [  # Boar
+        54400090, 54400890, 54400190, 54401090, 54401190,
+    ]},
+    **{("Scadu Altus", i): "Recluses' River" for i in [54401091, 54400091, 54400191, 54401191]},
+    **{("Scadu Altus", i): "" for i in [53800390, 53810390]},  # Miranda Blossom, Sprout
+    **{("Scadu Altus", i): "Recluses' River" for i in [53800091, 53810091]},
+    **{("Scadu Altus", i): "" for i in [62902090, 62901090, 62900090]},  # Misbegotten
+    ("Scadu Altus", 55230081): "1,395 HP",  # Shadow Stray Dog
+    ("Scadu Altus", 55230090): "1,625 HP",
+    ("Sellia Hideaway", 37021040): "Olivinus",  # Glintstone Sorcerer (the user)
+    **{("Sellia Hideaway", i): "Lazuli/Twinsage" for i in [37022040, 37023040]},
+    # Siofra River (the user)
+    **{("Siofra River", i): "" for i in [37500064, 37502064]},  # Clayman
+    **{("Siofra River", i): "Upper Siofra" for i in [37500065, 37502065]},
+    **{("Siofra River", i): "" for i in [70003165, 70002065, 70000065]},  # Fallen Hawk Soldier
+    ("Siofra River", 70001065): "Greatshield",
+    **{("Specimen Storehouse", i): "Shortsword" for i in [  # Fire Knight (the user)
+        51601099, 51602099, 51600099, 51602299,
+    ]},
+    **{("Stone Coffin Fissure", i): "" for i in [59400087, 59401087]},  # Sentry Stone (the user)
+    ("Stone Coffin Fissure", 59400487): "Beam",
+    **{("Stormveil Castle", i): "" for i in [42101214, 42101014, 42101114]},  # Warhawk (the user)
+    **{("Stormveil Castle", i): "Hooded" for i in [42100114, 42100014]},
+    **{("Subterranean Shunning-Grounds", i): "" for i in [36610035, 36611035]},  # Putrid Corpse (the user)
+    **{("Subterranean Shunning-Grounds", i): "Excised" for i in [21400035, 21400135, 21401035]},  # Omen
+    **{("Subterranean Shunning-Grounds", i): "Monstrosity" for i in [21400335, 21400235, 21401235]},
+    **{("Subterranean Shunning-Grounds", i): "" for i in [21401435, 21400435]},
+    **{("Village of the Albinaurics", i): "" for i in [36700120, 36704020]},  # Elder Albinauric (the user)
+    **{("Village of the Albinaurics", i): "Cloak" for i in [36701120, 36701121, 36701021]},
+    # Volcano Manor (the user)
+    **{("Volcano Manor", i): "Screamer" for i in [36702238, 36702138, 36702038]},  # Elder Albinauric
+    **{("Volcano Manor", i): "Cloak" for i in [36701138, 36701038]},
+    ("Volcano Manor", 36703038): "Black Dumpling",
+    ("Volcano Manor", 39504038): "Sorcerer",  # Man-Serpent
+    **{("Volcano Manor", i): "" for i in [39502038, 39500038, 39501138, 39503038]},
+    **{("Greyoll's Dragonbarrow", i): "Spectral" for i in [  # Radahn Soldier (the user)
+        43143242, 43143042, 43142042, 43140042, 43140342, 43141342, 43141042,
+    ]},
+    ("Greyoll's Dragonbarrow", 60601042): "55 HP",  # Ram (the user)
+    ("Greyoll's Dragonbarrow", 60602042): "82 HP",
+    ("Scadu Altus", 54700090): "",  # Dragonfly, beside the Recluses' River ones (the user)
+    # Scaduview (the user)
+    ("Scaduview", 50600193): "Pink",  # Lamprey
+    ("Scaduview", 50600093): "Black",
+    ("Scaduview", 54501092): "Scaduview",  # Ram
+    ("Scaduview", 54501093): "Hinterland",
+    # Nokron, Eternal City (the user)
+    **{("Nokron, Eternal City", i): "1,020 HP" for i in [33700865, 33700265]},  # Ancestral Follower Shaman
+    ("Nokron, Eternal City", 33700065): "1,462 HP",
+    **{("Nokron, Eternal City", i): "" for i in [70002065, 70003165, 70000065]},  # Fallen Hawk Soldier
+    ("Nokron, Eternal City", 70001065): "Greatshield",
+    **{("Nokron, Eternal City", i): "" for i in [33201065, 33201165, 33200265]},  # Silver Tear
+    # Its Mimic Tears share an NpcParam row, so they're labeled by their CharaInitParam builds
+    ("Nokron, Eternal City", "chara", 23680): "Crossbow",
+    ("Nokron, Eternal City", "chara", 23681): "Mace",
+    ("Nokron, Eternal City", "chara", 23682): "Zweihander",
+    ("Nokron, Eternal City", "chara", 23683): "Spear",
+    # Mt. Gelmir (the user)
+    **{("Mt. Gelmir", i): "" for i in [44700032, 44701032]},  # Abductor Virgin
+    ("Mt. Gelmir", 36610032): "",  # Putrid Corpse
+    # Mohgwyn Palace's Albinaurics (the user)
+    ("Mohgwyn Palace", 34703068): "Broken Club",
+    **{("Mohgwyn Palace", i): "" for i in [34700268, 34701468, 34704268, 34702468]},
+    # Liurnia of the Lakes (the user)
+    **{("Liurnia of the Lakes", i): "Brown Tunic" for i in [  # Albinaurics
+        34702120, 34700120, 34701120, 34703020, 34704120, 34702320,
+    ]},
+    **{("Liurnia of the Lakes", i): "Chainmail" for i in [34701020, 34704020, 34700020]},
+    ("Liurnia of the Lakes", 30601020): "Glaive",  # Giant Skeleton
+    ("Liurnia of the Lakes", 30600020): "Greataxe",
+    ("Liurnia of the Lakes", 523100010): "Lake-Facing Cliffs",  # Lightseeker Hyetta
+    **{("Liurnia of the Lakes", i): "" for i in [523100020, 523100120]},
+    **{("Liurnia of the Lakes", i): "Frenzy" for i in [44800120, 44810120]},  # Miranda Blossom, Sprout
+    **{("Liurnia of the Lakes", i): "Magic" for i in [44800220, 44810220]},
+    ("Liurnia of the Lakes", 40000020): "",  # Revenant Follower
+    # Leyndell, Royal Capital (the user)
+    **{("Leyndell, Royal Capital", i): "" for i in [43530034, 43531034, 43532034]},  # Leyndell Knight
+    ("Leyndell, Royal Capital", 43531534): "Spear, NE of Fortified Manor",
+    ("Leyndell, Royal Capital", 37030034): "",  # Noble's Page (the user)
+    ("Leyndell, Royal Capital", 37031034): "Pulley Crossbow",
+    # Greyoll's Dragonbarrow (the user)
+    **{("Greyoll's Dragonbarrow", i): "Fort Faroth" for i in [42017542, 42017642, 42017442]},  # Operatic Bat
+    ("Greyoll's Dragonbarrow", 42018042): "",
+    # (its Vulgar Militia like the Forbidden Lands')
+    **{("Greyoll's Dragonbarrow", i): "" for i in [43210142, 43211142]},
+    ("Greyoll's Dragonbarrow", 43212142): "Chain",
+    **{("Hidden Path to the Haligtree", i): "" for i in [43210152, 43211152]},  # Vulgar Militia (the user)
+    # Forbidden Lands' Vulgar Militia (the user): two outfits with the same stats, and the chain one, with
+    # 20% dark negation (the same parts shown as the Hidden Path to the Haligtree's)
+    **{("Forbidden Lands", i): "" for i in [43210150, 43211150]},
+    ("Forbidden Lands", 43212150): "Chain",
+    # Giant-Conquering Hero's Grave's Fire Monks (the user)
+    ("Giant-Conquering Hero's Grave", 39000050): "Mace",
+    ("Giant-Conquering Hero's Grave", 39001050): "Sword",
+    # Gravesite Plain (the user)
+    ("Gravesite Plain", 58400080): "Church",  # Black Knight (Great Hammer)
+    ("Gravesite Plain", 58400081): "Castle Front",
+    **{("Gravesite Plain", i): "Prospect Town" for i in [50807080, 50802080, 50801080, 50800080]},  # Bloodfiend
+    **{("Gravesite Plain", i): "" for i in [50801081, 50800081]},
+    **{("Gravesite Plain", i): "" for i in [54400080, 54401080]},  # Boar (two looks, the same stats)
+    ("Gravesite Plain", 54401181): "Pillar Path",
+    ("Gravesite Plain", 50400080): "",  # Curseblade
+    ("Gravesite Plain", 50400081): "Pillar Path",
+    ("Gravesite Plain", 50900080): "S of Greatbridge",  # Gravebird
+    **{("Gravesite Plain", i): "N of Greatbridge" for i in [50900081, 50900281]},
+    ("Gravesite Plain", 55220080): "",  # Large Shadow Stray Dog
+    ("Gravesite Plain", 55220081): "Prospect Town",
+    **{("Gravesite Plain", i): "Cliffroad" for i in [55300180, 55300080]},  # Man-Bat
+    **{("Gravesite Plain", i): "" for i in [55300181, 55300081]},
+    **{("Gravesite Plain", i): "Ellac River" for i in [59000081, 59000181]},  # Man-Fly (two looks)
+    # Messmer Soldiers and Shadow Commoners: their weapons and outfits have the same stats
+    **{("Gravesite Plain", i): "Church" for i in [58300080, 58300280, 58300680, 58300180, 58300380]},
+    **{("Gravesite Plain", i): "" for i in [58300081, 58300181, 58300381, 58300681, 58300281, 58300581]},
+    **{("Gravesite Plain", i): "" for i in [
+        52403280, 52403480, 52400280, 52404180, 52407580, 52407480, 52400780,
+    ]},
+    ("Gravesite Plain", 52404181): "Pillar Path",
+    ("Abandoned Ailing Village", 52407080): "",  # Shadow Commoner, beside (Jar)
+    **{("Gravesite Plain", i): "" for i in [55230080, 57600080]},  # Rat / Shadow Stray Dog
+    **{("Gravesite Plain", i): "Ellac River" for i in [55230081, 57600081]},
+    ("Gravesite Plain", 51100080): "",  # Spirit Eel
+    **{("Gravesite Plain", i): "Ellac River/Pillar Path" for i in [51100781, 51100081]},
+    # Foot of the Jagged Peak (the user)
+    **{("Foot of the Jagged Peak", i): "" for i in [53600184, 53601184, 53602184, 53603184, 53604084]},
+    ("Foot of the Jagged Peak", 59310084): "Greataxe",  # Giant Beast Skeleton
+    ("Foot of the Jagged Peak", 55800084): "Pond",  # Jagged Peak Drake
+    ("Foot of the Jagged Peak", 55800985): "Duel",
     # Dragon's Pit's Giant Beast Skeletons (the user)
     **{("Dragon's Pit", i): "" for i in [53604181, 53603181, 53600181, 53601181]},
     ("Dragon's Pit", 59311081): "Glaive",
     ("Dragon's Pit", 59310081): "Greataxe",
-    # Elphael, Brace of the Haligtree (the user): the weaker ones are in the Haligtree, the stronger in
+    # Miquella's Haligtree (the user): the weaker ones are in the Haligtree, the stronger in
     # Elphael; Millicent by her nearest grace
-    **{("Elphael, Brace of the Haligtree", i): "Haligtree" for i in [
+    **{("Miquella's Haligtree", i): "Haligtree" for i in [
         33501154, 33500154, 33502154,  # Crystalian
         44820054,  # Rotten Miranda Blossom
         44830054, 44831054,  # Rotten Miranda Sprout
     ]},
-    **{("Elphael, Brace of the Haligtree", i): "Elphael" for i in [
+    **{("Miquella's Haligtree", i): "Elphael" for i in [
         33501556, 33500556, 33502556, 44820056, 44831056,
     ]},
-    ("Elphael, Brace of the Haligtree", 523480256): "Drainage Channel",  # Millicent
-    ("Elphael, Brace of the Haligtree", 523480056): "Prayer Room",
-    # Enir-Ilim's Divine Beast Warriors, by HP
-    **{("Enir-Ilim", i): "8,555 HP" for i in [52501289, 52501389]},
-    ("Enir-Ilim", 52501489): "10,613 HP",
+    ("Miquella's Haligtree", 523480256): "Drainage Channel",  # Millicent
+    ("Miquella's Haligtree", 523480056): "Prayer Room",
+    # Enir-Ilim's Divine Beast Warriors (the user): the strong one by its grace, and Belurat's (moved
+    # here) by its area
+    **{("Enir-Ilim", i): "" for i in [52501289, 52501389]},
+    ("Enir-Ilim", 52501489): "Cleansing Chamber",
+    ("Enir-Ilim", 52501189): "Belurat",
     # Divine Tower of East Altus's Leyndell Foot Soldiers (the user)
     ("Divine Tower of East Altus", 43734050): "Crossbow",
     ("Divine Tower of East Altus", 43737050): "",
@@ -303,19 +482,15 @@ ENEMY_LABELS = {
     # Its two Mimic Tears share an NpcParam row, so they're labeled by their CharaInitParam builds
     ("Ainsel River Main", "chara", 23682): "Greatsword",
     ("Ainsel River Main", "chara", 23683): "Spear/Shield",
-    # Glintstone Sorcerers: the stronger ones are Twinsage, the weaker Karolos or Olivinus
-    ("Academy Crystal Cave", 37023020): "Twinsage",
+    # Glintstone Sorcerers: the stronger ones are Lazuli or Twinsage, the weaker Karolos or Olivinus
+    ("Academy Crystal Cave", 37023020): "Lazuli/Twinsage",
     ("Academy Crystal Cave", 37020020): "Karolos/Olivinus",
-    **{("Academy of Raya Lucaria", i): "Twinsage" for i in [37022024, 37023024, 37024024]},
+    **{("Academy of Raya Lucaria", i): "Lazuli/Twinsage" for i in [37022024, 37023024, 37024024]},
     **{("Academy of Raya Lucaria", i): "Karolos/Olivinus" for i in [37020024, 37021024]},
     # The Man-Flies differ only in HP, as far as the user can see
     ("Abandoned Ailing Village", 59000080): "1,353 HP",
     ("Abandoned Ailing Village", 59000081): "1,653 HP",
 }
-
-# Names whose entries are told apart by stats alone, not looks (merged where their stats match), by
-# area, from the user's review
-MERGED_LOOKS = {("Ainsel River Main", "Silver Tear")}
 
 # Edits by hand to the picker's entries, from the user's review of each area, in order (see
 # enemy_curation.py apply_edits). Anywhere unless an area is given.
@@ -347,7 +522,8 @@ ENEMY_EDITS = [
     ("move", {"area": "Liurnia of the Lakes", "ids": [36708020]}, "Village of the Albinaurics"),
     # Names
     ("rename", {"name": "Putrid Flesh", "dlc": False}, "Skeletal Slime"),
-    ("rename", {"name": "Crystalian"}, "Crystalian (Shattered)"),
+    # (Mohgwyn Palace's and Writheblood Ruins' large ones; the user)
+    ("rename", {"name": "Large Putrid Flesh", "dlc": False}, "Giant Skeletal Slime"),
     # Liurnia's Albinaurics away from the Village of the Albinaurics are just Albinaurics (the user)
     ("rename", {"area": "Liurnia of the Lakes", "name_re": r"^Albinauric Frog"}, ("^.*$", "Albinauric")),
     ("rename", {"name_re": r"^Omen Monstrosity"}, (r"^Omen Monstrosity", "Omen")),
@@ -389,19 +565,32 @@ ENEMY_EDITS = [
     ("delete", {"area": "Crumbling Farum Azula", "ids": [35600972]}),
     # Elphael: the 8993 HP Mary, Eldest Sister (533870056) is the player's ally in the version where they
     # fight Millicent with her; the one fought is 523870056, beside Millicent (the user)
-    ("delete", {"area": "Elphael, Brace of the Haligtree", "ids": [533870056]}),
+    ("delete", {"area": "Miquella's Haligtree", "ids": [533870056]}),
     # Enir-Ilim (the user): one Divine Bird Warrior; the rest (the greatsword ones, parts shown 23: the
     # Divine Beast head) are Divine Beast Warriors. Its Fat Hornsent Inquisitor 53200000 is an unscaled
     # copy (576 HP)
     ("rename", {"area": "Enir-Ilim", "ids": [52500189]}, (r"^.*$", "Divine Bird Warrior")),
     ("rename", {"area": "Enir-Ilim", "ids": [52501289, 52501389, 52501489]}, (r"^.*$", "Divine Beast Warrior")),
     ("delete", {"area": "Enir-Ilim", "ids": [53200000]}),
+    # Enir-Ilim's non-boss Promised Consort Radahn isn't fought (the user)
+    ("delete", {"area": "Enir-Ilim", "ids": [52202000]}),
+    # Enir-Ilim's only ally is Sir Ansbach, by the Gate of Divinity (the user). Its Ansbach, Nataan, and
+    # Thiollier by the Cleansing Chamber Anteroom are summons, like Ansbach and Thiollier's for Radahn
+    # (534160089 and 534190089, already left out), and its other allies aren't fought
+    ("delete", {"area": "Enir-Ilim", "ids": [
+        524250089, 524140089, 524150089, 524180089, 524170089,  # Dane, Hornsent, Moore, Leda, Freyja
+        524190089,  # Thiollier
+        534160189, 534260089, 534190189,  # Ansbach, Nataan, Thiollier by the Cleansing Chamber
+    ]}),
+    # Belurat (the user): its Divine Beast Warrior goes with Enir-Ilim's (kept apart from the Divine Bird
+    # Warrior, whose stats are the same), and its Divine Bird Warriors are Horned Warriors
+    ("rename", {"area": "Belurat, Tower Settlement", "ids": [52501189]}, (r"^.*$", "Divine Beast Warrior")),
+    ("set", {"area": "Belurat, Tower Settlement", "ids": [52501189]}, {"separate": True}),
+    ("move", {"area": "Belurat, Tower Settlement", "ids": [52501189]}, "Enir-Ilim"),
+    ("rename", {"area": "Belurat, Tower Settlement", "ids": [52500088, 52500988, 52501088]}, (r"^.*$", "Horned Warrior")),
     # Deeproot Depths: the level 149 Fia's Champion (CharaInitParam 23612) isn't in the fight (the user)
     ("delete", {"area": "Deeproot Depths", "name": "Fia's Champion", "hp": 1680}),
     # Cerulean Coast (the user's review)
-    # Its "Rams" are all neutral sheep (the user)
-    ("rename", {"area": "Cerulean Coast", "ids": [54500083, 54506083, 54503083]}, "Sheep"),
-    ("set", {"area": "Cerulean Coast", "ids": [54500083, 54506083, 54503083]}, {"neutral": True}),
     ("move", {"area": "Cerulean Coast", "ids": [51100184]}, "Charo's Hidden Grave"),  # Spirit Eel
     # Castle Ensis' stronger versions are Scadu Altus' (the user)
     ("move", {"area": "Castle Ensis", "ids": [
@@ -410,9 +599,222 @@ ENEMY_EDITS = [
     # Belurat's stronger Spider Scorpions are Enir-Ilim's (the user)
     ("move", {"area": "Belurat, Tower Settlement", "ids": [51920094, 51930094]}, "Enir-Ilim"),
     ("rename", {"area": "Moonlight Altar", "name": "Spiritcaller Snail"}, "Crystal Snail"),
-    # The only Royal Revenant is Kingsrealm Ruins'; Moonlight Altar's is in the Lunar Estate Ruins
+    # Forbidden Lands' Black Blade Kindred and Night's Cavalry need no identifiers (the user)
+    ("rename", {"area": "Forbidden Lands", "ids": [47700250, 31500050]}, (r" \([^()]*\)$", "")),
+    # Limgrave (the user): its stronger Larval Land Octopus and Miranda Sprout are the Weeping
+    # Peninsula's, its strongest Wandering Noble is a sniper, and its weakest Wolves are corpses
+    ("move", {"area": "Limgrave", "ids": [42300012, 44810012]}, "Weeping Peninsula"),
+    ("rename", {"area": "Limgrave", "ids": [43002110]}, (r"^.*$", "Noble Sorcerer Sniper (Agheel Lake South Camp)")),
+    ("delete", {"area": "Limgrave", "ids": [40700009]}),
+    # Liurnia of the Lakes (the user): an unscaled Blaidd (20100000) that isn't seen, its Deathbird, rows
+    # not fought (a Glintstone Sorcerer, two Jar-Bairns, Pidia), and its stronger Red and White Wolves,
+    # which are the Moonlight Altar's
+    ("delete", {"area": "Liurnia of the Lakes", "ids": [
+        20100000, 37020020, 44919320, 44919020, 36709920, 36709020,
+    ]}),
+    ("rename", {"area": "Liurnia of the Lakes", "ids": [49800020]}, "Deathbird"),
+    ("move", {"area": "Liurnia of the Lakes", "ids": [31810022, 40710022]}, "Moonlight Altar"),
+    # Moorth Ruins' one Gravesite Plain-level Shadow Stray Dog (55230081) isn't found there (the user)
+    ("delete", {"area": "Moorth Ruins", "ids": [55230081]}),
+    # Mountaintops of the Giants (the user): an unscaled Skeleton (148 HP), and plain names for the
+    # rest of its Skeletons, its Fire Slug, and its White Stormhawk
+    ("delete", {"area": "Mountaintops of the Giants", "ids": [35001000]}),
+    ("rename", {"area": "Mountaintops of the Giants", "name": "Skeleton (Curved Sword)"}, (r"^.*$", "Skeleton")),
+    ("rename", {"area": "Mountaintops of the Giants", "ids": [40403050]}, (r"^.*$", "Fire Slug")),
+    ("rename", {"area": "Mountaintops of the Giants", "ids": [42103050]}, (r"^.*$", "White Stormhawk")),
+    # The DLC's friendly Kindred of Rot are Forager Broods (the user)
+    ("rename", {"name": "Kindred of Rot", "friendly": True, "dlc": True}, (r"^.*$", "Forager Brood")),
+    # Rauh Base (the user): its crossbow Messmer Foot Soldier is just "Crossbow", and its strongest
+    # Misbegotten is scaly
+    ("rename", {"area": "Rauh Base", "ids": [56514095]}, (r"^.*$", "Messmer Foot Soldier (Crossbow)")),
+    ("rename", {"area": "Rauh Base", "ids": [62910095]}, (r"^.*$", "Scaly Misbegotten")),
+    ("rename", {"area": "Rauh Base", "ids": [52500095, 52501095]}, (r"^.*$", "Horned Warrior")),
+    # (the one 57 m from Temple Town Ruins' grace is the ruins'; the user)
+    ("split", {"area": "Rauh Base", "ids": [52501095]}, {52501095: "Horned Warrior"}),
+    ("move", {"area": "Rauh Base", "ids": [52501095]}, "Temple Town Ruins"),
+    # Scadu Altus (the user): entries that are other areas', and its Longhaft Axe Misbegotten is scaly
+    # (as in Rauh Base). Its stronger Shadow Commoners (by the Castle Watering Hole, and one by
+    # Recluses' River Downstream) are the Ruins of Unte's
+    ("move", {"area": "Scadu Altus", "ids": [54401193, 51100693]}, "Scaduview"),  # Boar, Spirit Eel
+    ("move", {"area": "Scadu Altus", "ids": [50400090]}, "Moorth Ruins"),  # Curseblade
+    ("move", {"area": "Scadu Altus", "ids": [50400091]}, "Village of Flies"),
+    ("move", {"area": "Scadu Altus", "ids": [51700091, 52404191, 52407091]}, "Ruins of Unte"),
+    ("move", {"area": "Scadu Altus", "ids": [50900090, 50900190]}, "Rauh Base"),  # Gravebird
+    ("rename", {"area": "Scadu Altus", "ids": [62910090]}, (r"^.*$", "Scaly Misbegotten")),
+    # Shadow Keep's throwing Fire Knights: the weaker has a shortsword, the stronger is Wego (the user)
+    ("rename", {"area": "Shadow Keep", "ids": [51602398]}, (r"^.*$", "Fire Knight (Shortsword)")),
+    ("rename", {"area": "Shadow Keep", "ids": [51602198]}, (r"^.*$", "Fire Knight Wego")),
+    # Shadow Keep's stronger Leda and Hornsent (the same spots as the weaker) aren't the ones fought
+    # (the user), nor Specimen Storehouse's stronger Leda and Ansbach
+    ("delete", {"area": "Shadow Keep", "ids": [534180098, 534140198]}),
+    ("delete", {"area": "Specimen Storehouse", "ids": [534180099, 534160099]}),
+    ("delete", {"area": "Specimen Storehouse", "ids": [524140099]}),  # Hornsent, a summon (the user)
+    # Stone Coffin Fissure's friendly Thiollier and St. Trina (the user)
+    ("delete", {"area": "Stone Coffin Fissure", "ids": [524190087, 53300087], "friendly": True}),
+    # Stranded Graveyard's Banished Knights, by weapon (the user)
+    ("rename", {"area": "Stranded Graveyard", "ids": [30100507]}, (r"^.*$", "Banished Knight (Sword)")),
+    ("rename", {"area": "Stranded Graveyard", "ids": [30102507]}, (r"^.*$", "Banished Knight (Halberd)")),
+    # The Stranded Graveyard's Fringefolk Hero's Grave, as its own area (the user)
+    ("move", {"area": "Stranded Graveyard", "ids": [
+        46400007,  # Ulcerated Tree Spirit
+        30100507, 30102507,  # Banished Knight
+        30004007, 30005007,  # Castle Exile
+        30800007, 30806007,  # Imp
+        46900007,  # Grafted Scion
+    ]}, "Fringefolk Hero's Grave"),
+    ("rename", {"area": "Subterranean Shunning-Grounds", "ids": [36612035]}, (r"^.*$", "Burning Putrid Corpse")),  # (the user)
+    # Caelid's Spear Cleanrot Knight is the base row (unscaled, 437 HP), not one that's there (the user)
+    ("delete", {"area": "Caelid", "ids": [38000000]}),
+    # Swamp of Aeonia's Giant Dog is Caelid's, and its unscaled base row (668 HP) isn't one that's there
+    # (the user)
+    ("move", {"area": "Swamp of Aeonia", "ids": [45504040]}, "Caelid"),
+    ("delete", {"area": "Swamp of Aeonia", "ids": [45500000]}),
+    # The Weeping Peninsula's Limgrave-level (…10) rows are Limgrave's, and one of its Irinas isn't
+    # there (the user)
+    ("move", {"area": "Weeping Peninsula", "ids": [
+        41000010, 41002010,  # Demi-Human
+        43711510, 43710010,  # Godrick Foot Soldier
+        41010010,  # Large Demi-Human
+        43112110, 43112010, 43110010, 43114010,  # Soldier of Godrick
+    ]}, "Limgrave"),
+    ("delete", {"area": "Weeping Peninsula", "ids": [523100012]}),
+    # From the user's notes
+    ("rename", {"name_re": r"^Banished Knight\b.*\(Draconic"}, (r"\(Draconic", "(Dragon Helm")),
+    # (the Mountaintops of the Giants' need no identifier for it; the user)
+    ("rename", {"area": "Mountaintops of the Giants", "name_re": r"^Banished Knight\b"}, (r" \(Dragon Helm\)", "")),
+    ("rename", {"area": "Hallowhorn Grounds (Nokron)", "name": "Ancestor Spirit"}, "Regal Ancestor Spirit"),
+    ("rename", {"name": "White Veil Perfumer"}, "Perfumer"),
+    # Liurnia's friendlies (the user)
+    ("delete", {"area": "Liurnia of the Lakes", "name_re": r"^(Archer's Wolf|Omenkiller|Raya Lucaria Soldier|Scaly Misbegotten)$", "friendly": True}),
+    ("rename", {"area": "Liurnia of the Lakes", "ids": [523140020, 523140220]}, (r"^.*$", "Knight Diallos")),
+    ("delete", {"area": "Liurnia of the Lakes", "name": "Dolores the Sleeping Arrow"}),
+    ("delete", {"area": "Liurnia of the Lakes", "name": "Dung Eater"}),
+    ("rename", {"area": "Redmane Castle", "ids": [44702041]}, (r"^.*$", "Abductor Virgin (Mixed)")),
+    ("rename", {"area": "Capital Outskirts", "name": "Death Rite Bird"}, "Deathbird"),
+    ("rename", {"area": "Capital Outskirts", "name": "Spiritcaller Snail"}, "Skull Snail"),
+    ("rename", {"area": "Mountaintops of the Giants", "name": "Spiritcaller Snail"}, "Skull Snail"),
+    # (414040xx rows are Crystal Snails)
+    ("rename", {"ids": [41404022, 41404052]}, (r"^Spiritcaller Snail", "Crystal Snail")),
+    ("move", {"area": "Liurnia of the Lakes", "ids": [41404022]}, "Moonlight Altar"),  # (the user)
+    ("set", {"area": "Capital Outskirts", "name": "Dung Eater"}, {"friendly": None}),
+    ("delete", {"area": "Volcano Manor", "name_re": r"^(Knight Diallos|Patches|Recusant Bernahl|Rykard-Hating Spirit)$"}),
+    ("delete", {"area": "Volcano Manor", "name": "Tanith's Knight", "friendly": True}),
+    ("rename", {"area": "Volcano Manor", "ids": [523130038, 523130138]}, (r"^.*$", "Rya the Scout")),  # human
+    ("delete", {"area": "Volcano Manor", "ids": [39509038, 39509138]}),  # Zorayas, her serpent form
+    # Swamp of Aeonia (the user): its friendly Kindred of Rot, its enemies on the Caelid side, and its
+    # Sentry Stones, which are Sellia Evergaol's
+    ("delete", {"area": "Swamp of Aeonia", "ids": [38109040]}),
+    ("move", {"area": "Swamp of Aeonia", "ids": [
+        20410040,  # Larva of Rot
+        43401040,  # Mad Pumpkin Head
+        43140140,  # Radahn Soldier
+        43002040,  # Wandering Noble
+        38101040,  # Kindred of Rot
+    ]}, "Caelid"),
+    ("move", {"area": "Swamp of Aeonia", "ids": [44300040, 44301040]}, "Sellia Evergaol"),
+    # Greyoll's Dragonbarrow (the user): its Radahn Foot Soldiers are the Divine Tower of Caelid's, and
+    # its Gargoyles (base rows) aren't there
+    ("move", {"area": "Greyoll's Dragonbarrow", "ids": [43740542, 43747042, 43742042]}, "Divine Tower of Caelid"),
+    ("delete", {"area": "Greyoll's Dragonbarrow", "ids": [47700000, 47701000]}),
+    ("rename", {"area": "Altus Plateau", "ids": [30800830]}, (r"^.*$", "Imp (Spectral)")),  # (the user)
+    ("rename", {"area": "Consecrated Snowfield", "ids": [30800852]}, (r"^.*$", "Imp (Spectral)")),  # (the user)
+    ("rename", {"area": "Consecrated Snowfield", "ids": [40403052]}, (r"^.*$", "Fire Slug")),  # (the user)
+    # The other fire-immune Slugs are Fire Slugs too (the user)
+    ("rename", {"area": "Stormhill", "ids": [40403010]}, (r"^.*$", "Fire Slug")),
+    ("rename", {"area": "Liurnia of the Lakes", "ids": [40403020]}, (r"^.*$", "Fire Slug")),
+    ("rename", {"area": "Volcano Manor", "ids": [40401038]}, (r"^.*$", "Fire Slug")),
+    ("delete", {"area": "Consecrated Snowfield", "friendly": True}),  # (the user)
+    # Mt. Gelmir's Vulgar Militia (Altus Plateau rows) are the Altus Plateau's (the user)
+    ("move", {"area": "Mt. Gelmir", "ids": [43211030, 43212030]}, "Altus Plateau"),
+    # Flame Peak's Chief Guardian Arghanthy, Fire Prelate, and Guilty are the Mountaintops of the
+    # Giants' (the user)
+    ("move", {"area": "Flame Peak", "ids": [523820050, 39101150, 43811150]}, "Mountaintops of the Giants"),
+    # Its Slug is a Fire Slug, and its Large Stray Dog, Stray Dog, and Warhawk are the Mountaintops of
+    # the Giants' (the Warhawk is its White Stormhawk's row; the user)
+    ("rename", {"area": "Flame Peak", "ids": [40403050]}, (r"^.*$", "Fire Slug")),
+    ("rename", {"area": "Flame Peak", "ids": [42103050]}, (r"^.*$", "White Stormhawk")),
+    ("move", {"area": "Flame Peak", "ids": [41602050, 41610350, 42103050]}, "Mountaintops of the Giants"),
+    ("rename", {"area": "Crumbling Farum Azula", "ids": [42102072]}, (r"^.*$", "Stormhawk")),  # (the user)
+    ("set", {"area": "Leyndell, Ashen Capital", "ids": [523240070]}, {"friendly": None, "boss": True}),  # Gideon (the user)
+    # Bosses' phase prefixes (the user)
+    ("rename", {"name_re": r"^(EB|PCR|Messmer|Godfrey) - "}, (r"^(EB|PCR|Messmer|Godfrey) - ", "")),
+    ("rename", {"area": "Mohgwyn Palace", "ids": [36615068]}, (r"^.*$", "Blistered Putrid Corpse")),  # (the user)
+    ("rename", {"area": "Caelem Ruins", "ids": [36622040]}, (r"^.*$", "Large Burning Putrid Corpse")),  # as in Caelid
+    ("delete", {"area": "Mohgwyn Palace", "ids": [523010168]}),  # the friendly Varré (the user)
+    ("rename", {"area": "Gravesite Plain", "name_re": r"^Black Knight \(Great Hammer\)$"}, (r" \(Great Hammer\)", "")),  # (the user)
+    # Castle Ensis' and Scaduview's Moore and Forager Brood are Scadu Altus' (the same rows; the user)
+    ("move", {"area": "Castle Ensis", "ids": [544150090, 544150190, 57409090]}, "Scadu Altus"),
+    ("move", {"area": "Scaduview", "ids": [544150090, 544150190, 57409090]}, "Scadu Altus"),
+    ("delete", {"area": "Scadu Altus", "ids": [524150090]}),  # the friendly Moore (the user)
+    ("move", {"area": "Castle Ensis", "ids": [58400590]}, "Scadu Altus"),  # Black Knight Garrew (the user)
+    ("delete", {"name_re": r"^Scarab\b", "dlc": True}),  # (the user)
+    ("move", {"area": "Scadu Altus", "ids": [544120090]}, "Finger Ruins of Miyr"),  # Swordhand of Night Anna (the user)
+    ("delete", {"area": "Finger Ruins of Miyr", "name": "Dragonfly"}),  # (the user)
+    ("delete", {"area": "Scaduview", "ids": [524120090]}),  # the friendly Anna (the user)
+    ("delete", {"name": "Basilisk Eyes"}),  # (the user)
+    ("delete", {"area": "Shadow Keep", "name": "Black Knight", "friendly": True}),  # (the user)
+    ("delete", {"area": "Specimen Storehouse", "ids": [51400099, 51410099]}),  # Messmer's serpents (the user)
+    # Abyssal Woods' bosses (Jori and his Inquisitors) are Darklight Catacombs' (the user)
+    ("move", {"area": "Abyssal Woods", "ids": [53120086, 53200286, 53111386]}, "Darklight Catacombs"),
+    ("rename", {"area": "Midra's Manse", "ids": [52501086, 52500086]}, (r"^.*$", "Horned Warrior")),  # (the user)
+    # The Ancient Ruins of Rauh's Divine Bird Warriors are its 52500194 (E of Church of the Bud and of Rauh
+    # Ancient Ruins, East); its other two are Horned Warriors (the user)
+    ("rename", {"area": "Ancient Ruins of Rauh", "ids": [52501094, 52500094]}, (r"^.*$", "Horned Warrior")),
+    ("rename", {"area": "Ancient Ruins of Rauh", "ids": [52500194]}, (r"^.*$", "Divine Bird Warrior")),
+    # Scadu Altus' stronger Dragonflies are by Recluses' River (the user)
+    ("rename", {"area": "Scadu Altus", "ids": [54700091, 54710091, 54720091]}, (r"^.*$", "Dragonfly (Recluses' River)")),
+    # Specimen Storehouse's Greatsword Fire Knight is Kood (the user)
+    ("rename", {"area": "Specimen Storehouse", "ids": [51600199]}, (r"^.*$", "Fire Knight Kood")),
+    ("rename", {"area": "West Rampart", "ids": [51601198]}, (r"^.*$", "Fire Knight Salza")),  # (the user)
+    # Scaduview's weaker Boar is Scadu Altus' (the same row; the user)
+    ("move", {"area": "Scaduview", "ids": [54401190]}, "Scadu Altus"),
+    # Scadu Altus' Lampreys and Large Lamprey are Scaduview's (the user)
+    ("move", {"area": "Scadu Altus", "ids": [50600793, 50600593, 50600193, 50610893]}, "Scaduview"),
+    # Its weaker Shadow Militia, by the Fog Rift, are Gravesite Plain's (the same rows; the user)
+    ("move", {"area": "Rauh Base", "ids": [56610081, 56611081, 56612081]}, "Gravesite Plain"),
+    # Nokron's Silver Tears turn into Mimic Tears, placed on top of them (the user)
+    ("rename", {"area": "Nokron, Eternal City", "ids": [523680065]}, (r"^.*$", "Mimic Tear")),
+    ("rename", {"area": "Nokron, Eternal City", "ids": [47701165, 47700165]}, "Valiant Gargoyle"),  # (the user)
+    # (its one Troll, near Night's Sacred Ground, is a Silver Tear's too, 16 m from it)
+    ("rename", {"area": "Nokron, Eternal City", "ids": [46000065]}, (r"^.*$", "Mimic Tear (Troll)")),
+    # Murkwater Cave's weakest Patches (523090110, friendly) isn't one of its two (the user)
+    ("delete", {"area": "Murkwater Cave", "ids": [523090110]}),
+    # Mt. Gelmir (the user): its wheel-less Abductor Virgin is headless, one Putrid Corpse burns, and its
+    # Altus Plateau-level (…30) rows are the Altus Plateau's
+    ("rename", {"area": "Mt. Gelmir", "ids": [44701132]}, (r"^.*$", "Abductor Virgin (Headless)")),
+    ("rename", {"area": "Mt. Gelmir", "ids": [36612132]}, (r"^.*$", "Burning Putrid Corpse")),
+    ("move", {"area": "Mt. Gelmir", "ids": [
+        43737030, 43736030, 43730030, 43734030,  # Leyndell Foot Soldier
+        43130130, 43130030,  # Leyndell Soldier
+        43401030,  # Mad Pumpkin Head
+        40700030,  # Wolf
+    ]}, "Altus Plateau"),
+    # Mohgwyn Palace's Albinauric Frog has the same stats as its Albinaurics (the user)
+    ("rename", {"area": "Mohgwyn Palace", "ids": [34700268]}, (r"^.*$", "Albinauric")),
+    # The low-HP Gargoyles (base HP 260, part 16 shown) are broken statues (the user)
+    ("rename", {"ids": [47702034, 47702066]}, (r"^.*$", "Broken Statue")),
+    ("delete", {"area": "Leyndell, Royal Capital", "ids": [21310034]}),  # Defeated Morgott (the user)
+    # Greyoll's Dragonbarrow's weaker Giant Dog is Caelid's (the user)
+    ("move", {"area": "Greyoll's Dragonbarrow", "ids": [45500040]}, "Caelid"),
+    # Gravesite Plain's weaker Man-Fly is the Abandoned Ailing Village's (the user)
+    ("move", {"area": "Gravesite Plain", "ids": [59000080]}, "Abandoned Ailing Village"),
+    # Friendly Shadow Commoners aren't fought (the user)
+    ("delete", {"name_re": r"^Shadow Commoner", "friendly": True}),
+    # Its Messmer Soldiers and Shadow Commoners differ only in HP, not by weapon or outfit; the strongest
+    # Messmer Soldiers are Scadu Altus', and the strongest Shadow Commoner the Abandoned Ailing
+    # Village's (the user)
+    ("rename", {"area": "Gravesite Plain", "name_re": r"^Messmer Soldier"}, (r"^.*$", "Messmer Soldier")),
+    ("move", {"area": "Gravesite Plain", "ids": [58300490, 58300290, 58300690, 58300390]}, "Scadu Altus"),
+    ("rename", {"area": "Gravesite Plain", "name_re": r"^Shadow Commoner", "friendly": False}, (r"^.*$", "Shadow Commoner")),
+    ("move", {"area": "Gravesite Plain", "ids": [52407080]}, "Abandoned Ailing Village"),
+    # Its strongest Spirit Eel is Charo's Hidden Grave's (the same row; the user)
+    ("move", {"area": "Gravesite Plain", "ids": [51100184]}, "Charo's Hidden Grave"),
+    # Foot of the Jagged Peak's Twinsword Giant Beast Skeleton is the same as the plain ones (the user)
+    ("rename", {"area": "Foot of the Jagged Peak", "ids": [53604084]}, (r"^.*$", "Giant Beast Skeleton")),
+    # The only Royal Revenant is Kingsrealm Ruins' boss; the others are Revenants (the user).
+    # Moonlight Altar's is in the Lunar Estate Ruins
     ("move", {"area": "Moonlight Altar", "name": "Royal Revenant"}, "Lunar Estate Ruins"),
-    ("rename", {"name": "Royal Revenant", "area": "Lunar Estate Ruins"}, "Revenant"),
+    ("rename", {"name_re": r"^Royal Revenant$"}, "Revenant"),
     # Sections and areas
     ("set", {"name": "Night's Cavalry Horse"}, {"boss": True}),
     ("set", {"area": "Hallowhorn Grounds (Nokron)", "name": "Boar"}, {"neutral": True}),
@@ -420,8 +822,9 @@ ENEMY_EDITS = [
     ("region", {"area": "Highroad Cave"}, "Stormhill"),
     ("move", {"area": "Malefactor's Evergaol", "friendly": True}, "Liurnia of the Lakes"),
     ("move", {"area": "Caelid", "name_re": r"^Cleanrot Knight"}, "Swamp of Aeonia"),
-    # Caelid's Misbegotten Warrior fights beside the Crucible Knight
-    ("set", {"area": "Caelid", "name": "Misbegotten Warrior"}, {"sortName": "Crucible Knight [Boss] (Greatsword) 2"}),
+    ("delete", {"area": "Redmane Castle", "friendly": True}),  # the festival's summons (the user)
+    # Redmane Castle's Misbegotten Warrior fights beside the Crucible Knight
+    ("set", {"area": "Redmane Castle", "name": "Misbegotten Warrior"}, {"sortName": "Crucible Knight [Boss] (Greatsword) 2"}),
     # Caelem Ruins' two Mad Pumpkin Heads (identical but for their weapons)
     ("split", {"area": "Caelem Ruins", "ids": [43400940]}, {
         43400940: "Mad Pumpkin Head [Boss] (Flail)", 43401940: "Mad Pumpkin Head [Boss] (Hammer)",
@@ -429,41 +832,7 @@ ENEMY_EDITS = [
 ]
 
 # Questions from the user's review: where entries are (area or None for anywhere, name, HP or None)
-WHERE_IS = [
-    ("Stranded Graveyard", "Banished Knight", None),
-    ("Stranded Graveyard", "Castle Exile", None),
-    ("Limgrave", "Godrick Foot Soldier", 124),
-    ("Limgrave", "Larval Land Octopus", 147),
-    ("Limgrave", "Miranda Sprout", 152),
-    ("Limgrave", "Yura, Hunter of Bloody Fingers", None),
-    ("Murkwater Cave", "Patches", None),
-    ("Stormveil Castle", "Banished Knight (Draconic)", None),
-    ("Hallowhorn Grounds (Siofra River)", "Ancestor Spirit", None),
-    (None, "Ancestral Follower", None),
-    (None, "Dragonkin Soldier", None),
-    ("Liurnia of the Lakes", "Guilty", None),
-    ("Liurnia of the Lakes", "Dung Eater", None),
-    ("Liurnia of the Lakes", "Nox Priest", None),
-    ("Liurnia of the Lakes", "Raya Lucaria Soldier", None),
-    ("Liurnia of the Lakes", "Scaly Misbegotten", None),
-    ("Liurnia of the Lakes", "Nepheli Loux, Warrior", None),
-    ("Liurnia of the Lakes", "Old Albus", None),
-    ("Liurnia of the Lakes", "Albinauric", None),
-    ("Village of the Albinaurics", "Albinauric", None),
-    ("Liurnia of the Lakes", "Elder Albinauric", None),
-    ("Liurnia of the Lakes", "Large Albinauric", None),
-    ("Liurnia of the Lakes", "Albinauric Frog", None),
-    ("Academy of Raya Lucaria", "Dragon", None),
-    ("Academy of Raya Lucaria", "Juvenile Scholar", None),
-    ("Caelid", "Omenkiller", None),
-    ("Caelid", "White Veil Perfumer", None),
-    ("Swamp of Aeonia", "Mad Pumpkin Head", None),
-    ("Swamp of Aeonia", "Kindred of Rot", None),
-    ("Swamp of Aeonia", "Polyanna, Adopted Daughter", None),
-    ("Greyoll's Dragonbarrow", "Gargoyle", None),
-    ("Nokron, Eternal City", "Troll", None),
-    (None, "Chief Bloodfiend", None),
-]
+WHERE_IS = []
 
 # Bosses are named "... [Boss]" in the spreadsheet, or drop a boss's runes (NpcParam isSoulGetByBoss,
 # e.g. Rennala, whose name comes from the game's text). These are bosses with neither, by NpcParam ID,
@@ -592,7 +961,7 @@ REGION_GROUPS = {
         "Mountaintops of the Giants",
         "Flame Peak",
         "Consecrated Snowfield",
-        "Elphael, Brace of the Haligtree",
+        "Miquella's Haligtree",
         "Mohgwyn Palace",
         "Crumbling Farum Azula",
         "Leyndell, Ashen Capital",
@@ -612,6 +981,9 @@ MAP_ALIASES = {"m42_01": "m42_02"}
 MAPS_SPLIT_BY_GRACE = {"m12_02"}
 
 # Maps with no place name or grace of their own: (area name, region name)
+# Areas and regions renamed from the game's map names (the user)
+AREA_RENAMES = {"Elphael, Brace of the Haligtree": "Miquella's Haligtree"}
+
 MAP_OVERRIDES = {
     # The two Ancestor Spirit arenas. The lower HP spirit is the one under Siofra River.
     "m12_08": ("Hallowhorn Grounds (Siofra River)", "Siofra River"),
@@ -854,6 +1226,8 @@ def main():
     def get_enemy_name(row):
         if row["id"] in NPC_PARAM_NAME_OVERRIDES:
             return NPC_PARAM_NAME_OVERRIDES[row["id"]]
+        if row["id"] // 10000 in (5450, 6060):
+            return "Ram" if RAM_ID.fullmatch(str(row["id"])) else "Sheep"
         if row["id"] // 10000 in MODEL_NAME_OVERRIDES:
             return MODEL_NAME_OVERRIDES[row["id"] // 10000]
         if row["nameId"] > 0 and row["nameId"] in npc_names:
@@ -1003,6 +1377,10 @@ def main():
                 tuple(float(placement[axis]) for axis in "xyz") if placement.get("x") else None
             )
             area_name, region = get_area(placement["map"], position)
+            area_name, region = AREA_RENAMES.get(area_name, area_name), AREA_RENAMES.get(region, region)
+            location = locate(placement["map"], position)
+            if location and location[0] in GRACE_AREA_OVERRIDES.get(area_name, {}):
+                area_name = GRACE_AREA_OVERRIDES[area_name][location[0]]
             area_name = NPC_PARAM_AREA_OVERRIDES.get(row["id"], area_name)
             region = AREA_REGION_OVERRIDES.get(area_name, region)
             name = get_enemy_name(row)
@@ -1020,7 +1398,7 @@ def main():
             # Anticipation: her pose comes from the map's events, not its params).
             if row["teamType"] in FRIENDLY_TEAM_TYPES and "Corpse" in name:
                 continue
-            if row["id"] in EXCLUDED_NPC_PARAM_IDS:
+            if row["id"] in EXCLUDED_NPC_PARAM_IDS or EXCLUDED_NPC_PARAM_ID.fullmatch(str(row["id"])):
                 continue
             # Summons (white ghosts, e.g. Sorceress Sellen's 533160124) aren't fought (the user)
             if row["teamType"] == SUMMON_TEAM_TYPE:
@@ -1037,7 +1415,12 @@ def main():
             # Sorcerers' two outfits
             appearance = tuple(i for i in range(32) if row[f"modelDispMask{i}"])
             poise = get_poise(row)
-            key = (name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance, poise)
+            weak_part_rate = (
+                row["weakPartsDamageRate"]
+                if row["partsDamageType"] == 1 and row["weakPartsDamageRate"] >= WEAK_PART_NOTE_MIN_RATE
+                else 1
+            )
+            key = (name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance, poise, weak_part_rate)
             riposte_override = next(
                 (ripostes for prefix, ripostes in RIPOSTE_NAME_OVERRIDES.items() if name.startswith(prefix)),
                 None,
@@ -1064,6 +1447,7 @@ def main():
                     ),
                     **({"poiseDamageRate": poise[0]} if poise[0] != 1 else {}),
                     **({"poiseNote": poise[1]} if poise[1] else {}),
+                    **({"weakPartDamageRate": round(weak_part_rate, 2)} if weak_part_rate != 1 else {}),
                     "ripostes": riposte_override
                     or get_ripostes(model_id := int(model[1:]) if re.fullmatch(r"c\d{4}", model) else -1),
                     **(
@@ -1081,9 +1465,7 @@ def main():
             if chara_init is not None and int(placement["charaInitId"]) not in enemy.setdefault("charaInits", []):
                 enemy["charaInits"].append(int(placement["charaInitId"]))
             # Where it's placed (not output), for identifying enemies that share a name
-            placements_by_enemy[id(enemy)].append(
-                (placement["map"], locate(placement["map"], position), row["id"])
-            )
+            placements_by_enemy[id(enemy)].append((placement["map"], location, row["id"]))
             if not friendly:
                 area_effect = sp_effects.get(row["spEffectID3"])
                 region_scaling[region].append(area_effect["maxHpRate"] if area_effect else 1)
@@ -1099,15 +1481,49 @@ def main():
             map_name.startswith(DLC_MAP_PREFIXES) for map_name, _, _ in placements_by_enemy[id(enemy)]
         )
 
+    def crossbow_labels(area_name, enemies):
+        """@returns labels for an area's foot soldiers: "Crossbow" for crossbow rows, see CROSSBOW_ID"""
+        crossbows = {
+            without_boss_tag(enemy["name"])
+            for enemy in enemies.values()
+            if any(CROSSBOW_ID.fullmatch(str(i)) for i in enemy["npcParamIds"])
+        }
+        return {
+            (area_name, i): "Crossbow" if CROSSBOW_ID.fullmatch(str(i)) else ""
+            for enemy in enemies.values()
+            if without_boss_tag(enemy["name"]) in crossbows
+            for i in enemy["npcParamIds"]
+        }
+
+    # Rows with a crystal shell, and its damage taken multipliers (strike isn't reduced: it breaks it)
+    shell = sp_effects[CRYSTAL_SHELL_SPEFFECT]
+    shell_rates = [shell[field] for field in NEGATIONS]
+    shelled_ids = {
+        row["id"]
+        for row in npc_params.values()
+        if any(
+            field.lower().startswith("speffectid") and value == CRYSTAL_SHELL_SPEFFECT
+            for field, value in row.items()
+        )
+    }
+
+    def add_shattered(enemies):
+        """Lists each of an area's entries with a crystal shell whole, and shattered, in place"""
+        for key, enemy in list(enemies.items()):
+            if not shelled_ids & set(enemy["npcParamIds"]):
+                continue
+            enemies[(key, "shattered")] = {**enemy, "name": with_identifier(enemy["name"], "Shattered")}
+            enemy["negation"] = [
+                round(100 - (100 - negation) * rate, 1) for negation, rate in zip(enemy["negation"], shell_rates)
+            ]
+
     apply_edits(areas, placements_by_enemy, ENEMY_EDITS, is_dlc)
     unresolved = []
     for area in areas.values():
-        merge_identical(
-            area["enemies"],
-            placements_by_enemy,
-            {name for area_name, name in MERGED_LOOKS if area_name == area["name"]},
-        )
-        identify(area["name"], area["enemies"], placements_by_enemy, ENEMY_LABELS, unresolved)
+        merge_identical(area["enemies"], placements_by_enemy)
+        labels = {**crossbow_labels(area["name"], area["enemies"]), **ENEMY_LABELS}
+        identify(area["name"], area["enemies"], placements_by_enemy, labels, unresolved)
+        add_shattered(area["enemies"])
         # (by section: the picker lists friendly characters, bosses, etc. separately)
         names = Counter(
             (enemy_category(enemy), enemy["name"]) for enemy in area["enemies"].values()
@@ -1118,7 +1534,8 @@ def main():
     locations_path = os.path.join(project_dir, "data", "enemy-locations.md")
     with open(locations_path, "w", encoding="utf-8") as f:
         f.write(report(unresolved, placements_by_enemy))
-        f.write(where_is(areas, placements_by_enemy, WHERE_IS))
+        if WHERE_IS:
+            f.write(where_is(areas, placements_by_enemy, WHERE_IS))
     print(f"{len(unresolved)} entries to identify -> {locations_path}")
 
     # Regions in order of difficulty, by their enemies' median area scaling, with the DLC's after the
