@@ -25,6 +25,7 @@ added to data/model-names.csv (columns: model,name, e.g. c4310,Godrick Soldier).
 
 import csv
 import json
+import math
 import os
 import re
 import sys
@@ -1264,7 +1265,8 @@ def main():
         # Every permanent SpEffect multiplies max HP, not just area scaling (e.g. SpEffect 4410
         # doubles the Morne Tunnel Scaly Misbegotten's: 531 × 1.281 × 2 = 1360, tested in game).
         # Their damage taken multipliers aren't applied, since they're mostly situational (e.g.
-        # Crystalians' shells, Rennala's barrier).
+        # Crystalians' shells, Rennala's barrier). HP is rounded down, as the datamining spreadsheet
+        # does (see check_enemy_stats.py).
         other_rate = 1
         for field, effect_id in row.items():
             effect = sp_effects.get(effect_id) if field.lower().startswith("speffectid") else None
@@ -1276,7 +1278,7 @@ def main():
         # every area to about the same (e.g. ×1.141 × 3.122 = 3.56 in Limgrave, ×2.406 × 1.523 = 3.66
         # for a later area's). Enemies without one (mostly wildlife) keep their NG stats in NG+.
         # Later journeys multiply every enemy's NG+ stats by ClearCountCorrectParam (in the app).
-        # All checked against the datamining spreadsheet's NG+ tabs (see data/sheets/NG.csv).
+        # All checked against the datamining spreadsheet's NG+ tabs by check_enemy_stats.py.
         ng_plus_effect = sp_effects.get(row["GameClearSpEffectID"]) if row["GameClearSpEffectID"] > 0 else None
         ng_plus_rate = hp_rate * (ng_plus_effect["maxHpRate"] if ng_plus_effect else 1)
         # Some of the DLC's enemies get another HP multiplier in NG+ once Promised Consort Radahn has
@@ -1301,8 +1303,8 @@ def main():
         if chara_init is None:
             defense = [round(row[field] * area_rate(rate), 1) for field, rate in DEFENSES]
             negation = [round((1 - row[field]) * 100, 1) for field in NEGATIONS]
-            hp = round(row["hp"] * hp_rate)
-            ng_plus_hp = round(row["hp"] * ng_plus_rate)
+            hp = math.floor(row["hp"] * hp_rate)
+            ng_plus_hp = math.floor(row["hp"] * ng_plus_rate)
             return defense, negation, hp, ng_plus_hp, ng_plus_stats(row["hp"] * ng_plus_rate, defense)
 
         # Human enemies: defense from level and attributes, negation from armor
@@ -1324,8 +1326,8 @@ def main():
             negation.append(round((1 - multiplier) * 100, 1))
 
         base_hp = int(evaluate_graph(graphs[VIGOR_HP_GRAPH], chara_init["baseVit"]))
-        hp = round(base_hp * hp_rate)
-        ng_plus_hp = round(base_hp * ng_plus_rate)
+        hp = math.floor(base_hp * hp_rate)
+        ng_plus_hp = math.floor(base_hp * ng_plus_rate)
         return defense, negation, hp, ng_plus_hp, ng_plus_stats(base_hp * ng_plus_rate, defense)
 
     def get_poise(row):
