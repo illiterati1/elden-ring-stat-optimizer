@@ -37,6 +37,15 @@ export const maxRegularUpgradeLevel = 25;
 export const maxSpecialUpgradeLevel = 10;
 
 /**
+ * The Scadutree Blessing's damage multiplier against enemies by level (SpEffectParam
+ * 20000100-20000120 atkEnemyDmgCorrectRate), applied in the Realm of Shadow
+ */
+export const scadutreeBlessingRates = [
+  1, 1.1, 1.2, 1.25, 1.3, 1.35, 1.425, 1.5, 1.55, 1.6, 1.65, 1.75, 1.85, 1.875, 1.9, 1.925, 1.95,
+  1.975, 2, 2.025, 2.05,
+] as const;
+
+/**
  * @param regularUpgradeLevel the upgrade level of a regular weapon
  * @returns the corresponding upgrade level for a somber weapon
  */
@@ -129,6 +138,8 @@ export interface BuildRequest {
   poiseDamageRate?: number;
   /** The enemy's types, for weapons and buffs that do more damage to them (e.g. dragons) */
   enemyTypes?: readonly EnemyType[];
+  /** The Scadutree Blessing's damage multiplier (scadutreeBlessingRates), if it applies */
+  scadutreeBlessingRate?: number;
   /**
    * The off hand weapon for a powerstance attack's hits with the left hand (AttackDataHit leftHand),
    * if not the same weapon: its upgrade level (on the regular scale, like regularUpgradeLevel) and
@@ -1221,6 +1232,7 @@ export function optimizeBuild(
     criticalDamageRate = 1,
     poiseDamageRate = 1,
     enemyTypes = [],
+    scadutreeBlessingRate = 1,
     offhand,
     buffs: requestedBuffs = [],
     equipWeight = 0,
@@ -1421,6 +1433,7 @@ export function optimizeBuild(
     : null;
 
   const enemyRate =
+    scadutreeBlessingRate *
     (attack?.critical ? criticalDamageRate : 1) *
     getEnemyTypeRate(weapon.enemyTypeRates, enemyTypes);
   const options = {
@@ -1448,8 +1461,8 @@ export function optimizeBuild(
     ...(attack?.needsRequirements && objective !== "spellScaling" && { needsRequirements: true }),
     ...(spellBuffWeapon && { spellBuffWeapon }),
     ...(offhandWeapon && { offhandWeapon }),
-    // Some enemies take less damage from critical hits (assumed to apply after defenses), and some
-    // weapons do more to some enemy types
+    // Some enemies take less damage from critical hits (assumed to apply after defenses), some
+    // weapons do more to some enemy types, and the Scadutree Blessing raises damage to enemies
     damageMultipliers:
       enemyRate !== 1
         ? Object.fromEntries(

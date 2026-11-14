@@ -39,7 +39,12 @@ import {
 } from "../app/useAshes.ts";
 import type { AttackData, BuildRequest } from "./build.ts";
 import { getDamage } from "./optimizer.ts";
-import { getEquipWeightRate, optimizeBuild, type BuffEffect } from "./build.ts";
+import {
+  getEquipWeightRate,
+  optimizeBuild,
+  scadutreeBlessingRates,
+  type BuffEffect,
+} from "./build.ts";
 import {
   evaluateObjective,
   getBreakdown,
@@ -2215,6 +2220,32 @@ describe("attacks", () => {
     expect(Math.floor(crucibleKnight("Riposte").finalValue)).toBe(833);
     expect(Math.floor(crucibleKnight("Riposte", 0).finalValue)).toBe(274);
     expect(Math.floor(crucibleKnight("R1").attackSteps![0][0].damage)).toBe(331);
+  });
+
+  it("multiplies damage by the Scadutree Blessing's rate", () => {
+    const r1 = (scadutreeBlessingRate?: number) =>
+      optimizeBuild({
+        weapon: longsword,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 104, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 35, slash: 35, strike: 35, pierce: 35 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: getAttackData(movesets, longsword, "R1", false, 0.5),
+        scadutreeBlessingRate,
+      });
+    // The same Longsword +25 R1 that does 331 to the Stormhill Evergaol Crucible Knight, at +20
+    // (each hit is rounded down after the multiplier)
+    expect(scadutreeBlessingRates[20]).toBe(2.05);
+    expect(Math.floor(r1().attackSteps![0][0].damage)).toBe(331);
+    expect(Math.floor(r1(scadutreeBlessingRates[20]).attackSteps![0][0].damage)).toBe(678);
   });
 
   it("applies defenses to each hit separately", () => {

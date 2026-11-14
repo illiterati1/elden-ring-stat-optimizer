@@ -35,6 +35,8 @@ export interface EnemyArea {
   region: string;
   /** The defenses most of the area's enemies have (physical, magic, fire, lightning, holy) */
   defense: number[];
+  /** True for areas in the Realm of Shadow, where the Scadutree Blessing applies */
+  dlc?: boolean;
   enemies: Enemy[];
 }
 

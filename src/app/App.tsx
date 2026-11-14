@@ -22,7 +22,7 @@ import {
   type Attribute,
   type Attributes,
 } from "../calculator/calculator.ts";
-import type { BuffEffect, BuildRequest } from "../optimizer/build.ts";
+import { scadutreeBlessingRates, type BuffEffect, type BuildRequest } from "../optimizer/build.ts";
 import type { Limits } from "../optimizer/limits.ts";
 import {
   getCharacterLevel,
@@ -168,6 +168,9 @@ export default function App() {
     poiseDamageRate,
     enemyRipostes,
     enemyTypes,
+    enemyInRealmOfShadow,
+    scadutreeBlessing: savedScadutreeBlessing,
+    scadutreeBlessingLevel,
     attack: savedAttack,
     chainWeight,
     sumChains,
@@ -196,6 +199,14 @@ export default function App() {
   const closeAlert = (id: string) => updateAppState({ closedAlerts: [...closedAlerts, id] });
   // The enemy's HP, for damage that's a percentage of it, if known
   const countedEnemyHp = enemyHp > 0 ? enemyHp : undefined;
+  // A picked enemy decides whether the Scadutree Blessing applies: only in the Realm of Shadow
+  const scadutreeBlessing =
+    enemyKey != null && enemyInRealmOfShadow != null
+      ? enemyInRealmOfShadow
+      : savedScadutreeBlessing;
+  const scadutreeBlessingRate = scadutreeBlessing
+    ? scadutreeBlessingRates[scadutreeBlessingLevel] ?? 1
+    : 1;
   const buffable = useBuffable();
   // Buffs give bonus stats (not counted towards level) and damage multipliers
   const allBuffs = useBuffs();
@@ -749,6 +760,7 @@ export default function App() {
             criticalDamageRate,
             poiseDamageRate,
             enemyTypes,
+            scadutreeBlessingRate,
             // A weapon with a unique skill that can also be buffed (the Bonny Butchering Knife) only
             // gets the skill's buff, since they replace each other in game
             buffs: [
@@ -833,6 +845,7 @@ export default function App() {
     criticalDamageRate,
     poiseDamageRate,
     enemyTypes,
+    scadutreeBlessingRate,
     offhandWeaponData,
     offhandUpgradeLevel,
     offhandBuffEffects,
@@ -986,6 +999,9 @@ export default function App() {
         offhandWeaponTypes={offhandWeaponTypes}
         offhandAffinityChoices={offhandAffinityChoices}
         offhandBuffChoices={offhandBuffChoices}
+        scadutreeBlessing={scadutreeBlessing}
+        scadutreeBlessingLevel={scadutreeBlessingLevel}
+        scadutreeBlessingFromEnemy={enemyKey != null && enemyInRealmOfShadow != null}
         onChange={updateAppState}
       />
       <TimingSettings

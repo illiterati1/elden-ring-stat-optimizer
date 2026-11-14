@@ -12,7 +12,11 @@ import {
   Select,
   Typography,
 } from "@mui/material";
-import { maxRegularUpgradeLevel, toSpecialUpgradeLevel } from "../optimizer/build.ts";
+import {
+  maxRegularUpgradeLevel,
+  scadutreeBlessingRates,
+  toSpecialUpgradeLevel,
+} from "../optimizer/build.ts";
 import type { Objective } from "../optimizer/optimizer.ts";
 import Section from "./Section.tsx";
 import type { AppState, UpdateAppState } from "./useAppState.ts";
@@ -67,6 +71,11 @@ interface Props {
   offhandAffinityChoices: readonly number[];
   /** Weapon buffs that can go on the chosen off hand weapon */
   offhandBuffChoices: readonly Buff[];
+  /** Whether the Scadutree Blessing applies: the checkbox's, or the picked enemy's area's */
+  scadutreeBlessing: boolean;
+  scadutreeBlessingLevel: AppState["scadutreeBlessingLevel"];
+  /** True if a picked enemy decides whether the blessing applies, rather than the checkbox */
+  scadutreeBlessingFromEnemy: boolean;
   onChange: UpdateAppState;
 }
 
@@ -135,6 +144,9 @@ function BuildSettings({
   offhandWeaponTypes,
   offhandAffinityChoices,
   offhandBuffChoices,
+  scadutreeBlessing,
+  scadutreeBlessingLevel,
+  scadutreeBlessingFromEnemy,
   onChange,
 }: Props) {
   const spellScaling = objective === "spellScaling";
@@ -263,6 +275,51 @@ function BuildSettings({
               }
             />
           </>
+        )}
+
+        {/* Spell scaling isn't affected by damage multipliers */}
+        <FormControlLabel
+          label="Scadutree Blessing"
+          title={
+            spellScaling
+              ? "Doesn't apply to spell scaling"
+              : scadutreeBlessingFromEnemy
+              ? `Set by the enemy picked: ${
+                  scadutreeBlessing ? "it's" : "it isn't"
+                } in the Realm of Shadow`
+              : "The blessing's damage bonus, which applies in the Realm of Shadow"
+          }
+          sx={{ mr: 0, gridColumn: 1 }}
+          disabled={spellScaling || scadutreeBlessingFromEnemy}
+          control={
+            <Checkbox
+              size="small"
+              checked={scadutreeBlessing}
+              onChange={(evt) => onChange({ scadutreeBlessing: evt.currentTarget.checked })}
+            />
+          }
+        />
+        <FormControl fullWidth size="small" disabled={spellScaling || !scadutreeBlessing}>
+          <InputLabel id="scadutreeBlessingLevelLabel">Blessing Level</InputLabel>
+          <Select
+            labelId="scadutreeBlessingLevelLabel"
+            label="Blessing Level"
+            value={scadutreeBlessingLevel}
+            onChange={(evt) => onChange({ scadutreeBlessingLevel: +evt.target.value })}
+          >
+            {scadutreeBlessingRates.map((rate, level) => (
+              <MenuItem key={level} value={level}>
+                +{level} ({rate}×)
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        {!spellScaling && scadutreeBlessingFromEnemy && (
+          <Typography variant="body2" color="text.secondary" gridColumn="1 / -1">
+            {scadutreeBlessing
+              ? "The enemy picked is in the Realm of Shadow, so the blessing applies"
+              : "The enemy picked isn't in the Realm of Shadow, so the blessing doesn't apply"}
+          </Typography>
         )}
       </Box>
 

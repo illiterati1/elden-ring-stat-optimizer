@@ -71,6 +71,7 @@ function DefenseSettings({
     onChange({
       ...update,
       enemyKey: null,
+      enemyInRealmOfShadow: null,
       criticalDamageRate: 1,
       poiseDamageRate: (update.enemyTypes ?? enemyTypes).includes("ancientDragon") ? 0.2 : 1,
       enemyRipostes: null,

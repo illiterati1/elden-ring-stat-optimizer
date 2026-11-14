@@ -154,6 +154,15 @@ export interface AppState {
   readonly enemyRipostes: readonly string[] | null;
   /** The enemy's types, for weapons and buffs that do more damage to them (e.g. dragons) */
   readonly enemyTypes: readonly EnemyType[];
+  /**
+   * Whether the picked enemy is in the Realm of Shadow, where the Scadutree Blessing applies, or
+   * null without an enemy. A picked enemy decides this instead of scadutreeBlessing.
+   */
+  readonly enemyInRealmOfShadow: boolean | null;
+  /** Apply the Scadutree Blessing's damage bonus (unless a picked enemy decides it) */
+  readonly scadutreeBlessing: boolean;
+  /** The Scadutree Blessing's level, 0 to 20 */
+  readonly scadutreeBlessingLevel: number;
   readonly showFriendlyEnemies: boolean;
   /** An attack whose motion values are used, "base" for 100 motion values, or "ash" for a skill */
   readonly attack: AttackChoice | typeof ashAttack;
@@ -273,6 +282,9 @@ const defaultAppState: AppState = {
   poiseDamageRate: 1,
   enemyRipostes: null,
   enemyTypes: [],
+  enemyInRealmOfShadow: null,
+  scadutreeBlessing: false,
+  scadutreeBlessingLevel: 20,
   showFriendlyEnemies: false,
   attack: "R1",
   ashOfWar: "",

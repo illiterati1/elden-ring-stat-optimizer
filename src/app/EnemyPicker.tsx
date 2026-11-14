@@ -44,13 +44,14 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
   // An area without an enemy gets the defenses most of its enemies have, without negation
   function selectArea(newArea: EnemyArea | null) {
     if (!newArea) {
-      onChange({ enemyArea: null, enemyKey: null });
+      onChange({ enemyArea: null, enemyKey: null, enemyInRealmOfShadow: null });
       return;
     }
     const [phys, mag, fire, lightning, holy] = newArea.defense.map(Math.round);
     onChange({
       enemyArea: newArea.name,
       enemyKey: null,
+      enemyInRealmOfShadow: null,
       enemyHp: 0,
       criticalDamageRate: 1,
       poiseDamageRate: 1,
@@ -79,6 +80,7 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
     );
     onChange({
       enemyKey: getEnemyKey(newEnemy),
+      enemyInRealmOfShadow: !!area?.dlc,
       enemyHp: newEnemy.hp,
       criticalDamageRate: newEnemy.criticalDamageRate ?? 1,
       poiseDamageRate: newEnemy.poiseDamageRate ?? 1,

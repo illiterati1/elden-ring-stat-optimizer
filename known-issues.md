@@ -12,8 +12,7 @@
   Feeble Lord's Frenzied Flame can be repeated haven't been timed yet.
 - **Unverified timings:** many attack timings and stamina costs haven't been checked in game yet.
 - **Enemy picker:** only bosses are listed.
-- **No NG+ or Scadutree Blessing scaling:** enemies are at their NG stats, and the Scadutree
-  Blessing's damage bonus isn't applied.
+- **No NG+ scaling:** enemies are at their NG stats.
 - **Enemy status resistance:** enemies' status resistances aren't included, so status buildup
   can't be compared against them.
 - **Off by one:** some hits come out 1 lower than in game, mostly with stacked damage buffs or

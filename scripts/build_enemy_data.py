@@ -1521,6 +1521,13 @@ def main():
             ]
 
     apply_edits(areas, placements_by_enemy, ENEMY_EDITS, is_dlc)
+    # Areas in the Realm of Shadow, where the Scadutree Blessing applies
+    for area in areas.values():
+        dlc = {is_dlc(enemy) for enemy in area["enemies"].values()}
+        if len(dlc) > 1:
+            print(f"Warning: {area['name']} has both base game and DLC enemies")
+        if True in dlc:
+            area["dlc"] = True
     unresolved = []
     for area in areas.values():
         merge_identical(area["enemies"], placements_by_enemy)
