@@ -1,10 +1,24 @@
 import { memo, useMemo } from "react";
-import { Alert, Autocomplete, Box, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Autocomplete,
+  Box,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { AttackPowerType } from "../calculator/calculator.ts";
 import type { AppState, UpdateAppState } from "./useAppState.ts";
 import useEnemies, {
+  getAreaDefense,
   getEnemyCategory,
   getEnemyKey,
+  getEnemyStats,
+  getNgPlusLabel,
+  maxNgPlus,
   type Enemy,
   type EnemyArea,
 } from "./useEnemies.ts";
@@ -13,13 +27,14 @@ import { debug } from "./uiUtils.ts";
 interface Props {
   enemyArea: AppState["enemyArea"];
   enemyKey: AppState["enemyKey"];
+  ngPlus: AppState["ngPlus"];
   onChange: UpdateAppState;
 }
 
 /**
- * Pickers for an area and an enemy in it, which fill in the enemy defense fields
+ * Pickers for an area, an enemy in it, and the NG+ level, which fill in the enemy defense fields
  */
-function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
+function EnemyPicker({ enemyArea, enemyKey, ngPlus, onChange }: Props) {
   const { areas, error } = useEnemies();
 
   const area = areas.find(({ name }) => name === enemyArea) ?? null;
@@ -42,12 +57,12 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
   }, [area]);
 
   // An area without an enemy gets the defenses most of its enemies have, without negation
-  function selectArea(newArea: EnemyArea | null) {
+  function selectArea(newArea: EnemyArea | null, newNgPlus = ngPlus) {
     if (!newArea) {
       onChange({ enemyArea: null, enemyKey: null, enemyInRealmOfShadow: null });
       return;
     }
-    const [phys, mag, fire, lightning, holy] = newArea.defense.map(Math.round);
+    const [phys, mag, fire, lightning, holy] = getAreaDefense(newArea, newNgPlus).map(Math.round);
     onChange({
       enemyArea: newArea.name,
       enemyKey: null,
@@ -68,20 +83,21 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
     });
   }
 
-  function selectEnemy(newEnemy: Enemy | null) {
+  function selectEnemy(newEnemy: Enemy | null, newNgPlus = ngPlus) {
     // Clearing the enemy goes back to the area's defaults
     if (!newEnemy) {
-      selectArea(area);
+      selectArea(area, newNgPlus);
       return;
     }
-    const [phys, mag, fire, lightning, holy] = newEnemy.defense.map(Math.round);
+    const stats = getEnemyStats(newEnemy, newNgPlus);
+    const [phys, mag, fire, lightning, holy] = stats.defense.map(Math.round);
     const [standard, slash, strike, pierce, magN, fireN, lightningN, holyN] = newEnemy.negation.map(
       Math.round,
     );
     onChange({
       enemyKey: getEnemyKey(newEnemy),
       enemyInRealmOfShadow: !!area?.dlc,
-      enemyHp: newEnemy.hp,
+      enemyHp: stats.hp,
       criticalDamageRate: newEnemy.criticalDamageRate ?? 1,
       poiseDamageRate: newEnemy.poiseDamageRate ?? 1,
       enemyRipostes: newEnemy.ripostes,
@@ -126,6 +142,37 @@ function EnemyPicker({ enemyArea, enemyKey, onChange }: Props) {
         onChange={(_, newEnemy) => selectEnemy(newEnemy)}
         renderInput={(params) => <TextField {...params} label="Enemy" />}
       />
+      <FormControl
+        fullWidth
+        size="small"
+        disabled={!area}
+        title={area ? undefined : "Pick an area or enemy for their HP and defenses in NG+"}
+      >
+        <InputLabel id="ngPlusLabel">NG+</InputLabel>
+        <Select
+          labelId="ngPlusLabel"
+          label="NG+"
+          value={ngPlus}
+          onChange={(evt) => {
+            const newNgPlus = +evt.target.value;
+            onChange({ ngPlus: newNgPlus });
+            // Refill the picked enemy's or area's stats
+            if (enemy) selectEnemy(enemy, newNgPlus);
+            else if (area) selectArea(area, newNgPlus);
+          }}
+        >
+          {Array.from({ length: maxNgPlus + 1 }, (_, level) => (
+            <MenuItem key={level} value={level}>
+              {getNgPlusLabel(level)}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      {enemy && ngPlus > 0 && !enemy.ngPlus && (
+        <Typography variant="body2" color="text.secondary">
+          Doesn&apos;t get stronger in NG+
+        </Typography>
+      )}
       {enemy?.criticalDamageRate && (
         <Typography variant="body2" color="text.secondary">
           Takes {Math.round((1 - enemy.criticalDamageRate) * 100)}% less damage from backstabs and

@@ -163,6 +163,8 @@ export interface AppState {
   readonly scadutreeBlessing: boolean;
   /** The Scadutree Blessing's level, 0 to 20 */
   readonly scadutreeBlessingLevel: number;
+  /** The NG+ level the picked enemy's or area's HP and defenses are for (0 for NG, up to 7) */
+  readonly ngPlus: number;
   readonly showFriendlyEnemies: boolean;
   /** An attack whose motion values are used, "base" for 100 motion values, or "ash" for a skill */
   readonly attack: AttackChoice | typeof ashAttack;
@@ -285,6 +287,7 @@ const defaultAppState: AppState = {
   enemyInRealmOfShadow: null,
   scadutreeBlessing: false,
   scadutreeBlessingLevel: 20,
+  ngPlus: 0,
   showFriendlyEnemies: false,
   attack: "R1",
   ashOfWar: "",

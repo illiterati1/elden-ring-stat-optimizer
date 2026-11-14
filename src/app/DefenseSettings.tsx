@@ -26,6 +26,7 @@ interface Props {
   enemyKey: AppState["enemyKey"];
   enemyHp: AppState["enemyHp"];
   enemyTypes: AppState["enemyTypes"];
+  ngPlus: AppState["ngPlus"];
   /** Alerts and notes the user closed */
   closedAlerts: AppState["closedAlerts"];
   onChange: UpdateAppState;
@@ -62,6 +63,7 @@ function DefenseSettings({
   enemyKey,
   enemyHp,
   enemyTypes,
+  ngPlus,
   closedAlerts,
   onChange,
 }: Props) {
@@ -80,7 +82,12 @@ function DefenseSettings({
   return (
     <Section id="enemy" title="Enemy">
       <>
-        <EnemyPicker enemyArea={enemyArea} enemyKey={enemyKey} onChange={onChange} />
+        <EnemyPicker
+          enemyArea={enemyArea}
+          enemyKey={enemyKey}
+          ngPlus={ngPlus}
+          onChange={onChange}
+        />
         <NumberTextField
           label="HP"
           title="For damage that's a percentage of the enemy's max HP, e.g. black flame (0 if unknown)"

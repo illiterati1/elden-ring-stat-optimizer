@@ -14,6 +14,7 @@ Rules:
     (data/enemy-locations.md), for identifying by hand
 """
 
+import json
 import math
 import re
 from collections import Counter
@@ -91,6 +92,7 @@ def stats_key(enemy):
         enemy.get("poiseDamageRate", 1),
         enemy.get("poiseNote"),
         enemy.get("weakPartDamageRate", 1),
+        json.dumps(enemy.get("ngPlus")),
     )
 
 

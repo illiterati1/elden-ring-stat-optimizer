@@ -7,6 +7,8 @@ export interface Enemy {
   hp: number;
   /** Physical, magic, fire, lightning, holy */
   defense: number[];
+  /** Its HP and defenses in NG+ (journey 2), if they scale */
+  ngPlus?: { hp: number; defense: number[] };
   /** Standard, slash, strike, pierce, magic, fire, lightning, holy (percent) */
   negation: number[];
   /** Types some weapons and buffs do more damage to, e.g. "dragon" */
@@ -35,6 +37,8 @@ export interface EnemyArea {
   region: string;
   /** The defenses most of the area's enemies have (physical, magic, fire, lightning, holy) */
   defense: number[];
+  /** The same in NG+ (journey 2) */
+  ngPlusDefense: number[];
   /** True for areas in the Realm of Shadow, where the Scadutree Blessing applies */
   dlc?: boolean;
   enemies: Enemy[];
@@ -43,6 +47,47 @@ export interface EnemyArea {
 /** Uniquely identifies an enemy within its area */
 export function getEnemyKey(enemy: Enemy) {
   return `${enemy.name}|${enemy.npcParamIds[0]}${enemy.friendly ? "|friendly" : ""}`;
+}
+
+export const maxNgPlus = 7;
+
+/**
+ * Multipliers on NG+ HP and defenses for each later journey, by NG+ level (ClearCountCorrectParam
+ * rows 1-7, the same for every defense)
+ */
+const ngPlusRates = [
+  { hp: 1, defense: 1 },
+  { hp: 1, defense: 1 },
+  { hp: 1.1, defense: 1.025 },
+  { hp: 1.15, defense: 1.05 },
+  { hp: 1.2, defense: 1.1 },
+  { hp: 1.3, defense: 1.15 },
+  { hp: 1.35, defense: 1.2 },
+  { hp: 1.4, defense: 1.3 },
+] as const;
+
+/** @returns "NG", "NG+", "NG+2", etc. */
+export function getNgPlusLabel(ngPlus: number) {
+  return ngPlus === 0 ? "NG" : ngPlus === 1 ? "NG+" : `NG+${ngPlus}`;
+}
+
+/**
+ * @returns an enemy's HP and defenses at an NG+ level (0 for NG). Enemies whose stats don't scale
+ * in NG+ (mostly wildlife) keep their NG ones.
+ */
+export function getEnemyStats(enemy: Enemy, ngPlus: number) {
+  if (ngPlus === 0 || !enemy.ngPlus) return { hp: enemy.hp, defense: enemy.defense };
+  const rates = ngPlusRates[ngPlus];
+  return {
+    hp: Math.round(enemy.ngPlus.hp * rates.hp),
+    defense: enemy.ngPlus.defense.map((defense) => defense * rates.defense),
+  };
+}
+
+/** @returns the defenses most of an area's enemies have at an NG+ level (0 for NG) */
+export function getAreaDefense(area: EnemyArea, ngPlus: number) {
+  if (ngPlus === 0) return area.defense;
+  return area.ngPlusDefense.map((defense) => defense * ngPlusRates[ngPlus].defense);
 }
 
 let enemyAreasPromise: Promise<EnemyArea[]> | undefined;

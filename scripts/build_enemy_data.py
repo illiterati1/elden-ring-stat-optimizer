@@ -1271,19 +1271,26 @@ def main():
             if field != "spEffectID3" and effect and effect["effectEndurance"] == -1:
                 other_rate *= effect["maxHpRate"]
         hp_rate = area_rate("maxHpRate") * other_rate
-        # In NG+, its NG+ scaling effect (GameClearSpEffectID) multiplies its HP too: its multipliers
-        # get smaller the more its area scales, bringing every area to about the same (e.g. ×1.141 ×
-        # 3.122 = 3.56 in Limgrave, ×2.406 × 1.523 = 3.66 for a later area's). Untested; for the enemy
-        # locations list only. Enemies without one aren't scaled.
+        # In NG+, its NG+ scaling effect (GameClearSpEffectID) multiplies its HP and defenses too, on
+        # top of its area scaling: its multipliers get smaller the more its area scales, bringing
+        # every area to about the same (e.g. ×1.141 × 3.122 = 3.56 in Limgrave, ×2.406 × 1.523 = 3.66
+        # for a later area's). Later journeys multiply these by ClearCountCorrectParam (in the app).
+        # Enemies without one aren't scaled.
         ng_plus_effect = sp_effects.get(row["GameClearSpEffectID"]) if row["GameClearSpEffectID"] > 0 else None
         ng_plus_rate = hp_rate * (ng_plus_effect["maxHpRate"] if ng_plus_effect else 1)
+
+        def ng_plus_defense(defense):
+            """@returns the NG+ defenses, or None without an NG+ scaling effect"""
+            if not ng_plus_effect:
+                return None
+            return [round(value * ng_plus_effect[rate], 1) for value, (_, rate) in zip(defense, DEFENSES)]
 
         if chara_init is None:
             defense = [round(row[field] * area_rate(rate), 1) for field, rate in DEFENSES]
             negation = [round((1 - row[field]) * 100, 1) for field in NEGATIONS]
             hp = round(row["hp"] * hp_rate)
             ng_plus_hp = round(row["hp"] * ng_plus_rate)
-            return defense, negation, hp, ng_plus_hp
+            return defense, negation, hp, ng_plus_hp, ng_plus_defense(defense)
 
         # Human enemies: defense from level and attributes, negation from armor
         level = sum(chara_init[attribute] for attribute in CHARA_INIT_ATTRIBUTES)
@@ -1306,7 +1313,7 @@ def main():
         base_hp = int(evaluate_graph(graphs[VIGOR_HP_GRAPH], chara_init["baseVit"]))
         hp = round(base_hp * hp_rate)
         ng_plus_hp = round(base_hp * ng_plus_rate)
-        return defense, negation, hp, ng_plus_hp
+        return defense, negation, hp, ng_plus_hp, ng_plus_defense(defense)
 
     def get_poise(row):
         """
@@ -1408,7 +1415,8 @@ def main():
                 continue
 
             chara_init = chara_inits.get(int(placement["charaInitId"])) if model == "c0000" else None
-            defense, negation, hp, ng_plus_hp = get_stats(row, chara_init)
+            defense, negation, hp, ng_plus_hp, ng_plus_def = get_stats(row, chara_init)
+            ng_plus = {"hp": ng_plus_hp, "defense": ng_plus_def} if ng_plus_def else None
             area = areas.setdefault(area_name, {"name": area_name, "region": region, "enemies": {}})
             # Merge identical enemies, e.g. the same enemy placed several times
             friendly = row["teamType"] in FRIENDLY_TEAM_TYPES
@@ -1423,7 +1431,10 @@ def main():
                 if row["partsDamageType"] == 1 and row["weakPartsDamageRate"] >= WEAK_PART_NOTE_MIN_RATE
                 else 1
             )
-            key = (name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance, poise, weak_part_rate)
+            key = (
+                name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance, poise,
+                weak_part_rate, ng_plus and (ng_plus["hp"], tuple(ng_plus["defense"])),
+            )
             riposte_override = next(
                 (ripostes for prefix, ripostes in RIPOSTE_NAME_OVERRIDES.items() if name.startswith(prefix)),
                 None,
@@ -1439,6 +1450,8 @@ def main():
                     "appearance": appearance,
                     "defense": defense,
                     "negation": negation,
+                    # HP and defenses in NG+ (journey 2), if it scales
+                    **({"ngPlus": ng_plus} if ng_plus else {}),
                     **({"types": types} if types else {}),
                     **({"friendly": True} if friendly else {}),
                     **({"boss": True} if not friendly and is_boss(row, name) else {}),
@@ -1583,6 +1596,14 @@ def main():
                     "defense": list(
                         Counter(
                             tuple(enemy["defense"])
+                            for enemy in area["enemies"].values()
+                            if not enemy.get("friendly")
+                        ).most_common(1)[0][0]
+                    ),
+                    # The same in NG+ (journey 2)
+                    "ngPlusDefense": list(
+                        Counter(
+                            tuple(enemy.get("ngPlus", enemy)["defense"])
                             for enemy in area["enemies"].values()
                             if not enemy.get("friendly")
                         ).most_common(1)[0][0]
