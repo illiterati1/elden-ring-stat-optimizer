@@ -401,11 +401,9 @@ function AttackHits({
                     ? `Back to step ${repeatFrom + 1} at ${formatSeconds(chainTime!)}`
                     : loop
                     ? `Next pass at ${formatSeconds(chainTime!)}`
-                    : recastTime != null
-                    ? `Same skill at ${formatSeconds(recastTime)} (per second, at ${formatSeconds(
-                        chainTime!,
-                      )}: it doesn't stack)`
-                    : `Same ${skill ? "skill" : "attack"} at ${formatSeconds(chainTime!)}`}
+                    : `Same ${skill ? "skill" : "attack"} at ${formatSeconds(
+                        recastTime ?? chainTime!,
+                      )}`}
                 </TableCell>
               </TableRow>
             )}
