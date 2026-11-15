@@ -9703,7 +9703,9 @@ describe("Ashes of War", () => {
     // first loop's 8 hits) is counted once, then one pass of its loop (8 hits), the only part repeated
     // for values per second. Tested in game at +10 with 99 in every stat on the training dummy, 194 a
     // hit, L2 at 1056: the downswing at 1089, its other hits at 1149-1244, then 8 hits every 60
-    // frames from 1249 (39 hits by 1429). Poise: 19.5 for an earlier test's 26 hits
+    // frames from 1249 (39 hits by 1429). Poise: 19.5 for an earlier test's 26 hits. Rolled out of as
+    // soon as possible, the roll visibly started 83 frames after the downswing: its window opens 76
+    // after it here (a roll shows a few frames after it takes effect, as for Euporia Vortex)
     const weapon = getWeapon("Ghiza's Wheel");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -9736,6 +9738,8 @@ describe("Ashes of War", () => {
     expect(pass.hits.map(frames)).toEqual([0, 7, 15, 23, 31, 39, 47, 55]);
     expect(result.attack.cycleTimes!.map(frames)).toEqual([193, 60]);
     expect(result.attack.repeatFrom).toBe(1);
+    expect(frames(opening.roll!)).toBe(125);
+    expect(opening.earlyRolls!.map(frames)).toEqual([109]);
     // Per second: a pass's 8 hits a second
     expect(Math.floor(build.attackDps!)).toBe(Math.floor(steps[1].reduce((a, b) => a + b, 0)));
     expect(result.attack.note).toBe(
