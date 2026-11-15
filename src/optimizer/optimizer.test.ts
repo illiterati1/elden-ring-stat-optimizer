@@ -6714,6 +6714,44 @@ describe("Ashes of War", () => {
     ).toBe(1035);
   });
 
+  it("nearly matches the Carian Sorcery Sword's R1s in vanilla", () => {
+    // Tested in vanilla, two handed at +0 with 80 STR, 80 DEX, 23 INT, 43 FAI, 61 ARC, on an NG+
+    // Haligtree Foot Soldier (147.6 defense, -10% pierce negation): 25, 25, 26, 26, 27, 30. The menu
+    // showed 38 + 22 physical and 69 + 14 magic, as calculated (38 + 22.9, 69 + 14.3). Physical
+    // scales with INT in vanilla: without it, every hit is 1-2 lower. Hits 1, 3, and 5 come out 1
+    // low (24.9, 25.9, and 26.9): see "Off by one" in known-issues.md
+    const weapon = getWeapon("Carian Sorcery Sword");
+    const build = optimizeBuild({
+      weapon,
+      regularUpgradeLevel: 0,
+      twoHanding: true,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 80, dex: 80, int: 23, fai: 43, arc: 61 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: {
+        [AttackPowerType.PHYSICAL]: { defense: 147.6, negation: 0 },
+        [AttackPowerType.MAGIC]: { defense: 147.6, negation: 0 },
+        [AttackPowerType.FIRE]: { defense: 147.6, negation: 0 },
+        [AttackPowerType.LIGHTNING]: { defense: 147.6, negation: -20 },
+        [AttackPowerType.HOLY]: { defense: 147.6, negation: 20 },
+      },
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: -10 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: getAttackData(movesets, weapon, "R1", true, 0.5),
+    });
+    const physical = build.breakdown!.find((row) => row.damageType === AttackPowerType.PHYSICAL)!;
+    const magic = build.breakdown!.find((row) => row.damageType === AttackPowerType.MAGIC)!;
+    expect([physical.base, Math.floor(physical.total - physical.base)]).toEqual([38, 22]);
+    expect([magic.base, Math.floor(magic.total - magic.base)]).toEqual([69, 14]);
+    const inGame = [25, 25, 26, 26, 27, 30];
+    // (1 below the game's on hits 1, 3, and 5)
+    expect(build.attackSteps!.map((step, i) => inGame[i] - Math.floor(step[0].damage))).toEqual([
+      1, 0, 1, 0, 1, 0,
+    ]);
+  });
+
   it("matches the Frozen Needle's Impaling Thrust in game", () => {
     // Tested in game at +25 with 99 in every stat on the training dummy (damage, poise, and frost)
     const weapon = getWeapon("Frozen Needle");
