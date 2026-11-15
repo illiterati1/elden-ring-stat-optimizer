@@ -382,12 +382,15 @@ ROW_KINDS = {
 
 # Hits shown but not counted in the total, by AtkId: the Forked-Tongue Hatchet's Dragonform Flame's
 # ground fire only burns where the stream hits the ground (tested in game at +25 with 99 in every
-# stat: its other numbers right), and so does the Steel-Wire Torch's Firebreather's (tested in game)
+# stat: its other numbers right), and so does the Steel-Wire Torch's Firebreather's (tested in game).
+# St. Trina's Torch's Fires of Slumber's ground fire does burn (13 ticks, ROW_REPEATS), but its fire is
+# the attack: the ground fire's ticks are shown alongside, so per second the skill's recast counts
 NOT_COUNTED_ROWS = {
     "700000421",
     "302003902",
     "302003906",
     "300000591",
+    "302404901",
     # The Erdtree Greatshield's Golden Retaliation's explosion (Bullet 2843, spawned where its
     # projectile hits, growing to 1 m in 0.2s) doesn't hit the target its projectile did (tested in
     # game on Rennala's second phase: 831, the projectile's alone)
@@ -641,7 +644,8 @@ ROW_REPEATS = {
     # stream: counted 3 times (tested in game on the training dummy: 3 hits, 61, 86, and 142 frames
     # after L2, its numbers right). Its fire spawns ground fire where it hits (Bullet 2826, 1 m across,
     # lasting 5 seconds and hitting again every 0.4s), which burns the dummy every 25 frames after the
-    # last fire hit, one patch at a time (tested in game: 20 sleep a tick, as calculated): 13 ticks
+    # last fire hit, one patch at a time (tested in game: 20 sleep a tick, as calculated): 13 ticks,
+    # shown but not counted (NOT_COUNTED_ROWS)
     "302404900": 3,
     "302404901": 13,
     # Deadly Poison Spray's cloud's 23 ticks (EXTRA_SHEET_ROWS)
@@ -845,7 +849,7 @@ SKILL_NOTES = {
     "Sea of Magma": "Counts it without looping: each loop while held adds the lash and magma tick in parentheses, and the magma can tick once more",
     "Bear Witness!": "Counts its fire and explosion: up close its windup's weapon hit and more fire can hit too, and its 18 projectiles land at random ({damage} each), leaving patches of fire",
     "Deadly Poison Spray": "Does no damage, only deadly poison: counts its cloud's 23 ticks over about 7 seconds (its buildup also decays 5 a second). Clouds don't stack, so per second it's used again once the cloud is done, not as soon as it can be",
-    "Fires of Slumber": "Only builds up sleep: counts 3 hits of its fire and 13 ticks of the ground fire it leaves, over 5 seconds. Its ground fire burns a target one patch at a time, so per second it's used again once the ground fire is done, not as soon as it can be",
+    "Fires of Slumber": "Only builds up sleep: counts 3 hits of its fire. The ground fire it leaves burns 13 times over 5 seconds, shown but not counted",
     "Spearcall Ritual": "Counts one of its spears: about 14 fall at random, and how many hit depends on the target",
     "Erdtree Slam": "Counts its slam close up: further away, only its weaker shockwave hits",
     "Spinning Wheel": "Counts its opening (its downswing, 5 spins, and its first loop's 8 hits) and one pass of its loop (8 hits); per second, only its loop, a pass a second for as long as the skill is held",
@@ -1330,9 +1334,6 @@ CANCEL_FITS = {
     # (146 frames after L2), but per second it's used again once its cloud's last tick lands, 447
     # (HIT_TIME_FITS), "noStack": until then from its animation's start
     ("Deadly Poison Spray", ""): {"noStack": 445 / 60},
-    # Fires of Slumber's ground fire burns the dummy one patch at a time (tested in game), so likewise
-    # it's used again once its last tick lands, 444 frames after L2 (HIT_TIME_FITS)
-    ("Fires of Slumber", ""): {"noStack": 442 / 60},
     # Euporia Vortex Luster Tier 2's early roll: its animation allows a roll from 160 frames (as the
     # plain skill's does after its last hit), but in game, rolling as soon as possible after the
     # press (865), the hit for 375 landed at 1036 and the roll visibly started at 1045, the next hits

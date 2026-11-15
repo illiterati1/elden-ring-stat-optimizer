@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 43 | Fires of Slumber, recast as soon as possible (218 after the L2) while its ground fire burns: do the two casts' ground fires tick separately, or still once every 25? | St. Trina's Torch | Once every 25 (counted as not stacking: per second it's used again at 444, when the ground fire's done) |
 | 9 | Great-Serpent Hunt's chain | Serpent-Hunter | #1 hit 154; #2 168 later, its hit 258; next #1's hit 518 |
 | 10 | Loretta's Slash, repeated | Loretta's War Sickle | Hits 44 and 98, then every 162 |
 | 11 | Wall of Sparks, repeated | Firespark Perfume Bottle | Hit 30, then every 214 |
