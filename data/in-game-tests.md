@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 9 | Great-Serpent Hunt's chain | Serpent-Hunter | #1 hit 154; #2 168 later, its hit 258; next #1's hit 518 |
 | 10 | Loretta's Slash, repeated | Loretta's War Sickle | Hits 44 and 98, then every 162 |
 | 11 | Wall of Sparks, repeated | Firespark Perfume Bottle | Hit 30, then every 214 |
 | 12 | Rolling Sparks, repeated | Firespark Perfume Bottle | Hits 34 to 52, then every 110 |
