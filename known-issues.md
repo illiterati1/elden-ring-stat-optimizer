@@ -29,8 +29,7 @@
   which ignores the weapon's attack power).
 - **Powerstance off-hand weapon:** its own passive or fixed skill's buff isn't applied to its
   hits unless picked separately in Buffs.
-- **Deadly Poison Spray:** its cloud's 23 ticks are fitted to one test, and its buildup's decay (5
-  a second) isn't counted.
+- **Deadly Poison Spray:** its buildup's decay (5 a second) isn't counted.
 - **Ice Lightning Sword:** the stomp's lightning is about 4% lower than in game.
 - **Deflecting Hardtear:** not supported yet, so its attack power boost after a deflection
   can't be applied.

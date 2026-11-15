@@ -10749,34 +10749,39 @@ describe("Ashes of War", () => {
     // 117, 136, 155, 175, 193, 211, 229, 247, 266, 283, 301, 319, 337, 355, 374, 392, 411, 429, and 447
     // frames after the L2, topping out at 2956 (2990 less 5 a second of decay). Its animation can be
     // used again 147 frames after the first, but clouds don't stack, so it's used again once the
-    // cloud's last tick lands (447)
+    // cloud's last tick lands (447). At +0 with 99 Arcane: 106 a tick, topping out at about 2440
     const weapon = getWeapon("Deadly Poison Perfume Bottle");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const hits = optimizeBuild({
-      weapon,
-      regularUpgradeLevel: 25,
-      twoHanding: false,
-      startLevel: 9,
-      currentLevel: 9,
-      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
-      bonusAttributes: noBonus,
-      objective: "totalAttack",
-      defenses: Object.fromEntries(
-        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
-      ),
-      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
-      limits: { ...noLimits, maxLevels: 0 },
-      attack: result.attack,
-    }).attackSteps!.flat();
+    const getHits = (regularUpgradeLevel: number) =>
+      optimizeBuild({
+        weapon,
+        regularUpgradeLevel,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+      }).attackSteps!.flat();
+    const hits = getHits(25);
     expect(hits).toHaveLength(23);
     expect(hits.every((hit) => hit.damage === 0)).toBe(true);
     const poison = hits.map((hit) => hit.status[AttackPowerType.POISON]!);
     expect(poison.every((buildup) => Math.floor(buildup) === 130)).toBe(true);
+    expect(getHits(0).every((hit) => Math.floor(hit.status[AttackPowerType.POISON]!) === 106)).toBe(
+      true,
+    );
     const frames = (time: number) => Math.round(time * 60);
     expect(result.attack.stepTimes![0].hitTimes!.map((time) => frames(time!))).toEqual([
-      40, 59, 78, 97, 117, 136, 155, 175, 193, 211, 229, 247, 266, 283, 301, 319, 337, 355, 374, 392,
-      411, 429, 447,
+      40, 59, 78, 97, 117, 136, 155, 175, 193, 211, 229, 247, 266, 283, 301, 319, 337, 355, 374,
+      392, 411, 429, 447,
     ]);
     expect(result.attack.cycleTimes!.map(frames)).toEqual([447]);
   });

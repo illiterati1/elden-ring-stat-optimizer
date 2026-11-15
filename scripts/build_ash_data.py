@@ -557,8 +557,8 @@ ROW_FITS = {"302100962": "302100960", "306300962": "306300960"}
 # AtkParam_Pc 6150305 and 6151305's 65% of the bottle's status, spawn nothing that lingers). It does no
 # damage in game, though the rows have 59 motion values. Tested in game at +10 with 99 Arcane on a
 # high-resistance target: 23 ticks of 130 buildup each (115% of the bottle's 113.5), 40 to 447 frames
-# after L2 (HIT_TIME_FITS), topping out at 2956 (2990 less 5 a second of decay); counted as 6151305's
-# row, 23 times (ROW_REPEATS).
+# after L2 (HIT_TIME_FITS), topping out at 2956 (2990 less 5 a second of decay); at +0, 106 a tick
+# (the bottle's 92.4), so it scales with the bottle's. Counted as 6151305's row, 23 times (ROW_REPEATS).
 _STATUS_ONLY = {
     **{field: "0" for field in ["Phys MV", "Magic MV", "Fire MV", "Ltng MV", "Holy MV", "Poise Dmg MV"]},
     **{field: "0" for field in ["AtkPhys", "AtkMag", "AtkFire", "AtkLtng", "AtkHoly", "AtkSuperArmor"]},
