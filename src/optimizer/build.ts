@@ -653,6 +653,8 @@ export interface AttackResultHit {
   /** For damage over time, the seconds between ticks and how long it lasts, if known */
   tickInterval?: number;
   tickDuration?: number;
+  /** How many times it ticks, if known (shown even for a tick that isn't counted) */
+  tickCount?: number;
   /** Damage of a percentage of the enemy's max HP (e.g. black flame), if the enemy is known */
   hpDamage?: { label: string; damage: number };
   /** The stamina the hit's step costs, on its first hit */
@@ -900,9 +902,14 @@ function getHitStatus(
 function getTickCount(hit: AttackDataHit) {
   // A hit shown but not counted counts no times, in damage, poise, and status
   if (hit.notCounted) return 0;
+  return getTicks(hit) ?? 1;
+}
+
+/** @returns how many times a tick hits (as getTickCount, counted or not), if known */
+function getTicks(hit: AttackDataHit) {
   return hit.tickDuration && hit.tickInterval
     ? Math.max(1, Math.ceil((hit.tickDuration - (hit.tickDelay ?? 0)) / hit.tickInterval - 1e-9))
-    : 1;
+    : undefined;
 }
 
 /**
@@ -1122,6 +1129,7 @@ function getAttackSteps(
           tick: true,
           ...(hit.tickInterval > 0 && { tickInterval: hit.tickInterval }),
           ...(hit.tickDuration && { tickDuration: hit.tickDuration }),
+          ...(getTicks(hit) != null && { tickCount: getTicks(hit) }),
           ...(hit.tickInterval > 0 && { perSecond: damage / hit.tickInterval }),
         }),
         stance:

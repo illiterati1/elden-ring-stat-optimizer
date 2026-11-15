@@ -78,12 +78,12 @@ const bothBordersSx = { ...leftBorderSx, borderRight: 1, borderRightColor: "divi
 /** Seconds without trailing zeros, e.g. "0.7s" */
 const formatSeconds = (seconds: number) => `${+seconds.toFixed(2)}s`;
 
-/** A hit's status buildup: per tick for a tick, e.g. "120/0.7s (4s)" for a lingering cloud */
+/** A hit's status buildup: per tick for a tick, e.g. "120/0.7s (×5)" for a lingering cloud */
 function formatStatus(hit: AttackResultHit, buildup: number) {
   if (!hit.tick || !hit.tickInterval) return formatValue(buildup);
   return (
     `${formatValue(buildup)}/${formatSeconds(hit.tickInterval)}` +
-    (hit.tickDuration ? ` (${formatSeconds(hit.tickDuration)})` : "")
+    (hit.tickCount ? ` (×${hit.tickCount})` : "")
   );
 }
 

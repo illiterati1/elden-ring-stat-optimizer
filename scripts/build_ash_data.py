@@ -347,6 +347,12 @@ OWN_STATUS_MOTION_ROWS = {
     "301005921",
 }
 
+# Ticks whose interval and duration the bullet's alone don't give (seconds): St. Trina's Torch's Fires
+# of Slumber's ground fire burns the dummy every 25 frames (its 0.4s dmgHitRecordLifeTime), one patch
+# at a time, from 86 frames after L2 (perhaps sooner) to about 5 seconds after the last fire hit
+# (Bullet 2826's life): 16 ticks (tested in game on the training dummy)
+TICK_ROWS = {"302404901": {"tickInterval": round(25 / 60, 3), "tickDuration": 16 * 25 / 60}}
+
 # Hits counted as separate hits rather than damage over time, though their name says lava etc.: the
 # Magma Wyrm's Scalesword's Magma Guillotine's lava (counted 5 times, ROW_REPEATS)
 HIT_ROWS = {"300729002"}
@@ -644,10 +650,9 @@ ROW_REPEATS = {
     # stream: counted 3 times (tested in game on the training dummy: 3 hits, 61, 86, and 142 frames
     # after L2, its numbers right). Its fire spawns ground fire where it hits (Bullet 2826, 1 m across,
     # lasting 5 seconds and hitting again every 0.4s), which burns the dummy every 25 frames after the
-    # last fire hit, one patch at a time (tested in game: 20 sleep a tick, as calculated): 13 ticks,
-    # shown but not counted (NOT_COUNTED_ROWS)
+    # last fire hit (tested in game: 20 sleep a tick, as calculated), shown as a tick (TICK_ROWS) but not
+    # counted (NOT_COUNTED_ROWS)
     "302404900": 3,
-    "302404901": 13,
     # Deadly Poison Spray's cloud's 23 ticks (EXTRA_SHEET_ROWS)
     "6151305": 23,
     # The Grafted Dragon's Bear Witness! hits directly with its fire ([2]) and its explosion (tested in
@@ -849,7 +854,7 @@ SKILL_NOTES = {
     "Sea of Magma": "Counts it without looping: each loop while held adds the lash and magma tick in parentheses, and the magma can tick once more",
     "Bear Witness!": "Counts its fire and explosion: up close its windup's weapon hit and more fire can hit too, and its 18 projectiles land at random ({damage} each), leaving patches of fire",
     "Deadly Poison Spray": "Does no damage, only deadly poison: counts its cloud's 23 ticks over about 7 seconds (its buildup also decays 5 a second). Clouds don't stack, so per second it's used again once the cloud is done, not as soon as it can be",
-    "Fires of Slumber": "Only builds up sleep: counts 3 hits of its fire. The ground fire it leaves burns 13 times over 5 seconds, shown but not counted",
+    "Fires of Slumber": "Only builds up sleep: counts 3 hits of its fire. The ground fire it leaves burns about 16 times over 6.5 seconds, shown but not counted",
     "Spearcall Ritual": "Counts one of its spears: about 14 fall at random, and how many hit depends on the target",
     "Erdtree Slam": "Counts its slam close up: further away, only its weaker shockwave hits",
     "Spinning Wheel": "Counts its opening (its downswing, 5 spins, and its first loop's 8 hits) and one pass of its loop (8 hits); per second, only its loop, a pass a second for as long as the skill is held",
@@ -1230,6 +1235,8 @@ def parse_hit(row, tick_bullets, hp_damage, attack_categories, hit_status):
             details["tickInterval"] = interval
         if duration:
             details["tickDuration"] = duration
+    if row["AtkId"] in TICK_ROWS:
+        details.update(tick=True, **TICK_ROWS[row["AtkId"]])
     if row["AtkId"] in hp_damage:
         details["hpDamage"] = hp_damage[row["AtkId"]]
     # Attack subcategories, which some buffs only apply to (e.g. 112 Skill Attack)
@@ -1500,9 +1507,8 @@ HIT_TIME_FITS = {
     ("Black Flame Tornado", "Tap"): [None, 82 / 60, None],
     # Deadly Poison Spray's cloud's 23 ticks, 40 to 447 frames after L2, about every 18.5
     # St. Trina's Torch's Fires of Slumber's fire hits the dummy 3 times, 61, 86, and 142 frames after
-    # L2, then its ground fire ticks every 25 frames, 144 to 444 (the last 12 measured, the 13th's
-    # sleep proc at 444: one patch's 5 seconds from about the last fire hit)
-    ("Fires of Slumber", ""): [frame / 60 for frame in [59, 84, 140, *range(142, 443, 25)]],
+    # L2, and its ground fire first ticks 86 frames after L2 (TICK_ROWS)
+    ("Fires of Slumber", ""): [59 / 60, 84 / 60, 140 / 60, 84 / 60],
     ("Deadly Poison Spray", ""): [frame / 60 for frame in [38, 57, 76, 95, 115, 134, 153, 173, 191, 209, 227, 245, 264, 281, 299, 317, 335, 353, 372, 390, 409, 427, 445]],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
