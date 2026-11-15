@@ -553,6 +553,11 @@ export interface StepTimes {
    * For the last step of a chain cut short (cutShort), until the chain is over instead.
    */
   cycle?: number;
+  /**
+   * For a last step whose effects don't stack (e.g. Deadly Poison Spray's cloud), when it can
+   * actually be used again, sooner than its cycle, which waits until using it again adds to it
+   */
+  recast?: number;
   /** The last step of a chain cut short, which doesn't start again: its cycle is when it's over */
   cutShort?: true;
 }

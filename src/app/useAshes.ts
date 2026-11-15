@@ -114,6 +114,11 @@ interface SkillPartTiming {
   approximate?: number[];
   /** When it can be cancelled into another skill (or its chain's next step) */
   L2?: number;
+  /**
+   * Until when using it again doesn't add to it (its effects don't stack, e.g. Deadly Poison
+   * Spray's cloud), so it's repeated from then for its cycle, though it can be used again sooner
+   */
+  noStack?: number;
   R1?: number;
   R2?: number;
   rightHandAttack?: number;
@@ -279,7 +284,11 @@ function getSkillStepTimes(
         ...(timing.move != null && { move: lead + timing.move }),
         ...(last && oneOff
           ? oneOffEnd != null && { cycle: oneOffEnd, cutShort: true as const }
-          : !(last && noRepeat) && next && { cycle: next.time }),
+          : !(last && noRepeat) &&
+            next &&
+            (last && timing.noStack != null && lead + timing.noStack > next.time
+              ? { cycle: lead + timing.noStack, recast: next.time }
+              : { cycle: next.time })),
         ...(i === 0 && timing.opening != null && { opening: timing.opening }),
       },
     ];
@@ -505,6 +514,7 @@ function shiftStepTimes(step: StepTimes, by: number): StepTimes {
     ...(step.move != null && { move: step.move + by }),
     ...(step.jump != null && { jump: step.jump + by }),
     ...(step.cycle != null && { cycle: step.cycle + by }),
+    ...(step.recast != null && { recast: step.recast + by }),
   };
 }
 

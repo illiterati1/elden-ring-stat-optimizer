@@ -122,6 +122,12 @@ function AttackHits({
     elapsed = elapsed != null && times.cycle != null ? elapsed + times.cycle : undefined;
   }
   const chainTime = stepTimes ? elapsed : undefined;
+  // When the attack can actually start again, if sooner than its cycle (its effects don't stack)
+  const lastTimes = stepTimes?.[stepTimes.length - 1];
+  const recastTime =
+    chainTime != null && lastTimes?.recast != null && lastTimes.cycle != null
+      ? chainTime - lastTimes.cycle + lastTimes.recast
+      : undefined;
   const at = (stepIndex: number, time: number | undefined) =>
     stepStarts[stepIndex] != null && time != null ? stepStarts[stepIndex]! + time : undefined;
   const hitRows = steps.flatMap((step, i) =>
@@ -395,6 +401,10 @@ function AttackHits({
                     ? `Back to step ${repeatFrom + 1} at ${formatSeconds(chainTime!)}`
                     : loop
                     ? `Next pass at ${formatSeconds(chainTime!)}`
+                    : recastTime != null
+                    ? `Same skill at ${formatSeconds(recastTime)} (per second, at ${formatSeconds(
+                        chainTime!,
+                      )}: it doesn't stack)`
                     : `Same ${skill ? "skill" : "attack"} at ${formatSeconds(chainTime!)}`}
                 </TableCell>
               </TableRow>
