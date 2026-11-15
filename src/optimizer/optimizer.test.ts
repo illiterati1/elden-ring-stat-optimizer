@@ -10744,11 +10744,11 @@ describe("Ashes of War", () => {
 
   it("matches Deadly Poison Spray in game", () => {
     // The Deadly Poison Perfume Bottle's fixed skill, which the sheet leaves out: no damage, only deadly
-    // poison, 6 hits of 65% of the bottle's. Tested in game at +10 with 99 in every stat: no damage,
-    // and a proc at 273 resistance within a second (4 of these hits), and at 752 in about a second
-    // (more than these hits' 442, probably from a cloud the data doesn't show). Its timing, tested in
-    // game: the first buildup 40 frames after the L2 (42 here), then more every 19 frames; used again
-    // 147 frames after the first (146 here)
+    // poison from a cloud the data doesn't show. Tested in game at +10 with 99 Arcane on a
+    // high-resistance target: 23 ticks of 130 buildup (fitted: 115% of the bottle's), 40, 59, 78, 97,
+    // 117, 136, 155, 175, 193, 211, 229, 247, 266, 283, 301, 319, 337, 355, 374, 392, 411, 429, and 447
+    // frames after the L2, topping out at 2956 (2990 less 5 a second of decay). Used again 147 frames
+    // after the first (146 here)
     const weapon = getWeapon("Deadly Poison Perfume Bottle");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -10768,13 +10768,15 @@ describe("Ashes of War", () => {
       limits: { ...noLimits, maxLevels: 0 },
       attack: result.attack,
     }).attackSteps!.flat();
-    expect(hits).toHaveLength(6);
+    expect(hits).toHaveLength(23);
     expect(hits.every((hit) => hit.damage === 0)).toBe(true);
     const poison = hits.map((hit) => hit.status[AttackPowerType.POISON]!);
-    expect(poison[0]).toBeCloseTo(73.8, 1);
-    expect(poison.slice(0, 4).reduce((sum, buildup) => sum + buildup, 0)).toBeGreaterThan(273);
+    expect(poison.every((buildup) => Math.floor(buildup) === 130)).toBe(true);
     const frames = (time: number) => Math.round(time * 60);
-    expect(frames(result.attack.stepTimes![0].hitTimes![0]!)).toBe(42);
+    expect(result.attack.stepTimes![0].hitTimes!.map((time) => frames(time!))).toEqual([
+      40, 59, 78, 97, 117, 136, 155, 175, 193, 211, 229, 247, 266, 283, 301, 319, 337, 355, 374, 392,
+      411, 429, 447,
+    ]);
     expect(result.attack.cycleTimes!.map(frames)).toEqual([146]);
   });
 

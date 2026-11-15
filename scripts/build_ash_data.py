@@ -552,15 +552,17 @@ STATUS_MOTION_VALUE_FITS = {"600000640": 200, "600000642": 200}
 ROW_FITS = {"302100962": "302100960", "306300962": "306300960"}
 
 # Skills' hits the sheet leaves out, as sheet rows (the rest of each copied from its first row): the
-# Deadly Poison Perfume Bottle's Deadly Poison Spray, its 3 sprays (Bullet 200018920, numShoot 3) and
-# what each becomes when it hits (200019305), each with 65% of the bottle's status (AtkParam_Pc 6150305
-# and 6151305). They do no damage in game, though the rows have 59 motion values, only deadly poison
-# (tested in game at +10 with 99 in every stat: a 273 resistance proc within a second, and 752 in about
-# a second, more than these 6 hits' 442, probably from a cloud of it the data doesn't show).
+# Deadly Poison Perfume Bottle's Deadly Poison Spray, fitted to its cloud of deadly poison, which the
+# data doesn't show (its sprays, Bullet 200018920 and what each becomes when it hits, 200019305, with
+# AtkParam_Pc 6150305 and 6151305's 65% of the bottle's status, spawn nothing that lingers). It does no
+# damage in game, though the rows have 59 motion values. Tested in game at +10 with 99 Arcane on a
+# high-resistance target: 23 ticks of 130 buildup each (115% of the bottle's 113.5), 40 to 447 frames
+# after L2 (HIT_TIME_FITS), topping out at 2956 (2990 less 5 a second of decay); counted as 6151305's
+# row, 23 times (ROW_REPEATS).
 _STATUS_ONLY = {
     **{field: "0" for field in ["Phys MV", "Magic MV", "Fire MV", "Ltng MV", "Holy MV", "Poise Dmg MV"]},
     **{field: "0" for field in ["AtkPhys", "AtkMag", "AtkFire", "AtkLtng", "AtkHoly", "AtkSuperArmor"]},
-    "Status MV": "65",
+    "Status MV": "115",
     "Weapon Buff MV": "0",
     "PhysAtkAttribute": "Standard",
     "isAddBaseAtk": "FALSE",
@@ -568,8 +570,7 @@ _STATUS_ONLY = {
     **{f"spEffectId{i}": "-1" for i in range(5)},
 }
 EXTRA_SHEET_ROWS = [
-    {**_STATUS_ONLY, "Unique Skill Weapon": "Deadly Poison Perfume Bottle", "Name": "Deadly Poison Spray - Bullet", "AtkId": "6150305"},
-    {**_STATUS_ONLY, "Unique Skill Weapon": "Deadly Poison Perfume Bottle", "Name": "Deadly Poison Spray - Bullet [Hit]", "AtkId": "6151305"},
+    {**_STATUS_ONLY, "Unique Skill Weapon": "Deadly Poison Perfume Bottle", "Name": "Deadly Poison Spray - Cloud", "AtkId": "6151305"},
 ]
 
 POISE_ONLY_ROWS = {
@@ -579,7 +580,6 @@ POISE_ONLY_ROWS = {
     "600000822",
     "301113900",
     "302305905",
-    "6150305",
     "6151305",
     # St. Trina's Torch's Fires of Slumber, which only builds up sleep
     "302404900",
@@ -641,8 +641,8 @@ ROW_REPEATS = {
     # dmgHitRecordLifeTime), 2.5 times as often as Firebreather's (1s), counted once on the same
     # stream: counted twice (seen in game: its numbers right, hitting more often than the others)
     "302404900": 2,
-    "6150305": 3,
-    "6151305": 3,
+    # Deadly Poison Spray's cloud's 23 ticks (EXTRA_SHEET_ROWS)
+    "6151305": 23,
     # The Grafted Dragon's Bear Witness! hits directly with its fire ([2]) and its explosion (tested in
     # game at +25 with 99 in every stat: 1282 and 10 poise, 102 and 1180); its windup's weapon hit ([1],
     # 302106900, 238) only hits up close, with the fire twice (442), and its 18 projectiles (903-905:
@@ -841,7 +841,7 @@ SKILL_NOTES = {
     "Romina's Purification": "Counts 3 hits of its bullet, which can hit more or fewer times",
     "Sea of Magma": "Counts it without looping: each loop while held adds the lash and magma tick in parentheses, and the magma can tick once more",
     "Bear Witness!": "Counts its fire and explosion: up close its windup's weapon hit and more fire can hit too, and its 18 projectiles land at random ({damage} each), leaving patches of fire",
-    "Deadly Poison Spray": "Does no damage, only deadly poison: counts its sprays' 6 hits, but it keeps building up for about a second, much more in all",
+    "Deadly Poison Spray": "Does no damage, only deadly poison: counts its cloud's 23 ticks over about 7 seconds (its buildup also decays 5 a second)",
     "Fires of Slumber": "Only builds up sleep: counts 2 hits of its fire, which can hit more often over the stream",
     "Spearcall Ritual": "Counts one of its spears: about 14 fall at random, and how many hit depends on the target",
     "Erdtree Slam": "Counts its slam close up: further away, only its weaker shockwave hits",
@@ -1487,11 +1487,13 @@ HIT_TIME_FITS = {
     ("Rain of Arrows", ""): [(131 + i * 43 / 11) / 60 for i in range(12)],
     # Black Flame Tornado's second tapped swing, 84 frames after L2 (ANIMATION_SEQUENCES)
     ("Black Flame Tornado", "Tap"): [None, 82 / 60, None],
+    # Deadly Poison Spray's cloud's 23 ticks, 40 to 447 frames after L2, about every 18.5
+    ("Deadly Poison Spray", ""): [frame / 60 for frame in [38, 57, 76, 95, 115, 134, 153, 173, 191, 209, 227, 245, 264, 281, 299, 317, 335, 353, 372, 390, 409, 427, 445]],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created
 # (measured in game: 144 frames after L2)
-MEASURED_HIT_TIMES = {("Black Flame Tornado", "Tap"): {2}}
+MEASURED_HIT_TIMES = {("Black Flame Tornado", "Tap"): {2}, ("Deadly Poison Spray", ""): set(range(23))}
 
 
 def get_skill_range(row):
