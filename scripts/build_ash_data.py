@@ -356,6 +356,7 @@ HIT_ROWS = {"300729002"}
 # Wolf's Assault's "bullet" is the explosion when it lands
 ROW_KINDS = {
     "300406910": "Explosion",
+    "302404900": "Fire",
     "302404901": "Ground Fire",
     "300000591": "Ground Fire",
     # Black Flame Tornado's loops and finisher: AoEs around the player
@@ -381,14 +382,12 @@ ROW_KINDS = {
 
 # Hits shown but not counted in the total, by AtkId: the Forked-Tongue Hatchet's Dragonform Flame's
 # ground fire only burns where the stream hits the ground (tested in game at +25 with 99 in every
-# stat: its other numbers right), and so does the Steel-Wire Torch's Firebreather's (tested in game),
-# and St. Trina's Torch's Fires of Slumber's (its sleep)
+# stat: its other numbers right), and so does the Steel-Wire Torch's Firebreather's (tested in game)
 NOT_COUNTED_ROWS = {
     "700000421",
     "302003902",
     "302003906",
     "300000591",
-    "302404901",
     # The Erdtree Greatshield's Golden Retaliation's explosion (Bullet 2843, spawned where its
     # projectile hits, growing to 1 m in 0.2s) doesn't hit the target its projectile did (tested in
     # game on Rennala's second phase: 831, the projectile's alone)
@@ -640,8 +639,11 @@ ROW_REPEATS = {
     # St. Trina's Torch's Fires of Slumber's fire hits a target again every 0.4s (Bullet 2825's
     # dmgHitRecordLifeTime), 2.5 times as often as Firebreather's (1s), counted once on the same
     # stream: counted 3 times (tested in game on the training dummy: 3 hits, 61, 86, and 142 frames
-    # after L2, its numbers right)
+    # after L2, its numbers right). Its fire spawns ground fire where it hits (Bullet 2826, 1 m across,
+    # lasting 5 seconds and hitting again every 0.4s), which burns the dummy every 25 frames after the
+    # last fire hit, one patch at a time (tested in game: 20 sleep a tick, as calculated): 13 ticks
     "302404900": 3,
+    "302404901": 13,
     # Deadly Poison Spray's cloud's 23 ticks (EXTRA_SHEET_ROWS)
     "6151305": 23,
     # The Grafted Dragon's Bear Witness! hits directly with its fire ([2]) and its explosion (tested in
@@ -843,7 +845,7 @@ SKILL_NOTES = {
     "Sea of Magma": "Counts it without looping: each loop while held adds the lash and magma tick in parentheses, and the magma can tick once more",
     "Bear Witness!": "Counts its fire and explosion: up close its windup's weapon hit and more fire can hit too, and its 18 projectiles land at random ({damage} each), leaving patches of fire",
     "Deadly Poison Spray": "Does no damage, only deadly poison: counts its cloud's 23 ticks over about 7 seconds (its buildup also decays 5 a second). Clouds don't stack, so per second it's used again once the cloud is done, not as soon as it can be",
-    "Fires of Slumber": "Only builds up sleep: counts 3 hits of its fire",
+    "Fires of Slumber": "Only builds up sleep: counts 3 hits of its fire and 13 ticks of the ground fire it leaves, over 5 seconds. Its ground fire burns a target one patch at a time, so per second it's used again once the ground fire is done, not as soon as it can be",
     "Spearcall Ritual": "Counts one of its spears: about 14 fall at random, and how many hit depends on the target",
     "Erdtree Slam": "Counts its slam close up: further away, only its weaker shockwave hits",
     "Spinning Wheel": "Counts its opening (its downswing, 5 spins, and its first loop's 8 hits) and one pass of its loop (8 hits); per second, only its loop, a pass a second for as long as the skill is held",
@@ -1328,6 +1330,9 @@ CANCEL_FITS = {
     # (146 frames after L2), but per second it's used again once its cloud's last tick lands, 447
     # (HIT_TIME_FITS), "noStack": until then from its animation's start
     ("Deadly Poison Spray", ""): {"noStack": 445 / 60},
+    # Fires of Slumber's ground fire burns the dummy one patch at a time (tested in game), so likewise
+    # it's used again once its last tick lands, 444 frames after L2 (HIT_TIME_FITS)
+    ("Fires of Slumber", ""): {"noStack": 442 / 60},
     # Euporia Vortex Luster Tier 2's early roll: its animation allows a roll from 160 frames (as the
     # plain skill's does after its last hit), but in game, rolling as soon as possible after the
     # press (865), the hit for 375 landed at 1036 and the roll visibly started at 1045, the next hits
@@ -1493,18 +1498,19 @@ HIT_TIME_FITS = {
     # Black Flame Tornado's second tapped swing, 84 frames after L2 (ANIMATION_SEQUENCES)
     ("Black Flame Tornado", "Tap"): [None, 82 / 60, None],
     # Deadly Poison Spray's cloud's 23 ticks, 40 to 447 frames after L2, about every 18.5
-    # St. Trina's Torch's Fires of Slumber's fire hits the dummy 3 times, 61, 86, and 142 frames after L2
-    ("Fires of Slumber", ""): [59 / 60, 84 / 60, 140 / 60, None],
+    # St. Trina's Torch's Fires of Slumber's fire hits the dummy 3 times, 61, 86, and 142 frames after
+    # L2, then its ground fire ticks every 25 frames, 144 to 444 (the last 12 measured, the 13th's
+    # sleep proc at 444: one patch's 5 seconds from about the last fire hit)
+    ("Fires of Slumber", ""): [frame / 60 for frame in [59, 84, 140, *range(142, 443, 25)]],
     ("Deadly Poison Spray", ""): [frame / 60 for frame in [38, 57, 76, 95, 115, 134, 153, 173, 191, 209, 227, 245, 264, 281, 299, 317, 335, 353, 372, 390, 409, 427, 445]],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created
 # (measured in game: 144 frames after L2)
-MEASURED_HIT_TIMES = {
-    ("Black Flame Tornado", "Tap"): {2},
-    ("Deadly Poison Spray", ""): set(range(23)),
-    ("Fires of Slumber", ""): {0, 1, 2},
-}
+MEASURED_HIT_TIMES = {("Black Flame Tornado", "Tap"): {2}, ("Deadly Poison Spray", ""): set(range(23))}
+# Projectile hits with fitted times that the animations can't tie to a projectile (status-only hits),
+# so approximate all the same: Fires of Slumber's fire and its ground fire's ticks
+PROJECTILE_HIT_TIMES = {("Fires of Slumber", "")}
 
 
 def get_skill_range(row):
@@ -2120,7 +2126,8 @@ def get_skill_timing(
                 time = round(fits[i], 3)
             if time is not None:
                 last[signature] = (time, bullet)
-                if bullet is not None and i not in MEASURED_HIT_TIMES.get((name, label), ()):
+                projectile = bullet is not None or (name, label) in PROJECTILE_HIT_TIMES
+                if projectile and i not in MEASURED_HIT_TIMES.get((name, label), ()):
                     approximate.append(i)
             hit_times.append(time)
         if any(time is not None for time in hit_times) and hit_times != timing["hits"]:

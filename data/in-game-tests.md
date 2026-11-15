@@ -10,7 +10,7 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 8 | Fires of Slumber, repeated (status only, approximate) | St. Trina's Torch | First hit 60, then every 218 |
+| 43 | Fires of Slumber, recast as soon as possible (218 after the L2) while its ground fire burns: do the two casts' ground fires tick separately, or still once every 25? | St. Trina's Torch | Once every 25 (counted as not stacking: per second it's used again at 444, when the ground fire's done) |
 | 9 | Great-Serpent Hunt's chain | Serpent-Hunter | #1 hit 154; #2 168 later, its hit 258; next #1's hit 518 |
 | 10 | Loretta's Slash, repeated | Loretta's War Sickle | Hits 44 and 98, then every 162 |
 | 11 | Wall of Sparks, repeated | Firespark Perfume Bottle | Hit 30, then every 214 |
@@ -29,7 +29,7 @@ from here.
 |---|---|---|---|
 | 20 | Blind Spot | Backhand Blade | 39 (was 30) |
 | 21 | Jumping R2 | Backhand Blade | 19 (its landing's behavior) |
-| 22 | Fires of Slumber, Familial Rancor, and Rain of Arrows (one bow class) | — | 0 in the data, so not known |
+| 22 | Familial Rancor and Rain of Arrows (one bow class) | — | 0 in the data, so not known |
 
 ## Damage
 
