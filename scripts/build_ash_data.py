@@ -3130,6 +3130,9 @@ def main():
                             STEP_START_DELAY + anims.to_real_time(cast_file, SKILL_ANIMATIONS[0], cast), 3
                         ),
                         "duration": float(sp_effects[str(BUFF_UPKEEP[name])]["effectEndurance"]),
+                        # Used again after the weapon's attacks at their quick L2 cancel (flag 103),
+                        # or else their normal one (104), like other skills (QUICK_SKILL_SPEED_TYPE)
+                        **({"quickL2": True} if skill_speed_types[skill_id] == QUICK_SKILL_SPEED_TYPE else {}),
                     }
 
     for skill in skills.values():

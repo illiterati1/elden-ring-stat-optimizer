@@ -522,6 +522,12 @@ export interface StepTimes {
    * named rightHandAttack in the data
    */
   rightHandAttack?: number;
+  /**
+   * For a weapon attack, when a quick skill (SwordArtsParam artsSpeedType 1) can start (the
+   * animations' flag 103), and any other skill (104)
+   */
+  quickL2?: number;
+  L2?: number;
   roll?: number;
   /**
    * When it can be rolled out of before its last hit, skipping the hits after (some skills, e.g.
@@ -622,6 +628,8 @@ export interface SkillUpkeep {
   cast: number;
   /** How long the buff lasts */
   duration: number;
+  /** True for a quick skill, used again after an attack at its quick L2 cancel (StepTimes quickL2) */
+  quickL2?: boolean;
 }
 
 /** One hit of an attack with the final stats */

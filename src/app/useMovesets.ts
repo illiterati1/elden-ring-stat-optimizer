@@ -238,6 +238,8 @@ function getStepTimes(
       hits: step.hits.map((time) => lead + time),
       ...(earliest && { earliest }),
       ...(step.rightHandAttack != null && { rightHandAttack: lead + step.rightHandAttack }),
+      ...(step.quickL2 != null && { quickL2: lead + step.quickL2 }),
+      ...(step.L2 != null && { L2: lead + step.L2 }),
       // (on horseback there's no rolling or blocking, and moving doesn't end an attack the same
       // way, though the animations have their flags)
       ...(step.roll != null && !mounted && { roll: lead + step.roll }),
@@ -352,6 +354,9 @@ export interface StepTiming {
   rightHandAttack?: number;
   /** When any left hand attack can start (L1, or on horseback L1 or L2) */
   leftHandAttack?: number;
+  /** When a quick skill (L2) can start (the animations' flag 103), and any other (104) */
+  quickL2?: number;
+  L2?: number;
   roll?: number;
   /** When blocking can start */
   block?: number;

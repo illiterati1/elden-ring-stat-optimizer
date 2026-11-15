@@ -9132,13 +9132,15 @@ describe("Ashes of War", () => {
       [550, 7],
     ]);
     // Each flail's explosion is spent on its first (the buff can't be cast again mid-chain), so each
-    // attack it changes stops after it: the cast, the attack, then the cast again once anything can
-    // follow (frames from the L2 press: the cast's 62, then the R2's swing and explosion)
+    // attack it changes stops after it: the cast, the attack, then the cast again as soon as it can
+    // (frames from the L2 press: the cast's 62, then the R2's swing and explosion)
     const frames = (seconds: number | undefined) =>
       seconds == null ? null : Math.round(seconds * 60);
     expect(r2.steps.length).toBe(1);
     expect(r2.stepTimes![0].hitTimes!.map(frames)).toEqual([103, 107]);
-    expect(r2.cycleTimes!.map(frames)).toEqual([139]);
+    // Cast again at the R2's quick L2 cancel (flag 103: Flare, O Serpent is a quick skill): tested in
+    // game one handed, L2 at 845, the R2's first hit at 946 and the next at 1095 (101 and 149 frames)
+    expect(r2.cycleTimes!.map(frames)).toEqual([149]);
     expect(r2.upkeep).toBeUndefined();
     const kinds = (attack: AttackData) =>
       attack.steps.map((step) =>
@@ -9165,6 +9167,7 @@ describe("Ashes of War", () => {
     expect(getSkillUpkeep(ashes, "Serpent Flail", "Flare, O Serpent")).toEqual({
       cast: 1.033,
       duration: 30,
+      quickL2: true,
     });
     const r1 = {
       ...getAttackData(movesets, weapon, "R1", false, 0.5)!,

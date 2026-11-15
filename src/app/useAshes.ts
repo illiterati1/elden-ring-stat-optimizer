@@ -497,6 +497,8 @@ function shiftStepTimes(step: StepTimes, by: number): StepTimes {
     ...(step.hitTimes && { hitTimes: step.hitTimes.map(later) }),
     ...(step.earliest && { earliest: { ...step.earliest, time: step.earliest.time + by } }),
     ...(step.rightHandAttack != null && { rightHandAttack: step.rightHandAttack + by }),
+    ...(step.quickL2 != null && { quickL2: step.quickL2 + by }),
+    ...(step.L2 != null && { L2: step.L2 + by }),
     ...(step.roll != null && { roll: step.roll + by }),
     ...(step.earlyRolls && { earlyRolls: step.earlyRolls.map((time) => time + by) }),
     ...(step.block != null && { block: step.block + by }),
@@ -1170,10 +1172,17 @@ function getSkillAttack(
         versionHits(hit).map(() => (landing ? jumpAirTime : step.lead) + time),
       );
       const last = i === stepCount - 1;
-      // The last ends once anything can follow it (like one-off attacks), to cast the buff again
-      const freed = [step.earliest?.time, step.roll, step.block, step.move, step.jump]
-        .filter((time): time is number => time != null)
-        .sort((a, b) => a - b)[0];
+      // The last ends once the skill can be used again, to cast the buff again: at the attack's
+      // quick L2 cancel for a quick skill, or else its normal one (tested in game: the Serpent
+      // Flail's one handed R2 with Flare, O Serpent, a quick skill, its first hits 149 frames apart,
+      // at its quick L2 cancel; its R1 and roll cancels would be 139), or else once anything can
+      // follow it (like one-off attacks)
+      const recast = hits.upkeep?.quickL2 ? step.quickL2 : step.L2;
+      const freed =
+        recast ??
+        [step.earliest?.time, step.roll, step.block, step.move, step.jump]
+          .filter((time): time is number => time != null)
+          .sort((a, b) => a - b)[0];
       const timed: StepTimes = {
         ...step,
         hitTimes: [...ownTimes, ...extraTimes],
@@ -1212,7 +1221,7 @@ function getSkillAttack(
         ...ownBuff,
         ...notedHit,
         // TODO: the note's wording is to be decided
-        note: `With ${skill} cast before each, until each weapon's fire is spent, then cast again once anything can follow`,
+        note: `With ${skill} cast before each, until each weapon's fire is spent, then cast again as soon as possible`,
       },
     };
   }

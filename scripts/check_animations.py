@@ -776,7 +776,7 @@ def get_timings(steps, param, moveset):
                 )
                 if button_cancels:
                     timing["cancels"] = {name: round(time, 3) for time, name in button_cancels}
-                for name in ["rightHandAttack", "leftHandAttack", "roll", "block", "move", "jump"]:
+                for name in ["rightHandAttack", "leftHandAttack", "roll", "block", "move", "jump", "quickL2", "L2"]:
                     if name in cancels:
                         timing[name] = round(cancels[name], 3)
                 # Without a right hand attack cancel, the attack can only be repeated once it ends
