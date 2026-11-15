@@ -41,7 +41,6 @@ At +25 with 99 in every stat, on a 123.2-defense target with no negation.
 
 | # | Test | Calculated |
 |---|---|---|
-| 23 | The Carian Sorcery Sword's Impaling Thrust at +25 (the mod drops its INT scaling; vanilla's was confirmed at +0 with its R1s and Impaling Thrust on 2026-11-14) | Impaling Thrust 1035 |
 | 24 | Euporia Vortex's Luster Tiers (fitted in the mod, cause unknown) | Tier 1 2530 (projectiles alone 2117), Tier 2 6921 (5345); at 89 STR/DEX and 25 FAI, 1676 and 4416 |
 
 ## Discrepancies to look into

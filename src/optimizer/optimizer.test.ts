@@ -6634,8 +6634,8 @@ describe("Ashes of War", () => {
   it("matches the Carian Sorcery Sword's Impaling Thrust in game", () => {
     // Its physical damage scales with Intelligence (AttackElementCorrectParam 20010800), at its staff
     // upgrades' 202% at +25: 1035. The Boss Arena mod it was tested with gives it the standard
-    // scaling instead (10000: physical with Strength and Dexterity only), so the test does too. Vanilla's
-    // INT scaling is confirmed at +0 (the next test); to do: test the 1035 at +25 in vanilla.
+    // scaling instead (10000: physical with Strength and Dexterity only), so the test does too.
+    // Vanilla's INT scaling is confirmed at +0 and +24 by the next test.
     // Tested in game at +25 with 99 in every stat on the training dummy: 795 (damage and poise)
     const vanilla = getWeapon("Carian Sorcery Sword");
     expect(vanilla.attackElementCorrect[AttackPowerType.PHYSICAL]).toEqual({
@@ -6717,10 +6717,10 @@ describe("Ashes of War", () => {
   it("nearly matches the Carian Sorcery Sword's R1s and Impaling Thrust in vanilla", () => {
     // Tested in vanilla, two handed at +0 with 80 STR, 80 DEX, 23 INT, 43 FAI, 61 ARC, on an NG+
     // Haligtree Foot Soldier (147.6 defense, -10% pierce negation): R1s 25, 25, 26, 26, 27, 30, and
-    // Impaling Thrust 98. The menu showed 38 + 22 physical and 69 + 14 magic, as calculated (38 +
-    // 22.9, 69 + 14.3). Physical scales with INT in vanilla: without it, every R1 is 1-2 lower and
-    // Impaling Thrust 91. R1s 1, 3, and 5 come out 1 low (24.9, 25.9, and 26.9): see "Off by one" in
-    // known-issues.md
+    // Impaling Thrust 98; at +24, Impaling Thrust 560. The menu showed 38 + 22 physical and 69 + 14
+    // magic at +0, as calculated (38 + 22.9, 69 + 14.3). Physical scales with INT in vanilla: without
+    // it, every R1 is 1-2 lower and Impaling Thrust 91 (472 at +24). R1s 1, 3, and 5 come out 1 low
+    // (24.9, 25.9, and 26.9): see "Off by one" in known-issues.md
     const weapon = getWeapon("Carian Sorcery Sword");
     const options = {
       weapon,
@@ -6760,6 +6760,12 @@ describe("Ashes of War", () => {
     expect(
       Math.floor(optimizeBuild({ ...options, attack: skill.attack }).attackSteps![0][0].damage),
     ).toBe(98);
+    expect(
+      Math.floor(
+        optimizeBuild({ ...options, regularUpgradeLevel: 24, attack: skill.attack })
+          .attackSteps![0][0].damage,
+      ),
+    ).toBe(560);
   });
 
   it("matches the Frozen Needle's Impaling Thrust in game", () => {
