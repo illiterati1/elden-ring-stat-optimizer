@@ -8057,20 +8057,21 @@ describe("Ashes of War", () => {
   });
 
   it("matches Euporia Vortex in game", () => {
-    // Euporia's skill and its separate Luster Tier 1 and 2 versions, which get flat holy (fitted: 22
-    // on Tier 1's projectiles and 20 on its swings, 9 and 10 on Tier 2's). Tested in game at +25 on
-    // the training dummy, with 99 in every stat: 2040; Luster Tier 1 2530 (2117 for its projectiles);
-    // Tier 2 6921 with 61 poise (5345 for its projectiles). At 89 Strength and Dexterity and 25 Faith:
-    // Tier 1 1676, Tier 2 4416. The fit is wrong at low upgrade levels (+0 in vanilla: Tier 1 179,
-    // Tier 2 346); the Boss Arena mod's params for it are vanilla's. See test #24 in
-    // data/in-game-tests.md.
+    // Euporia's skill and its separate Luster Tier 1 and 2 versions, whose first three hits get the
+    // luster buff (95 and 120 holy) before the luster runs out. Tested in game on the training dummy,
+    // one handed. At +25 with 99 in every stat: 2040; Luster Tier 1 2530; Tier 2 6921 with 61 poise.
+    // At 89 Strength and Dexterity and 25 Faith: Tier 1 1676, Tier 2 4416. At +0 with 99 in every
+    // stat, Tier 1 hit by hit: a projectile 77, a swing 59, a projectile 77 (87-93 frames after the
+    // press, with the buff), then 9, 9 + 7, 9, 9, 7, 9, 9, 7, 11, 7 (projectiles 9, swings 7, the last
+    // projectile 11), 306 in all. Its hits came 87-146 frames after the press: the calculator's
+    // timing is 3-4 frames earlier (84-144)
     const weapon = getWeapon("Euporia");
-    const versions = (attributes: Attributes) =>
+    const versions = (attributes: Attributes, regularUpgradeLevel = 25) =>
       getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(({ ash, variant }) => {
         if (!ash || !("attack" in ash)) throw new Error();
         const hits = optimizeBuild({
           weapon,
-          regularUpgradeLevel: 25,
+          regularUpgradeLevel,
           twoHanding: false,
           startLevel: 9,
           currentLevel: 9,
@@ -8084,20 +8085,25 @@ describe("Ashes of War", () => {
           limits: { ...noLimits, maxLevels: 0 },
           attack: ash.attack,
         }).attackSteps!.flat();
-        return [
-          variant?.label,
-          hits.reduce((sum, hit) => sum + Math.floor(hit.damage), 0),
-          hits.reduce((sum, hit) => sum + hit.stance, 0),
-        ];
+        return {
+          label: variant?.label,
+          hits: hits.map((hit) => Math.floor(hit.damage)),
+          total: hits.reduce((sum, hit) => sum + Math.floor(hit.damage), 0),
+          poise: hits.reduce((sum, hit) => sum + hit.stance, 0),
+        };
       });
-    // All within 4 of the game's
-    expect(versions({ str: 99, dex: 99, int: 99, fai: 99, arc: 99 })).toEqual([
+    const all99 = { str: 99, dex: 99, int: 99, fai: 99, arc: 99 };
+    expect(versions(all99).map(({ label, total, poise }) => [label, total, poise])).toEqual([
       ["Euporia Vortex", 2040, 6.25],
       ["Euporia Vortex (Luster Tier 1)", 2530, 21.25],
-      ["Euporia Vortex (Luster Tier 2)", 6922, 61],
+      ["Euporia Vortex (Luster Tier 2)", 6921, 61],
     ]);
     const low = versions({ str: 89, dex: 89, int: 99, fai: 25, arc: 99 });
-    expect([low[1][1], low[2][1]]).toEqual([1680, 4420]);
+    expect([low[1].total, low[2].total]).toEqual([1676, 4416]);
+    // In the game's order (its 9 + 7 is the swing and projectile at the same time)
+    const tier1 = versions(all99, 0)[1];
+    expect(tier1.hits).toEqual([77, 59, 77, 9, 7, 9, 9, 9, 7, 9, 9, 7, 11, 7]);
+    expect(tier1.total).toBe(306);
     // The skill has its own luster, so the luster buffs aren't added to it
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);

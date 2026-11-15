@@ -24,7 +24,7 @@ from here.
 | 16 | Jump Shot + Landing Shot (assumed the Shortbow's) | Black Bow or Ansbach's Longbow | Jump shot 33 after the jump press, landing shot 90, a pair every 116 |
 | 17 | Standard shot, repeated (assumed the Jar Cannon's) | Hand Ballista or Rabbath's Cannon | Hit 85, then every 264 |
 | 18 | Euporia Vortex, repeated | Euporia | Hits 88 to 144 (every 14), then every 176 |
-| 19 | Euporia Vortex's Luster Tier 1 and 2 versions | Euporia | Not timed yet |
+| 19 | Euporia Vortex's Luster Tier 2 version (Tier 1 tested 2026-11-14: hits 87-146 after the press, the calculator 3-4 frames early) | Euporia | Not timed yet |
 | 20 | Black Flame Blade, then R1 as soon as possible; also at low and high Dex (casting speed isn't counted) | Any buffable weapon, seal in the left hand | R1 press 112 after the cast press (start animation 70 frames at full length, release 40, plus 2) |
 
 ## Stamina
@@ -39,7 +39,6 @@ from here.
 
 | # | Test | In game | Calculated |
 |---|---|---|---|
-| 24 | Euporia Vortex's Luster Tiers: how many of the spinning swings connect, e.g. Tier 1 at +0 on a human-sized enemy (the calculator has 5 for Tier 1, 11 for Tier 2). Notes and all measurements so far: data/docs/euporia-vortex.md (local) | +0, NG+ Haligtree Foot Soldier: Tier 1 179, Tier 2 346 | Tier 1 122, Tier 2 235 (fitted at +25, in the Boss Arena mod, whose params for it are vanilla's) |
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all | 2674 (2672 in tests: each swing 786 with the buff's 90 fire, each explosion 550). Next: each hit's damage, to see which one is ~20 low |
 
 ## Roll-outs

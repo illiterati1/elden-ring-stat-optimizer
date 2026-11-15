@@ -792,16 +792,17 @@ SKILL_LABELS = {
     "Dynastic Sickleplay": "R2 follow-up",
 }
 
-# Flat attack a weapon's own version of a skill's follow-up gets as if a weapon buff, by (skill,
-# weapon, follow-up label), for its projectiles and its weapon hits, fitted to tests where the cause
-# isn't known: Euporia's Euporia Vortex Luster Tier 1 gets 22 holy on its projectiles and 20 on its
-# swings, and Tier 2 9 and 10, less than its luster buffs' 95 and 120 (tested in game at +25 on the
-# training dummy, with 99 in every stat: Tier 1 2530, 2117 for its projectiles alone; Tier 2 6921,
-# 5345 for its projectiles; and at 89 Strength and Dexterity and 25 Faith: Tier 1 1676, Tier 2 4416,
-# all within 4). The skill counts as having its own weapon buff, so the luster buffs aren't added.
+# Flat attack a weapon's own version of a skill's follow-up gets as if a weapon buff, on its first
+# few hits only, by (skill, weapon, follow-up label): (flat attack, hits). Euporia's Euporia Vortex
+# Luster Tier 1 and 2 get its luster buffs (95 and 120 holy, the hits' buff motion values applying)
+# on their first three hits, then the luster runs out (tested in game at +0 with 99 in every stat on
+# the training dummy, Tier 1: a projectile 77, a swing 59, and a projectile 77 at 87-93 frames after
+# the press, then projectiles 9 and swings 7 from frame 100 on, 306 in all; that also gives Tier 1 2530 and Tier 2
+# 6921 at +25 with 99 in every stat, and 1676 and 4416 at 89 Strength and Dexterity and 25 Faith, all
+# exact). The skill counts as having its own weapon buff, so the luster buffs aren't added again.
 FOLLOW_UP_BUFFS = {
-    ("Euporia Vortex", "Euporia", "Luster Tier 1"): ([0, 0, 0, 0, 22], [0, 0, 0, 0, 20]),
-    ("Euporia Vortex", "Euporia", "Luster Tier 2"): ([0, 0, 0, 0, 9], [0, 0, 0, 0, 10]),
+    ("Euporia Vortex", "Euporia", "Luster Tier 1"): ([0, 0, 0, 0, 95], 3),
+    ("Euporia Vortex", "Euporia", "Luster Tier 2"): ([0, 0, 0, 0, 120], 3),
 }
 
 # Versions of a skill that are the same, merged into the first under a label naming both, by skill:
@@ -2859,15 +2860,15 @@ def main():
                         follow_up["label"] = f"{first} / {second}"
     for (name, weapon), note in VERSION_NOTES.items():
         skills[name]["unique"][weapon]["note"] = note
-    for (name, weapon, label), (projectile_flat, weapon_flat) in FOLLOW_UP_BUFFS.items():
+    for (name, weapon, label), (flat, count) in FOLLOW_UP_BUFFS.items():
         version = skills[name]["unique"][weapon]
         version["weaponBuff"] = True
         for follow_up in version["followUps"]:
             if follow_up["label"] == label:
-                for hit in follow_up["hits"]:
+                for hit in follow_up["hits"][:count]:
                     if len(hit) < 5:
                         hit.append({})
-                    hit[4]["buff"] = projectile_flat if hit[4].get("kind") else weapon_flat
+                    hit[4]["buff"] = flat
     for name, label in SKILL_LABELS.items():
         skills[name]["label"] = label
 
