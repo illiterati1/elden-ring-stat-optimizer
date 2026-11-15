@@ -11,7 +11,7 @@ Rules:
   - If an area has "Entity" and "Entity (Foo)" with different stats, "Entity" gets an identifier
     too
   - What can't be resolved is listed with where it is relative to the nearest grace
-    (data/enemy-locations.md), for identifying by hand
+    (data/enemy-locations.md, written only while there are any), for identifying by hand
 """
 
 import json

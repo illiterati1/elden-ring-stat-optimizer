@@ -1569,12 +1569,18 @@ def main():
         for (_, name), count in names.items():
             if count > 1:
                 print(f"Warning: {count} entries named {name} in {area['name']}")
+    # Only written while there's something to identify (or WHERE_IS to look up)
     locations_path = os.path.join(project_dir, "data", "enemy-locations.md")
-    with open(locations_path, "w", encoding="utf-8") as f:
-        f.write(report(unresolved, placements_by_enemy))
-        if WHERE_IS:
-            f.write(where_is(areas, placements_by_enemy, WHERE_IS))
-    print(f"{len(unresolved)} entries to identify -> {locations_path}")
+    if unresolved or WHERE_IS:
+        with open(locations_path, "w", encoding="utf-8") as f:
+            f.write(report(unresolved, placements_by_enemy))
+            if WHERE_IS:
+                f.write(where_is(areas, placements_by_enemy, WHERE_IS))
+        print(f"{len(unresolved)} entries to identify -> {locations_path}")
+    else:
+        if os.path.exists(locations_path):
+            os.remove(locations_path)
+        print("No entries to identify")
 
     # Regions in order of difficulty, by their enemies' median area scaling, with the DLC's after the
     # base game's. Unscaled enemies don't count, since many regions have some (e.g. most of Moonlight
