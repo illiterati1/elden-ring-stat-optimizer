@@ -2156,6 +2156,10 @@ def get_skill_timing(
             )
             if early_rolls:
                 timing["earlyRolls"] = early_rolls
+                # A window still open after the last hit (e.g. Euporia Vortex Luster Tier 2's, open to
+                # its end) is the same roll as the one after it, so only its start is shown
+                if any(first_hit <= real(start) < last_hit < real(end) for start, end in roll_windows):
+                    timing["earlyRollStaysOpen"] = True
         for cancel, time in CANCEL_FITS.get((name, label), {}).items():
             timing[cancel] = [round(t, 3) for t in time] if isinstance(time, list) else round(time, 3)
         if (name, label) in LOOP_FITS:

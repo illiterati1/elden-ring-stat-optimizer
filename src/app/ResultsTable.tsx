@@ -187,8 +187,11 @@ function AttackHits({
         last && times?.earliest
           ? { ...times.earliest, time: at(row.step, times.earliest.time) }
           : undefined,
-      roll: last ? at(row.step, times?.roll) : earlyRolls.get(index),
-      earlyRoll: !last && earlyRolls.has(index),
+      // (a window open since before the last hit shows only when it opens)
+      roll:
+        earlyRolls.get(index) ??
+        (last && !times?.earlyRollStaysOpen ? at(row.step, times?.roll) : undefined),
+      earlyRoll: earlyRolls.has(index),
       block: last ? at(row.step, times?.block) : undefined,
       move: last ? at(row.step, times?.move) : undefined,
     };
@@ -363,11 +366,9 @@ function AttackHits({
                     <TableCell
                       sx={cellSx}
                       align="right"
-                      title={
-                        earlyRoll ? "An early roll out, skipping the step's later hits" : undefined
-                      }
+                      title={earlyRoll ? "Rolling here skips the step's later hits" : undefined}
                     >
-                      {roll != null ? `${formatSeconds(roll)}${earlyRoll ? " (early)" : ""}` : ""}
+                      {roll != null ? formatSeconds(roll) : ""}
                     </TableCell>
                   )}
                   {showBlock && (

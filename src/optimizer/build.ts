@@ -528,6 +528,11 @@ export interface StepTimes {
    * Black Flame Tornado's release before its finisher: tested in game)
    */
   earlyRolls?: number[];
+  /**
+   * True if the last early roll's window stays open past the last hit, so the roll after it is the
+   * same one (e.g. Euporia Vortex Luster Tier 2's, open to its end): only the early one is shown
+   */
+  earlyRollStaysOpen?: true;
   block?: number;
   /** When moving can end it: the animations' "cancel - LS movement" flag (11) */
   move?: number;

@@ -8127,6 +8127,8 @@ describe("Ashes of War", () => {
     const tier2Times = tier2.attack.stepTimes![0];
     const earlyRoll = tier2Times.earlyRolls![0];
     expect(Math.round(earlyRoll * 60)).toBe(169);
+    // Its roll window stays open to the end, so that's its only roll shown (not the plain skill's)
+    expect(tier2Times.earlyRollStaysOpen).toBe(true);
     const tier2Hits = versions(all99, 0)[2].hits;
     expect(
       tier2Hits

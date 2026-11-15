@@ -121,6 +121,8 @@ interface SkillPartTiming {
   roll?: number;
   /** When it can be rolled out of before its last hit, skipping the hits after (e.g. Flame Dance) */
   earlyRolls?: number[];
+  /** True if the last early roll's window stays open past the last hit (so it's the same roll) */
+  earlyRollStaysOpen?: boolean;
   block?: number;
   /** When moving can end it */
   move?: number;
@@ -246,6 +248,7 @@ function getSkillStepTimes(
       ...(timing.rightHandAttack != null && { rightHandAttack: lead + timing.rightHandAttack }),
       ...(timing.roll != null && { roll: lead + timing.roll }),
       ...(timing.earlyRolls && { earlyRolls: timing.earlyRolls.map((time) => lead + time) }),
+      ...(timing.earlyRollStaysOpen && { earlyRollStaysOpen: true as const }),
       ...(timing.block != null && { block: lead + timing.block }),
       ...(timing.move != null && { move: lead + timing.move }),
       ...(last && oneOff
