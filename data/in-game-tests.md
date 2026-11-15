@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 45 | Wall of Sparks charged, repeated; its explosions' damage and how many | Firespark Perfume Bottle | Hit 68 (when the explosion's spawned), then every 214; 1 explosion counted (165 at +25 with 99s) |
 | 12 | Rolling Sparks, repeated | Firespark Perfume Bottle | Hits 34 to 52, then every 110 |
 | 13 | Revenge of the Night's guard counter | Shield of Night | Hit 58 after the press |
 | 14 | Rolling R1, then R1 again | Greatsword | Hit 30; the next R1 can be pressed 62 after the first |
@@ -29,6 +28,7 @@ from here.
 | 22 | Familial Rancor and Rain of Arrows (one bow class) | — | 0 in the data, so not known |
 | 43 | Starcaller Cry's chain (its #2's duplicate window left out, like Great-Serpent Hunt's) | Starscourge Greatsword | 30, then 15 (was 30.9) |
 | 44 | Promised Consort's chain (its #3's duplicate slash window left out) | Greatsword of Radahn (Lord) | 42, 42, then 33 (was 49.44) |
+| 46 | Wall of Sparks charged (tapped, 20, is right) | Firespark Perfume Bottle | 30 (three windows of 10) |
 
 ## Damage
 

@@ -4847,41 +4847,57 @@ describe("Ashes of War", () => {
   it("matches Wall of Sparks in game", () => {
     // Tested in game on a Firespark Perfume Bottle +25 with 99 in every stat on the training dummy:
     // 245, 490, 735, or 989 in all, explosions of 245 (1 to 4) and the odd spark of 9, so 1 explosion
-    // counts, with a note. Tapped (uncharged), its explosion lands 137 frames after L2, and it's used
-    // again every 137 (136 here)
+    // counts, with a note; charged, its explosions do the same. Tapped (uncharged), it costs 20
+    // stamina, its explosion lands 137 frames after L2, and it's used again every 137 (136 here);
+    // charged, its explosion lands 174 frames after L2, and it's used again every 214
     const weapon = getWeapon("Firespark Perfume Bottle");
-    const result = getAshAttack(
-      ashes,
-      movesets,
-      weapon,
-      withFollowUp("Wall of Sparks", "Uncharged"),
-      false,
-    );
-    if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const { attackSteps, finalValue, attackNote } = optimizeBuild({
-      weapon,
-      regularUpgradeLevel: 25,
-      twoHanding: false,
-      startLevel: 9,
-      currentLevel: 9,
-      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
-      bonusAttributes: noBonus,
-      objective: "totalAttack",
-      defenses: Object.fromEntries(
-        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
-      ),
-      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
-      limits: { ...noLimits, maxLevels: 0 },
-      attack: result.attack,
+    const build = (label: string) => {
+      const result = getAshAttack(
+        ashes,
+        movesets,
+        weapon,
+        withFollowUp("Wall of Sparks", label),
+        false,
+      );
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      const frames = (time: number) => Math.round(time * 60);
+      const { attackSteps, finalValue, attackNote } = optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+      });
+      return {
+        damage: attackSteps!.map((step) => step.map((hit) => [hit.damage, hit.stance])),
+        finalValue,
+        attackNote,
+        stamina: result.attack.stamina,
+        hitTimes: result.attack.stepTimes!.map((step) =>
+          step.hitTimes!.map((time) => frames(time!)),
+        ),
+        cycleTimes: result.attack.cycleTimes!.map(frames),
+      };
+    };
+    const uncharged = build("Uncharged");
+    expect(uncharged).toMatchObject({ finalValue: 245, stamina: [20] });
+    expect(uncharged.damage.flat().map(([damage]) => damage)).toEqual([245]);
+    expect(uncharged.attackNote).toMatch(/up to four tapped/);
+    expect(uncharged).toMatchObject({ hitTimes: [[137]], cycleTimes: [136] });
+    expect(build("Charged")).toMatchObject({
+      damage: uncharged.damage,
+      hitTimes: [[174]],
+      cycleTimes: [214],
     });
-    expect(attackSteps!.map((step) => step.map((hit) => hit.damage))).toEqual([[245]]);
-    expect(finalValue).toBe(245);
-    expect(attackNote).toMatch(/up to four tapped/);
-    const frames = (time: number) => Math.round(time * 60);
-    expect(
-      result.attack.stepTimes!.map((step) => step.hitTimes!.map((time) => frames(time!))),
-    ).toEqual([[137]]);
-    expect(result.attack.cycleTimes!.map(frames)).toEqual([136]);
   });
 
   it("matches Waves of Darkness in game", () => {

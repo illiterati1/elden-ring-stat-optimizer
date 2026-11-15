@@ -448,9 +448,9 @@ FIXED_FLAT_ROWS = {"300000682", "300000683"}
 # one counts, and so do its R2's direct hit and shockwave (300000852, 300000853: 1226 or 506), so
 # only the direct hit counts; its "Ground Impact?" (300000851) wasn't seen to hit at all.
 # Wall of Sparks sprays sparks (600000022, 9 each on a Firespark Perfume Bottle +25) that each spawn an
-# explosion on hitting (600000020, 245, tapped; charged, 600000021, 165, not tested): tested in game
-# tapped, 245, 490, 735, or 989 in all (1 to 4 explosions, and the odd spark), so 1 explosion counts
-# (and 1 charged, likewise).
+# explosion on hitting (600000020, 245; the sheet's "Charged Weapon Skill" one, 600000021, 165, doesn't
+# hit: charged, its explosions do the same 245 and poise in game): tested in game tapped, 245, 490,
+# 735, or 989 in all (1 to 4 explosions, and the odd spark), so 1 explosion counts.
 # Waves of Darkness's waves (30000812) are three expanding rings (Bullet 2811, 2814, and 2817), each
 # hitting (tested in game on Great Stars +25: 822, 352, then 590 three times, 2944 in all).
 # Night-and-Flame Stance's R2 fire bursts (300214925, 300214926, the same) hit one or the other
@@ -733,7 +733,7 @@ ROW_REPEATS = {
     "300000851": 0,
     "300000853": 0,
     "600000020": 1,
-    "600000021": 1,
+    "600000021": 0,
     "600000022": 0,
     "30000812": 3,
     "300214926": 0,
@@ -941,9 +941,6 @@ ROW_FOLLOW_UPS = {
     "305000110": "Tier 2",
     "305000100": "Tier 3",
     "300405910": "#2",
-    # Wall of Sparks's charged explosion (its charged animation's, 40000; the sheet's "Charged Weapon
-    # Skill"), so it's its own level beside the tapped one (CHARGED_LEVELS)
-    "600000021": "Charged",
     "600000122": None,
     "600000123": None,
     "600001002": None,
@@ -1035,6 +1032,12 @@ MAIN_CHAINS = {
 # Damnation's Golden Crux grabs NPCs ("Grab Confirm"; tested in game on Gideon Ofnir: 1810) rather than
 # thrusting then firing its bullet (tested in game on the training dummy: 1137, then 1386)
 KIND_VERSIONS = {"Golden Crux": ("Grab Confirm", "NPC")}
+
+# Skills charged or tapped with the same hits, timed apart (CHARGED_LEVELS): the main attack is also
+# a "Charged" follow-up. Wall of Sparks's charged explosions do the same as its tapped ones (tested in
+# game on a Firespark Perfume Bottle +25), on its charged animation (40000), the tapped one 40001
+# (ANIMATION_SEQUENCES)
+CHARGED_COPIES = {"Wall of Sparks"}
 
 # Chain steps that are another follow-up, by label: Leontiel's Greatsword's Muleta charged R2 is followed
 # by the same second R2 as its R2 (tested in game)
@@ -1523,8 +1526,9 @@ HIT_TIME_FITS = {
     ("Fires of Slumber", ""): [59 / 60, 84 / 60, 140 / 60, 84 / 60],
     # Deadly Poison Spray's cloud's first tick, 40 frames after L2 (TICK_ROWS)
     ("Deadly Poison Spray", ""): [38 / 60],
-    # Wall of Sparks's explosion lands 137 frames after L2, tapped (ANIMATION_SEQUENCES)
+    # Wall of Sparks's explosion lands 137 frames after L2 tapped (ANIMATION_SEQUENCES), 174 charged
     ("Wall of Sparks", "Uncharged"): [135 / 60],
+    ("Wall of Sparks", "Charged"): [172 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created
@@ -1533,6 +1537,7 @@ MEASURED_HIT_TIMES = {
     ("Black Flame Tornado", "Tap"): {2},
     ("Deadly Poison Spray", ""): {0},
     ("Wall of Sparks", "Uncharged"): {0},
+    ("Wall of Sparks", "Charged"): {0},
 }
 # Projectile hits with fitted times that the animations can't tie to a projectile (status-only hits),
 # so approximate all the same: Fires of Slumber's fire and its ground fire's ticks
@@ -2776,6 +2781,11 @@ def main():
         for hits in filter(None, versions):
             hits["followUps"] = [{"label": label, "hits": hits["main"]}, *hits["followUps"]]
             hits["main"] = []
+
+    for name in CHARGED_COPIES:
+        versions = [skills[name]["generic"], *skills[name]["classes"].values(), *skills[name]["unique"].values()]
+        for hits in filter(None, versions):
+            hits["followUps"].append({"label": "Charged", "hits": copy.deepcopy(hits["main"])})
 
     charge_levels = dict(CHARGE_LEVELS)
     for name, skill in skills.items():
