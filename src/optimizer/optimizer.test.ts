@@ -631,7 +631,8 @@ describe("bows", () => {
     )!;
     expect(Math.round(jarCannon.stepTimes![0].hits[0] * 60)).toBe(85);
     expect(jarCannon.cycleTimes![0] * 60).toBeCloseTo(263.5);
-    expect(jarCannon.stamina).toEqual([44.8]);
+    // (40 × 1.12, rounded down)
+    expect(jarCannon.stamina).toEqual([44]);
     // A Longbow's shot with Arrows costs 13
     const arrowShot = getAttackData(
       movesets,
@@ -5376,12 +5377,13 @@ describe("Ashes of War", () => {
     ).toEqual([108]);
     // Prelate's Charge pressed once: its start, then its finish (measured in game on a Great Mace: the
     // initial attack 75 frames after the press, the final attack 147), its ground fire's first burn
-    // measured (122), and its stamina each window's (72, times the Great Mace's 1.06)
+    // measured (122), and its stamina each window's (30, 4, 4, 4, and 30, times the Great Mace's
+    // 1.06, each rounded down)
     const prelate = times("Great Mace", "Prelate's Charge");
     expect(prelate.stepTimes![0].hitTimes!.map((time) => frames(time!))).toEqual([
       74, 96, 111, 123, 122, 147,
     ]);
-    expect(prelate.stamina).toEqual([76.32]);
+    expect(prelate.stamina).toEqual([74]);
     // Black Flame Tornado tapped: its start's swing, then its release's swing and finisher (measured
     // in game on a Twinblade: 68, 84, and 144 frames after L2), costing only those windows' stamina
     const tornado = times("Twinblade", withFollowUp("Black Flame Tornado", "Tap"));
@@ -10084,13 +10086,26 @@ describe("Ashes of War", () => {
     );
   });
 
+  it("matches Loretta's Slash's stamina in game", () => {
+    // Seen in game on Loretta's War Sickle: its slashes' 15 and 20 at the weapon's 1.1 take 16 and 22
+    // (16.5, rounded down), 38 in all
+    const result = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Loretta's War Sickle"),
+      "Loretta's Slash",
+      false,
+    );
+    if (!("attack" in result)) throw new Error(result.unavailableReason);
+    expect(result.attack.stamina).toEqual([38]);
+  });
+
   it("matches Great-Serpent Hunt in game", () => {
     // The Serpent-Hunter's fixed skill, a chain of two thrusts. Tested in game at +25 with 99 in every
     // stat on a 123.2 defense target: 2075, then 2195 (damage and poise). Its timing, tested in game:
     // hits 154 and 257 frames after the L2 (154 and 258 here), the next chain's first hit 517 (518).
     // Its stamina, seen in game: 77 for the chain, each thrust's 30 and 40 once at the weapon's 1.12
-    // rate (33.6 and 44.8 here, 33 and 44 if the game rounds each down), not again for the "?" rows'
-    // windows alongside them
+    // rate, each rounded down (33 and 44), not again for the "?" rows' windows alongside them
     const weapon = getWeapon("Serpent-Hunter");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -10099,7 +10114,7 @@ describe("Ashes of War", () => {
       result.attack.stepTimes!.map((step) => step.hitTimes!.map((time) => frames(time!))),
     ).toEqual([[154], [90]]);
     expect(result.attack.cycleTimes!.map(frames)).toEqual([168, 196]);
-    expect(result.attack.stamina).toEqual([33.6, 44.8]);
+    expect(result.attack.stamina).toEqual([33, 44]);
     expect(
       optimizeBuild({
         weapon,
@@ -12859,15 +12874,15 @@ describe("powerstance off hand weapons", () => {
       ],
     ]);
     // Each hit shows its own stamina (its attack windows'): the Rapier's 5 a swing, and the
-    // Main-gauche's own 3.3
+    // Main-gauche's own 3 (3.3, rounded down)
     expect(mainGauche.map((step) => step.map((hit) => hit.stamina))).toEqual([
-      [5, 3.3],
+      [5, 3],
       [5, 5, 5],
-      [3.3, 5],
-      [3.3, 5, 3.3],
+      [3, 5],
+      [3, 5, 3],
     ]);
     // Weapons of the same class share rows, so only the stamina changes: a Broadsword's swings cost
-    // its own 12.36 (its staminaConsumptionRate)
+    // its own 12 (12.36 at its staminaConsumptionRate, rounded down)
     const longsword = getAttackData(
       movesets,
       getWeapon("Longsword"),
@@ -12877,7 +12892,7 @@ describe("powerstance off hand weapons", () => {
     )!;
     const withBroadsword = withOffhandRows(longsword, movesets, "Longsword", "Broadsword");
     expect(withBroadsword.steps).toEqual(longsword.steps);
-    expect(withBroadsword.hitStamina![0]).toEqual([12, 12.36]);
+    expect(withBroadsword.hitStamina![0]).toEqual([12, 12]);
   });
 
   it("repeats R2s at their own cancel, even when an R1's is as early", () => {

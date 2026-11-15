@@ -116,6 +116,19 @@ ADD_SPEFFECT_EVENT = 67
 # AddSpEffect_Multiplayer, which some skills' charging windows use (e.g. Swift Slash's)
 ADD_SPEFFECT_MULTIPLAYER_EVENT = 66
 
+
+
+def charged_stamina(cost, rate):
+    """
+    @returns what a window's behavior's stamina cost takes from the stamina bar, times the weapon's
+    staminaConsumptionRate: rounded down, as stamina is a whole number (seen in game: Loretta's
+    Slash's 15 and 20 at the Loretta's War Sickle's 1.1 take 16 and 22; Great-Serpent Hunt's 30 and 40
+    at the Serpent-Hunter's 1.12, 33 and 44)
+    """
+    # (with a little leeway for floating point, so 200 × 1.035 is 207)
+    return math.floor(cost * rate + 1e-6)
+
+
 # Attacks the sheet lists once rather than one and two handed (see build_moveset_data.py's
 # SHARED_ATTACKS): their sheet columns and animation ID. Powerstance (dual wielding) L1s hit with
 # both weapons; mounted attacks' charged R2 animation has the charging hit and the charged one. The
@@ -565,6 +578,7 @@ class Steps:
             number for number in (int(param["spAtkcategory"]), int(param["wepmotionCategory"])) if number
         ]
         variation = int(param["behaviorVariationId"])
+        rate = float(param["staminaConsumptionRate"])
         paired = param["isDualBlade"] == "1"
         file_number, windows = self.animations.find(file_numbers, anim_id)
         hits = []
@@ -575,13 +589,14 @@ class Steps:
         for start, end, hit_judge, event_type, attack_index, _, hand in windows or []:
             # PCBehavior's type is where the others' AttackIndex is
             if event_type == PC_BEHAVIOR_EVENT and attack_index != PC_BEHAVIOR_ATTACK_TYPE:
-                landing_stamina += self.behaviors.get_stamina(variation, hit_judge)
+                landing_stamina += charged_stamina(self.behaviors.get_stamina(variation, hit_judge), rate)
                 continue
             if hit_judge >= 1000 and not paired:
                 continue
             # Each window's behavior costs its stamina (usually only the first's has any, e.g. the
-            # Longsword's R2 judge 100 but not 101, though the Twinblade's charged R2 spins each do)
-            cost = self.behaviors.get_stamina(variation, hit_judge)
+            # Longsword's R2 judge 100 but not 101, though the Twinblade's charged R2 spins each do),
+            # times the weapon's rate, rounded down
+            cost = charged_stamina(self.behaviors.get_stamina(variation, hit_judge), rate)
             stamina += cost
             if hand == LEFT_HAND_SOURCE:
                 left_stamina += cost
@@ -625,8 +640,6 @@ class Steps:
         # Backhand Blade's jumping R2, whose hit's behavior has none; untested)
         if not stamina:
             stamina = landing_stamina
-        stamina *= float(param["staminaConsumptionRate"])
-        left_stamina *= float(param["staminaConsumptionRate"])
         return file_number, hits, merged, cancels, extra_hitboxes, stamina, left_stamina
 
 
@@ -735,7 +748,7 @@ def get_timings(steps, param, moveset):
       - end: without a right hand attack cancel, when the animation ends, if it's been measured
         (ANIMATION_FRAMES)
       - stamina: what the step costs: its windows' behaviors' stamina (BehaviorParam_PC stamina)
-        times the weapon's staminaConsumptionRate
+        times the weapon's staminaConsumptionRate, each rounded down (charged_stamina)
       - leftStamina: how much of it the left hand's weapon's windows cost (powerstance attacks)
       - hitStamina: for steps of more than one hit, what each of the moveset's hits costs (its
         windows', matched by motion value, with any windows that aren't hits on the first), if they
@@ -805,8 +818,7 @@ def get_timings(steps, param, moveset):
                     timing["leftStamina"] = round(left_stamina, 2)
                 matched = match_hits(attack_steps[index], merged)
                 if stamina and matched and len(matched) > 1:
-                    rate = float(param["staminaConsumptionRate"])
-                    costs = [hit.get("cost", 0) * rate for hit in matched]
+                    costs = [hit.get("cost", 0) for hit in matched]
                     costs[0] += stamina - sum(costs)
                     timing["hitStamina"] = [round(cost, 2) for cost in costs]
                 sweet_spots = steps.animations.get_sweet_spots(file_number, anim_id)
@@ -877,7 +889,7 @@ def get_left_hand_rows(steps, param, judges):
     @returns the weapon's own motion value, poise motion value, and stamina cost for each of the
     judges, through its behavior variation, as { judge: [motion value, poise, stamina] }: the left
     hand's weapon's hits use its own attack rows, e.g. a Wakizashi's L1 #1 with a katana (115, not
-    the katana's 90), and its own behaviors' stamina (times its staminaConsumptionRate)
+    the katana's 90), and its own behaviors' stamina (times its staminaConsumptionRate, rounded down)
     """
     rows = {}
     variation = int(param["behaviorVariationId"])
@@ -888,7 +900,7 @@ def get_left_hand_rows(steps, param, judges):
             rows[str(judge)] = [
                 main_mv(get_motion_values(atk)),
                 float(atk["atkSuperArmorCorrection"]),
-                round(steps.behaviors.get_stamina(variation, judge) * rate, 2),
+                charged_stamina(steps.behaviors.get_stamina(variation, judge), rate),
             ]
     return rows
 

@@ -404,6 +404,15 @@ interface Moveset {
 export type Movesets = Record<string, Moveset>;
 
 /**
+ * @returns what a stamina cost takes from the stamina bar, times the weapon's stamina rate: rounded
+ * down, as stamina is a whole number (seen in game: Loretta's Slash's 15 and 20 at the Loretta's War
+ * Sickle's 1.1 take 16 and 22), with a little leeway for floating point (200 × 1.035 is 207)
+ */
+export function chargedStamina(cost: number, rate = 1): number {
+  return Math.floor(cost * rate + 1e-6);
+}
+
+/**
  * @returns a powerstance attack with its left hand hits using the off hand weapon's own attack rows:
  * the right hand weapon's animations decide the hits, but each hand's weapon has its own motion values
  * and poise for them (e.g. a Wakizashi's L1 #1 with a katana, 115 and 80, not the katana's 90 and 40),
@@ -728,11 +737,11 @@ export function getAttackData(
       Array.from({ length: count }, () =>
         categories.length ? { ...shotHit, categories } : shotHit,
       );
-    // Each shot costs its ammunition's stamina, times the weapon's rate (two for the jump shot and
-    // its landing shot)
+    // Each shot costs its ammunition's stamina, times the weapon's rate, rounded down (two for the
+    // jump shot and its landing shot)
     const shotStamina =
       weapon.ammoStamina != null
-        ? Math.round(weapon.ammoStamina * (moveset.staminaRate ?? 1) * 100) / 100
+        ? chargedStamina(weapon.ammoStamina, moveset.staminaRate)
         : undefined;
     return {
       ...(shotStamina != null && { stamina: [jumpLandingShot ? shotStamina * 2 : shotStamina] }),

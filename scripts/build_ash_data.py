@@ -1553,22 +1553,27 @@ def get_window_behavior(behaviors, variation, judge):
 def get_windows_stamina(behaviors, variation, windows):
     """
     @param windows (start, judge) of each window
-    @returns animation windows' stamina cost: their behaviors', except a window whose attack never
-    hits (ROW_REPEATS 0) alongside one that does, at the same time, its alternative (seen in game:
-    the Serpent-Hunter's Great-Serpent Hunt costs 77 for its chain, its thrusts' 30 and 40 once at
-    its 1.12 rate, not again for its "?" rows' windows alongside them)
+    @returns animation windows' stamina costs, each window's that has any: their behaviors', except a
+    window whose attack never hits (ROW_REPEATS 0) alongside one that does, at the same time, its
+    alternative (seen in game: the Serpent-Hunter's Great-Serpent Hunt costs 77 for its chain, its
+    thrusts' 30 and 40 once at its 1.12 rate, rounded down, not again for its "?" rows' windows
+    alongside them). Kept separate, as each is rounded down after the weapon's rate (see
+    check_animations.py's charged_stamina).
     """
     windows = [(start, get_window_behavior(behaviors, variation, judge) or {}) for start, judge in windows]
 
     def never_hits(behavior):
         return behavior.get("refType") == "0" and ROW_REPEATS.get(behavior.get("refId")) == 0
 
-    return sum(
-        float(behavior.get("stamina") or 0)
+    return [
+        int(behavior["stamina"])
         for start, behavior in windows
-        if not never_hits(behavior)
-        or not any(other_start == start and not never_hits(other) for other_start, other in windows)
-    )
+        if int(behavior.get("stamina") or 0)
+        and (
+            not never_hits(behavior)
+            or not any(other_start == start and not never_hits(other) for other_start, other in windows)
+        )
+    ]
 
 
 def get_window_attacks(behaviors, bullets, attacks, variation, judge):
@@ -1819,7 +1824,7 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
                 [(start, judge) for start, _, judge, *_ in animations.get_windows(number, anim_id) or []],
             )
             if stamina:
-                timing["stamina"] = round(stamina, 2)
+                timing["stamina"] = stamina
             cancels = get_l2_cancels(animations.get_cancels(number, anim_id), True)
             for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block", "move"]:
                 if cancel in cancels:
@@ -1868,7 +1873,7 @@ def get_skill_timing(
     that weapon's
     @returns the version's timing, by weapon animation range (see get_skill_range; "0" is the
     default) and part ("" for the main attack, or the follow-up's label): each part's animation's
-    hits, its stamina cost, when it can be cancelled into another skill ("L2"), "R1", "R2", any
+    hits, its stamina costs (each window's, before the weapon's rate), when it can be cancelled into another skill ("L2"), "R1", "R2", any
     attack, a roll (after its last hit; "earlyRolls", any before it), blocking, or moving ("move"), and for an uncharged version, when it starts after the press
     ("start", see SKILL_CHARGING_SPEFFECT), in seconds of real time (see Animations.to_real_time); a loop (a main attack of
     "Loop" hits, e.g. Wild Strikes') also has "loop", how long each pass takes, and "opening", how
@@ -2186,8 +2191,9 @@ def get_skill_timing(
                 "start": round(animations.to_real_time(number, charged, charging) + CHARGING_LAG, 3),
                 **timing,
             }
-        # Its stamina cost: its windows' behaviors' (before the weapon's staminaConsumptionRate),
-        # like attacks' (e.g. Lion's Claw's 45, matching the sheet's StaminaCost)
+        # Its stamina costs: its windows' behaviors' (before the weapon's staminaConsumptionRate,
+        # after which each is rounded down), like attacks' (e.g. Lion's Claw's 45, matching the
+        # sheet's StaminaCost)
         # (a bow's arrows fired from several points at once cost once: Fan Shot's 881, from 7;
         # assumed, untested)
         bow = variation in BOW_AMMO_VARIATIONS.values()
@@ -2197,10 +2203,11 @@ def get_skill_timing(
             windows = set(windows) if bow else windows
             return [(start, judge) for start, judge in windows if in_segment(i, start) is not None]
 
-        stamina = sum(
-            get_windows_stamina(behaviors, variation, segment_windows(i, segment))
+        stamina = [
+            cost
             for i, (segment, _) in enumerate(segments)
-        )
+            for cost in get_windows_stamina(behaviors, variation, segment_windows(i, segment))
+        ]
         # (and an uncharged version's windows in its charged animation before it's released)
         release = release_of(anim_id) if len(segments) == 1 else None
         if release is not None:
@@ -2214,7 +2221,7 @@ def get_skill_timing(
                 ],
             )
         if stamina:
-            timing["stamina"] = round(stamina, 2)
+            timing["stamina"] = stamina
         cancels = get_l2_cancels(animations.get_cancels(number, anim_id), quick_l2)
         for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block", "move"]:
             if cancel in cancels:

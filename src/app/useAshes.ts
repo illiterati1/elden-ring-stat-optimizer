@@ -11,6 +11,7 @@ import {
 } from "../optimizer/build.ts";
 import {
   allAttacks,
+  chargedStamina,
   getAttackData,
   jumpAirTime,
   stepStartDelay,
@@ -131,8 +132,11 @@ interface SkillPartTiming {
   block?: number;
   /** When moving can end it */
   move?: number;
-  /** Its stamina cost (for a loop, each pass's), before the weapon's staminaRate */
-  stamina?: number;
+  /**
+   * Its stamina costs (for a loop, each pass's), each window's, before the weapon's staminaRate (each
+   * is rounded down after it, see chargedStamina)
+   */
+  stamina?: number[];
   /** For a loop, how long each pass takes */
   loop?: number;
   /**
@@ -297,7 +301,7 @@ function getSkillStepTimes(
 
 /**
  * @returns the timing parts of an attack: its step times, cycle times if all known, and each step's
- * stamina cost (times the weapon's staminaRate)
+ * stamina cost (each window's times the weapon's staminaRate, rounded down)
  */
 function withSkillTiming(
   hits: SkillHits,
@@ -314,8 +318,8 @@ function withSkillTiming(
     ? stepTimes.map((step) => step.cycle!)
     : undefined;
   const stamina = parts.map(({ label }) => {
-    const cost = getPartTiming(hits, skillRange, label, hands)?.stamina;
-    return cost != null ? Math.round(cost * staminaRate * 100) / 100 : undefined;
+    const costs = getPartTiming(hits, skillRange, label, hands)?.stamina;
+    return costs?.reduce((sum, cost) => sum + chargedStamina(cost, staminaRate), 0);
   });
   return {
     stepTimes,
