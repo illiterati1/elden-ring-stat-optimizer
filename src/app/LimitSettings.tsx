@@ -20,6 +20,7 @@ import type {
 interface Props {
   limits: AppState["limits"];
   fastMode: AppState["fastMode"];
+  meetRequirements: AppState["meetRequirements"];
   /** What one point of the objective is called: "damage" or "scaling" */
   pointLabel: string;
   /** The character's current level */
@@ -82,6 +83,7 @@ const levelLimitFields: Record<LevelLimitMode, { label: string; max: number; ste
 function LimitSettings({
   limits,
   fastMode,
+  meetRequirements,
   pointLabel,
   currentLevel,
   planLevel,
@@ -117,6 +119,17 @@ function LimitSettings({
 
   return (
     <Section id="limits" title="Stop leveling when">
+      <FormControlLabel
+        label="Meet requirements"
+        sx={{ mb: 1 }}
+        control={
+          <Checkbox
+            size="small"
+            checked={meetRequirements}
+            onChange={(evt) => onChange({ meetRequirements: evt.currentTarget.checked })}
+          />
+        }
+      />
       <Box
         display="grid"
         gridTemplateColumns="auto 1fr auto"

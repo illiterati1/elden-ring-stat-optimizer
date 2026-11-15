@@ -40,7 +40,6 @@ interface Props {
   showStamina: AppState["showStamina"];
   showRequirements: AppState["showRequirements"];
   closedAlerts: AppState["closedAlerts"];
-  meetRequirements: AppState["meetRequirements"];
   onlyBuffable: AppState["onlyBuffable"];
   objective: AppState["objective"];
   weaponTypes: AppState["weaponTypes"];
@@ -121,7 +120,6 @@ function BuildSettings({
   showStamina,
   showRequirements,
   closedAlerts,
-  meetRequirements,
   onlyBuffable,
   objective,
   weaponTypes,
@@ -336,17 +334,6 @@ function BuildSettings({
               size="small"
               checked={twoHanding}
               onChange={(evt) => onChange({ twoHanding: evt.currentTarget.checked })}
-            />
-          }
-        />
-        <FormControlLabel
-          label="Meet requirements"
-          sx={{ mr: 0 }}
-          control={
-            <Checkbox
-              size="small"
-              checked={meetRequirements}
-              onChange={(evt) => onChange({ meetRequirements: evt.currentTarget.checked })}
             />
           }
         />

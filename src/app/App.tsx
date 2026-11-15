@@ -967,6 +967,7 @@ export default function App() {
       <LimitSettings
         limits={limits}
         fastMode={fastMode}
+        meetRequirements={meetRequirements}
         pointLabel={pointLabel}
         currentLevel={startLevel}
         planLevel={planLevel}
@@ -982,7 +983,6 @@ export default function App() {
         showStamina={savedShowStamina}
         showRequirements={showRequirements}
         closedAlerts={closedAlerts}
-        meetRequirements={meetRequirements}
         onlyBuffable={onlyBuffable}
         weaponTypes={weaponTypes}
         attack={attack}
