@@ -10087,7 +10087,10 @@ describe("Ashes of War", () => {
   it("matches Great-Serpent Hunt in game", () => {
     // The Serpent-Hunter's fixed skill, a chain of two thrusts. Tested in game at +25 with 99 in every
     // stat on a 123.2 defense target: 2075, then 2195 (damage and poise). Its timing, tested in game:
-    // hits 154 and 257 frames after the L2 (154 and 258 here), the next chain's first hit 517 (518)
+    // hits 154 and 257 frames after the L2 (154 and 258 here), the next chain's first hit 517 (518).
+    // Its stamina, seen in game: 77 for the chain, each thrust's 30 and 40 once at the weapon's 1.12
+    // rate (33.6 and 44.8 here, 33 and 44 if the game rounds each down), not again for the "?" rows'
+    // windows alongside them
     const weapon = getWeapon("Serpent-Hunter");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -10096,6 +10099,7 @@ describe("Ashes of War", () => {
       result.attack.stepTimes!.map((step) => step.hitTimes!.map((time) => frames(time!))),
     ).toEqual([[154], [90]]);
     expect(result.attack.cycleTimes!.map(frames)).toEqual([168, 196]);
+    expect(result.attack.stamina).toEqual([33.6, 44.8]);
     expect(
       optimizeBuild({
         weapon,

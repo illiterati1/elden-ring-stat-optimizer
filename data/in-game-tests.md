@@ -28,6 +28,8 @@ from here.
 | 20 | Blind Spot | Backhand Blade | 39 (was 30) |
 | 21 | Jumping R2 | Backhand Blade | 19 (its landing's behavior) |
 | 22 | Familial Rancor and Rain of Arrows (one bow class) | — | 0 in the data, so not known |
+| 43 | Starcaller Cry's chain (its #2's duplicate window left out, like Great-Serpent Hunt's) | Starscourge Greatsword | 30.9, then 15.45 (was 30.9) |
+| 44 | Promised Consort's chain (its #3's duplicate slash window left out) | Greatsword of Radahn (Lord) | 43.26, 43.26, then 33.99 (was 49.44) |
 
 ## Damage
 

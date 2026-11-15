@@ -1550,6 +1550,27 @@ def get_window_behavior(behaviors, variation, judge):
     )
 
 
+def get_windows_stamina(behaviors, variation, windows):
+    """
+    @param windows (start, judge) of each window
+    @returns animation windows' stamina cost: their behaviors', except a window whose attack never
+    hits (ROW_REPEATS 0) alongside one that does, at the same time, its alternative (seen in game:
+    the Serpent-Hunter's Great-Serpent Hunt costs 77 for its chain, its thrusts' 30 and 40 once at
+    its 1.12 rate, not again for its "?" rows' windows alongside them)
+    """
+    windows = [(start, get_window_behavior(behaviors, variation, judge) or {}) for start, judge in windows]
+
+    def never_hits(behavior):
+        return behavior.get("refType") == "0" and ROW_REPEATS.get(behavior.get("refId")) == 0
+
+    return sum(
+        float(behavior.get("stamina") or 0)
+        for start, behavior in windows
+        if not never_hits(behavior)
+        or not any(other_start == start and not never_hits(other) for other_start, other in windows)
+    )
+
+
 def get_window_attacks(behaviors, bullets, attacks, variation, judge):
     """
     @returns the AtkParam_Pc rows an animation window's behavior does damage with: its attack, or
@@ -1792,9 +1813,10 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
                     "start": round(animations.to_real_time(number, anim_id - 5, charging) + CHARGING_LAG, 3),
                     **timing,
                 }
-            stamina = sum(
-                float((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
-                for _, _, judge, *_ in animations.get_windows(number, anim_id) or []
+            stamina = get_windows_stamina(
+                behaviors,
+                variation,
+                [(start, judge) for start, _, judge, *_ in animations.get_windows(number, anim_id) or []],
             )
             if stamina:
                 timing["stamina"] = round(stamina, 2)
@@ -2169,23 +2191,27 @@ def get_skill_timing(
         # (a bow's arrows fired from several points at once cost once: Fan Shot's 881, from 7;
         # assumed, untested)
         bow = variation in BOW_AMMO_VARIATIONS.values()
+
+        def segment_windows(i, segment):
+            windows = [(start, judge) for start, _, judge, *_ in animations.get_windows(number, segment) or ()]
+            windows = set(windows) if bow else windows
+            return [(start, judge) for start, judge in windows if in_segment(i, start) is not None]
+
         stamina = sum(
-            float((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
+            get_windows_stamina(behaviors, variation, segment_windows(i, segment))
             for i, (segment, _) in enumerate(segments)
-            for start, judge in (
-                {(start, judge) for start, _, judge, *_ in animations.get_windows(number, segment) or []}
-                if bow
-                else [(start, judge) for start, _, judge, *_ in animations.get_windows(number, segment) or []]
-            )
-            if in_segment(i, start) is not None
         )
         # (and an uncharged version's windows in its charged animation before it's released)
         release = release_of(anim_id) if len(segments) == 1 else None
         if release is not None:
-            stamina += sum(
-                float((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
-                for start, _, judge, *_ in animations.get_windows(number, anim_id - 1) or []
-                if animations.to_real_time(number, anim_id - 1, start) < release
+            stamina += get_windows_stamina(
+                behaviors,
+                variation,
+                [
+                    (start, judge)
+                    for start, _, judge, *_ in animations.get_windows(number, anim_id - 1) or []
+                    if animations.to_real_time(number, anim_id - 1, start) < release
+                ],
             )
         if stamina:
             timing["stamina"] = round(stamina, 2)
