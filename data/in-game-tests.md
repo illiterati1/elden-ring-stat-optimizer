@@ -22,7 +22,6 @@ from here.
 | 17 | Standard shot, repeated (assumed the Jar Cannon's) | Hand Ballista or Rabbath's Cannon | Hit 85, then every 264 |
 | 20 | Black Flame Blade, then R1 as soon as possible; also at low and high Dex (casting speed isn't counted) | Any buffable weapon, seal in the left hand | R1 press 112 after the cast press (start animation 70 frames at full length, release 40, plus 2) |
 | 41 | Causality's Wrath, any tier (all the same animation; none can follow itself) | Golden Order Flail | Hit 76; over (a roll) at 140 |
-| 44 | Deadly Poison Spray cast twice as fast as possible: do the clouds stack (two ticks at once), or does the second replace the first? | Deadly Poison Perfume Bottle | Each cast's 23 ticks, 40 to 447 frames after its L2, stacking; cast again every 146 |
 
 ## Stamina
 

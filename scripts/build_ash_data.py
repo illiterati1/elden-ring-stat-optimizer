@@ -841,7 +841,7 @@ SKILL_NOTES = {
     "Romina's Purification": "Counts 3 hits of its bullet, which can hit more or fewer times",
     "Sea of Magma": "Counts it without looping: each loop while held adds the lash and magma tick in parentheses, and the magma can tick once more",
     "Bear Witness!": "Counts its fire and explosion: up close its windup's weapon hit and more fire can hit too, and its 18 projectiles land at random ({damage} each), leaving patches of fire",
-    "Deadly Poison Spray": "Does no damage, only deadly poison: counts its cloud's 23 ticks over about 7 seconds (its buildup also decays 5 a second)",
+    "Deadly Poison Spray": "Does no damage, only deadly poison: counts its cloud's 23 ticks over about 7 seconds (its buildup also decays 5 a second). Clouds don't stack, so per second it's used again once the cloud is done",
     "Fires of Slumber": "Only builds up sleep: counts 2 hits of its fire, which can hit more often over the stream",
     "Spearcall Ritual": "Counts one of its spears: about 14 fall at random, and how many hit depends on the target",
     "Erdtree Slam": "Counts its slam close up: further away, only its weaker shockwave hits",
@@ -1323,6 +1323,9 @@ CANCEL_FITS = {
     # Black Flame Tornado tapped, on a Twinblade: used again 212 frames after its press (its first
     # swings 69 and 281 frames after an L2)
     ("Black Flame Tornado", "Tap"): {"L2": 210 / 60},
+    # Deadly Poison Spray's clouds don't stack (tested in game), so it's used again once its cloud's
+    # last tick lands, 447 frames after L2 (HIT_TIME_FITS), not at its animation's L2 cancel (146)
+    ("Deadly Poison Spray", ""): {"L2": 445 / 60},
     # Euporia Vortex Luster Tier 2's early roll: its animation allows a roll from 160 frames (as the
     # plain skill's does after its last hit), but in game, rolling as soon as possible after the
     # press (865), the hit for 375 landed at 1036 and the roll visibly started at 1045, the next hits
