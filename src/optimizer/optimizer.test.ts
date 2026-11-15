@@ -10770,19 +10770,16 @@ describe("Ashes of War", () => {
         limits: { ...noLimits, maxLevels: 0 },
         attack: result.attack,
       }).attackSteps!.flat();
+    // One tick row, its 23 ticks about every 18.5 frames from 40
     const hits = getHits(25);
-    expect(hits).toHaveLength(23);
-    expect(hits.every((hit) => hit.damage === 0)).toBe(true);
-    const poison = hits.map((hit) => hit.status[AttackPowerType.POISON]!);
-    expect(poison.every((buildup) => Math.floor(buildup) === 130)).toBe(true);
-    expect(getHits(0).every((hit) => Math.floor(hit.status[AttackPowerType.POISON]!) === 106)).toBe(
-      true,
-    );
+    expect(hits).toHaveLength(1);
+    expect(hits[0].damage).toBe(0);
+    expect(hits[0].tickCount).toBe(23);
+    expect(Math.floor(hits[0].status[AttackPowerType.POISON]!)).toBe(130);
+    expect(Math.floor(getHits(0)[0].status[AttackPowerType.POISON]!)).toBe(106);
     const frames = (time: number) => Math.round(time * 60);
-    expect(result.attack.stepTimes![0].hitTimes!.map((time) => frames(time!))).toEqual([
-      40, 59, 78, 97, 117, 136, 155, 175, 193, 211, 229, 247, 266, 283, 301, 319, 337, 355, 374,
-      392, 411, 429, 447,
-    ]);
+    expect(frames(hits[0].tickInterval! * 22)).toBe(407);
+    expect(result.attack.stepTimes![0].hitTimes!.map((time) => frames(time!))).toEqual([40]);
     expect(result.attack.cycleTimes!.map(frames)).toEqual([447]);
     expect(frames(result.attack.stepTimes![0].recast!)).toBe(146);
   });

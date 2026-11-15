@@ -350,8 +350,14 @@ OWN_STATUS_MOTION_ROWS = {
 # Ticks whose interval and duration the bullet's alone don't give (seconds): St. Trina's Torch's Fires
 # of Slumber's ground fire burns the dummy every 25 frames (its 0.4s dmgHitRecordLifeTime), one patch
 # at a time, from 86 frames after L2 (perhaps sooner) to about 5 seconds after the last fire hit
-# (Bullet 2826's life): 16 ticks (tested in game on the training dummy)
-TICK_ROWS = {"302404901": {"tickInterval": round(25 / 60, 3), "tickDuration": 16 * 25 / 60}}
+# (Bullet 2826's life): 16 ticks over about 6 seconds (tested in game on the training dummy). Deadly
+# Poison Spray's cloud ticks 23 times, 40 to 447 frames after L2 (measured in game: 40, 59, 78, 97, 117,
+# 136, 155, 175, 193, 211, 229, 247, 266, 283, 301, 319, 337, 355, 374, 392, 411, 429, and 447), about
+# every 18.5 frames
+TICK_ROWS = {
+    "302404901": {"tickInterval": round(25 / 60, 3), "tickDuration": 16 * 25 / 60},
+    "6151305": {"tickInterval": round(407 / 22 / 60, 3), "tickDuration": round(23 * round(407 / 22 / 60, 3), 3)},
+}
 
 # Hits counted as separate hits rather than damage over time, though their name says lava etc.: the
 # Magma Wyrm's Scalesword's Magma Guillotine's lava (counted 5 times, ROW_REPEATS)
@@ -566,7 +572,7 @@ ROW_FITS = {"302100962": "302100960", "306300962": "306300960"}
 # damage in game, though the rows have 59 motion values. Tested in game at +10 with 99 Arcane on a
 # high-resistance target: 23 ticks of 130 buildup each (115% of the bottle's 113.5), 40 to 447 frames
 # after L2 (HIT_TIME_FITS), topping out at 2956 (2990 less 5 a second of decay); at +0, 106 a tick
-# (the bottle's 92.4), so it scales with the bottle's. Counted as 6151305's row, 23 times (ROW_REPEATS).
+# (the bottle's 92.4), so it scales with the bottle's. Counted as 6151305's row, a tick 23 times (TICK_ROWS).
 _STATUS_ONLY = {
     **{field: "0" for field in ["Phys MV", "Magic MV", "Fire MV", "Ltng MV", "Holy MV", "Poise Dmg MV"]},
     **{field: "0" for field in ["AtkPhys", "AtkMag", "AtkFire", "AtkLtng", "AtkHoly", "AtkSuperArmor"]},
@@ -653,8 +659,6 @@ ROW_REPEATS = {
     # last fire hit (tested in game: 20 sleep a tick, as calculated), shown as a tick (TICK_ROWS) but not
     # counted (NOT_COUNTED_ROWS)
     "302404900": 3,
-    # Deadly Poison Spray's cloud's 23 ticks (EXTRA_SHEET_ROWS)
-    "6151305": 23,
     # The Grafted Dragon's Bear Witness! hits directly with its fire ([2]) and its explosion (tested in
     # game at +25 with 99 in every stat: 1282 and 10 poise, 102 and 1180); its windup's weapon hit ([1],
     # 302106900, 238) only hits up close, with the fire twice (442), and its 18 projectiles (903-905:
@@ -854,7 +858,7 @@ SKILL_NOTES = {
     "Sea of Magma": "Counts it without looping: each loop while held adds the lash and magma tick in parentheses, and the magma can tick once more",
     "Bear Witness!": "Counts its fire and explosion: up close its windup's weapon hit and more fire can hit too, and its 18 projectiles land at random ({damage} each), leaving patches of fire",
     "Deadly Poison Spray": "Does no damage, only deadly poison: counts its cloud's 23 ticks over about 7 seconds (its buildup also decays 5 a second). Clouds don't stack, so per second it's used again once the cloud is done, not as soon as it can be",
-    "Fires of Slumber": "Only builds up sleep: counts 3 hits of its fire. The ground fire it leaves burns about 16 times over 6.5 seconds, shown but not counted",
+    "Fires of Slumber": "Only builds up sleep: counts 3 hits of its fire. The ground fire it leaves burns about 16 times over about 6 seconds, shown but not counted",
     "Spearcall Ritual": "Counts one of its spears: about 14 fall at random, and how many hit depends on the target",
     "Erdtree Slam": "Counts its slam close up: further away, only its weaker shockwave hits",
     "Spinning Wheel": "Counts its opening (its downswing, 5 spins, and its first loop's 8 hits) and one pass of its loop (8 hits); per second, only its loop, a pass a second for as long as the skill is held",
@@ -1505,16 +1509,16 @@ HIT_TIME_FITS = {
     ("Rain of Arrows", ""): [(131 + i * 43 / 11) / 60 for i in range(12)],
     # Black Flame Tornado's second tapped swing, 84 frames after L2 (ANIMATION_SEQUENCES)
     ("Black Flame Tornado", "Tap"): [None, 82 / 60, None],
-    # Deadly Poison Spray's cloud's 23 ticks, 40 to 447 frames after L2, about every 18.5
     # St. Trina's Torch's Fires of Slumber's fire hits the dummy 3 times, 61, 86, and 142 frames after
     # L2, and its ground fire first ticks 86 frames after L2 (TICK_ROWS)
     ("Fires of Slumber", ""): [59 / 60, 84 / 60, 140 / 60, 84 / 60],
-    ("Deadly Poison Spray", ""): [frame / 60 for frame in [38, 57, 76, 95, 115, 134, 153, 173, 191, 209, 227, 245, 264, 281, 299, 317, 335, 353, 372, 390, 409, 427, 445]],
+    # Deadly Poison Spray's cloud's first tick, 40 frames after L2 (TICK_ROWS)
+    ("Deadly Poison Spray", ""): [38 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created
 # (measured in game: 144 frames after L2)
-MEASURED_HIT_TIMES = {("Black Flame Tornado", "Tap"): {2}, ("Deadly Poison Spray", ""): set(range(23))}
+MEASURED_HIT_TIMES = {("Black Flame Tornado", "Tap"): {2}, ("Deadly Poison Spray", ""): {0}}
 # Projectile hits with fitted times that the animations can't tie to a projectile (status-only hits),
 # so approximate all the same: Fires of Slumber's fire and its ground fire's ticks
 PROJECTILE_HIT_TIMES = {("Fires of Slumber", "")}
