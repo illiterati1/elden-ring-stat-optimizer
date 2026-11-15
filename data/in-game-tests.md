@@ -23,7 +23,6 @@ from here.
 | 15 | Mounted R1 chain | Longsword (any) | Hits 26, 66, and 104; the next chain's first hit 172 |
 | 16 | Jump Shot + Landing Shot (assumed the Shortbow's) | Black Bow or Ansbach's Longbow | Jump shot 33 after the jump press, landing shot 90, a pair every 116 |
 | 17 | Standard shot, repeated (assumed the Jar Cannon's) | Hand Ballista or Rabbath's Cannon | Hit 85, then every 264 |
-| 18 | Euporia Vortex, repeated (its hits were tested 2026-11-14: 90 to 145, 1-2 frames after the calculator's) | Euporia | Next press's first hit 176 after the first's |
 | 20 | Black Flame Blade, then R1 as soon as possible; also at low and high Dex (casting speed isn't counted) | Any buffable weapon, seal in the left hand | R1 press 112 after the cast press (start animation 70 frames at full length, release 40, plus 2) |
 | 41 | Causality's Wrath, any tier (all the same animation; none can follow itself) | Golden Order Flail | Hit 76; over (a roll) at 140 |
 

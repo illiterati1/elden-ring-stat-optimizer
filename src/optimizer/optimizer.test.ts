@@ -8066,7 +8066,8 @@ describe("Ashes of War", () => {
     // projectile 11), 306 in all. Its hits came 87-146 frames after the press: the calculator's
     // timing is 3-4 frames earlier (84-144). Tier 2, the same way: its 34 steps' damage as calculated
     // (528 in all), at 91-254 frames, 3-6 earlier in the calculator (88-250). The plain skill's hits
-    // came 90, 104, 117, 131, and 145 frames after the press, 1-2 after the calculator's
+    // came 90, 104, 117, 131, and 145 frames after the press, 1-2 after the calculator's; used again
+    // as soon as possible, its first hits 177 frames apart (the calculator's 176)
     const weapon = getWeapon("Euporia");
     const versions = (attributes: Attributes, regularUpgradeLevel = 25) =>
       getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(({ ash, variant }) => {
