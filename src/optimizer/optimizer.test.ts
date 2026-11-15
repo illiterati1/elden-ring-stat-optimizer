@@ -6634,8 +6634,8 @@ describe("Ashes of War", () => {
   it("matches the Carian Sorcery Sword's Impaling Thrust in game", () => {
     // Its physical damage scales with Intelligence (AttackElementCorrectParam 20010800), at its staff
     // upgrades' 202% at +25: 1035. The Boss Arena mod it was tested with gives it the standard
-    // scaling instead (10000: physical with Strength and Dexterity only), so the test does too. To do:
-    // test it in vanilla to confirm the 1035.
+    // scaling instead (10000: physical with Strength and Dexterity only), so the test does too. Vanilla's
+    // INT scaling is confirmed at +0 (the next test); to do: test the 1035 at +25 in vanilla.
     // Tested in game at +25 with 99 in every stat on the training dummy: 795 (damage and poise)
     const vanilla = getWeapon("Carian Sorcery Sword");
     expect(vanilla.attackElementCorrect[AttackPowerType.PHYSICAL]).toEqual({
@@ -6714,14 +6714,15 @@ describe("Ashes of War", () => {
     ).toBe(1035);
   });
 
-  it("nearly matches the Carian Sorcery Sword's R1s in vanilla", () => {
+  it("nearly matches the Carian Sorcery Sword's R1s and Impaling Thrust in vanilla", () => {
     // Tested in vanilla, two handed at +0 with 80 STR, 80 DEX, 23 INT, 43 FAI, 61 ARC, on an NG+
-    // Haligtree Foot Soldier (147.6 defense, -10% pierce negation): 25, 25, 26, 26, 27, 30. The menu
-    // showed 38 + 22 physical and 69 + 14 magic, as calculated (38 + 22.9, 69 + 14.3). Physical
-    // scales with INT in vanilla: without it, every hit is 1-2 lower. Hits 1, 3, and 5 come out 1
-    // low (24.9, 25.9, and 26.9): see "Off by one" in known-issues.md
+    // Haligtree Foot Soldier (147.6 defense, -10% pierce negation): R1s 25, 25, 26, 26, 27, 30, and
+    // Impaling Thrust 98. The menu showed 38 + 22 physical and 69 + 14 magic, as calculated (38 +
+    // 22.9, 69 + 14.3). Physical scales with INT in vanilla: without it, every R1 is 1-2 lower and
+    // Impaling Thrust 91. R1s 1, 3, and 5 come out 1 low (24.9, 25.9, and 26.9): see "Off by one" in
+    // known-issues.md
     const weapon = getWeapon("Carian Sorcery Sword");
-    const build = optimizeBuild({
+    const options = {
       weapon,
       regularUpgradeLevel: 0,
       twoHanding: true,
@@ -6729,7 +6730,7 @@ describe("Ashes of War", () => {
       currentLevel: 9,
       attributes: { str: 80, dex: 80, int: 23, fai: 43, arc: 61 },
       bonusAttributes: noBonus,
-      objective: "totalAttack",
+      objective: "totalAttack" as const,
       defenses: {
         [AttackPowerType.PHYSICAL]: { defense: 147.6, negation: 0 },
         [AttackPowerType.MAGIC]: { defense: 147.6, negation: 0 },
@@ -6739,6 +6740,9 @@ describe("Ashes of War", () => {
       },
       physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: -10 },
       limits: { ...noLimits, maxLevels: 0 },
+    };
+    const build = optimizeBuild({
+      ...options,
       attack: getAttackData(movesets, weapon, "R1", true, 0.5),
     });
     const physical = build.breakdown!.find((row) => row.damageType === AttackPowerType.PHYSICAL)!;
@@ -6750,6 +6754,12 @@ describe("Ashes of War", () => {
     expect(build.attackSteps!.map((step, i) => inGame[i] - Math.floor(step[0].damage))).toEqual([
       1, 0, 1, 0, 1, 0,
     ]);
+
+    const skill = getAshAttack(ashes, movesets, weapon, "Lion's Claw", true);
+    if (!("attack" in skill)) throw new Error(skill.unavailableReason);
+    expect(
+      Math.floor(optimizeBuild({ ...options, attack: skill.attack }).attackSteps![0][0].damage),
+    ).toBe(98);
   });
 
   it("matches the Frozen Needle's Impaling Thrust in game", () => {
