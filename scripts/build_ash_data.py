@@ -639,8 +639,9 @@ ROW_REPEATS = {
     "700000357": 0,
     # St. Trina's Torch's Fires of Slumber's fire hits a target again every 0.4s (Bullet 2825's
     # dmgHitRecordLifeTime), 2.5 times as often as Firebreather's (1s), counted once on the same
-    # stream: counted twice (seen in game: its numbers right, hitting more often than the others)
-    "302404900": 2,
+    # stream: counted 3 times (tested in game on the training dummy: 3 hits, 61, 86, and 142 frames
+    # after L2, its numbers right)
+    "302404900": 3,
     # Deadly Poison Spray's cloud's 23 ticks (EXTRA_SHEET_ROWS)
     "6151305": 23,
     # The Grafted Dragon's Bear Witness! hits directly with its fire ([2]) and its explosion (tested in
@@ -842,7 +843,7 @@ SKILL_NOTES = {
     "Sea of Magma": "Counts it without looping: each loop while held adds the lash and magma tick in parentheses, and the magma can tick once more",
     "Bear Witness!": "Counts its fire and explosion: up close its windup's weapon hit and more fire can hit too, and its 18 projectiles land at random ({damage} each), leaving patches of fire",
     "Deadly Poison Spray": "Does no damage, only deadly poison: counts its cloud's 23 ticks over about 7 seconds (its buildup also decays 5 a second). Clouds don't stack, so per second it's used again once the cloud is done, not as soon as it can be",
-    "Fires of Slumber": "Only builds up sleep: counts 2 hits of its fire, which can hit more often over the stream",
+    "Fires of Slumber": "Only builds up sleep: counts 3 hits of its fire",
     "Spearcall Ritual": "Counts one of its spears: about 14 fall at random, and how many hit depends on the target",
     "Erdtree Slam": "Counts its slam close up: further away, only its weaker shockwave hits",
     "Spinning Wheel": "Counts its opening (its downswing, 5 spins, and its first loop's 8 hits) and one pass of its loop (8 hits); per second, only its loop, a pass a second for as long as the skill is held",
@@ -1492,12 +1493,18 @@ HIT_TIME_FITS = {
     # Black Flame Tornado's second tapped swing, 84 frames after L2 (ANIMATION_SEQUENCES)
     ("Black Flame Tornado", "Tap"): [None, 82 / 60, None],
     # Deadly Poison Spray's cloud's 23 ticks, 40 to 447 frames after L2, about every 18.5
+    # St. Trina's Torch's Fires of Slumber's fire hits the dummy 3 times, 61, 86, and 142 frames after L2
+    ("Fires of Slumber", ""): [59 / 60, 84 / 60, 140 / 60, None],
     ("Deadly Poison Spray", ""): [frame / 60 for frame in [38, 57, 76, 95, 115, 134, 153, 173, 191, 209, 227, 245, 264, 281, 299, 317, 335, 353, 372, 390, 409, 427, 445]],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created
 # (measured in game: 144 frames after L2)
-MEASURED_HIT_TIMES = {("Black Flame Tornado", "Tap"): {2}, ("Deadly Poison Spray", ""): set(range(23))}
+MEASURED_HIT_TIMES = {
+    ("Black Flame Tornado", "Tap"): {2},
+    ("Deadly Poison Spray", ""): set(range(23)),
+    ("Fires of Slumber", ""): {0, 1, 2},
+}
 
 
 def get_skill_range(row):

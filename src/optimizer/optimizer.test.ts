@@ -10853,9 +10853,9 @@ describe("Ashes of War", () => {
   });
 
   it("builds up sleep with Fires of Slumber", () => {
-    // St. Trina's Torch's fixed skill only builds up sleep: its fire, counted twice (it can hit again
-    // every 0.4s, 2.5 times as often as Firebreather's), and its ground fire, which only burns where the
-    // fire hits the ground, so it's shown but not counted (seen in game: the numbers right)
+    // St. Trina's Torch's fixed skill only builds up sleep: its fire, counted 3 times (tested in game
+    // on the training dummy: 3 hits, 61, 86, and 142 frames after L2, recast every 218), and its ground
+    // fire, which only burns where the fire hits the ground, so it's shown but not counted
     const weapon = getWeapon("St. Trina's Torch");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -10882,6 +10882,7 @@ describe("Ashes of War", () => {
         hit.notCounted ?? false,
       ]),
     ).toEqual([
+      [0, 40, false],
       [0, 40, false],
       [0, 40, false],
       [0, 20, true],
