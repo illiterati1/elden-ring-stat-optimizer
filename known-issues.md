@@ -8,8 +8,8 @@
 - **Attacks that need extra movement:** time-scaled numbers are questionable for any attack that
   needs another action first, such as jumping, rolling, backstepping, running, or buffing.
 - **Untimed attacks:** backstabs, ripostes, shields' mounted R2, bow and crossbow jump shots,
-  Carian Retaliation, Lifesteal Fist, Spinning Chain's loop, and how often Spinning Wheel and
-  Feeble Lord's Frenzied Flame can be repeated haven't been timed yet.
+  Carian Retaliation, Lifesteal Fist, Spinning Chain's loop, and how often Feeble Lord's Frenzied
+  Flame can be repeated haven't been timed yet.
 - **Unverified timings:** many attack timings and stamina costs haven't been checked in game yet.
 - **Enemy picker:** only bosses are listed.
 - **NG+ stats:** enemies' NG+ HP and defenses match the datamining spreadsheet's, but haven't been

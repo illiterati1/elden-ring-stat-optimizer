@@ -694,9 +694,9 @@ ROW_REPEATS = {
     # Ghiza's Wheel's Spinning Wheel: its opening (animation 40050) has 6 windows of 302309903, its
     # downswing, which only hits once (tested in game: 0.6 poise, then about 2 for the next hit, 901),
     # then 901 3 times and 900 4 times, then its loops while it's held: 40051 with 902 twice and 900 6
-    # times, and 40052 with 902 twice and 900 8 times. All of them are counted (tested in game at +10
-    # with 99 in every stat: 5044 for 26 hits of 194; poise 19.5, 20.4 here, and 6.9 after 7 hits, 7.8
-    # here, as if one of the opening's 1.8 hits were 0.9)
+    # times, and 40052 with 902 twice and 900 8 times (tested in game at +10 with 99 in every stat: 194 a
+    # hit; poise 19.5 for 26 hits, and 6.9 after 7). Which of them land, and in what order, is
+    # LOOP_HIT_ORDERS (its timing, LOOP_FITS)
     "302309903": 1,
     "302309901": 3,
     "302309900": 18,
@@ -845,7 +845,7 @@ SKILL_NOTES = {
     "Fires of Slumber": "Only builds up sleep: counts 2 hits of its fire, which can hit more often over the stream",
     "Spearcall Ritual": "Counts one of its spears: about 14 fall at random, and how many hit depends on the target",
     "Erdtree Slam": "Counts its slam close up: further away, only its weaker shockwave hits",
-    "Spinning Wheel": "Counts its downswing, 7 opening spins, and its two loops of 8 and 10: it keeps looping while the skill is held",
+    "Spinning Wheel": "Counts its opening (its downswing, 5 spins, and its first loop's 8 hits) and one pass of its loop (8 hits); per second, only its loop, a pass a second for as long as the skill is held",
     "Unending Dance": "Counts its opening slash and one cycle of its 12 looping slashes, which keep cycling while the skill is held and can stop early",
     "I Command Thee, Kneel!": "Counts its shockwaves: point blank, its axe hits instead and it does less",
     "Destined Death": "Counts its swings' Destined Death after the projectiles lower the enemy's max HP: it can do a little more if they hit later",
@@ -1336,7 +1336,35 @@ CANCEL_FITS = {
 # like Wild Strikes' loop. The Visage Shield's Tongues of Fire breathes
 # fire while L2 is held (its start, 40000, then its loop, 40003): hits at 405, 466, 527, 587, and
 # 648 from an L2 at 318 (its release's roll cancel 73 frames after letting go)
-LOOP_FITS = {("Tongues of Fire", ""): {"hits": [0], "loop": 60.75 / 60, "opening": 87 / 60}}
+#
+# A loop with hits before its first pass ("openingHits", when they land in its animation, and
+# "loopFrom", how many of its hits they are) is two steps: the opening, done once, then the pass,
+# repeated. Ghiza's Wheel's Spinning Wheel, at +10 with 99 in every stat on the training dummy, 194 a
+# hit, L2 at 1056: its downswing at 1089, then spins at 1149-1181, its first loop (40051) at
+# 1188-1244, then a pass of its loop (40052) every 60 frames from 1249 (8 hits, at 0, 7, 15, 23, 31,
+# 39, 47, and 55 frames: 2 of its 10 windows don't land), 39 hits by 1429 (18797 with one blood loss).
+# Its opening's first two spins (77 and 85 frames into it) don't land either.
+LOOP_FITS = {
+    ("Tongues of Fire", ""): {"hits": [0], "loop": 60.75 / 60, "opening": 87 / 60},
+    ("Spinning Wheel", ""): {
+        # (from the press, less its 2-frame delay)
+        "openingHits": [
+            (frame - 2) / 60
+            for frame in [33, 93, 101, 109, 117, 125, 132, 139, 148, 156, 164, 172, 180, 188]
+        ],
+        "loopFrom": 14,
+        "hits": [frame / 60 for frame in [0, 7, 15, 23, 31, 39, 47, 55]],
+        "loop": 60 / 60,
+        "opening": 193 / 60,
+    },
+}
+# Hits of a loop with an opening (LOOP_FITS openingHits), in order, by the poise motion value of the
+# skill's hit to use (its hits differ only in poise): Spinning Wheel's downswing (302309903, 10), an
+# opening spin (901, 30), 4 more (900, 10), then its first loop's 902 (15) twice and 900 6 times, then
+# a pass of its loop, the same
+LOOP_HIT_ORDERS = {
+    ("Spinning Wheel", "Ghiza's Wheel"): [10, 30, *[10] * 4, *([15] * 2 + [10] * 6) * 2],
+}
 # Skills that are a stance (or a step) without hits of their own, whose attacks are R1s or R2s from it:
 # the stance's animation, and the follow-ups that start a chain (or are on their own), which start once
 # the stance's cancel for their button (R1 for "R1 ..." follow-ups, else R2; or else any right hand
@@ -2168,7 +2196,18 @@ def get_skill_timing(
                 "hits": [round(time, 3) for time in fit["hits"]],
                 "loop": round(fit["loop"], 3),
                 **({"opening": round(fit["opening"], 3)} if "opening" in fit else {}),
-                **({"stamina": timing["stamina"]} if "stamina" in timing else {}),
+                # (an opening's own stamina isn't separated from its passes', so neither is given)
+                **({"stamina": timing["stamina"]} if "stamina" in timing and "openingHits" not in fit else {}),
+                **(
+                    {
+                        "openingHits": [round(time, 3) for time in fit["openingHits"]],
+                        "loopFrom": fit["loopFrom"],
+                        # (its opening's rolls)
+                        **{key: timing[key] for key in ["roll", "earlyRolls", "earlyRollStaysOpen"] if key in timing},
+                    }
+                    if "openingHits" in fit
+                    else {}
+                ),
             }
         if any(len(hit) > 4 and hit[4].get("kind") == "Loop" for hit in part_hits) and len(starts) > 1:
             # Evenly spaced hits, looping: each pass is as many of their gaps as hits
@@ -2890,6 +2929,10 @@ def main():
                         follow_up["label"] = f"{first} / {second}"
     for (name, weapon), note in VERSION_NOTES.items():
         skills[name]["unique"][weapon]["note"] = note
+    for (name, weapon), poises in LOOP_HIT_ORDERS.items():
+        version = skills[name]["unique"][weapon]
+        by_poise = {hit[2]: hit for hit in version["main"]}
+        version["main"] = [copy.deepcopy(by_poise[poise]) for poise in poises]
     for (name, weapon, label), (flat, count) in FOLLOW_UP_BUFFS.items():
         version = skills[name]["unique"][weapon]
         version["weaponBuff"] = True

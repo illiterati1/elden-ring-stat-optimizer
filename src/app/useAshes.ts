@@ -135,6 +135,12 @@ interface SkillPartTiming {
    * stance, how long from the press until its first step's (e.g. Muleta's R2)
    */
   opening?: number;
+  /**
+   * For a loop with hits before its first pass (e.g. Spinning Wheel's), when they land in its
+   * animation, and how many of its hits they are: the opening is a step of its own, done once
+   */
+  openingHits?: number[];
+  loopFrom?: number;
 }
 
 /**
@@ -183,7 +189,7 @@ function getSkillStepTimes(
 ): StepTimes[] | undefined {
   const timings = parts.map(({ label }) => getPartTiming(hits, skillRange, label, hands));
   if (!timings.length || timings.some((timing) => !timing)) return undefined;
-  return parts.map(({ label, next: button, repeat, noRepeat, oneOff }, i) => {
+  return parts.flatMap(({ label, next: button, repeat, noRepeat, oneOff }, i): StepTimes[] => {
     const timing = timings[i]!;
     // Each counted hit's own time (see SkillPartTiming hitTimes), if the part's hits are known
     const partHits = label
@@ -194,13 +200,32 @@ function getSkillStepTimes(
       (timing.hitTimes ?? (timing.hits.length === partHits.length ? timing.hits : undefined));
     const counted = partHits?.flatMap((hit, j) => (hit[4]?.uncounted ? [] : [j])) ?? [];
     if (timing.loop != null) {
-      return {
-        lead: 0,
-        hits: timing.hits,
-        cycle: timing.loop,
-        loop: true,
-        ...(timing.opening != null && { opening: timing.opening }),
-      };
+      // A loop with hits before its first pass: the opening, then the pass from when it starts
+      if (timing.openingHits && timing.opening != null) {
+        const lead = stepStartDelay;
+        return [
+          {
+            lead,
+            hits: timing.openingHits.map((time) => lead + time),
+            ...(timing.roll != null && { roll: lead + timing.roll }),
+            ...(timing.earlyRolls && {
+              earlyRolls: timing.earlyRolls.map((time) => lead + time),
+            }),
+            ...(timing.earlyRollStaysOpen && { earlyRollStaysOpen: true as const }),
+            cycle: timing.opening,
+          },
+          { lead: 0, hits: timing.hits, cycle: timing.loop, loop: true },
+        ];
+      }
+      return [
+        {
+          lead: 0,
+          hits: timing.hits,
+          cycle: timing.loop,
+          loop: true,
+          ...(timing.opening != null && { opening: timing.opening }),
+        },
+      ];
     }
     // An uncharged version starts once it's released, or else a step starts a frame after its press
     const lead = timing.start ?? stepStartDelay;
@@ -237,25 +262,27 @@ function getSkillStepTimes(
     ]
       .filter((time): time is number => time != null)
       .sort((a, b) => a - b)[0];
-    return {
-      lead,
-      hits: timing.hits.map((time) => lead + time),
-      ...(ownTimes && {
-        hitTimes: counted.map((j) => (ownTimes[j] != null ? lead + ownTimes[j]! : undefined)),
-        approximate: counted.map((j) => !!timing.approximate?.includes(j)),
-      }),
-      ...(earliest && { earliest }),
-      ...(timing.rightHandAttack != null && { rightHandAttack: lead + timing.rightHandAttack }),
-      ...(timing.roll != null && { roll: lead + timing.roll }),
-      ...(timing.earlyRolls && { earlyRolls: timing.earlyRolls.map((time) => lead + time) }),
-      ...(timing.earlyRollStaysOpen && { earlyRollStaysOpen: true as const }),
-      ...(timing.block != null && { block: lead + timing.block }),
-      ...(timing.move != null && { move: lead + timing.move }),
-      ...(last && oneOff
-        ? oneOffEnd != null && { cycle: oneOffEnd, cutShort: true as const }
-        : !(last && noRepeat) && next && { cycle: next.time }),
-      ...(i === 0 && timing.opening != null && { opening: timing.opening }),
-    };
+    return [
+      {
+        lead,
+        hits: timing.hits.map((time) => lead + time),
+        ...(ownTimes && {
+          hitTimes: counted.map((j) => (ownTimes[j] != null ? lead + ownTimes[j]! : undefined)),
+          approximate: counted.map((j) => !!timing.approximate?.includes(j)),
+        }),
+        ...(earliest && { earliest }),
+        ...(timing.rightHandAttack != null && { rightHandAttack: lead + timing.rightHandAttack }),
+        ...(timing.roll != null && { roll: lead + timing.roll }),
+        ...(timing.earlyRolls && { earlyRolls: timing.earlyRolls.map((time) => lead + time) }),
+        ...(timing.earlyRollStaysOpen && { earlyRollStaysOpen: true as const }),
+        ...(timing.block != null && { block: lead + timing.block }),
+        ...(timing.move != null && { move: lead + timing.move }),
+        ...(last && oneOff
+          ? oneOffEnd != null && { cycle: oneOffEnd, cutShort: true as const }
+          : !(last && noRepeat) && next && { cycle: next.time }),
+        ...(i === 0 && timing.opening != null && { opening: timing.opening }),
+      },
+    ];
   });
 }
 
@@ -272,6 +299,8 @@ function withSkillTiming(
 ): Pick<AttackData, "stepTimes" | "cycleTimes" | "stamina"> {
   const stepTimes = getSkillStepTimes(hits, skillRange, parts, hands);
   if (!stepTimes) return {};
+  // (a loop's opening and pass are two steps of one part, whose stamina isn't known)
+  const split = stepTimes.length !== parts.length;
   const cycleTimes = stepTimes.every((step) => step.cycle != null)
     ? stepTimes.map((step) => step.cycle!)
     : undefined;
@@ -282,7 +311,8 @@ function withSkillTiming(
   return {
     stepTimes,
     ...(cycleTimes && { cycleTimes }),
-    ...(stamina.some((cost) => cost != null) && { stamina: stamina.map((cost) => cost ?? 0) }),
+    ...(!split &&
+      stamina.some((cost) => cost != null) && { stamina: stamina.map((cost) => cost ?? 0) }),
   };
 }
 
@@ -1238,6 +1268,26 @@ function getSkillAttack(
         ...notedHit,
         ...followUpNote,
         ...timingOf([{ label: followUp.label, noRepeat: true }]),
+      },
+    };
+  }
+  // A loop with an opening (e.g. Spinning Wheel): the opening, done once, and one pass, both counted
+  // in full, the pass repeated for values per second
+  const loopFrom = !followUp ? getPartTiming(hits, skillRange, "", hands)?.loopFrom : undefined;
+  if (loopFrom != null) {
+    return {
+      skill,
+      attack: {
+        steps: [hits.main.slice(0, loopFrom), hits.main.slice(loopFrom)].map((part) =>
+          countedHits(part).map(toHit),
+        ),
+        weights: [1, 1],
+        stepLabels: [`${skill} opening`, "Loop"],
+        repeatFrom: 1,
+        poiseBase,
+        ...ownBuff,
+        ...notedHit,
+        ...timingOf([{ label: "" }]),
       },
     };
   }

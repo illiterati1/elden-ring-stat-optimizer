@@ -68,7 +68,7 @@ step, from that step's press).
 | 33 | I Command Thee, Kneel! #1 | Axe of Godrick | Hits 70, 127; early 95; after 183 |
 | 34 | Savage Claws | Beast Claw | Hits 36, 50, 66, 84, 106, 144; early 94; after 178 |
 | 35 | Shadow Sunflower Headbutt #2 | Shadow Sunflower Blossom | Hits 56, 104; early 72; after 146 |
-| 36 | Spinning Wheel (one window, open past its last hit) | Ghiza's Wheel | Hits 32 to 125; roll from 109 |
+| 36 | Spinning Wheel's roll (one window, open past its opening's last hit; its hits were tested 2026-11-14) | Ghiza's Wheel | Roll from 109 |
 | 37 | The Queen's Black Flame #1 | Godslayer's Greatsword | Hits 36, 138; early 86; after 186 |
 
 ## Enemy scaling
@@ -89,4 +89,4 @@ Nothing to compare yet; measure from the press, as above.
 - Carian Retaliation
 - Lifesteal Fist (a grab)
 - Spinning Chain's loop length
-- How fast Spinning Wheel and Feeble Lord's Frenzied Flame can be used again
+- How fast Feeble Lord's Frenzied Flame can be used again

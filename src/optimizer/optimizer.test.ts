@@ -9699,14 +9699,15 @@ describe("Ashes of War", () => {
   });
 
   it("matches Spinning Wheel in game", () => {
-    // Ghiza's Wheel's fixed skill loops while it's held: its downswing, 7 opening spins, and its two
-    // loops of 8 and 10 are counted. Tested in game at +10 with 99 in every stat on a 123.2 defense
-    // target: 5044 for 26 hits of 194, and its blood loss; the downswing 0.6 poise, then about 2. Its
-    // poise isn't pinned: 19.5 in game, 20.4 here (as if one of the opening's 1.8 hits were 0.9)
+    // Ghiza's Wheel's fixed skill loops while it's held: its opening (its downswing, 5 spins, and its
+    // first loop's 8 hits) is counted once, then one pass of its loop (8 hits), the only part repeated
+    // for values per second. Tested in game at +10 with 99 in every stat on the training dummy, 194 a
+    // hit, L2 at 1056: the downswing at 1089, its other hits at 1149-1244, then 8 hits every 60
+    // frames from 1249 (39 hits by 1429). Poise: 19.5 for an earlier test's 26 hits
     const weapon = getWeapon("Ghiza's Wheel");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const hits = optimizeBuild({
+    const build = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,
       twoHanding: false,
@@ -9721,12 +9722,24 @@ describe("Ashes of War", () => {
       physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
       limits: { ...noLimits, maxLevels: 0 },
       attack: result.attack,
-    }).attackSteps!.flat();
-    expect(hits).toHaveLength(26);
-    expect(hits.reduce((sum, hit) => sum + Math.floor(hit.damage), 0)).toBe(5044);
-    expect(hits.reduce((sum, hit) => sum + hit.stance, 0)).toBeCloseTo(19.5, -0.5);
+    });
+    const steps = build.attackSteps!.map((step) => step.map((hit) => Math.floor(hit.damage)));
+    expect(steps.map((step) => step.length)).toEqual([14, 8]);
+    expect(steps.flat().every((damage) => damage === 194)).toBe(true);
+    expect(Math.floor(build.finalValue)).toBe(22 * 194);
+    // Its hits' times, from the press: the opening's as measured, then the pass's from 193
+    const frames = (time: number) => Math.round(time * 60);
+    const [opening, pass] = result.attack.stepTimes!;
+    expect(opening.hits.map(frames)).toEqual([
+      33, 93, 101, 109, 117, 125, 132, 139, 148, 156, 164, 172, 180, 188,
+    ]);
+    expect(pass.hits.map(frames)).toEqual([0, 7, 15, 23, 31, 39, 47, 55]);
+    expect(result.attack.cycleTimes!.map(frames)).toEqual([193, 60]);
+    expect(result.attack.repeatFrom).toBe(1);
+    // Per second: a pass's 8 hits a second
+    expect(Math.floor(build.attackDps!)).toBe(Math.floor(steps[1].reduce((a, b) => a + b, 0)));
     expect(result.attack.note).toBe(
-      "Counts its downswing, 7 opening spins, and its two loops of 8 and 10: it keeps looping while the skill is held",
+      "Counts its opening (its downswing, 5 spins, and its first loop's 8 hits) and one pass of its loop (8 hits); per second, only its loop, a pass a second for as long as the skill is held",
     );
   });
 
