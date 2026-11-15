@@ -8061,7 +8061,9 @@ describe("Ashes of War", () => {
     // on Tier 1's projectiles and 20 on its swings, 9 and 10 on Tier 2's). Tested in game at +25 on
     // the training dummy, with 99 in every stat: 2040; Luster Tier 1 2530 (2117 for its projectiles);
     // Tier 2 6921 with 61 poise (5345 for its projectiles). At 89 Strength and Dexterity and 25 Faith:
-    // Tier 1 1676, Tier 2 4416. To do: check the tiers in vanilla (tested in the Boss Arena mod).
+    // Tier 1 1676, Tier 2 4416. The fit is wrong at low upgrade levels (+0 in vanilla: Tier 1 179,
+    // Tier 2 346); the Boss Arena mod's params for it are vanilla's. See test #24 in
+    // data/in-game-tests.md.
     const weapon = getWeapon("Euporia");
     const versions = (attributes: Attributes) =>
       getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(({ ash, variant }) => {

@@ -35,18 +35,11 @@ from here.
 | 21 | Jumping R2 | Backhand Blade | 19 (its landing's behavior) |
 | 22 | Fires of Slumber, Familial Rancor, and Rain of Arrows (one bow class) | — | 0 in the data, so not known |
 
-## Damage, in vanilla (not the Boss Arena mod)
-
-At +25 with 99 in every stat, on a 123.2-defense target with no negation.
-
-| # | Test | Calculated |
-|---|---|---|
-| 24 | Euporia Vortex's Luster Tiers (fitted in the mod, cause unknown) | Tier 1 2530 (projectiles alone 2117), Tier 2 6921 (5345); at 89 STR/DEX and 25 FAI, 1676 and 4416 |
-
 ## Discrepancies to look into
 
 | # | Test | In game | Calculated |
 |---|---|---|---|
+| 24 | Euporia Vortex's Luster Tiers: how many of the spinning swings connect, e.g. Tier 1 at +0 on a human-sized enemy (the calculator has 5 for Tier 1, 11 for Tier 2). Notes and all measurements so far: data/docs/euporia-vortex.md (local) | +0, NG+ Haligtree Foot Soldier: Tier 1 179, Tier 2 346 | Tier 1 122, Tier 2 235 (fitted at +25, in the Boss Arena mod, whose params for it are vanilla's) |
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all | 2674 (2672 in tests: each swing 786 with the buff's 90 fire, each explosion 550). Next: each hit's damage, to see which one is ~20 low |
 
 ## Roll-outs
