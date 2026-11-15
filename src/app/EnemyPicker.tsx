@@ -145,54 +145,58 @@ function EnemyPicker({ enemyArea, enemyKey, ngPlus, radahnBeaten, onChange }: Pr
         onChange={(_, newEnemy) => selectEnemy(newEnemy)}
         renderInput={(params) => <TextField {...params} label="Enemy" />}
       />
-      <FormControl
-        fullWidth
-        size="small"
-        disabled={!area}
-        title={area ? undefined : "Pick an area or enemy for their HP and defenses in NG+"}
-      >
-        <InputLabel id="ngPlusLabel">NG+</InputLabel>
-        <Select
-          labelId="ngPlusLabel"
-          label="NG+"
-          value={ngPlus}
-          onChange={(evt) => {
-            const newNgPlus = +evt.target.value;
-            onChange({ ngPlus: newNgPlus });
-            // Refill the picked enemy's or area's stats
-            if (enemy) selectEnemy(enemy, newNgPlus);
-            else if (area) selectArea(area, newNgPlus);
-          }}
-        >
-          {Array.from({ length: maxNgPlus + 1 }, (_, level) => (
-            <MenuItem key={level} value={level}>
-              {getNgPlusLabel(level)}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-      {enemy && ngPlus === 1 && !enemy.ngPlus && (
-        <Typography variant="body2" color="text.secondary">
-          Doesn&apos;t get stronger in NG+, only from NG+2
-        </Typography>
-      )}
-      {ngPlus > 0 && (
-        <FormControlLabel
-          label="Beaten Promised Consort Radahn in an earlier journey"
-          title="Raises many of the DLC's enemies' HP (not their defenses)"
-          sx={{ mr: 0 }}
-          control={
-            <Checkbox
-              size="small"
-              checked={radahnBeaten}
+      {debug && (
+        <>
+          <FormControl
+            fullWidth
+            size="small"
+            disabled={!area}
+            title={area ? undefined : "Pick an area or enemy for their HP and defenses in NG+"}
+          >
+            <InputLabel id="ngPlusLabel">NG+</InputLabel>
+            <Select
+              labelId="ngPlusLabel"
+              label="NG+"
+              value={ngPlus}
               onChange={(evt) => {
-                const newRadahnBeaten = evt.currentTarget.checked;
-                onChange({ radahnBeaten: newRadahnBeaten });
-                if (enemy) selectEnemy(enemy, ngPlus, newRadahnBeaten);
+                const newNgPlus = +evt.target.value;
+                onChange({ ngPlus: newNgPlus });
+                // Refill the picked enemy's or area's stats
+                if (enemy) selectEnemy(enemy, newNgPlus);
+                else if (area) selectArea(area, newNgPlus);
               }}
+            >
+              {Array.from({ length: maxNgPlus + 1 }, (_, level) => (
+                <MenuItem key={level} value={level}>
+                  {getNgPlusLabel(level)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {enemy && ngPlus === 1 && !enemy.ngPlus && (
+            <Typography variant="body2" color="text.secondary">
+              Doesn&apos;t get stronger in NG+, only from NG+2
+            </Typography>
+          )}
+          {ngPlus > 0 && (
+            <FormControlLabel
+              label="Beaten Promised Consort Radahn in an earlier journey"
+              title="Raises many of the DLC's enemies' HP (not their defenses)"
+              sx={{ mr: 0 }}
+              control={
+                <Checkbox
+                  size="small"
+                  checked={radahnBeaten}
+                  onChange={(evt) => {
+                    const newRadahnBeaten = evt.currentTarget.checked;
+                    onChange({ radahnBeaten: newRadahnBeaten });
+                    if (enemy) selectEnemy(enemy, ngPlus, newRadahnBeaten);
+                  }}
+                />
+              }
             />
-          }
-        />
+          )}
+        </>
       )}
       {enemy?.criticalDamageRate && (
         <Typography variant="body2" color="text.secondary">

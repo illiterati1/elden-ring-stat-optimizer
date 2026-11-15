@@ -88,6 +88,7 @@ import {
   uniqueAffinityId,
   weaponTypeLabels,
   catalystTypes,
+  debug,
 } from "./uiUtils.ts";
 
 /** Skills that apply an enemy debuff, which is picked separately (in the enemy debuffs), by name */
@@ -169,7 +170,7 @@ export default function App() {
     enemyRipostes,
     enemyTypes,
     enemyInRealmOfShadow,
-    ngPlus,
+    ngPlus: savedNgPlus,
     radahnBeaten,
     scadutreeBlessing: savedScadutreeBlessing,
     scadutreeBlessingLevel,
@@ -201,11 +202,14 @@ export default function App() {
   const closeAlert = (id: string) => updateAppState({ closedAlerts: [...closedAlerts, id] });
   // The enemy's HP, for damage that's a percentage of it, if known
   const countedEnemyHp = enemyHp > 0 ? enemyHp : undefined;
+  // NG+ and the Scadutree Blessing are only offered with ?debug; otherwise they're off
+  const ngPlus = debug ? savedNgPlus : 0;
   // A picked enemy decides whether the Scadutree Blessing applies: only in the Realm of Shadow
-  const scadutreeBlessing =
-    enemyKey != null && enemyInRealmOfShadow != null
-      ? enemyInRealmOfShadow
-      : savedScadutreeBlessing;
+  const scadutreeBlessing = !debug
+    ? false
+    : enemyKey != null && enemyInRealmOfShadow != null
+    ? enemyInRealmOfShadow
+    : savedScadutreeBlessing;
   const scadutreeBlessingRate = scadutreeBlessing
     ? scadutreeBlessingRates[scadutreeBlessingLevel] ?? 1
     : 1;
