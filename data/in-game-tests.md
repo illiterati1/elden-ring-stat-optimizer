@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 10 | Loretta's Slash, repeated | Loretta's War Sickle | Hits 44 and 98, then every 162 |
 | 11 | Wall of Sparks, repeated | Firespark Perfume Bottle | Hit 30, then every 214 |
 | 12 | Rolling Sparks, repeated | Firespark Perfume Bottle | Hits 34 to 52, then every 110 |
 | 13 | Revenge of the Night's guard counter | Shield of Night | Hit 58 after the press |

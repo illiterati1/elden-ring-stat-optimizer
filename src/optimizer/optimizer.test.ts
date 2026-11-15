@@ -10086,9 +10086,10 @@ describe("Ashes of War", () => {
     );
   });
 
-  it("matches Loretta's Slash's stamina in game", () => {
-    // Seen in game on Loretta's War Sickle: its slashes' 15 and 20 at the weapon's 1.1 take 16 and 22
-    // (16.5, rounded down), 38 in all
+  it("matches Loretta's Slash in game", () => {
+    // Seen in game on Loretta's War Sickle: its slashes' 15 and 20 stamina at the weapon's 1.1 take
+    // 16 and 22 (16.5, rounded down), 38 in all; its hits 44 and 99 frames after the L2, the next
+    // one's first hit 164 after the first (44, 98, and 162 here)
     const result = getAshAttack(
       ashes,
       movesets,
@@ -10098,6 +10099,9 @@ describe("Ashes of War", () => {
     );
     if (!("attack" in result)) throw new Error(result.unavailableReason);
     expect(result.attack.stamina).toEqual([38]);
+    const frames = (time: number) => Math.round(time * 60);
+    expect(result.attack.stepTimes!.map((step) => step.hits.map(frames))).toEqual([[44, 98]]);
+    expect(result.attack.cycleTimes!.map(frames)).toEqual([162]);
   });
 
   it("matches Great-Serpent Hunt in game", () => {
