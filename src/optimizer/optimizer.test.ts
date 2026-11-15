@@ -4847,9 +4847,16 @@ describe("Ashes of War", () => {
   it("matches Wall of Sparks in game", () => {
     // Tested in game on a Firespark Perfume Bottle +25 with 99 in every stat on the training dummy:
     // 245, 490, 735, or 989 in all, explosions of 245 (1 to 4) and the odd spark of 9, so 1 explosion
-    // counts, with a note
+    // counts, with a note. Tapped (uncharged), its explosion lands 137 frames after L2, and it's used
+    // again every 137 (136 here)
     const weapon = getWeapon("Firespark Perfume Bottle");
-    const result = getAshAttack(ashes, movesets, weapon, "Wall of Sparks", false);
+    const result = getAshAttack(
+      ashes,
+      movesets,
+      weapon,
+      withFollowUp("Wall of Sparks", "Uncharged"),
+      false,
+    );
     if (!("attack" in result)) throw new Error(result.unavailableReason);
     const { attackSteps, finalValue, attackNote } = optimizeBuild({
       weapon,
@@ -4869,7 +4876,12 @@ describe("Ashes of War", () => {
     });
     expect(attackSteps!.map((step) => step.map((hit) => hit.damage))).toEqual([[245]]);
     expect(finalValue).toBe(245);
-    expect(attackNote).toMatch(/up to four/);
+    expect(attackNote).toMatch(/up to four tapped/);
+    const frames = (time: number) => Math.round(time * 60);
+    expect(
+      result.attack.stepTimes!.map((step) => step.hitTimes!.map((time) => frames(time!))),
+    ).toEqual([[137]]);
+    expect(result.attack.cycleTimes!.map(frames)).toEqual([136]);
   });
 
   it("matches Waves of Darkness in game", () => {

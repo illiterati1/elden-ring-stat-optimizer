@@ -448,8 +448,9 @@ FIXED_FLAT_ROWS = {"300000682", "300000683"}
 # one counts, and so do its R2's direct hit and shockwave (300000852, 300000853: 1226 or 506), so
 # only the direct hit counts; its "Ground Impact?" (300000851) wasn't seen to hit at all.
 # Wall of Sparks sprays sparks (600000022, 9 each on a Firespark Perfume Bottle +25) that each spawn an
-# explosion on hitting (600000020, 245; the other set's, 600000021, 165, wasn't seen to hit): tested in
-# game, 245, 490, 735, or 989 in all (1 to 4 explosions, and the odd spark), so 1 explosion counts.
+# explosion on hitting (600000020, 245, tapped; charged, 600000021, 165, not tested): tested in game
+# tapped, 245, 490, 735, or 989 in all (1 to 4 explosions, and the odd spark), so 1 explosion counts
+# (and 1 charged, likewise).
 # Waves of Darkness's waves (30000812) are three expanding rings (Bullet 2811, 2814, and 2817), each
 # hitting (tested in game on Great Stars +25: 822, 352, then 590 three times, 2944 in all).
 # Night-and-Flame Stance's R2 fire bursts (300214925, 300214926, the same) hit one or the other
@@ -732,7 +733,7 @@ ROW_REPEATS = {
     "300000851": 0,
     "300000853": 0,
     "600000020": 1,
-    "600000021": 0,
+    "600000021": 1,
     "600000022": 0,
     "30000812": 3,
     "300214926": 0,
@@ -835,7 +836,7 @@ VERSION_NOTES = {
 SKILL_NOTES = {
     "Rolling Sparks": "Counts a single explosion: bigger enemies can take more, and more sparks",
     "Spectral Lance": "The lance aims for the head, so headshots will likely make it do more in practice",
-    "Wall of Sparks": "Counts a single explosion: it can do up to four, and some sparks",
+    "Wall of Sparks": "Counts a single explosion: it can do more (up to four tapped), and some sparks",
     ("Moon-and-Fire Stance", "R2"): "Counts one hit of its flame pillars, which can hit several times",
     # Its light beams (Bullet 200003100 and 200003105) strike at random for a second, each one hitting
     # up to twice: tested in game on the Greatsword of Radahn (Light) +10 with 99 in every stat, up to
@@ -940,6 +941,9 @@ ROW_FOLLOW_UPS = {
     "305000110": "Tier 2",
     "305000100": "Tier 3",
     "300405910": "#2",
+    # Wall of Sparks's charged explosion (its charged animation's, 40000; the sheet's "Charged Weapon
+    # Skill"), so it's its own level beside the tapped one (CHARGED_LEVELS)
+    "600000021": "Charged",
     "600000122": None,
     "600000123": None,
     "600001002": None,
@@ -1486,6 +1490,11 @@ ANIMATION_SEQUENCES = {
     # finisher 64 frames in) 78 frames in (measured in game on a Twinblade: its swings 68 and 84
     # frames after L2, the finisher 144; HIT_TIME_FITS has the second swing)
     ("Black Flame Tornado", "Tap"): [(40000, 0), (40001, 78 / 60)],
+    # Wall of Sparks tapped (its uncharged explosion, 600000020): its
+    # start (40000), then its release (40001) once the charging window opens, 36 frames in (measured
+    # in game on a Firespark Perfume Bottle: used again every 137 frames, 40001's quick L2 cancel 98
+    # frames in; the charged 40000's is 212)
+    ("Wall of Sparks", "Uncharged"): [(40000, 0), (40001, 36 / 60)],
 }
 # Projectile hits' times measured in game, where the animations only say when the projectile is
 # created (by skill and part, each hit's from the animation's start, or None to use the animation's):
@@ -1514,11 +1523,17 @@ HIT_TIME_FITS = {
     ("Fires of Slumber", ""): [59 / 60, 84 / 60, 140 / 60, 84 / 60],
     # Deadly Poison Spray's cloud's first tick, 40 frames after L2 (TICK_ROWS)
     ("Deadly Poison Spray", ""): [38 / 60],
+    # Wall of Sparks's explosion lands 137 frames after L2, tapped (ANIMATION_SEQUENCES)
+    ("Wall of Sparks", "Uncharged"): [135 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created
 # (measured in game: 144 frames after L2)
-MEASURED_HIT_TIMES = {("Black Flame Tornado", "Tap"): {2}, ("Deadly Poison Spray", ""): {0}}
+MEASURED_HIT_TIMES = {
+    ("Black Flame Tornado", "Tap"): {2},
+    ("Deadly Poison Spray", ""): {0},
+    ("Wall of Sparks", "Uncharged"): {0},
+}
 # Projectile hits with fitted times that the animations can't tie to a projectile (status-only hits),
 # so approximate all the same: Fires of Slumber's fire and its ground fire's ticks
 PROJECTILE_HIT_TIMES = {("Fires of Slumber", "")}

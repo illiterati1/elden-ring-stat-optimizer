@@ -10,7 +10,7 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 11 | Wall of Sparks, repeated | Firespark Perfume Bottle | Hit 30, then every 214 |
+| 45 | Wall of Sparks charged, repeated; its explosions' damage and how many | Firespark Perfume Bottle | Hit 68 (when the explosion's spawned), then every 214; 1 explosion counted (165 at +25 with 99s) |
 | 12 | Rolling Sparks, repeated | Firespark Perfume Bottle | Hits 34 to 52, then every 110 |
 | 13 | Revenge of the Night's guard counter | Shield of Night | Hit 58 after the press |
 | 14 | Rolling R1, then R1 again | Greatsword | Hit 30; the next R1 can be pressed 62 after the first |
