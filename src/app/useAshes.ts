@@ -667,11 +667,14 @@ const separateFollowUpSkills: ReadonlySet<string> = new Set(["Revenge of the Nig
  * Versions of skills that can't be used again right after themselves, by "skill|follow-up label":
  * their values per second last until anything can follow them, like one-off attacks
  * (oneOffAttacks). Euporia Vortex's Luster Tiers use up the luster they need, so the next press is
- * the plain skill.
+ * the plain skill; Causality's Wrath has to be cast twice before even its Tier 1.
  */
 const oneOffFollowUps: ReadonlySet<string> = new Set([
   "Euporia Vortex|Luster Tier 1",
   "Euporia Vortex|Luster Tier 2",
+  "Causality's Wrath|Tier 1",
+  "Causality's Wrath|Tier 2",
+  "Causality's Wrath|Tier 3",
 ]);
 
 const followUpOnlySkills: ReadonlySet<string> = new Set([

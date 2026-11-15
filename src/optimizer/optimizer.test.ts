@@ -9051,6 +9051,12 @@ describe("Ashes of War", () => {
       ["Causality's Wrath (Tier 2)", [[1352, 18]]],
       ["Causality's Wrath (Tier 3)", [[1940, 24]]],
     ]);
+    // None can follow itself (it's cast twice before even Tier 1), so each is timed as a one-off: over
+    // once anything can follow it
+    for (const { ash } of getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false)) {
+      if (!ash || !("attack" in ash)) throw new Error();
+      expect(ash.attack.stepTimes!.at(-1)!.cutShort).toBe(true);
+    }
   });
 
   it("matches the Serpent Flail and its Flare, O Serpent in game", () => {

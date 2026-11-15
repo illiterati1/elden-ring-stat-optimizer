@@ -25,6 +25,7 @@ from here.
 | 17 | Standard shot, repeated (assumed the Jar Cannon's) | Hand Ballista or Rabbath's Cannon | Hit 85, then every 264 |
 | 18 | Euporia Vortex, repeated (its hits were tested 2026-11-14: 90 to 145, 1-2 frames after the calculator's) | Euporia | Next press's first hit 176 after the first's |
 | 20 | Black Flame Blade, then R1 as soon as possible; also at low and high Dex (casting speed isn't counted) | Any buffable weapon, seal in the left hand | R1 press 112 after the cast press (start animation 70 frames at full length, release 40, plus 2) |
+| 41 | Causality's Wrath, any tier (all the same animation; none can follow itself) | Golden Order Flail | Hit 76; over (a roll) at 140 |
 
 ## Stamina
 
@@ -33,6 +34,14 @@ from here.
 | 20 | Blind Spot | Backhand Blade | 39 (was 30) |
 | 21 | Jumping R2 | Backhand Blade | 19 (its landing's behavior) |
 | 22 | Fires of Slumber, Familial Rancor, and Rain of Arrows (one bow class) | — | 0 in the data, so not known |
+
+## Damage
+
+At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation).
+
+| # | Test | Calculated |
+|---|---|---|
+| 42 | Causality's Wrath Tier 2 and 3 (Tier 1's 893 is right) | Tier 2 1352 with 18 poise, Tier 3 1940 with 24 |
 
 ## Discrepancies to look into
 
