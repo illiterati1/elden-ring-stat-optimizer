@@ -36,7 +36,6 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 | # | Test | Calculated |
 |---|---|---|
 | 42 | Causality's Wrath Tier 2 and 3 (Tier 1's 893 is right) | Tier 2 1352 with 18 poise, Tier 3 1940 with 24 |
-| 47 | Wall of Sparks charged (Firespark Perfume Bottle +25) on a target about 5 m away: whether its second wall's explosions hit (Bullet 200002920 flies about 4.9 m, the first wall's 3 m) | 165 each (not counted), the first wall's 245 |
 
 ## Discrepancies to look into
 

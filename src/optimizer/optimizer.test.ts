@@ -4850,7 +4850,8 @@ describe("Ashes of War", () => {
     // counts, with a note; charged, its explosions do the same. Tapped (uncharged), it costs 20
     // stamina, its explosion lands 137 frames after L2, and it's used again every 137 (136 here);
     // charged, it costs 30, its explosion lands 174 frames after L2, and it's used again every 214
-    // (only its first wall's explosions reached the dummy: its second lands farther out)
+    // (only its first wall's explosions reached the dummy up close: its second's 165 lands farther out,
+    // seen from a distance, though hard to get to hit)
     const weapon = getWeapon("Firespark Perfume Bottle");
     const build = (label: string) => {
       const result = getAshAttack(

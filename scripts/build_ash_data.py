@@ -453,8 +453,9 @@ FIXED_FLAT_ROWS = {"300000682", "300000683"}
 # explosions, and the odd spark), so 1 explosion counts. Charged, it sprays the same first wall, then a
 # second (Bullet 200002920: 3.5 m/s for 1.4s, about 4.9 m out, against the first's 2.0 m/s for 1.5s,
 # about 3 m) whose explosions are the sheet's "Charged Weapon Skill" row (600000021, 165). Only the
-# first wall's reached the training dummy in game (the same 245 and poise as tapped), so the second's
-# don't count (a note says they can hit farther enemies).
+# first wall's reached the training dummy up close in game (the same 245 and poise as tapped); from
+# farther out a 165 did land, though it's hard to get to hit, so the second's don't count (a note
+# says they can hit farther enemies).
 # Waves of Darkness's waves (30000812) are three expanding rings (Bullet 2811, 2814, and 2817), each
 # hitting (tested in game on Great Stars +25: 822, 352, then 590 three times, 2944 in all).
 # Night-and-Flame Stance's R2 fire bursts (300214925, 300214926, the same) hit one or the other
