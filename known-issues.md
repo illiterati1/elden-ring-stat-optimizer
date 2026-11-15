@@ -13,7 +13,11 @@
 - **Unverified timings:** many attack timings and stamina costs haven't been checked in game yet.
 - **Enemy picker:** only bosses are listed.
 - **NG+ stats:** enemies' NG+ HP and defenses match the datamining spreadsheet's, but haven't been
-  tested in game. HP after beating Radahn can be 1 off.
+  tested in game. HP after beating Radahn can be 1 off, as can a few enemies' NG+ HP (e.g.
+  Omenkillers in Scadu Altus).
+- **Human enemies' defenses:** NPC invaders and other human enemies (183 of them) have defenses 1–2
+  higher than the datamining spreadsheet's, at every NG+ level. Which is right is untested.
+- **Fia's Champion (Staff):** its HP is 833, but 1,216 in the datamining spreadsheet.
 - **Enemy status resistance:** enemies' status resistances aren't included, so status buildup
   can't be compared against them.
 - **Off by one:** some hits come out 1 lower than in game, mostly with stacked damage buffs or
