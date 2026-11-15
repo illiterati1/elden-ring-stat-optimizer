@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 7 | Deadly Poison Spray, repeated (status only, approximate) | Deadly Poison Perfume Bottle | First hit 42, then every 146 |
 | 8 | Fires of Slumber, repeated (status only, approximate) | St. Trina's Torch | First hit 60, then every 218 |
 | 9 | Great-Serpent Hunt's chain | Serpent-Hunter | #1 hit 154; #2 168 later, its hit 258; next #1's hit 518 |
 | 10 | Loretta's Slash, repeated | Loretta's War Sickle | Hits 44 and 98, then every 162 |

@@ -10746,7 +10746,9 @@ describe("Ashes of War", () => {
     // The Deadly Poison Perfume Bottle's fixed skill, which the sheet leaves out: no damage, only deadly
     // poison, 6 hits of 65% of the bottle's. Tested in game at +10 with 99 in every stat: no damage,
     // and a proc at 273 resistance within a second (4 of these hits), and at 752 in about a second
-    // (more than these hits' 442, probably from a cloud the data doesn't show)
+    // (more than these hits' 442, probably from a cloud the data doesn't show). Its timing, tested in
+    // game: the first buildup 40 frames after the L2 (42 here), then more every 19 frames; used again
+    // 147 frames after the first (146 here)
     const weapon = getWeapon("Deadly Poison Perfume Bottle");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -10771,6 +10773,9 @@ describe("Ashes of War", () => {
     const poison = hits.map((hit) => hit.status[AttackPowerType.POISON]!);
     expect(poison[0]).toBeCloseTo(73.8, 1);
     expect(poison.slice(0, 4).reduce((sum, buildup) => sum + buildup, 0)).toBeGreaterThan(273);
+    const frames = (time: number) => Math.round(time * 60);
+    expect(frames(result.attack.stepTimes![0].hitTimes![0]!)).toBe(42);
+    expect(result.attack.cycleTimes!.map(frames)).toEqual([146]);
   });
 
   it("matches Feeble Lord's Frenzied Flame in game", () => {
