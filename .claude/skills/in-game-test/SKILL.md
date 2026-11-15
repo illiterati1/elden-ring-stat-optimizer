@@ -55,6 +55,13 @@ test, and update the to-do lists.
    `game-data-paths`), and the generated `public/ashes.json` entry. Check you're timing the right
    animation/version. Ask the user only for what the data can't tell you (e.g. was that a second
    press?) — and say what you found first.
+   **Explain odd results, don't just fit them.** When the game disagrees with the data in a way that
+   looks strange (a row that never hits, a hit that lands late, a version that does the same as
+   another), trace why: follow the behavior → bullet chain (`HitBulletID`, `intervalCreateBulletId`),
+   diff the bullets' fields (speed, life, radius, numShoot), check the animation's other windows. E.g.
+   Wall of Sparks charged's 165 explosions "never hit" because their wall flies ~4.9 m, past the
+   dummy. If you can't find the reason, say so in the override's comment, and add a row to
+   `data/in-game-tests.md` for anything that would settle it.
 3. **Fix** in the build script (a cited override, or a real rule if it generalizes), rebuild with
    `python3 -I scripts/build_ash_data.py "<Game>"`, and check the diff of `public/ashes.json` only
    touches what you meant.

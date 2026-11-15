@@ -447,10 +447,14 @@ FIXED_FLAT_ROWS = {"300000682", "300000683"}
 # (300000850, 300000854) hit one or the other (tested in game on Great Stars +25), so only the inner
 # one counts, and so do its R2's direct hit and shockwave (300000852, 300000853: 1226 or 506), so
 # only the direct hit counts; its "Ground Impact?" (300000851) wasn't seen to hit at all.
-# Wall of Sparks sprays sparks (600000022, 9 each on a Firespark Perfume Bottle +25) that each spawn an
-# explosion on hitting (600000020, 245; the sheet's "Charged Weapon Skill" one, 600000021, 165, doesn't
-# hit: charged, its explosions do the same 245 and poise in game): tested in game tapped, 245, 490,
-# 735, or 989 in all (1 to 4 explosions, and the odd spark), so 1 explosion counts.
+# Wall of Sparks sprays sparks (600000022, 9 each on a Firespark Perfume Bottle +25) that settle as a
+# wall (Bullet 200002908) and explode (600000020, 245) when its last window's bullet (200002909, tapped;
+# 200002925 charged) sets them off: tested in game tapped, 245, 490, 735, or 989 in all (1 to 4
+# explosions, and the odd spark), so 1 explosion counts. Charged, it sprays the same first wall, then a
+# second (Bullet 200002920: 3.5 m/s for 1.4s, about 4.9 m out, against the first's 2.0 m/s for 1.5s,
+# about 3 m) whose explosions are the sheet's "Charged Weapon Skill" row (600000021, 165). Only the
+# first wall's reached the training dummy in game (the same 245 and poise as tapped), so the second's
+# don't count (a note says they can hit farther enemies).
 # Waves of Darkness's waves (30000812) are three expanding rings (Bullet 2811, 2814, and 2817), each
 # hitting (tested in game on Great Stars +25: 822, 352, then 590 three times, 2944 in all).
 # Night-and-Flame Stance's R2 fire bursts (300214925, 300214926, the same) hit one or the other
@@ -836,7 +840,11 @@ VERSION_NOTES = {
 SKILL_NOTES = {
     "Rolling Sparks": "Counts a single explosion: bigger enemies can take more, and more sparks",
     "Spectral Lance": "The lance aims for the head, so headshots will likely make it do more in practice",
-    "Wall of Sparks": "Counts a single explosion: it can do more (up to four tapped), and some sparks",
+    "Wall of Sparks": "Counts a single explosion: it can do more, and some sparks",
+    ("Wall of Sparks", "Charged"): (
+        "Counts a single explosion: it can do more, and some sparks, and its second, farther wall's"
+        " weaker explosions can hit distant or large enemies"
+    ),
     ("Moon-and-Fire Stance", "R2"): "Counts one hit of its flame pillars, which can hit several times",
     # Its light beams (Bullet 200003100 and 200003105) strike at random for a second, each one hitting
     # up to twice: tested in game on the Greatsword of Radahn (Light) +10 with 99 in every stat, up to
@@ -1034,8 +1042,8 @@ MAIN_CHAINS = {
 KIND_VERSIONS = {"Golden Crux": ("Grab Confirm", "NPC")}
 
 # Skills charged or tapped with the same hits, timed apart (CHARGED_LEVELS): the main attack is also
-# a "Charged" follow-up. Wall of Sparks's charged explosions do the same as its tapped ones (tested in
-# game on a Firespark Perfume Bottle +25), on its charged animation (40000), the tapped one 40001
+# a "Charged" follow-up. Wall of Sparks charged hits the training dummy with the same first wall's
+# explosions as tapped (see ROW_REPEATS), on its charged animation (40000), the tapped one 40001
 # (ANIMATION_SEQUENCES)
 CHARGED_COPIES = {"Wall of Sparks"}
 

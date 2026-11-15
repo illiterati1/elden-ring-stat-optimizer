@@ -4849,7 +4849,8 @@ describe("Ashes of War", () => {
     // 245, 490, 735, or 989 in all, explosions of 245 (1 to 4) and the odd spark of 9, so 1 explosion
     // counts, with a note; charged, its explosions do the same. Tapped (uncharged), it costs 20
     // stamina, its explosion lands 137 frames after L2, and it's used again every 137 (136 here);
-    // charged, its explosion lands 174 frames after L2, and it's used again every 214
+    // charged, it costs 30, its explosion lands 174 frames after L2, and it's used again every 214
+    // (only its first wall's explosions reached the dummy: its second lands farther out)
     const weapon = getWeapon("Firespark Perfume Bottle");
     const build = (label: string) => {
       const result = getAshAttack(
@@ -4891,10 +4892,12 @@ describe("Ashes of War", () => {
     const uncharged = build("Uncharged");
     expect(uncharged).toMatchObject({ finalValue: 245, stamina: [20] });
     expect(uncharged.damage.flat().map(([damage]) => damage)).toEqual([245]);
-    expect(uncharged.attackNote).toMatch(/up to four tapped/);
+    expect(uncharged.attackNote).toBe("Counts a single explosion: it can do more, and some sparks");
     expect(uncharged).toMatchObject({ hitTimes: [[137]], cycleTimes: [136] });
     expect(build("Charged")).toMatchObject({
       damage: uncharged.damage,
+      attackNote: expect.stringMatching(/second, farther wall/),
+      stamina: [30],
       hitTimes: [[174]],
       cycleTimes: [214],
     });

@@ -28,7 +28,6 @@ from here.
 | 22 | Familial Rancor and Rain of Arrows (one bow class) | — | 0 in the data, so not known |
 | 43 | Starcaller Cry's chain (its #2's duplicate window left out, like Great-Serpent Hunt's) | Starscourge Greatsword | 30, then 15 (was 30.9) |
 | 44 | Promised Consort's chain (its #3's duplicate slash window left out) | Greatsword of Radahn (Lord) | 42, 42, then 33 (was 49.44) |
-| 46 | Wall of Sparks charged (tapped, 20, is right) | Firespark Perfume Bottle | 30 (three windows of 10) |
 
 ## Damage
 
@@ -37,6 +36,7 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 | # | Test | Calculated |
 |---|---|---|
 | 42 | Causality's Wrath Tier 2 and 3 (Tier 1's 893 is right) | Tier 2 1352 with 18 poise, Tier 3 1940 with 24 |
+| 47 | Wall of Sparks charged (Firespark Perfume Bottle +25) on a target about 5 m away: whether its second wall's explosions hit (Bullet 200002920 flies about 4.9 m, the first wall's 3 m) | 165 each (not counted), the first wall's 245 |
 
 ## Discrepancies to look into
 
