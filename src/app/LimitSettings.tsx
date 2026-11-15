@@ -119,17 +119,6 @@ function LimitSettings({
 
   return (
     <Section id="limits" title="Stop leveling when">
-      <FormControlLabel
-        label="Meet requirements"
-        sx={{ mb: 1 }}
-        control={
-          <Checkbox
-            size="small"
-            checked={meetRequirements}
-            onChange={(evt) => onChange({ meetRequirements: evt.currentTarget.checked })}
-          />
-        }
-      />
       <Box
         display="grid"
         gridTemplateColumns="auto 1fr auto"
@@ -198,8 +187,18 @@ function LimitSettings({
         <Unit>{pointLabel}</Unit>
       </Box>
       <FormControlLabel
-        label="Fast mode: only calculate the level where leveling stops"
+        label="Always meet requirements"
         sx={{ mt: 1 }}
+        control={
+          <Checkbox
+            size="small"
+            checked={meetRequirements}
+            onChange={(evt) => onChange({ meetRequirements: evt.currentTarget.checked })}
+          />
+        }
+      />
+      <FormControlLabel
+        label="Fast mode: only calculate the level where leveling stops"
         control={
           <Checkbox
             size="small"
