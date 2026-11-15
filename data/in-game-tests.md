@@ -43,6 +43,7 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 
 | # | Test | In game | Calculated |
 |---|---|---|---|
+| 43 | Deadly Poison Spray's cloud: how many times it builds up poison, and how much each time (with the upgrade level and stats) | A cloud: buildup 40 frames after the L2, then every 19 frames (130 each, a proc on the third, setup not noted) | 6 hits of 65% of the bottle's poison (its sprays), no cloud |
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all | 2674 (2672 in tests: each swing 786 with the buff's 90 fire, each explosion 550). Next: each hit's damage, to see which one is ~20 low |
 
 ## Roll-outs
