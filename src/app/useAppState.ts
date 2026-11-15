@@ -291,7 +291,7 @@ const defaultAppState: AppState = {
   enemyTypes: [],
   enemyInRealmOfShadow: null,
   scadutreeBlessing: false,
-  scadutreeBlessingLevel: 20,
+  scadutreeBlessingLevel: 0,
   ngPlus: 0,
   radahnBeaten: false,
   showFriendlyEnemies: false,

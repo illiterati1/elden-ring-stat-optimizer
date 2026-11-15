@@ -72,6 +72,14 @@ hit before it. Frames are from the press (for a chain step, from that step's pre
 | 36 | Spinning Wheel | Ghiza's Wheel | Hits 32 to 125; early 109; after 125 |
 | 37 | The Queen's Black Flame #1 | Godslayer's Greatsword | Hits 36, 138; early 86; after 186 |
 
+## Enemy scaling
+
+| # | Test | Calculated |
+|---|---|---|
+| 38 | Scadutree Blessing's damage bonus: the same hit on a Realm of Shadow enemy at blessing +0 and +20 | ×2.05 at +20 (SpEffectParam 20000100-20000120 atkEnemyDmgCorrectRate), after defenses |
+| 39 | Whether the blessing also raises black flame's %-HP damage (e.g. Black Flame Blade on a DLC enemy) | Not applied |
+| 40 | Whether beating Promised Consort Radahn in NG alone raises DLC enemies' HP at NG+2 (e.g. a Hornsent Inquisitor in the Abyssal Woods, NpcParam 53110586), and whether beating him first in NG+ raises it later in that journey | Hornsent Inquisitor: 2,711 HP at NG+2 without, 3,004 with |
+
 ## Not timed: need measurements
 
 Nothing to compare yet; measure from the press, as above.
