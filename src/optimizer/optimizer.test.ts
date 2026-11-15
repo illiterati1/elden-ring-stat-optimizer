@@ -8120,6 +8120,19 @@ describe("Ashes of War", () => {
       [160, true],
       [250, true],
     ]);
+    // Tier 2's early roll-out, fitted: in game at +0 with 99 in every stat, rolling as soon as
+    // possible left 375, the roll visibly starting 180 frames after the press (see CANCEL_FITS)
+    const tier2 = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false)[2].ash;
+    if (!tier2 || !("attack" in tier2)) throw new Error();
+    const tier2Times = tier2.attack.stepTimes![0];
+    const earlyRoll = tier2Times.earlyRolls![0];
+    expect(Math.round(earlyRoll * 60)).toBe(169);
+    const tier2Hits = versions(all99, 0)[2].hits;
+    expect(
+      tier2Hits
+        .filter((_, i) => tier2Times.hitTimes![i]! < earlyRoll)
+        .reduce((sum, damage) => sum + damage, 0),
+    ).toBe(375);
     // The skill has its own luster, so the luster buffs aren't added to it
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);

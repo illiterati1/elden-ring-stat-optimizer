@@ -1323,6 +1323,13 @@ CANCEL_FITS = {
     # Black Flame Tornado tapped, on a Twinblade: used again 212 frames after its press (its first
     # swings 69 and 281 frames after an L2)
     ("Black Flame Tornado", "Tap"): {"L2": 210 / 60},
+    # Euporia Vortex Luster Tier 2's early roll: its animation allows a roll from 160 frames (as the
+    # plain skill's does after its last hit), but in game, rolling as soon as possible after the
+    # press (865), the hit for 375 landed at 1036 and the roll visibly started at 1045, the next hits
+    # (about 1042) not landing. Its hits come 5 frames later than calculated, so on the calculator's
+    # scale the roll comes between its hits at 166 and 172: fitted to 169 from the press (167 into its
+    # animation, after the press's 2-frame delay)
+    ("Euporia Vortex", "Luster Tier 2"): {"earlyRolls": [167 / 60]},
 }
 # Held skills timed as loops, measured in game at 60 fps (by skill and part): when each pass's hits
 # land in it ("hits"), how long each pass takes ("loop"), and how long until the first ("opening"),
@@ -2150,7 +2157,7 @@ def get_skill_timing(
             if early_rolls:
                 timing["earlyRolls"] = early_rolls
         for cancel, time in CANCEL_FITS.get((name, label), {}).items():
-            timing[cancel] = round(time, 3)
+            timing[cancel] = [round(t, 3) for t in time] if isinstance(time, list) else round(time, 3)
         if (name, label) in LOOP_FITS:
             fit = LOOP_FITS[(name, label)]
             return {
@@ -2238,7 +2245,8 @@ def get_skill_timing(
     # For one weapon's own version, a part timed in only one range (e.g. Euporia Vortex's Luster
     # Tiers, only in range 100) is also the default's, so the weapon finds it whatever range it uses
     # (Euporia's twinblade range)
-    for key in {key for by_part in result.values() for key in by_part} if one_weapon else ():
+    # (in a fixed order, so the output is the same each run)
+    for key in dict.fromkeys(key for by_part in result.values() for key in by_part) if one_weapon else ():
         timed = [by_part[key] for by_part in result.values() if key in by_part]
         if len(timed) == 1 and key not in result.get("0", {}):
             result.setdefault("0", {})[key] = timed[0]

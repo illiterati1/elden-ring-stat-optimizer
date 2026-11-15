@@ -61,7 +61,7 @@ hit before it. Frames are from the press (for a chain step, from that step's pre
 | 27 | Onyx Lords' Repulsion | Onyx Lord's Greatsword | Hits 80, 134; early 122; after 178 |
 | 28 | Eochaid's Dancing Blade, uncharged | Regalia of Eochaid (or Marais Executioner's Sword) | Hits 46 to 102 (every 8), 140; early 112; after 174 |
 | 29 | Eochaid's Dancing Blade, charged | Regalia of Eochaid | Hits 94 to 172, 206; early 180; after 244 |
-| 30 | Euporia Vortex, Luster Tier 2 | Euporia | Hits 88 to 250; early 162; after 250 |
+| 30 | Euporia Vortex, Luster Tier 2's roll after its last hit (its hits and early roll were tested 2026-11-14; the early one is fitted) | Euporia | After 250 (its hits came 5 frames later than calculated, so likely about 255) |
 | 31 | Familial Rancor | Family Heads | Hits 72 to 116; early 110; after 116 |
 | 32 | Flame Dance | Giant's Red Braid | Hits 78, 116, 146, 176, 210; early 104 and 198; after 275 |
 | 33 | I Command Thee, Kneel! #1 | Axe of Godrick | Hits 70, 127; early 95; after 183 |
