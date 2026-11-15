@@ -387,7 +387,9 @@ function AttackHits({
               <TableRow>
                 <TableCell sx={cellSx} colSpan={99}>
                   {stepTimes?.[stepTimes.length - 1]?.cutShort
-                    ? `Chain over at ${formatSeconds(chainTime!)}`
+                    ? `${stepTimes.length > 1 ? "Chain over" : "Over"} at ${formatSeconds(
+                        chainTime!,
+                      )}`
                     : repeatFrom
                     ? `Back to step ${repeatFrom + 1} at ${formatSeconds(chainTime!)}`
                     : loop

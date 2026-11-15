@@ -537,8 +537,8 @@ export interface StepTimes {
    * How long the step lasts when the attack is repeated as fast as possible, if known: until the
    * same button's next attack can start (or an R1/R2, after a chain's last step or for attacks that
    * can't be repeated back to back, or else the animation's end). For one-off attacks (running,
-   * backstep, guard counters, critical hits), until the earliest attack, roll, block, movement, or
-   * jump.
+   * backstep, guard counters, critical hits, and skill versions that can't follow themselves, e.g.
+   * Euporia Vortex's Luster Tiers), until the earliest attack, roll, block, movement, or jump.
    * For the last step of a chain cut short (cutShort), until the chain is over instead.
    */
   cycle?: number;

@@ -146,6 +146,8 @@ interface SkillStepPart {
   /** The button the last step repeats with (an L2 for most skills) */
   repeat?: "R1" | "R2" | "L2";
   noRepeat?: boolean;
+  /** The last step can't be done again right away: it's over once anything can follow it */
+  oneOff?: boolean;
 }
 
 /**
@@ -179,7 +181,7 @@ function getSkillStepTimes(
 ): StepTimes[] | undefined {
   const timings = parts.map(({ label }) => getPartTiming(hits, skillRange, label, hands));
   if (!timings.length || timings.some((timing) => !timing)) return undefined;
-  return parts.map(({ label, next: button, repeat, noRepeat }, i) => {
+  return parts.map(({ label, next: button, repeat, noRepeat, oneOff }, i) => {
     const timing = timings[i]!;
     // Each counted hit's own time (see SkillPartTiming hitTimes), if the part's hits are known
     const partHits = label
@@ -222,6 +224,17 @@ function getSkillStepTimes(
       { R1: timing.R1, R2: timing.R2 },
       timing.rightHandAttack,
     );
+    // A one-off is over once anything can follow it: an attack (another skill included), a roll,
+    // blocking, or moving
+    const oneOffEnd = [
+      earliest?.time,
+      next?.time,
+      ...[timing.roll, timing.block, timing.move].map((time) =>
+        time != null ? lead + time : undefined,
+      ),
+    ]
+      .filter((time): time is number => time != null)
+      .sort((a, b) => a - b)[0];
     return {
       lead,
       hits: timing.hits.map((time) => lead + time),
@@ -235,7 +248,9 @@ function getSkillStepTimes(
       ...(timing.earlyRolls && { earlyRolls: timing.earlyRolls.map((time) => lead + time) }),
       ...(timing.block != null && { block: lead + timing.block }),
       ...(timing.move != null && { move: lead + timing.move }),
-      ...(!(last && noRepeat) && next && { cycle: next.time }),
+      ...(last && oneOff
+        ? oneOffEnd != null && { cycle: oneOffEnd, cutShort: true as const }
+        : !(last && noRepeat) && next && { cycle: next.time }),
       ...(i === 0 && timing.opening != null && { opening: timing.opening }),
     };
   });
@@ -647,6 +662,17 @@ function getBuiltInSkills(ashes: Ashes) {
  * tested in game, the counter doesn't also do the skill's own hit)
  */
 const separateFollowUpSkills: ReadonlySet<string> = new Set(["Revenge of the Night"]);
+
+/**
+ * Versions of skills that can't be used again right after themselves, by "skill|follow-up label":
+ * their values per second last until anything can follow them, like one-off attacks
+ * (oneOffAttacks). Euporia Vortex's Luster Tiers use up the luster they need, so the next press is
+ * the plain skill.
+ */
+const oneOffFollowUps: ReadonlySet<string> = new Set([
+  "Euporia Vortex|Luster Tier 1",
+  "Euporia Vortex|Luster Tier 2",
+]);
 
 const followUpOnlySkills: ReadonlySet<string> = new Set([
   "Ghostflame Call",
@@ -1187,6 +1213,7 @@ function getSkillAttack(
             ...(getStanceRepeat(skill, followUp!.label) && {
               repeat: getStanceRepeat(skill, followUp!.label),
             }),
+            ...(oneOffFollowUps.has(`${skill}|${followUp!.label}`) && { oneOff: true }),
           },
         ]),
       },

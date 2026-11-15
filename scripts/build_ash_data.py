@@ -1755,7 +1755,16 @@ def get_l2_cancels(cancels, quick):
 
 
 def get_skill_timing(
-    steps, number, variation, hits, behaviors, bullets, name=None, weapon_files=(), quick_l2=True
+    steps,
+    number,
+    variation,
+    hits,
+    behaviors,
+    bullets,
+    name=None,
+    weapon_files=(),
+    quick_l2=True,
+    one_weapon=False,
 ):
     """
     @param steps check_animations.py's Steps
@@ -1768,6 +1777,8 @@ def get_skill_timing(
     @param weapon_files the weapon's (or its class's) moveset files, for follow-ups that are its own
     attacks with the skill's buff (get_moveset_part_timing)
     @param quick_l2 whether it can be used again at its quick L2 cancel (QUICK_SKILL_SPEED_TYPE)
+    @param one_weapon whether the version is one weapon's own, so any range its parts are timed in is
+    that weapon's
     @returns the version's timing, by weapon animation range (see get_skill_range; "0" is the
     default) and part ("" for the main attack, or the follow-up's label): each part's animation's
     hits, its stamina cost, when it can be cancelled into another skill ("L2"), "R1", "R2", any
@@ -2224,6 +2235,13 @@ def get_skill_timing(
         # Only ranges with their own timings
         if by_part and (skill_range == 0 or by_part != result.get("0")):
             result[str(skill_range)] = by_part
+    # For one weapon's own version, a part timed in only one range (e.g. Euporia Vortex's Luster
+    # Tiers, only in range 100) is also the default's, so the weapon finds it whatever range it uses
+    # (Euporia's twinblade range)
+    for key in {key for by_part in result.values() for key in by_part} if one_weapon else ():
+        timed = [by_part[key] for by_part in result.values() if key in by_part]
+        if len(timed) == 1 and key not in result.get("0", {}):
+            result.setdefault("0", {})[key] = timed[0]
     return result
 
 
@@ -2999,6 +3017,7 @@ def main():
                 name,
                 weapon_files,
                 skill_speed_types[skill_id] == QUICK_SKILL_SPEED_TYPE,
+                one_weapon=group == "unique",
             )
             if timing:
                 hits["timing"] = timing

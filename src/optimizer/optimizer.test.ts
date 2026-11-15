@@ -8106,6 +8106,19 @@ describe("Ashes of War", () => {
     const tier1 = versions(all99, 0)[1];
     expect(tier1.hits).toEqual([77, 59, 77, 9, 7, 9, 9, 9, 7, 9, 9, 7, 11, 7]);
     expect(tier1.total).toBe(306);
+    // The Luster Tiers use up the luster, so they can't be used again right away: their values per
+    // second last until anything can follow them (Tier 1 an R2, Tier 2 a roll), while the plain skill
+    // repeats with its L2
+    const cycles = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(({ ash }) => {
+      if (!ash || !("attack" in ash)) throw new Error();
+      const last = ash.attack.stepTimes!.at(-1)!;
+      return [Math.round(last.cycle! * 60), !!last.cutShort];
+    });
+    expect(cycles).toEqual([
+      [176, false],
+      [160, true],
+      [250, true],
+    ]);
     // The skill has its own luster, so the luster buffs aren't added to it
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
