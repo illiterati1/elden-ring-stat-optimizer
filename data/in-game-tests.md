@@ -23,8 +23,7 @@ from here.
 | 15 | Mounted R1 chain | Longsword (any) | Hits 26, 66, and 104; the next chain's first hit 172 |
 | 16 | Jump Shot + Landing Shot (assumed the Shortbow's) | Black Bow or Ansbach's Longbow | Jump shot 33 after the jump press, landing shot 90, a pair every 116 |
 | 17 | Standard shot, repeated (assumed the Jar Cannon's) | Hand Ballista or Rabbath's Cannon | Hit 85, then every 264 |
-| 18 | Euporia Vortex, repeated | Euporia | Hits 88 to 144 (every 14), then every 176 |
-| 19 | Euporia Vortex's Luster Tier 2 version (Tier 1 tested 2026-11-14: hits 87-146 after the press, the calculator 3-4 frames early) | Euporia | Not timed yet |
+| 18 | Euporia Vortex, repeated (its Luster Tiers' hits came 3-6 frames later than calculated, all of them: see if the plain one's do too) | Euporia | Hits 88 to 144 (every 14), then every 176 |
 | 20 | Black Flame Blade, then R1 as soon as possible; also at low and high Dex (casting speed isn't counted) | Any buffable weapon, seal in the left hand | R1 press 112 after the cast press (start animation 70 frames at full length, release 40, plus 2) |
 
 ## Stamina
