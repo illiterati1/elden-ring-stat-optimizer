@@ -10,8 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 5 | Flare, O Serpent then R2, repeated as fast as possible, two handed (one handed tested 2026-11-14: next L2 at the R2's quick L2 cancel) | Serpent Flail | From L2: swing 101, explosion 107, next L2 147 |
-| 6 | Flare, O Serpent then charged R2, repeated | Serpent Flail | From L2: swing 184, explosion 188, next L2 240 (2h 186, 190, 240) |
 | 7 | Deadly Poison Spray, repeated (status only, approximate) | Deadly Poison Perfume Bottle | First hit 42, then every 146 |
 | 8 | Fires of Slumber, repeated (status only, approximate) | St. Trina's Torch | First hit 60, then every 218 |
 | 9 | Great-Serpent Hunt's chain | Serpent-Hunter | #1 hit 154; #2 168 later, its hit 258; next #1's hit 518 |

@@ -9138,9 +9138,26 @@ describe("Ashes of War", () => {
       seconds == null ? null : Math.round(seconds * 60);
     expect(r2.steps.length).toBe(1);
     expect(r2.stepTimes![0].hitTimes!.map(frames)).toEqual([103, 107]);
-    // Cast again at the R2's quick L2 cancel (flag 103: Flare, O Serpent is a quick skill): tested in
-    // game one handed, L2 at 845, the R2's first hit at 946 and the next at 1095 (101 and 149 frames)
+    // Cast again at the attack's quick L2 cancel (flag 103: Flare, O Serpent is a quick skill).
+    // Tested in game, the attack's first hit after the L2 and the next one after it (frames), as
+    // calculated: R2 one handed 101 and 149 (103 and 149 here), two handed 102 and 144 (101 and 147:
+    // 3 frames sooner in game, cause unknown); charged R2 one handed 184 and 240 (184 and 240), two
+    // handed 185 and 243 (186 and 240, maybe a slow press)
     expect(r2.cycleTimes!.map(frames)).toEqual([149]);
+    const cycle = (attack: string, twoHanding: boolean) => {
+      const result = getAshAttack(
+        ashes,
+        movesets,
+        weapon,
+        withFollowUp("Flare, O Serpent", `${attack} chain`),
+        twoHanding,
+      );
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return frames(result.attack.cycleTimes![0]);
+    };
+    expect([cycle("R2", true), cycle("Charged R2", false), cycle("Charged R2", true)]).toEqual([
+      147, 240, 240,
+    ]);
     expect(r2.upkeep).toBeUndefined();
     const kinds = (attack: AttackData) =>
       attack.steps.map((step) =>
