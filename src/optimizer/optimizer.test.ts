@@ -13234,6 +13234,14 @@ describe("timing coverage", () => {
     // The Greatsword's rolling R1 can only go on to an R1 or R2 (its R1 at 1.0s)
     const rolling = getAttackData(movesets, getWeapon("Greatsword"), "Rolling R1", false, 0.5)!;
     expect(rolling.cycleTimes![0]).toBeCloseTo(1.0 + 1 / 30);
+    // In game, two handed, rolling R1 then R1 as soon as possible: hits 77 frames apart (rolling
+    // R1's hit 1066, the R1's 1143). The R1 after it is R1 #2 (032010, hit 44 after its press),
+    // so this R1 at 62 and the rolling R1's hit at 30 give 76 apart (R1 #1 would give 67). A
+    // crouching R1 (032310) is the rolling R1's animation slowed to 0.86 for its first 28 frames:
+    // hit 33 after the press, the next R1's (#2) 111 (about 32.6 and 108.6 from the animations)
+    const twoHanded = getAttackData(movesets, getWeapon("Greatsword"), "Rolling R1", true, 0.5)!;
+    expect(twoHanded.stepTimes![0].hits[0] * 60).toBeCloseTo(30, 0);
+    expect(twoHanded.cycleTimes![0] * 60).toBeCloseTo(62, 0);
   });
 
   it("leaves out catalysts' jumping R1s (a jumping cast)", () => {
