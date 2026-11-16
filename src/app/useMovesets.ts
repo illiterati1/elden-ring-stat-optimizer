@@ -127,6 +127,15 @@ export const mountedAttacks: ReadonlySet<string> = new Set([
 export const stepStartDelay = 1 / 30;
 
 /**
+ * On horseback, each attack after the first starts this much later than the cancel into it says,
+ * besides the step start delay (from Torrent's own animations, presumably, which aren't read). The
+ * first press isn't delayed. Tested in game on a Longsword's mounted R1 chain: hits 27, 74, and 119
+ * frames after the press, the next chain's first 193 (26, 66, 104, and 172 without it; 26, 73, 118,
+ * and 193 with it). Not tested for mounted R2s.
+ */
+export const mountedFollowUpDelay = 7 / 60;
+
+/**
  * Jumping attacks, from the jump press: the attack starts this long after it at the earliest (an
  * earlier press waits for it), and it lands this much later (its landing's recovery is the lighter
  * one, recorded with each jumping attack). Tested in game on 60 fps recordings of a Rapier's one
@@ -288,7 +297,9 @@ function getStepTimes(
       ...(step.block != null && !mounted && { block: lead + step.block }),
       ...(step.move != null && !mounted && { move: lead + step.move }),
       ...(step.jump != null && !mounted && { jump: lead + step.jump }),
-      ...(repeat != null && { cycle: lead + repeat }),
+      ...(repeat != null && {
+        cycle: lead + repeat + (mounted ? mountedFollowUpDelay : 0),
+      }),
       ...(cut && { cutShort: true as const }),
     };
   });

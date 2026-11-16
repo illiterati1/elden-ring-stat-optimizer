@@ -13107,10 +13107,27 @@ describe("powerstance off hand weapons", () => {
     ]);
   });
 
+  it("matches the Longsword's mounted R1 chain in game", () => {
+    // In game: hits 27, 74, and 119 frames after the press, the next chain's first 193. Its R1
+    // cancels (0.633s, 0.6s) and right hand attack cancel (1.1s) alone would make 26, 66, 104, 172:
+    // each follow-up starts 7 frames later on horseback (mountedFollowUpDelay)
+    const data = getAttackData(movesets, getWeapon("Longsword"), "Mounted R1/L1", false, 0.5)!;
+    const frames: number[] = [];
+    let start = 0;
+    for (let loop = 0; loop < 2; loop++) {
+      data.stepTimes!.forEach((step, i) => {
+        frames.push(...step.hits.map((time) => Math.round((start + time) * 60)));
+        start += data.cycleTimes![i];
+      });
+    }
+    expect(frames.slice(0, 4)).toEqual([26, 73, 118, 193]);
+  });
+
   it("repeats mounted R2s with R2, like charged R2s on foot", () => {
-    // The Uchigatana's mounted R2: its R2 cancel at 1s, its right hand attack cancel at 1.1s
+    // The Uchigatana's mounted R2: its R2 cancel at 1s, its right hand attack cancel at 1.1s, then
+    // the mounted follow-up delay (tested on mounted R1s, not R2s)
     const r2 = getAttackData(movesets, getWeapon("Uchigatana"), "Mounted R2/L2", false, 0.5)!;
-    expect(r2.cycleTimes![0]).toBeCloseTo(1 / 30 + 1);
+    expect(r2.cycleTimes![0]).toBeCloseTo(1 / 30 + 1 + 7 / 60);
     expect(r2.stepTimes![0].earliest).toEqual({
       attack: "R2/L2",
       time: expect.closeTo(1 / 30 + 1),
