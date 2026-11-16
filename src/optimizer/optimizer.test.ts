@@ -3272,7 +3272,9 @@ describe("Ashes of War", () => {
     // and the explosion 407, so 6 sparks and 1 explosion at least (2 explosions and 8 sparks at most).
     // Its explosion lands 103 frames after L2; used again (L2 held from its skill input window), the
     // next explosions land 103 and 110 later (287, 390, 500), so it's used again every 110 (its quick
-    // L2 cancel) and later casts' explosions land 96 after their press
+    // L2 cancel) and later casts' explosions land 96 after their press. Its animation starts moving 2
+    // frames after L2 (STEP_START_DELAY) and takes stamina 34 after it (its event 330, 32 frames in,
+    // when it fires its sparks)
     const weapon = getWeapon("Firespark Perfume Bottle");
     const result = getAshAttack(ashes, movesets, weapon, "Rolling Sparks", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
