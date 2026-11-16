@@ -13336,10 +13336,16 @@ describe("timing coverage", () => {
     expect(crouching.steps).toEqual(rolling.steps);
     expect(crouching.stepTimes![0].hits[0] * 60).toBeCloseTo(34.6, 0);
     expect(crouching.cycleTimes![0] * 60).toBeCloseTo(87.6, 0);
-    // Weapons without a crouching animation of their own (most) are assumed to play the rolling one
+    // Weapons without a crouching animation of their own (most) are assumed to play the rolling one.
+    // One handed Dagger, crouching R1, crouch, crouching R1 (stamina taken 385, 441, 499): 56 and 58
+    // apart; here it crouches at its flag 32, 38 after the press, and attacks 15 into the crouch, 55
+    // (not fitted: the Greatsword's fit, 1 to 3 frames early here)
     const dagger = (attack: AttackChoice) =>
       getAttackData(movesets, getWeapon("Dagger"), attack, false, 0.5)!.stepTimes![0].hits;
     expect(dagger("Crouching R1")).toEqual(dagger("Rolling R1"));
+    expect(
+      getAttackData(movesets, getWeapon("Dagger"), "Crouching R1", false, 0.5)!.cycleTimes![0] * 60,
+    ).toBeCloseTo(55, 0);
     // Where it hits differently from the rolling attack, it's left out (the Falx's two handed one
     // hits once, its rolling R1 twice)
     expect(getAttackData(movesets, getWeapon("Falx"), "Crouching R1", true, 0.5)).toBeUndefined();

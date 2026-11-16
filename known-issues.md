@@ -11,7 +11,7 @@
   Carian Retaliation, Lifesteal Fist, Spinning Chain's loop, and how often Feeble Lord's Frenzied
   Flame can be repeated haven't been timed yet.
 - **Crouching attacks:** most weapon classes have no crouching attack animation of their own, so
-  they're assumed to play their rolling attack (untested). A few weapons' crouching attacks hit
+  they're assumed to play their rolling attack (the one handed Dagger's timing matches it). A few weapons' crouching attacks hit
   differently from their rolling attacks and are left out: the two handed crouching R1 of the
   Ornamental Straight Sword, Falx, Dancing Blade of Ranah, Horned Warrior's Sword, Dark Moon
   Greatsword (also one handed), Starscourge Greatsword, and both Greatswords of Radahn, and the
