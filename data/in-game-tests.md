@@ -11,7 +11,6 @@ from here.
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
 | 15 | Mounted R1 chain | Longsword (any) | Hits 26, 66, and 104; the next chain's first hit 172 |
-| 51 | Powerstance crouching L1, crouch, crouching L1 (assumed to be its rolling L1, like the one handed Dagger's crouching R1) | Two Daggers | Hits 22; the next L1 press 67 after the first |
 
 ## Stamina
 

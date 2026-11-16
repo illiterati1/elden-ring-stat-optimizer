@@ -13420,6 +13420,44 @@ describe("timing coverage", () => {
     expect(
       longswordBuild.attackSteps![0].map((hit) => [Math.floor(hit.damage), hit.stance]),
     ).toEqual([[429, 5]]);
+    // Two Daggers, powerstance crouching L1, crouch, crouching L1 (press 576, stamina taken 598 and
+    // 665): the hits 22 after the press and the next ones 67 after the first, as here (its rolling
+    // L1). At +25 (both) with 99 in every stat on the training dummy, 544 damage and 3.6 poise, the
+    // two daggers' 272 and 1.8 each here
+    const pairedCrouching = getAttackData(
+      movesets,
+      getWeapon("Dagger"),
+      "Powerstance Crouching L1",
+      false,
+      0.5,
+    )!;
+    expect(pairedCrouching.stepTimes![0].hits[0] * 60).toBeCloseTo(22, 0);
+    expect(pairedCrouching.cycleTimes![0] * 60).toBeCloseTo(67, 0);
+    const pairedBuild = optimizeBuild({
+      weapon: getWeapon("Dagger"),
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: pairedCrouching,
+      offhand: {
+        weapon: getWeapon("Dagger"),
+        regularUpgradeLevel: 25,
+        poiseBase: movesets[getWeapon("Dagger").weaponName].poise,
+      },
+    });
+    expect(pairedBuild.attackSteps![0].map((hit) => [Math.floor(hit.damage), hit.stance])).toEqual([
+      [272, 1.8],
+      [272, 1.8],
+    ]);
     // Where it hits differently from the rolling attack, it's left out (the Falx's two handed one
     // hits once, its rolling R1 twice)
     expect(getAttackData(movesets, getWeapon("Falx"), "Crouching R1", true, 0.5)).toBeUndefined();
