@@ -5048,6 +5048,13 @@ describe("Ashes of War", () => {
       ["Revenge of the Night", [3]],
       ["Revenge of the Night Guard Counter", [15]],
     ]);
+    // The guard counter hits 46 and 47 frames after L2 in game (its own animation, 40101), the
+    // skill's own hit 58
+    expect(
+      night.map(({ ash }) =>
+        "attack" in ash ? Math.round(ash.attack.stepTimes![0].hits[0] * 60) : null,
+      ),
+    ).toEqual([58, 46]);
     // The Erdtree Greatshield's Golden Retaliation (+10) on Rennala's second phase (109.3 defense,
     // 40% holy negation): its projectile's 831; its explosion is shown, not counted
     const retaliationWeapon = getWeapon("Erdtree Greatshield");

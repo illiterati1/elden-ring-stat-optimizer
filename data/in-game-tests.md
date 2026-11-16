@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 13 | Revenge of the Night's guard counter | Shield of Night | Hit 58 after the press |
 | 14 | Rolling R1, then R1 again | Greatsword | Hit 30; the next R1 can be pressed 62 after the first |
 | 15 | Mounted R1 chain | Longsword (any) | Hits 26, 66, and 104; the next chain's first hit 172 |
 | 16 | Jump Shot + Landing Shot (assumed the Shortbow's) | Black Bow or Ansbach's Longbow | Jump shot 33 after the jump press, landing shot 90, a pair every 116 |

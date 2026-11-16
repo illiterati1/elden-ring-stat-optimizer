@@ -2033,14 +2033,17 @@ def get_skill_timing(
             ]
 
         best = None
-        # (or else any, for a bow's skill: the Lion Greatbow's Radahn's Rain is only in 44560)
-        bow_skill = variation in BOW_AMMO_VARIATIONS.values()
+        # (or else any, for a bow's skill: the Lion Greatbow's Radahn's Rain is only in 44560; or for
+        # one weapon's own, before matching loosely: the Shield of Night's Revenge of the Night guard
+        # counter is 40101, its bigger bullet, not range 0's 40000, the plain one's; tested in game,
+        # it hits 46 and 47 frames after L2, as 40101's 0.733 s says)
+        any_range = variation in BOW_AMMO_VARIATIONS.values() or one_weapon
         for loose in [False, True] if not poise_only else [False]:
             wanted_keys = wanted if poise_only else Counter({key(signature): 0 for signature in wanted})
             if not poise_only:
                 for signature, count in wanted.items():
                     wanted_keys[key(signature)] += count
-            for wanted_range in dict.fromkeys([skill_range, 0, *([None] if bow_skill else [])]):
+            for wanted_range in dict.fromkeys([skill_range, 0, *([None] if any_range else [])]):
                 for anim_id in sorted(animation_hits):
                     if wanted_range is not None and range_of(anim_id) != wanted_range:
                         continue
