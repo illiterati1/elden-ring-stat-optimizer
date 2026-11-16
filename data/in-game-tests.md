@@ -37,6 +37,7 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 
 | # | Test | In game | Calculated |
 |---|---|---|---|
+| 53 | Rolling R1, roll, rolling R1, tapping B (a roll starts on its release): one handed Dagger | Rolls' and attacks' stamina 1320, 1376, 1395, 1450: attacks 74 apart, the roll 19 after the attack and the attack 55 and 56 after the roll | 70 apart: rolls 16 after the hit (its roll cancel, 0.567 s in, after 1.25× speed to 0.333 s), attacks 54 after the roll starts. Next: is the extra 3 the B release, or does a roll take its stamina a few frames in? |
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all | 2674 (2672 in tests: each swing 786 with the buff's 90 fire, each explosion 550). Next: each hit's damage, to see which one is ~20 low |
 
 ## Roll-outs

@@ -13323,6 +13323,15 @@ describe("timing coverage", () => {
     )!;
     expect(paired.stepTimes![0].hits[0] * 60).toBeCloseTo(22, 0);
     expect(paired.cycleTimes![0] * 60).toBeCloseTo(84, 0);
+    // One handed Dagger, rolling R1, roll, rolling R1 (stamina taken: roll 1320, attack 1376, roll
+    // 1395, attack 1450): 74 frames apart, 70 here. It rolls 16 after the hit (its roll cancel 0.567 s
+    // in, 0.5 s in real time: the animation plays at 1.25x until 0.333 s), 19 in game, and hits 54
+    // after the roll starts, 55 and 56 in game. Not fitted: the extra 3 before the roll may be B's
+    // release (a roll starts on it); see in-game-tests.md
+    const dagger1h = getAttackData(movesets, getWeapon("Dagger"), "Rolling R1", false, 0.5)!;
+    expect(dagger1h.stepTimes![0].hits[0] * 60).toBeCloseTo(18, 0);
+    expect(dagger1h.stepTimes![0].roll! * 60).toBeCloseTo(32, 0);
+    expect(dagger1h.cycleTimes![0] * 60).toBeCloseTo(70, 0);
     const crouching = getAttackData(movesets, getWeapon("Greatsword"), "Crouching R1", true, 0.5)!;
     expect(crouching.steps).toEqual(rolling.steps);
     expect(crouching.stepTimes![0].hits[0] * 60).toBeCloseTo(34.6, 0);
