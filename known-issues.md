@@ -19,7 +19,6 @@
   Great Épée, Godskin Stitcher, Queelign's Greatsword, Bloody Helice, Dragon King's Cragblade, and
   Sword Lance.
 - **Unverified timings:** many attack timings and stamina costs haven't been checked in game yet.
-- **Enemy picker:** only bosses are listed.
 - **NG+ stats:** enemies' NG+ HP and defenses match the datamining spreadsheet's, but haven't been
   tested in game. HP after beating Radahn can be 1 off, as can a few enemies' NG+ HP (e.g.
   Omenkillers in Scadu Altus).
