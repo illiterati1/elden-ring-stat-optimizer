@@ -368,7 +368,10 @@ HIT_HP_DAMAGE_EFFECTS = {1626001: "Black flame"}
 # on (see useAshes.ts SkillUpkeep): each one's animation file, a{400 + MagicParam refType}. Its
 # "upkeep" is how long casting it takes (the press, its start animation, 45100, then its release,
 # 45110, until an R1 can follow) and how long its effect lasts. Casting speed (Dex) isn't counted:
-# the start animation is taken at its full length. Black Flame Blade: 7 seconds.
+# the start animation is taken at its full length. Black Flame Blade: 7 seconds. Its casting speed
+# scales with Dex from 10 to 70 (MagicParam analogDexterityMin/Max): tested in game at 99 Dex, the R1
+# after it attacks (its stamina is used) 100 and 101 frames after the cast press, not 112, so at full
+# speed the start animation takes about 58 frames of its 70 (about 1.2 times as fast)
 SPELL_UPKEEP = {"Black Flame Blade": 432}
 SPELL_START_ANIMATION = 45100
 SPELL_RELEASE_ANIMATION = 45110

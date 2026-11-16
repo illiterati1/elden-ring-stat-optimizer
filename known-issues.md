@@ -42,4 +42,5 @@
   can't be applied.
 - **Buff uptime:** buffs are assumed to always be on. Only Black Flame Blade's and Flare, O
   Serpent's recast time is counted in damage per second, and Black Flame Blade's cast is timed at
-  its slowest: Dex's casting speed isn't counted yet.
+  its slowest: Dex's casting speed isn't counted yet (at 70 Dex or more, the R1 after it attacks
+  100 frames after the cast press in game, not 112).

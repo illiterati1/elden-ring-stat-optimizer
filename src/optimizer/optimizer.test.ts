@@ -9300,7 +9300,8 @@ describe("Ashes of War", () => {
     expect(dps(r1) / dps({ ...r1, upkeep: undefined })).toBeCloseTo((30 - 1.033) / 30, 6);
     // A short weapon buff spell is cast again too: Black Flame Blade's 112 frames (its start
     // animation at full length, Dex's casting speed not counted) every 7 seconds, on top of the
-    // skill's
+    // skill's. In game at 99 Dex (full casting speed, from 70), the R1 after it attacks (uses its
+    // stamina) 100 and 101 frames after the cast press
     const spell = (
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
         .buffs as Buff[]
