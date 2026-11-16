@@ -642,10 +642,26 @@ describe("bows", () => {
       0.5,
     )!;
     expect(arrowShot.stamina).toEqual([13]);
-    // The Black Bow and Ansbach's Longbow (light bows' moveset) can do it too
-    expect(
-      getAttackData(movesets, getWeapon("Black Bow"), "Jump Shot + Landing Shot", true, 0.5),
-    ).toBeDefined();
+    // The Black Bow and Ansbach's Longbow (light bows' moveset) can do it too, with the same timing.
+    // Tested in game at 60 fps, three pairs each (R1 pressed 13-25 frames after the jump):
+    // - Black Bow: jumps 3475, 3587, 3700; shots 3504, 3560, 3621, 3675, 3736, 3791
+    // - Ansbach's Longbow: jumps 4352, 4457, 4576; shots 4384, 4438, 4500, 4557, 4618, 4673
+    // So the jump shot 29 and 32 after the first jump press (the later jumps were pressed early and
+    // buffered, so 34-43 from their press), the landing shot 54-57 after it (56.5 here), and a pair
+    // every 115-119 (116 here)
+    for (const name of ["Black Bow", "Ansbach's Longbow"]) {
+      const light = getAttackData(
+        movesets,
+        getWeapon(name),
+        "Jump Shot + Landing Shot",
+        true,
+        0.5,
+      )!;
+      expect(Math.round(light.cycleTimes![0] * 60)).toBe(116);
+      const [jump, landing] = light.stepTimes![0].hits;
+      expect(Math.round(jump * 60)).toBe(33);
+      expect(Math.round((landing - jump) * 60 * 2) / 2).toBe(56.5);
+    }
     // Only light bows
     expect(
       getAttackData(movesets, getWeapon("Longbow"), "Jump Shot + Landing Shot", true, 0.5),

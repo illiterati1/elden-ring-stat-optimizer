@@ -688,7 +688,8 @@ function getBowShotTimes(weapon: Weapon, count = 1): StepTimes | undefined {
 const jumpLandingShotPair = 116 / 60;
 /**
  * Bows with light bows' moveset, which can do it: light bows, and the Black Bow and Ansbach's
- * Longbow (bows with light bows' animations, a51; assumed the same timing)
+ * Longbow (bows with light bows' animations, a51; the same timing, tested in game: jump shots 29
+ * and 32 frames after a fresh jump press, landing shots 54-57 after them, a pair every 115-119)
  */
 const jumpLandingShotWeapons: ReadonlySet<string> = new Set([
   ...shortbowWeapons,
