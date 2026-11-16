@@ -11,7 +11,7 @@ from here.
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
 | 15 | Mounted R1 chain | Longsword (any) | Hits 26, 66, and 104; the next chain's first hit 172 |
-| 52 | Causality's Wrath Tier 2 and 3's hits, from the cast's start (no press; Tier 1's 173 measured), from their bullets' delays | Golden Order Flail | Tier 2 176, Tier 3 167 frames into the cast; rolls 127 into it as Tier 1 |
+| 52 | Causality's Wrath Tier 2 and 3's hits, from the cast's L2 (Tier 1's 193 measured), from their bullets' delays | Golden Order Flail | Tier 2 196, Tier 3 187; rolls 145 as Tier 1 |
 | 48 | Powerstance rolling L1, roll, rolling L1 again (it attacks from the roll at its left hand attack cancel, 38 frames in, assumed) | Two Daggers | Hits 22; rolls at 44; the next L1 press 84 after the first |
 | 49 | Crouching R1, crouch, crouching R1 (no crouching animation of its own: assumed to be its rolling R1; the next one 15 frames into the crouch, fitted on the Greatsword) | Dagger, one handed | Hit 18 after the crouching R1 press; the next crouching R1 press 55 after the first; same damage as its rolling R1 |
 | 50 | Crouching R1, crouch, crouching R1 (its own crouching animation, 030310) | Longsword, one handed | Hit 24; the next crouching R1 press 69 after the first |

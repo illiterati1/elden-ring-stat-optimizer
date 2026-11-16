@@ -1368,11 +1368,13 @@ CANCEL_FITS = {
     # scale the roll comes between its hits at 166 and 172: fitted to 169 from the press (167 into its
     # animation, after the press's 2-frame delay)
     ("Euporia Vortex", "Luster Tier 2"): {"earlyRolls": [167 / 60]},
-    # Causality's Wrath's roll: about 127 frames into its cast in game (its cast starting about 434,
-    # the roll about 561, both by eye; its hit, 173 frames in, agrees with its bullets from 434), 11
-    # before its animation's roll window (138). Assumed the same for every tier (one animation's
-    # cancels)
-    **{("Causality's Wrath", tier): {"roll": 127 / 60} for tier in ["Tier 1", "Tier 2", "Tier 3"]},
+    # Causality's Wrath's roll: about 145 frames after its cast's L2 in game, 5 later than its
+    # animation's roll window (138 in) gives. Its hit at 607 puts the press at 414 and the roll, seen
+    # starting about 561, at 147; with its press at 495 and its hit at 688, a rolling R1 right after
+    # took its stamina at 700, which gives a roll at about 640 (the rolling R1 starts 36 frames into
+    # the roll, and its window opens 24 frames later), 145. Assumed the same for every tier (one
+    # animation's cancels)
+    **{("Causality's Wrath", tier): {"roll": 143 / 60} for tier in ["Tier 1", "Tier 2", "Tier 3"]},
 }
 # Held skills timed as loops, measured in game at 60 fps (by skill and part): when each pass's hits
 # land in it ("hits"), how long each pass takes ("loop"), and how long until the first ("opening"),
@@ -1550,13 +1552,14 @@ HIT_TIME_FITS = {
     # 500 from the first press), so the first cast's counts
     ("Rolling Sparks", ""): [None, None, None, None, None, None, 101 / 60],
     # Causality's Wrath's burst comes at the end of a chain of bullets fired from its window (74
-    # frames in): Tier 1's after 0.4s (5270) and 1.25s (5290), 173 frames into the cast (measured in
-    # game: its cast, which follows the setup L2 without a press, started about 434, the hit 607);
-    # Tier 2's after 0.4s (5170) and 1.3s (5190), and Tier 3's after 0.2s (5070) and 1.35s (5090),
-    # from the bullets alone (untested)
-    ("Causality's Wrath", "Tier 1"): [173 / 60],
-    ("Causality's Wrath", "Tier 2"): [176 / 60],
-    ("Causality's Wrath", "Tier 3"): [167 / 60],
+    # frames in): one falling to the ground (5200, up to 0.25s), two short-lived ones (5201 and 5250,
+    # 0.08s and 0.06s), then Tier 1's after 0.4s (5270) and 1.25s (5290). Measured in game at Tier 1:
+    # its cast's L2 (after the setup L2, the skill's first use) at 495, the hit 688, 193 after it (191
+    # into the cast). Tier 2's ends after 0.4s (5170) and 1.3s (5190) instead, 3 frames later, and
+    # Tier 3's after 0.2s (5070) and 1.35s (5090), 6 frames sooner (untested; assuming the same start)
+    ("Causality's Wrath", "Tier 1"): [191 / 60],
+    ("Causality's Wrath", "Tier 2"): [194 / 60],
+    ("Causality's Wrath", "Tier 3"): [185 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created

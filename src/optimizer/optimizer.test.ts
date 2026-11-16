@@ -9163,10 +9163,11 @@ describe("Ashes of War", () => {
       ["Causality's Wrath (Tier 3)", [[1940, 24]]],
     ]);
     // None can follow itself (it's cast twice before even Tier 1), so each is timed as a one-off: over
-    // once anything can follow it. Its timing tested in game at Tier 1: its setup L2 at 239, then its
-    // cast (no press) starting about 434, a roll about 561, and the hit 607 (a bullet chain's burst,
-    // 173 frames into the cast). Timed as if the cast were pressed, 2 frames before it starts: hit
-    // 175, roll 129. Tiers 2 and 3's hits come from their own bullets' delays (untested)
+    // once anything can follow it. Its timing tested in game at Tier 1, from the cast's L2 (after the
+    // setup L2): its hit (a bullet chain's burst) 193 after it (L2 495, hit 688), and a roll about
+    // 145 (a rolling R1 right after it took its stamina at 700; and with the setup L2 at 239, a roll
+    // seen about 561 and the hit 607, the roll 147 after the press). Tiers 2 and 3's hits come from
+    // their own bullets' delays (untested)
     const frames = (time: number) => Math.round(time * 60);
     expect(
       getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(({ ash }) => {
@@ -9176,9 +9177,9 @@ describe("Ashes of War", () => {
         return [step.hitTimes!.map((time) => frames(time!)), frames(step.roll!)];
       }),
     ).toEqual([
-      [[175], 129],
-      [[178], 129],
-      [[169], 129],
+      [[193], 145],
+      [[196], 145],
+      [[187], 145],
     ]);
   });
 
