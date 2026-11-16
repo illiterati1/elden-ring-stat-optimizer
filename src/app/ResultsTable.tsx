@@ -558,12 +558,17 @@ function ResultsTable({
       );
     });
 
+  // Values per second: for a one-off attack, marked with an asterisk, as they don't count the time
+  // to set it up again
+  const asterisk = oneOffAttack ? "*" : "";
+  const perSecondOver = oneOffAttack
+    ? " over the attack itself, until anything can follow it. It doesn't count the time to repeat it (running, backstepping, blocking, or getting a critical hit again)."
+    : ", repeating the attack as fast as the game allows";
   // Per second, e.g. "DPS (R1)"
-  // (with an asterisk for one-off attacks, whose time to set up again isn't counted)
   const perSecondLabel =
     (pointLabel === "damage" ? "DPS" : "AR/s") +
     (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "") +
-    (oneOffAttack ? "*" : "");
+    asterisk;
 
   return (
     // Scrolls within the viewport's height, since the header can only stick to the top of the
@@ -596,10 +601,10 @@ function ResultsTable({
                     oneOffAttack
                       ? `*${
                           pointLabel === "damage" ? "Damage" : "Attack power"
-                        } per second over the attack itself, until anything can follow it, from its animations. It doesn't count the time to repeat it (running, backstepping, blocking, or getting a critical hit again).`
+                        } per second${perSecondOver}`
                       : `${
                           pointLabel === "damage" ? "Damage" : "Attack power"
-                        } per second, repeating the attack as fast as the game allows (a chain starts again after its last step), from its animations`
+                        } per second${perSecondOver} (a chain starts again after its last step), from its animations`
                   }
                 >
                   {sortLabel("total", perSecondLabel, "desc")}
@@ -614,11 +619,11 @@ function ResultsTable({
                 <Tooltip
                   title={
                     showDps
-                      ? "Poise damage per second, repeating the attack as fast as the game allows"
+                      ? `${asterisk}Poise damage per second${perSecondOver}`
                       : "Poise damage, weighted across a chain the same way as damage"
                   }
                 >
-                  {sortLabel("stance", showDps ? "Poise/s" : "Poise", "desc")}
+                  {sortLabel("stance", showDps ? `Poise/s${asterisk}` : "Poise", "desc")}
                 </Tooltip>
               </TableCell>
             )}
@@ -627,11 +632,15 @@ function ResultsTable({
                 <Tooltip
                   title={
                     showDps
-                      ? "Stamina spent per second, repeating the attack as fast as the game allows (not counting stamina recovery)"
+                      ? `${asterisk}Stamina spent per second${perSecondOver}${
+                          oneOffAttack
+                            ? " Stamina recovery isn't counted."
+                            : " (not counting stamina recovery)"
+                        }`
                       : "Stamina cost, weighted across a chain the same way as damage"
                   }
                 >
-                  {sortLabel("stamina", showDps ? "Stamina/s" : "Stamina", "asc")}
+                  {sortLabel("stamina", showDps ? `Stamina/s${asterisk}` : "Stamina", "asc")}
                 </Tooltip>
               </TableCell>
             )}
@@ -648,13 +657,13 @@ function ResultsTable({
                         alt={showDps ? `${label} per second` : label}
                         title={
                           showDps
-                            ? `${label} buildup per second, repeating the attack as fast as the game allows`
+                            ? `${asterisk}${label} buildup per second${perSecondOver}`
                             : `${label} buildup`
                         }
                         width={20}
                         height={20}
                       />
-                      {showDps && "/s"}
+                      {showDps && `/s${asterisk}`}
                     </Box>,
                     "desc",
                   )}
