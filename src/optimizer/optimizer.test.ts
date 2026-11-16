@@ -9166,8 +9166,8 @@ describe("Ashes of War", () => {
     // once anything can follow it. Its timing tested in game at Tier 1, from the cast's L2 (after the
     // setup L2): its hit (a bullet chain's burst) 193 after it (L2 495, hit 688), and a roll about
     // 145 (a rolling R1 right after it took its stamina at 700; and with the setup L2 at 239, a roll
-    // seen about 561 and the hit 607, the roll 147 after the press). Tiers 2 and 3's hits come from
-    // their own bullets' delays (untested)
+    // seen about 561 and the hit 607, the roll 147 after the press). Tier 2's hit 200 after its L2
+    // (L2 2391, hit 2591) and Tier 3's 199 (L2 1556, hit 1755); their rolls assumed the same as Tier 1's
     const frames = (time: number) => Math.round(time * 60);
     expect(
       getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(({ ash }) => {
@@ -9178,8 +9178,8 @@ describe("Ashes of War", () => {
       }),
     ).toEqual([
       [[193], 145],
-      [[196], 145],
-      [[187], 145],
+      [[200], 145],
+      [[199], 145],
     ]);
   });
 

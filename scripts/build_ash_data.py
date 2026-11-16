@@ -1552,14 +1552,17 @@ HIT_TIME_FITS = {
     # 500 from the first press), so the first cast's counts
     ("Rolling Sparks", ""): [None, None, None, None, None, None, 101 / 60],
     # Causality's Wrath's burst comes at the end of a chain of bullets fired from its window (74
-    # frames in): one falling to the ground (5200, up to 0.25s), two short-lived ones (5201 and 5250,
-    # 0.08s and 0.06s), then Tier 1's after 0.4s (5270) and 1.25s (5290). Measured in game at Tier 1:
-    # its cast's L2 (after the setup L2, the skill's first use) at 495, the hit 688, 193 after it (191
-    # into the cast). Tier 2's ends after 0.4s (5170) and 1.3s (5190) instead, 3 frames later, and
-    # Tier 3's after 0.2s (5070) and 1.35s (5090), 6 frames sooner (untested; assuming the same start)
+    # frames in): one falling to the ground (5200, up to 0.25s), one short-lived (5201, 0.08s), then
+    # Tier 1's 5250 (0.06s), 5251 (100 m/s until it lands), 5270 (0.4s) and 5290 (1.25s). Measured
+    # in game at Tier 1: its cast's L2 (after the setup L2, the skill's first use) at 495, the hit
+    # 688, 193 after it (191 into the cast). Tier 2's (5100 on): L2 2391, hit 2591, 200 after it; its
+    # chain has 5151 (0.06s at 300 m/s) where Tier 1's 5251 lands, and 5190 lasts 1.3s, about 7
+    # frames later in all. Tier 3's (5000 on): L2 1556, hit 1755, 199 after it, though its last
+    # bullets are shorter (5070 0.2s, 5090 1.35s): its 5050 lasts 0.125s and its 5051 falls at
+    # 20 m/s, not 100, which more than makes up for them (the bullets alone predicted 196 and 187)
     ("Causality's Wrath", "Tier 1"): [191 / 60],
-    ("Causality's Wrath", "Tier 2"): [194 / 60],
-    ("Causality's Wrath", "Tier 3"): [185 / 60],
+    ("Causality's Wrath", "Tier 2"): [198 / 60],
+    ("Causality's Wrath", "Tier 3"): [197 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created
@@ -1571,6 +1574,8 @@ MEASURED_HIT_TIMES = {
     ("Wall of Sparks", "Charged"): {0},
     ("Rolling Sparks", ""): {6},
     ("Causality's Wrath", "Tier 1"): {0},
+    ("Causality's Wrath", "Tier 2"): {0},
+    ("Causality's Wrath", "Tier 3"): {0},
 }
 # Projectile hits with fitted times that the animations can't tie to a projectile (status-only hits),
 # so approximate all the same: Fires of Slumber's fire and its ground fire's ticks
