@@ -16,6 +16,9 @@ from here.
 | 20 | Black Flame Blade, then R1 as soon as possible; also at low and high Dex (casting speed isn't counted) | Any buffable weapon, seal in the left hand | R1 press 112 after the cast press (start animation 70 frames at full length, release 40, plus 2) |
 | 41 | Causality's Wrath, any tier (all the same animation; none can follow itself) | Golden Order Flail | Hit 76; over (a roll) at 140 |
 | 48 | Powerstance rolling L1, roll, rolling L1 again (it attacks from the roll at its left hand attack cancel, 38 frames in, assumed) | Two Daggers | Hits 22; rolls at 44; the next L1 press 84 after the first |
+| 49 | Crouching R1, crouch, crouching R1 (no crouching animation of its own: assumed to be its rolling R1; the next one 15 frames into the crouch, fitted on the Greatsword) | Dagger, one handed | Hit 18 after the crouching R1 press; the next crouching R1 press 55 after the first; same damage as its rolling R1 |
+| 50 | Crouching R1, crouch, crouching R1 (its own crouching animation, 030310) | Longsword, one handed | Hit 24; the next crouching R1 press 69 after the first |
+| 51 | Powerstance crouching L1, crouch, crouching L1 (assumed to be its rolling L1, like #49) | Two Daggers | Hits 22; the next L1 press 67 after the first |
 
 ## Stamina
 

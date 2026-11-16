@@ -56,7 +56,7 @@ import sys
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(__file__))
-from build_moveset_data import ATTACKS, MOTION_VALUE_FIXES, parse_numbers, read_tab, read_weapons  # noqa: E402
+from build_moveset_data import ATTACKS, CROUCHING_ATTACKS, MOTION_VALUE_FIXES, parse_numbers, read_tab, read_weapons  # noqa: E402
 from extract_tae import read_tae  # noqa: E402
 from game_attacks import GameAttacks, get_motion_values  # noqa: E402
 
@@ -716,6 +716,37 @@ SHARED_ATTACK_ANIMATION_IDS = {
 }
 
 
+# A crouching attack's animation is its rolling attack's plus this (e.g. the Greatsword's 032310, its
+# 032300 slowed to 0.86 for its first 28 frames: tested in game, see get_attack_animation)
+CROUCHING_ANIMATION_OFFSET = 10
+
+
+def get_attack_animation(steps, param, attack, hands, step):
+    """
+    @returns the animation ID of a weapon's moveset attack's step, or None if it has none: for a
+    crouching attack, its own animation (CROUCHING_ANIMATION_OFFSET), or if the weapon's classes have
+    none (most), the rolling attack's, assumed to be played instead; None where it hits with other
+    behavior judges than the rolling attack, whose hits it copies (e.g. the Falx's, only its rolling
+    R1's first hit; the Starscourge Greatsword's, its class's, as its own rolling R1 is unique)
+    """
+    rolling = CROUCHING_ATTACKS.get(attack)
+    if rolling is None:
+        return get_animation_id(attack, hands, step)
+    rolling_id = get_animation_id(rolling, hands, step)
+    if rolling_id is None:
+        return None
+    files = [n for n in (int(param["spAtkcategory"]), int(param["wepmotionCategory"])) if n]
+    _, crouching_windows = steps.animations.find(files, rolling_id + CROUCHING_ANIMATION_OFFSET)
+    if crouching_windows is None:
+        return rolling_id
+    _, rolling_windows = steps.animations.find(files, rolling_id)
+
+    def judges(windows):
+        return sorted((window[2], window[3]) for window in windows or [])
+
+    return rolling_id + CROUCHING_ANIMATION_OFFSET if judges(crouching_windows) == judges(rolling_windows) else None
+
+
 def get_animation_id(attack, hands, step):
     """@returns the animation ID of a moveset attack's step, or None if it has none"""
     if attack in ATTACKS:
@@ -761,7 +792,7 @@ def get_timings(steps, param, moveset):
         for attack, attack_steps in moveset.get(hands, {}).items():
             step_timings = []
             for index in range(len(attack_steps)):
-                anim_id = get_animation_id(attack, hands, index)
+                anim_id = get_attack_animation(steps, param, attack, hands, index)
                 if anim_id is None:
                     break
                 both_weapons = attack.startswith("Powerstance") and param["wepType"] != HAND_TO_HAND_ARTS_TYPE
@@ -871,7 +902,7 @@ def get_left_hand_hits(steps, param, moveset):
             continue
         marks = []
         for index, step in enumerate(attack_steps):
-            anim_id = get_animation_id(attack, "1h", index)
+            anim_id = get_attack_animation(steps, param, attack, "1h", index)
             file_number, _, merged, _, _, _, _ = (
                 steps.get_step(param, "1h", anim_id, both_weapons=True) if anim_id else (None,) * 7
             )

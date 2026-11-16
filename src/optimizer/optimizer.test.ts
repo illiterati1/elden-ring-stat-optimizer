@@ -13242,12 +13242,22 @@ describe("timing coverage", () => {
     // A crouching R1 (032310) is the rolling R1's animation slowed to 0.86 for its first 28 frames:
     // hit 33 after the press, the next R1's (#2) 111 (about 32.6 and 108.6 from the animations).
     // Crouching R1, crouch, crouching R1 (L3 2209, hits 2260, 2348, 2435, 2523): 88, 87, 88 apart; its
-    // crouch cancel (flag 32) is at 70.6, leaving about 17 from the crouch to the next one's press.
-    // Not a choice here.
+    // crouch cancel (flag 32) is at 70.6, and the next one starts 15 into the crouch (fitted), 88
     const rolling = getAttackData(movesets, getWeapon("Greatsword"), "Rolling R1", true, 0.5)!;
     expect(rolling.stepTimes![0].hits[0] * 60).toBeCloseTo(30, 0);
     expect(rolling.stepTimes![0].earliest!.time * 60).toBeCloseTo(62, 0);
     expect(rolling.cycleTimes![0] * 60).toBeCloseTo(102, 0);
+    const crouching = getAttackData(movesets, getWeapon("Greatsword"), "Crouching R1", true, 0.5)!;
+    expect(crouching.steps).toEqual(rolling.steps);
+    expect(crouching.stepTimes![0].hits[0] * 60).toBeCloseTo(34.6, 0);
+    expect(crouching.cycleTimes![0] * 60).toBeCloseTo(87.6, 0);
+    // Weapons without a crouching animation of their own (most) are assumed to play the rolling one
+    const dagger = (attack: AttackChoice) =>
+      getAttackData(movesets, getWeapon("Dagger"), attack, false, 0.5)!.stepTimes![0].hits;
+    expect(dagger("Crouching R1")).toEqual(dagger("Rolling R1"));
+    // Where it hits differently from the rolling attack, it's left out (the Falx's two handed one
+    // hits once, its rolling R1 twice)
+    expect(getAttackData(movesets, getWeapon("Falx"), "Crouching R1", true, 0.5)).toBeUndefined();
   });
 
   it("leaves out catalysts' jumping R1s (a jumping cast)", () => {

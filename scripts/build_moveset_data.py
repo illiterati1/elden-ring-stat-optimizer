@@ -58,6 +58,7 @@ data/AttackElementCorrectParam-vanilla.csv), in the same format as the weapon da
 each attribute true for the weapon's own scaling or the overwriting correction rate (e.g. 0.25).
 """
 
+import copy
 import csv
 import functools
 import json
@@ -106,6 +107,11 @@ SHARED_ATTACKS = {
     "Mounted R2/L2": (["Mounted R2"], ["1h", "2h"]),
     "Mounted Charged R2/L2": (["Mounted Charged R2"], ["1h", "2h"]),
 }
+
+# Crouching attacks (from a crouch) and the rolling attacks they copy: the same hits (the same
+# behavior judges, so the same game rows; the sheet doesn't list them), in their own animations (see
+# check_animations.py's get_attack_animation)
+CROUCHING_ATTACKS = {"Crouching R1": "Rolling R1", "Powerstance Crouching L1": "Powerstance Rolling L1"}
 
 # Attacks that never get two handing's Strength bonus. Tested in game: a backstab does the same two
 # handed; ripostes are assumed to be the same.
@@ -587,6 +593,9 @@ def main():
                         hit[4]["categories"] = hit[4].get("categories", []) + [FINAL_CHAIN_CATEGORY]
                 if steps:
                     attacks[attack] = steps
+            for crouching, rolling in CROUCHING_ATTACKS.items():
+                if rolling in attacks:
+                    attacks[crouching] = copy.deepcopy(attacks[rolling])
             if attacks:
                 entry[hands] = attacks
         for (hands, attack), length in CHAIN_LENGTHS.get(weapon, {}).items():
@@ -623,6 +632,12 @@ def main():
             timing = get_timings(timings, weapons[weapon], entry)
             if timing:
                 entry["timing"] = timing
+            # Crouching attacks that hit differently from the rolling attack aren't known
+            for hands in ["1h", "2h"]:
+                for crouching, rolling in CROUCHING_ATTACKS.items():
+                    hand_timing = timing.get(hands, {})
+                    if rolling in hand_timing and crouching not in hand_timing:
+                        del entry[hands][crouching]
             # Powerstance hits with the left hand's weapon, for an off hand weapon of another kind
             for attack, marks in get_left_hand_hits(timings, weapons[weapon], entry).items():
                 for step, step_marks in zip(entry["1h"][attack], marks):

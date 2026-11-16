@@ -16,6 +16,7 @@ export const allAttacks = [
   "Running R1",
   "Running R2",
   "Rolling R1",
+  "Crouching R1",
   "Backstep R1",
   "Jumping R1",
   "Jumping R2",
@@ -28,6 +29,7 @@ export const allAttacks = [
   "Powerstance L1",
   "Powerstance Running L1",
   "Powerstance Rolling L1",
+  "Powerstance Crouching L1",
   "Powerstance Backstep L1",
   "Powerstance Jumping L1",
   // On horseback, the left side's attacks are the right side's (timed by the right side's)
@@ -148,6 +150,23 @@ const rollingAttackStarts: Partial<Record<AttackName, number>> = {
   "Powerstance Rolling L1": 38 / 60,
 };
 
+/**
+ * Crouching attacks (the rolling attack's hits, in their own animation where the weapon has one),
+ * repeated by crouching at their jump (or crouch) cancel and attacking again this long after the
+ * crouch starts, fitted: tested in game on 60 fps recordings, two handed Greatsword, crouching R1s
+ * hit 88, 87, 88 and 88 frames apart (this gives 88), and from standing, 51 frames from the crouch
+ * press to the hit (this gives 52). Assumed the same for the powerstance crouching L1.
+ */
+const crouchingAttackStart = 15 / 60;
+/**
+ * Crouching attacks and the rolling attacks whose hits they copy. Where a weapon's crouching attack
+ * hits differently (e.g. the Falx's two handed one), the data leaves it out.
+ */
+const crouchingAttacks: Partial<Record<AttackName, AttackName>> = {
+  "Crouching R1": "Rolling R1",
+  "Powerstance Crouching L1": "Powerstance Rolling L1",
+};
+
 /** Chains cut short: to a number of steps, or the steps that fit a time budget */
 export type ChainLimit = { steps: number } | { seconds: number };
 
@@ -250,7 +269,11 @@ function getStepTimes(
       rollingStart != null && !cut && !mounted && step.roll != null
         ? step.roll + stepStartDelay + rollingStart
         : undefined;
-    const repeat = freed ?? rolled ?? own ?? rightHand ?? step.end;
+    const crouched =
+      crouchingAttacks[attack] != null && !cut && step.jump != null
+        ? step.jump + stepStartDelay + crouchingAttackStart
+        : undefined;
+    const repeat = freed ?? rolled ?? crouched ?? own ?? rightHand ?? step.end;
     return {
       lead,
       hits: step.hits.map((time) => lead + time),
@@ -318,6 +341,7 @@ const oneHandedAttacks: ReadonlySet<string> = new Set([
   "Powerstance L1",
   "Powerstance Running L1",
   "Powerstance Rolling L1",
+  "Powerstance Crouching L1",
   "Powerstance Backstep L1",
   "Powerstance Jumping L1",
 ]);
@@ -777,6 +801,10 @@ export function getAttackData(
     (twoHanding && canTwoHand(movesets, weapon, attack)) ||
     twoHandedWeaponTypes.includes(weapon.weaponType);
   const [preferred, fallback] = twoHanded ? (["2h", "1h"] as const) : (["1h", "2h"] as const);
+  // A crouching attack left out of the hands' data (it hits differently from the rolling attack)
+  // isn't the other hands'
+  const rolling = crouchingAttacks[attack];
+  if (rolling && moveset[preferred]?.[rolling] && !moveset[preferred]?.[attack]) return undefined;
   const hands = moveset[preferred]?.[attack] ? preferred : fallback;
   const allSteps = moveset[hands]?.[attack];
   if (!allSteps) return undefined;
