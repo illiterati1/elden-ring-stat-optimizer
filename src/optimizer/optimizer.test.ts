@@ -13108,7 +13108,7 @@ describe("powerstance off hand weapons", () => {
   });
 
   it("matches the Longsword's mounted R1 chain in game", () => {
-    // In game: hits 27, 74, and 119 frames after the press, the next chain's first 193. Its R1
+    // In game (one handed): hits 27, 74, and 119 frames after the press, the next chain's first 193. Its R1
     // cancels (0.633s, 0.6s) and right hand attack cancel (1.1s) alone would make 26, 66, 104, 172:
     // each follow-up starts 7 frames later on horseback (mountedFollowUpDelay)
     const data = getAttackData(movesets, getWeapon("Longsword"), "Mounted R1/L1", false, 0.5)!;
@@ -13121,6 +13121,25 @@ describe("powerstance off hand weapons", () => {
       });
     }
     expect(frames.slice(0, 4)).toEqual([26, 73, 118, 193]);
+    // One handed at +25 with 99 in every stat, 497 damage on Elden Beast (121.7 defense, 10%
+    // physical negation, as the enemy picker rounds it): its motion value 110
+    const build = optimizeBuild({
+      weapon: getWeapon("Longsword"),
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 122, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 10, slash: 10, strike: 10, pierce: 10 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: data,
+    });
+    expect(build.attackSteps!.map((step) => Math.floor(step[0].damage))).toEqual([497, 497, 497]);
   });
 
   it("repeats mounted R2s with R2, like charged R2s on foot", () => {
