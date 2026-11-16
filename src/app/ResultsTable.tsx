@@ -558,17 +558,23 @@ function ResultsTable({
       );
     });
 
-  // Values per second: for a one-off attack, marked with an asterisk, as they don't count the time
-  // to set it up again
-  const asterisk = oneOffAttack ? "*" : "";
+  // Values per second: a one-off attack's don't count the time to set it up again, noted with an
+  // asterisk on each value
+  const oneOffPerSecond = showDps && oneOffAttack;
+  const oneOffNote =
+    "Per second over the attack itself, until anything can follow it: it doesn't count the time to repeat it (running, backstepping, blocking, or getting a critical hit again)";
+  const oneOffMark = oneOffPerSecond && (
+    <Tooltip title={oneOffNote}>
+      <span>*</span>
+    </Tooltip>
+  );
   const perSecondOver = oneOffAttack
-    ? " over the attack itself, until anything can follow it. It doesn't count the time to repeat it (running, backstepping, blocking, or getting a critical hit again)."
+    ? " over the attack itself, until anything can follow it, not counting the time to repeat it"
     : ", repeating the attack as fast as the game allows";
   // Per second, e.g. "DPS (R1)"
   const perSecondLabel =
     (pointLabel === "damage" ? "DPS" : "AR/s") +
-    (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "") +
-    asterisk;
+    (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "");
 
   return (
     // Scrolls within the viewport's height, since the header can only stick to the top of the
@@ -599,9 +605,9 @@ function ResultsTable({
                 <Tooltip
                   title={
                     oneOffAttack
-                      ? `*${
+                      ? `${
                           pointLabel === "damage" ? "Damage" : "Attack power"
-                        } per second${perSecondOver}`
+                        } per second${perSecondOver}, from its animations`
                       : `${
                           pointLabel === "damage" ? "Damage" : "Attack power"
                         } per second${perSecondOver} (a chain starts again after its last step), from its animations`
@@ -619,11 +625,11 @@ function ResultsTable({
                 <Tooltip
                   title={
                     showDps
-                      ? `${asterisk}Poise damage per second${perSecondOver}`
+                      ? `Poise damage per second${perSecondOver}`
                       : "Poise damage, weighted across a chain the same way as damage"
                   }
                 >
-                  {sortLabel("stance", showDps ? `Poise/s${asterisk}` : "Poise", "desc")}
+                  {sortLabel("stance", showDps ? "Poise/s" : "Poise", "desc")}
                 </Tooltip>
               </TableCell>
             )}
@@ -632,15 +638,11 @@ function ResultsTable({
                 <Tooltip
                   title={
                     showDps
-                      ? `${asterisk}Stamina spent per second${perSecondOver}${
-                          oneOffAttack
-                            ? " Stamina recovery isn't counted."
-                            : " (not counting stamina recovery)"
-                        }`
+                      ? `Stamina spent per second${perSecondOver} (not counting stamina recovery)`
                       : "Stamina cost, weighted across a chain the same way as damage"
                   }
                 >
-                  {sortLabel("stamina", showDps ? `Stamina/s${asterisk}` : "Stamina", "asc")}
+                  {sortLabel("stamina", showDps ? "Stamina/s" : "Stamina", "asc")}
                 </Tooltip>
               </TableCell>
             )}
@@ -657,13 +659,13 @@ function ResultsTable({
                         alt={showDps ? `${label} per second` : label}
                         title={
                           showDps
-                            ? `${asterisk}${label} buildup per second${perSecondOver}`
+                            ? `${label} buildup per second${perSecondOver}`
                             : `${label} buildup`
                         }
                         width={20}
                         height={20}
                       />
-                      {showDps && `/s${asterisk}`}
+                      {showDps && "/s"}
                     </Box>,
                     "desc",
                   )}
@@ -771,9 +773,13 @@ function ResultsTable({
                               : "–"
                             : formatValue(result.finalValue)}
                         </Details>
-                        {(result.buffNote || result.uncountedHpDamage || result.attackNote) && (
+                        {(result.buffNote ||
+                          result.uncountedHpDamage ||
+                          result.attackNote ||
+                          (oneOffPerSecond && result.attackDps != null)) && (
                           <Tooltip
                             title={[
+                              oneOffPerSecond && result.attackDps != null && oneOffNote,
                               result.attackNote,
                               result.buffNote,
                               result.uncountedHpDamage &&
@@ -815,24 +821,38 @@ function ResultsTable({
                   )}
                   {showStance && (
                     <TableCell align="right">
-                      {showDps
-                        ? result.attackPoisePerSecond != null
-                          ? formatStance(result.attackPoisePerSecond)
-                          : ""
-                        : result.attackStance != null
-                        ? formatStance(result.attackStance)
-                        : ""}
+                      {showDps ? (
+                        result.attackPoisePerSecond != null ? (
+                          <>
+                            {formatStance(result.attackPoisePerSecond)}
+                            {oneOffMark}
+                          </>
+                        ) : (
+                          ""
+                        )
+                      ) : result.attackStance != null ? (
+                        formatStance(result.attackStance)
+                      ) : (
+                        ""
+                      )}
                     </TableCell>
                   )}
                   {showStamina && (
                     <TableCell align="right">
-                      {showDps
-                        ? result.attackStaminaPerSecond != null
-                          ? formatStamina(result.attackStaminaPerSecond)
-                          : ""
-                        : result.attackStamina != null
-                        ? formatStamina(result.attackStamina)
-                        : ""}
+                      {showDps ? (
+                        result.attackStaminaPerSecond != null ? (
+                          <>
+                            {formatStamina(result.attackStaminaPerSecond)}
+                            {oneOffMark}
+                          </>
+                        ) : (
+                          ""
+                        )
+                      ) : result.attackStamina != null ? (
+                        formatStamina(result.attackStamina)
+                      ) : (
+                        ""
+                      )}
                     </TableCell>
                   )}
                   {statusColumns.map((statusType) => {
@@ -857,7 +877,10 @@ function ResultsTable({
                             </Box>
                           </Tooltip>
                         ) : buildup ? (
-                          formatValue(buildup)
+                          <>
+                            {formatValue(buildup)}
+                            {oneOffMark}
+                          </>
                         ) : (
                           "–"
                         )}
