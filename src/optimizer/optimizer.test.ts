@@ -9131,10 +9131,14 @@ describe("Ashes of War", () => {
 
   it("lists Causality's Wrath's levels as versions", () => {
     // The Golden Order Flail's skill has three levels, each its own entry. Tested in game at +10 with
-    // 99 in every stat on the training dummy: Tier 1 right (Tiers 2 and 3 not yet tested)
+    // 99 in every stat: Tier 1 right on the training dummy, and Tiers 2 and 3 right on Castle Morne's
+    // Leonine Misbegotten
     const weapon = getWeapon("Golden Order Flail");
-    const versions = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
-      ({ ash, variant }) => {
+    const versions = (
+      defenses: Parameters<typeof optimizeBuild>[0]["defenses"],
+      physicalNegation: Parameters<typeof optimizeBuild>[0]["physicalNegation"],
+    ) =>
+      getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(({ ash, variant }) => {
         if (!ash || !("attack" in ash)) throw new Error();
         return [
           variant?.label,
@@ -9147,20 +9151,41 @@ describe("Ashes of War", () => {
             attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
             bonusAttributes: noBonus,
             objective: "totalAttack",
-            defenses: Object.fromEntries(
-              allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
-            ),
-            physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+            defenses,
+            physicalNegation,
             limits: { ...noLimits, maxLevels: 0 },
             attack: ash.attack,
           }).attackSteps![0].map((hit) => [Math.floor(hit.damage), hit.stance]),
         ];
-      },
-    );
-    expect(versions).toEqual([
+      });
+    expect(
+      versions(
+        Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+        ),
+        { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      ),
+    ).toEqual([
       ["Causality's Wrath (Tier 1)", [[893, 12]]],
       ["Causality's Wrath (Tier 2)", [[1352, 18]]],
       ["Causality's Wrath (Tier 3)", [[1940, 24]]],
+    ]);
+    // The Leonine Misbegotten's defenses and negation, as the enemy picker sets them
+    expect(
+      versions(
+        {
+          [AttackPowerType.PHYSICAL]: { defense: 104, negation: 0 },
+          [AttackPowerType.MAGIC]: { defense: 104, negation: 0 },
+          [AttackPowerType.FIRE]: { defense: 104, negation: 10 },
+          [AttackPowerType.LIGHTNING]: { defense: 104, negation: 10 },
+          [AttackPowerType.HOLY]: { defense: 104, negation: 20 },
+        },
+        { standard: 10, slash: 0, strike: 10, pierce: 10 },
+      ),
+    ).toEqual([
+      ["Causality's Wrath (Tier 1)", [[714, 12]]],
+      ["Causality's Wrath (Tier 2)", [[1081, 18]]],
+      ["Causality's Wrath (Tier 3)", [[1552, 24]]],
     ]);
     // None can follow itself (it's cast twice before even Tier 1), so each is timed as a one-off: over
     // once anything can follow it. Its timing tested in game at Tier 1, from the cast's L2 (after the
