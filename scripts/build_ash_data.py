@@ -1538,6 +1538,10 @@ HIT_TIME_FITS = {
     # Wall of Sparks's explosion lands 137 frames after L2 tapped (ANIMATION_SEQUENCES), 174 charged
     ("Wall of Sparks", "Uncharged"): [135 / 60],
     ("Wall of Sparks", "Charged"): [172 / 60],
+    # Rolling Sparks's explosion lands 103 frames after L2 (measured in game on a Firespark Perfume
+    # Bottle on the training dummy), though its first spark spawns it on hitting about 34 frames in;
+    # why so late isn't known (maybe the sparks' 0.5s hit record holding off the spawned bullets')
+    ("Rolling Sparks", ""): [None, None, None, None, None, None, 101 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created
@@ -1547,6 +1551,7 @@ MEASURED_HIT_TIMES = {
     ("Deadly Poison Spray", ""): {0},
     ("Wall of Sparks", "Uncharged"): {0},
     ("Wall of Sparks", "Charged"): {0},
+    ("Rolling Sparks", ""): {6},
 }
 # Projectile hits with fitted times that the animations can't tie to a projectile (status-only hits),
 # so approximate all the same: Fires of Slumber's fire and its ground fire's ticks

@@ -3269,10 +3269,15 @@ describe("Ashes of War", () => {
 
   it("matches Rolling Sparks in game", () => {
     // Tested in game on a Firespark Perfume Bottle +25 with 99 in every stat: 461 to 886, a spark 9
-    // and the explosion 407, so 6 sparks and 1 explosion at least (2 explosions and 8 sparks at most)
+    // and the explosion 407, so 6 sparks and 1 explosion at least (2 explosions and 8 sparks at most).
+    // Its explosion lands 103 frames after L2, and used again, the next 103 after that (its quick L2
+    // cancel says 110: when the second L2 was pressed isn't known yet)
     const weapon = getWeapon("Firespark Perfume Bottle");
     const result = getAshAttack(ashes, movesets, weapon, "Rolling Sparks", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
+    const frames = (time: number) => Math.round(time * 60);
+    expect(result.attack.stepTimes![0].hitTimes!.map((time) => frames(time!)).at(-1)).toBe(103);
+    expect(result.attack.cycleTimes!.map(frames)).toEqual([110]);
     const { attackSteps, attackNote } = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,
