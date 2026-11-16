@@ -633,7 +633,7 @@ export interface SkillUpkeep {
   cast: number;
   /**
    * For a spell whose casting speed scales with Dex, the cast at full speed and the Dex range it
-   * speeds up over (from cast at the first to fastCast at the second, assumed linear)
+   * speeds up over (from cast at the first to fastCast at the second, linear; tested at 40 Dex)
    */
   fastCast?: number;
   castDex?: [number, number];

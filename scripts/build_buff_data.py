@@ -370,10 +370,11 @@ HIT_HP_DAMAGE_EFFECTS = {1626001: "Black flame"}
 # 45110, then until an R1 can follow) and how long its effect lasts. The release starts in the start
 # animation's ActivateJumpTableEarly window for SPELL_RELEASE_FLAG, judged by casting speed: at its
 # end at the slowest and its start at the fastest, with Dex from MagicParam analogDexterityMin to
-# analogDexterityMax (assumed linear between). Black Flame Blade: 7 seconds, cast from frame 50 (at
+# analogDexterityMax (linear between). Black Flame Blade: 7 seconds, cast from frame 50 (at
 # 60 fps) at 10 Dex or less and 30 at 70 or more, so the R1 after it presses 92 and 72 frames after
 # the cast press and its hitbox opens at 120 and 100 (28 later). Tested in game on a Longsword's one
-# handed R1, the attack's stamina used (with the hitbox) at 121 at 10 Dex and 100 and 101 at 99 Dex
+# handed R1, the attack's stamina used (with the hitbox) at 121 at 10 Dex, 111 at 40 Dex (110 by a
+# straight line), and 100 and 101 at 99 Dex
 SPELL_UPKEEP = {"Black Flame Blade": 432}
 SPELL_START_ANIMATION = 45100
 SPELL_RELEASE_ANIMATION = 45110

@@ -9303,7 +9303,8 @@ describe("Ashes of War", () => {
     // the skill's. Its cast speeds up with Dex from 10 to 70: the R1 after it can be pressed 92
     // frames after the cast press at 10 Dex and 72 at 70 or more, its hitbox opening 28 later.
     // Tested in game on a Longsword's one handed R1, its stamina used (with the hitbox) 121 frames
-    // after the cast press at 10 Dex (120 here) and 100 and 101 at 99 Dex (100 here)
+    // after the cast press at 10 Dex (120 here), 111 at 40 Dex (110 here), and 100 and 101 at 99
+    // Dex (100 here)
     const spell = (
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
         .buffs as Buff[]
