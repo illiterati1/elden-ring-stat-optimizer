@@ -57,6 +57,8 @@ interface Props {
   tooltipTimings: TooltipTimings;
   /** The chosen attack is a skill (Ash of War) */
   skill: boolean;
+  /** A note on the chosen attack's timing, shown under its hits */
+  hitsNote?: string;
   sortBy: AppState["sortBy"];
   reverse: AppState["reverse"];
   onChange: UpdateAppState;
@@ -104,6 +106,7 @@ function AttackHits({
   label,
   skill,
   title,
+  note,
 }: {
   steps: AttackResultHit[][];
   stepTimes?: StepTimes[];
@@ -115,6 +118,8 @@ function AttackHits({
   skill: boolean;
   /** The heading of the details drawer on touch devices */
   title: string;
+  /** A note on the attack's timing, under its hits */
+  note?: string;
 }) {
   // When each step starts, from the start of the chain (as far as the steps' lengths are known),
   // or for a loop, from the press (after its opening)
@@ -412,6 +417,13 @@ function AttackHits({
                 </TableCell>
               </TableRow>
             )}
+            {note && (
+              <TableRow>
+                <TableCell sx={cellSx} colSpan={99}>
+                  {note}
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       }
@@ -450,6 +462,7 @@ function ResultsTable({
   oneOffAttack,
   tooltipTimings,
   skill,
+  hitsNote,
   sortBy,
   reverse,
   onChange,
@@ -815,6 +828,7 @@ function ResultsTable({
                           skill={skill}
                           label={pointLabel === "damage" ? "Damage" : "AR"}
                           title={`${result.weaponName}: hits`}
+                          note={hitsNote}
                         />
                       )}
                     </TableCell>

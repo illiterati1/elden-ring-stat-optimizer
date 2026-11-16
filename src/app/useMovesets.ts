@@ -127,15 +127,17 @@ export const mountedAttacks: ReadonlySet<string> = new Set([
 export const stepStartDelay = 1 / 30;
 
 /**
- * On a moving Torrent, each mounted R1 after the first starts this much later than the cancel into it
- * says, besides the step start delay (from Torrent's own animations, presumably, which aren't read).
- * The first press isn't delayed. Tested in game on a Longsword's mounted R1 chain, running: hits 27,
- * 74, and 119 frames after the press, the next chain's first 193 (26, 73, 118, and 193 here); standing
- * still, without the delay: 27, 67, 105 (26, 66, 104 without it). Mounted R2s don't have it: they
- * start at their charging window anyway (an Uchigatana's repeated every 94 standing still, 95
- * running, 96 here).
+ * Notes on attacks' timing, shown in the hits table. Mounted R1s are timed with Torrent standing
+ * still. Tested in game on a Longsword's mounted R1 chain: standing still, hits 27, 67, and 105 frames
+ * after the press, as the cancels say (26, 66, 104 here); running, each mounted R1 after the first
+ * started 7 frames later: 27, 74, 119, and the next chain's first 193 (172 here), presumably from
+ * Torrent's own animations, which aren't read. Mounted R2s don't slow down: they start at their
+ * charging window anyway (an Uchigatana's repeated every 94 standing still, 95 running, 96 here).
  */
-export const mountedFollowUpDelay = 7 / 60;
+export const attackTimingNotes: Partial<Record<string, string>> = {
+  "Mounted R1/L1":
+    "Timed with Torrent standing still: while moving, each R1 after the first starts about 0.12s later",
+};
 
 /**
  * Jumping attacks, from the jump press: the attack starts this long after it at the earliest (an
@@ -299,9 +301,7 @@ function getStepTimes(
       ...(step.block != null && !mounted && { block: lead + step.block }),
       ...(step.move != null && !mounted && { move: lead + step.move }),
       ...(step.jump != null && !mounted && { jump: lead + step.jump }),
-      ...(repeat != null && {
-        cycle: lead + repeat + (attack === "Mounted R1/L1" ? mountedFollowUpDelay : 0),
-      }),
+      ...(repeat != null && { cycle: lead + repeat }),
       ...(cut && { cutShort: true as const }),
     };
   });

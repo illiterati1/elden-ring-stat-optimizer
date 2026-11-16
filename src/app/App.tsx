@@ -60,6 +60,7 @@ import useAshes, {
 } from "./useAshes.ts";
 import useMovesets, {
   allAttacks,
+  attackTimingNotes,
   canTwoHand,
   getAttackData,
   mountedAttacks,
@@ -1159,6 +1160,7 @@ export default function App() {
                         oneOffAttack={oneOffAttacks.has(attack)}
                         tooltipTimings={tooltipTimingsShown}
                         skill={attack === ashAttack}
+                        hitsNote={attackTimingNotes[attack]}
                         showRequirements={showRequirements}
                         sortBy={sortBy}
                         reverse={reverse}

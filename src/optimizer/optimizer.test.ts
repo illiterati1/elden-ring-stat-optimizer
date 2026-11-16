@@ -16,6 +16,7 @@ import { getCumulativeLevelUpCosts, getLevelUpCost } from "./runes.ts";
 import { getCharacterLevel, startingClasses } from "./startingClasses.ts";
 import { getAmmoLabel, withAmmo, type AmmoGroup } from "../app/useAmmo.ts";
 import {
+  attackTimingNotes,
   canTwoHand,
   getAttackData,
   withOffhandRows,
@@ -13108,10 +13109,9 @@ describe("powerstance off hand weapons", () => {
   });
 
   it("matches the Longsword's mounted R1 chain in game", () => {
-    // In game (one handed, running): hits 27, 74, and 119 frames after the press, the next chain's
-    // first 193; standing still, 27, 67, and 105, as the cancels alone say. Its R1
-    // cancels (0.633s, 0.6s) and right hand attack cancel (1.1s) alone would make 26, 66, 104, 172:
-    // each follow-up starts 7 frames later on horseback (mountedFollowUpDelay)
+    // In game (one handed), with Torrent standing still: hits 27, 67, and 105 frames after the
+    // press, as its R1 cancels (0.633s, 0.6s) say. Running, each R1 after the first started 7 frames
+    // later: 27, 74, 119, the next chain's first 193 (attackTimingNotes says so)
     const data = getAttackData(movesets, getWeapon("Longsword"), "Mounted R1/L1", false, 0.5)!;
     const frames: number[] = [];
     let start = 0;
@@ -13121,7 +13121,8 @@ describe("powerstance off hand weapons", () => {
         start += data.cycleTimes![i];
       });
     }
-    expect(frames.slice(0, 4)).toEqual([26, 73, 118, 193]);
+    expect(frames.slice(0, 4)).toEqual([26, 66, 104, 172]);
+    expect(attackTimingNotes["Mounted R1/L1"]).toMatch(/moving/);
     // One handed at +25 with 99 in every stat, 497 damage on Elden Beast (121.7 defense, 10%
     // physical negation, as the enemy picker rounds it): its motion value 110
     const build = optimizeBuild({
