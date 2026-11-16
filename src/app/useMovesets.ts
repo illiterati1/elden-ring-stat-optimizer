@@ -135,6 +135,19 @@ export const stepStartDelay = 1 / 30;
 const jumpAttackStart = 14 / 60;
 export const jumpAirTime = 53 / 60;
 
+/**
+ * Rolling attacks, repeated by rolling at their roll cancel and attacking again from the roll (an R1
+ * at the rolling R1's R1 cancel is R1 #2 instead, tested in game). The rolling attack can start this
+ * long into the roll: its right hand attack cancel (flag 4), 36 frames into the medium roll (027100;
+ * its left hand attack cancel is 38, for the powerstance rolling L1). Tested in game on 60 fps
+ * recordings, two handed Greatsword: rolling R1 → roll → rolling R1 hits 100 frames apart (this gives
+ * 102). From standing, a roll press took 75 frames to the hit: the roll starts on releasing the button.
+ */
+const rollingAttackStarts: Partial<Record<AttackName, number>> = {
+  "Rolling R1": 36 / 60,
+  "Powerstance Rolling L1": 38 / 60,
+};
+
 /** Chains cut short: to a number of steps, or the steps that fit a time budget */
 export type ChainLimit = { steps: number } | { seconds: number };
 
@@ -232,7 +245,12 @@ function getStepTimes(
             .filter((time): time is number => time != null)
             .sort((a, b) => a - b)[0]
         : undefined;
-    const repeat = freed ?? own ?? rightHand ?? step.end;
+    const rollingStart = rollingAttackStarts[attack];
+    const rolled =
+      rollingStart != null && !cut && !mounted && step.roll != null
+        ? step.roll + stepStartDelay + rollingStart
+        : undefined;
+    const repeat = freed ?? rolled ?? own ?? rightHand ?? step.end;
     return {
       lead,
       hits: step.hits.map((time) => lead + time),
