@@ -9163,11 +9163,23 @@ describe("Ashes of War", () => {
       ["Causality's Wrath (Tier 3)", [[1940, 24]]],
     ]);
     // None can follow itself (it's cast twice before even Tier 1), so each is timed as a one-off: over
-    // once anything can follow it
-    for (const { ash } of getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false)) {
-      if (!ash || !("attack" in ash)) throw new Error();
-      expect(ash.attack.stepTimes!.at(-1)!.cutShort).toBe(true);
-    }
+    // once anything can follow it. Its timing tested in game at Tier 1: its setup L2 at 239, then its
+    // cast (no press) starting about 434, a roll about 561, and the hit 607 (a bullet chain's burst,
+    // 173 frames into the cast). Timed as if the cast were pressed, 2 frames before it starts: hit
+    // 175, roll 129. Tiers 2 and 3's hits come from their own bullets' delays (untested)
+    const frames = (time: number) => Math.round(time * 60);
+    expect(
+      getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(({ ash }) => {
+        if (!ash || !("attack" in ash)) throw new Error();
+        const [step] = ash.attack.stepTimes!;
+        expect(step.cutShort).toBe(true);
+        return [step.hitTimes!.map((time) => frames(time!)), frames(step.roll!)];
+      }),
+    ).toEqual([
+      [[175], 129],
+      [[178], 129],
+      [[169], 129],
+    ]);
   });
 
   it("matches the Serpent Flail and its Flare, O Serpent in game", () => {

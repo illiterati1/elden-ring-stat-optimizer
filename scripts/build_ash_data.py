@@ -1368,6 +1368,11 @@ CANCEL_FITS = {
     # scale the roll comes between its hits at 166 and 172: fitted to 169 from the press (167 into its
     # animation, after the press's 2-frame delay)
     ("Euporia Vortex", "Luster Tier 2"): {"earlyRolls": [167 / 60]},
+    # Causality's Wrath's roll: about 127 frames into its cast in game (its cast starting about 434,
+    # the roll about 561, both by eye; its hit, 173 frames in, agrees with its bullets from 434), 11
+    # before its animation's roll window (138). Assumed the same for every tier (one animation's
+    # cancels)
+    **{("Causality's Wrath", tier): {"roll": 127 / 60} for tier in ["Tier 1", "Tier 2", "Tier 3"]},
 }
 # Held skills timed as loops, measured in game at 60 fps (by skill and part): when each pass's hits
 # land in it ("hits"), how long each pass takes ("loop"), and how long until the first ("opening"),
@@ -1544,6 +1549,14 @@ HIT_TIME_FITS = {
     # Used again every 110 (its quick L2 cancel), later casts' land 96 after their press (287, 390,
     # 500 from the first press), so the first cast's counts
     ("Rolling Sparks", ""): [None, None, None, None, None, None, 101 / 60],
+    # Causality's Wrath's burst comes at the end of a chain of bullets fired from its window (74
+    # frames in): Tier 1's after 0.4s (5270) and 1.25s (5290), 173 frames into the cast (measured in
+    # game: its cast, which follows the setup L2 without a press, started about 434, the hit 607);
+    # Tier 2's after 0.4s (5170) and 1.3s (5190), and Tier 3's after 0.2s (5070) and 1.35s (5090),
+    # from the bullets alone (untested)
+    ("Causality's Wrath", "Tier 1"): [173 / 60],
+    ("Causality's Wrath", "Tier 2"): [176 / 60],
+    ("Causality's Wrath", "Tier 3"): [167 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index. Black Flame Tornado's tapped finisher, an AoE around the player, lands when it's created
@@ -1554,6 +1567,7 @@ MEASURED_HIT_TIMES = {
     ("Wall of Sparks", "Uncharged"): {0},
     ("Wall of Sparks", "Charged"): {0},
     ("Rolling Sparks", ""): {6},
+    ("Causality's Wrath", "Tier 1"): {0},
 }
 # Projectile hits with fitted times that the animations can't tie to a projectile (status-only hits),
 # so approximate all the same: Fires of Slumber's fire and its ground fire's ticks
