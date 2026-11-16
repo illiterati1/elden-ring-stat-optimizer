@@ -127,11 +127,13 @@ export const mountedAttacks: ReadonlySet<string> = new Set([
 export const stepStartDelay = 1 / 30;
 
 /**
- * On horseback, each attack after the first starts this much later than the cancel into it says,
- * besides the step start delay (from Torrent's own animations, presumably, which aren't read). The
- * first press isn't delayed. Tested in game on a Longsword's mounted R1 chain: hits 27, 74, and 119
- * frames after the press, the next chain's first 193 (26, 66, 104, and 172 without it; 26, 73, 118,
- * and 193 with it). Not tested for mounted R2s.
+ * On a moving Torrent, each mounted R1 after the first starts this much later than the cancel into it
+ * says, besides the step start delay (from Torrent's own animations, presumably, which aren't read).
+ * The first press isn't delayed. Tested in game on a Longsword's mounted R1 chain, running: hits 27,
+ * 74, and 119 frames after the press, the next chain's first 193 (26, 73, 118, and 193 here); standing
+ * still, without the delay: 27, 67, 105 (26, 66, 104 without it). Mounted R2s don't have it: they
+ * start at their charging window anyway (an Uchigatana's repeated every 94 standing still, 95
+ * running, 96 here).
  */
 export const mountedFollowUpDelay = 7 / 60;
 
@@ -298,7 +300,7 @@ function getStepTimes(
       ...(step.move != null && !mounted && { move: lead + step.move }),
       ...(step.jump != null && !mounted && { jump: lead + step.jump }),
       ...(repeat != null && {
-        cycle: lead + repeat + (mounted ? mountedFollowUpDelay : 0),
+        cycle: lead + repeat + (attack === "Mounted R1/L1" ? mountedFollowUpDelay : 0),
       }),
       ...(cut && { cutShort: true as const }),
     };

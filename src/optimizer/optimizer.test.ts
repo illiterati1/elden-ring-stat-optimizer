@@ -13108,7 +13108,8 @@ describe("powerstance off hand weapons", () => {
   });
 
   it("matches the Longsword's mounted R1 chain in game", () => {
-    // In game (one handed): hits 27, 74, and 119 frames after the press, the next chain's first 193. Its R1
+    // In game (one handed, running): hits 27, 74, and 119 frames after the press, the next chain's
+    // first 193; standing still, 27, 67, and 105, as the cancels alone say. Its R1
     // cancels (0.633s, 0.6s) and right hand attack cancel (1.1s) alone would make 26, 66, 104, 172:
     // each follow-up starts 7 frames later on horseback (mountedFollowUpDelay)
     const data = getAttackData(movesets, getWeapon("Longsword"), "Mounted R1/L1", false, 0.5)!;
@@ -13143,13 +13144,24 @@ describe("powerstance off hand weapons", () => {
   });
 
   it("repeats mounted R2s with R2, like charged R2s on foot", () => {
-    // The Uchigatana's mounted R2: its R2 cancel at 1s, its right hand attack cancel at 1.1s, then
-    // the mounted follow-up delay (tested on mounted R1s, not R2s)
+    // The Uchigatana's mounted R2: started from its mounted charged R2, at its charging window (0.533s,
+    // plus 2 frames), then its R2 cancel at 1s, before its right hand attack cancel at 1.1s. In game:
+    // hits 63, 164, and 258 frames after the first press standing still, 65, 160, and 255 running
+    // (64, 160, 256 here); its running charged R2 hit 133 (132 here)
     const r2 = getAttackData(movesets, getWeapon("Uchigatana"), "Mounted R2/L2", false, 0.5)!;
-    expect(r2.cycleTimes![0]).toBeCloseTo(1 / 30 + 1 + 7 / 60);
+    expect(r2.stepTimes![0].hits[0] * 60).toBeCloseTo(64, 0);
+    expect(r2.cycleTimes![0]).toBeCloseTo(0.6 + 1);
+    const charged = getAttackData(
+      movesets,
+      getWeapon("Uchigatana"),
+      "Mounted Charged R2/L2",
+      false,
+      0.5,
+    )!;
+    expect(charged.stepTimes![0].hits[1] * 60).toBeCloseTo(132, 0);
     expect(r2.stepTimes![0].earliest).toEqual({
       attack: "R2/L2",
-      time: expect.closeTo(1 / 30 + 1),
+      time: expect.closeTo(0.6 + 1),
     });
   });
 

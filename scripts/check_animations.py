@@ -108,10 +108,13 @@ TWO_HANDED_ANIMATION_OFFSET = 2000
 # starts when that window opens, plus about 2 frames. Tested in game with infinite stamina,
 # Longsword +25 two handed (window at 0.233s and 0.267s): 50 tapped R2s took 58s, 1.16s each (this
 # gives 1.15s; the R2 animations alone 0.833s), and an R2 1 hits about 0.567s after the press (this
-# gives 0.567s). Every charged R2 has the window, from 0.033s to 0.833s in.
+# gives 0.567s). Every charged R2 has the window, from 0.033s to 0.833s in. Mounted R2s too: the
+# Uchigatana's mounted R2 (window at 0.533s in its mounted charged R2) hit 63 and 65 frames after the
+# press, standing still and running (64 here), and repeated every 94, 95, and 95 (96 here); its
+# running charged R2 hit 133 (132 here).
 CHARGING_SPEFFECT = 100280
 CHARGING_LAG = 2 / 30
-TAPPED_R2_ATTACKS = {"R2": "Charged R2"}
+TAPPED_R2_ATTACKS = {"R2": "Charged R2", "Mounted R2/L2": "Mounted Charged R2/L2"}
 ADD_SPEFFECT_EVENT = 67
 # AddSpEffect_Multiplayer, which some skills' charging windows use (e.g. Swift Slash's)
 ADD_SPEFFECT_MULTIPLAYER_EVENT = 66

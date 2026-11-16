@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 54 | Mounted R2, repeated (the 7 frame mounted follow-up delay, tested on R1s) | Uchigatana | Hit 30, then every 69 (62 without the delay) |
 
 ## Stamina
 
