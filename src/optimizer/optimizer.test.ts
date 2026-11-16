@@ -13339,10 +13339,32 @@ describe("timing coverage", () => {
     // Weapons without a crouching animation of their own (most) are assumed to play the rolling one.
     // One handed Dagger, crouching R1, crouch, crouching R1 (stamina taken 385, 441, 499): 56 and 58
     // apart; here it crouches at its flag 32, 38 after the press, and attacks 15 into the crouch, 55
-    // (not fitted: the Greatsword's fit, 1 to 3 frames early here)
+    // (not fitted: the Greatsword's fit, 1 to 3 frames early here). Crouching R1 from a crouch (press
+    // 368, stamina taken 385, hit 387): 19 after the press, 18 here; at +25 with 99 in every stat on
+    // the training dummy, 297 damage and 3 poise, as its rolling R1 here
     const dagger = (attack: AttackChoice) =>
       getAttackData(movesets, getWeapon("Dagger"), attack, false, 0.5)!.stepTimes![0].hits;
     expect(dagger("Crouching R1")).toEqual(dagger("Rolling R1"));
+    expect(dagger("Crouching R1")[0] * 60).toBeCloseTo(18, 0);
+    const daggerBuild = optimizeBuild({
+      weapon: getWeapon("Dagger"),
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: getAttackData(movesets, getWeapon("Dagger"), "Crouching R1", false, 0.5)!,
+    });
+    expect(daggerBuild.attackSteps![0].map((hit) => [Math.floor(hit.damage), hit.stance])).toEqual([
+      [297, 3],
+    ]);
     expect(
       getAttackData(movesets, getWeapon("Dagger"), "Crouching R1", false, 0.5)!.cycleTimes![0] * 60,
     ).toBeCloseTo(55, 0);
