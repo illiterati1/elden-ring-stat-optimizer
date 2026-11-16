@@ -41,6 +41,5 @@
 - **Deflecting Hardtear:** not supported yet, so its attack power boost after a deflection
   can't be applied.
 - **Buff uptime:** buffs are assumed to always be on. Only Black Flame Blade's and Flare, O
-  Serpent's recast time is counted in damage per second, and Black Flame Blade's cast is timed at
-  its slowest: Dex's casting speed isn't counted yet (at 70 Dex or more, the R1 after it attacks
-  100 frames after the cast press in game, not 112).
+  Serpent's recast time is counted in damage per second. Black Flame Blade's cast speeds up with
+  Dex from 10 to 70, assumed in a straight line (tested at 10 and 99 Dex, not in between).

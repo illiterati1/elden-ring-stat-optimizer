@@ -42,6 +42,7 @@ import { getDamage } from "./optimizer.ts";
 import { getEnemyStats, type EnemyArea } from "../app/useEnemies.ts";
 import {
   getEquipWeightRate,
+  getUpkeepAtDex,
   optimizeBuild,
   scadutreeBlessingRates,
   type BuffEffect,
@@ -9298,16 +9299,20 @@ describe("Ashes of War", () => {
         attack,
       }).attackDps!;
     expect(dps(r1) / dps({ ...r1, upkeep: undefined })).toBeCloseTo((30 - 1.033) / 30, 6);
-    // A short weapon buff spell is cast again too: Black Flame Blade's 112 frames (its start
-    // animation at full length, Dex's casting speed not counted) every 7 seconds, on top of the
-    // skill's. In game at 99 Dex (full casting speed, from 70), the R1 after it attacks (uses its
-    // stamina) 100 and 101 frames after the cast press
+    // A short weapon buff spell is cast again too, every 7 seconds for Black Flame Blade, on top of
+    // the skill's. Its cast speeds up with Dex from 10 to 70: the R1 after it can be pressed 92
+    // frames after the cast press at 10 Dex and 72 at 70 or more, its hitbox opening 28 later.
+    // Tested in game on a Longsword's one handed R1, its stamina used (with the hitbox) 121 frames
+    // after the cast press at 10 Dex (120 here) and 100 and 101 at 99 Dex (100 here)
     const spell = (
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
         .buffs as Buff[]
     ).find((candidate) => candidate.name === "Black Flame Blade")!;
-    expect(spell.upkeep).toEqual({ cast: 1.867, duration: 7 });
-    expect(dps({ ...r1, buffUpkeep: spell.upkeep }) / dps(r1)).toBeCloseTo((7 - 1.867) / 7, 6);
+    expect(spell.upkeep).toEqual({ cast: 1.533, duration: 7, fastCast: 1.2, castDex: [10, 70] });
+    expect(frames(r1.stepTimes![0].hits[0])).toBe(28);
+    expect(dps({ ...r1, buffUpkeep: spell.upkeep }) / dps(r1)).toBeCloseTo((7 - 1.2) / 7, 6);
+    expect(getUpkeepAtDex(spell.upkeep!, 10).cast).toBe(1.533);
+    expect(getUpkeepAtDex(spell.upkeep!, 40).cast).toBeCloseTo((1.533 + 1.2) / 2, 6);
     const buff = (
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
         .buffs as Buff[]

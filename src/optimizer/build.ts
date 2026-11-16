@@ -629,8 +629,14 @@ export interface AttackData {
 }
 
 export interface SkillUpkeep {
-  /** From the press until any attack can follow */
+  /** From the press until any attack can follow (for a spell, at its slowest casting speed) */
   cast: number;
+  /**
+   * For a spell whose casting speed scales with Dex, the cast at full speed and the Dex range it
+   * speeds up over (from cast at the first to fastCast at the second, assumed linear)
+   */
+  fastCast?: number;
+  castDex?: [number, number];
   /** How long the buff lasts */
   duration: number;
   /** True for a quick skill, used again after an attack at its quick L2 cancel (StepTimes quickL2) */
@@ -985,6 +991,17 @@ function getAttackStance(attack: AttackData, poiseDamageRate = 1) {
       0,
     )
   );
+}
+
+/**
+ * @returns a spell's upkeep with its cast at the given Dex's casting speed (SkillUpkeep fastCast)
+ */
+export function getUpkeepAtDex(upkeep: SkillUpkeep, dex: number): SkillUpkeep {
+  const { fastCast, castDex, ...rest } = upkeep;
+  if (fastCast == null || !castDex) return upkeep;
+  const [low, high] = castDex;
+  const speed = Math.min(1, Math.max(0, (dex - low) / (high - low)));
+  return { ...rest, cast: upkeep.cast + (fastCast - upkeep.cast) * speed };
 }
 
 /**
@@ -1633,11 +1650,18 @@ export function optimizeBuild(
       attributes: getEffectiveAttributes(finalAttributes, bonusAttributes),
       upgradeLevel: options.upgradeLevel,
     }).attackPower;
-  const resultAttack =
-    attack && offhandWeapon
+  const castAttack =
+    attack?.buffUpkeep?.fastCast != null
       ? {
           ...attack,
-          steps: attack.steps.map((step) =>
+          buffUpkeep: getUpkeepAtDex(attack.buffUpkeep, castingAttributes.dex),
+        }
+      : attack;
+  const resultAttack =
+    castAttack && offhandWeapon
+      ? {
+          ...castAttack,
+          steps: castAttack.steps.map((step) =>
             step.map((hit) =>
               hit.leftHand
                 ? {
@@ -1649,7 +1673,7 @@ export function optimizeBuild(
             ),
           ),
         }
-      : attack;
+      : castAttack;
   // Weapon buffs' attack power, as the game's menu shows it: the skill's own and the chosen ones' flat
   // attack, and spells' times the catalyst's spell scaling (hits get a percentage of it,
   // buffMotionValue)

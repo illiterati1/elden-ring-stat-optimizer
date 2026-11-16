@@ -74,7 +74,7 @@ from build_moveset_data import read_weapons  # noqa: E402
 from extract_fmg import read_fmg  # noqa: E402
 from extract_param import read_param  # noqa: E402
 from extract_tae import read_tae  # noqa: E402
-from check_animations import Animations  # noqa: E402
+from check_animations import EARLY_JUMP_TABLE_EVENT, Animations  # noqa: E402
 
 REGULATION_VERSION = 11730034
 
@@ -365,16 +365,19 @@ DEBUFF_NOTES = {
 HIT_HP_DAMAGE_EFFECTS = {1626001: "Black flame"}
 
 # Weapon buff spells short enough that casting them again takes up a real part of the time they're
-# on (see useAshes.ts SkillUpkeep): each one's animation file, a{400 + MagicParam refType}. Its
-# "upkeep" is how long casting it takes (the press, its start animation, 45100, then its release,
-# 45110, until an R1 can follow) and how long its effect lasts. Casting speed (Dex) isn't counted:
-# the start animation is taken at its full length. Black Flame Blade: 7 seconds. Its casting speed
-# scales with Dex from 10 to 70 (MagicParam analogDexterityMin/Max): tested in game at 99 Dex, the R1
-# after it attacks (its stamina is used) 100 and 101 frames after the cast press, not 112, so at full
-# speed the start animation takes about 58 frames of its 70 (about 1.2 times as fast)
+# on (see build.ts SkillUpkeep): each one's animation file, a{400 + MagicParam refType}. Its
+# "upkeep" is how long casting it takes (the press, its start animation, 45100, until the release,
+# 45110, then until an R1 can follow) and how long its effect lasts. The release starts in the start
+# animation's ActivateJumpTableEarly window for SPELL_RELEASE_FLAG, judged by casting speed: at its
+# end at the slowest and its start at the fastest, with Dex from MagicParam analogDexterityMin to
+# analogDexterityMax (assumed linear between). Black Flame Blade: 7 seconds, cast from frame 50 (at
+# 60 fps) at 10 Dex or less and 30 at 70 or more, so the R1 after it presses 92 and 72 frames after
+# the cast press and its hitbox opens at 120 and 100 (28 later). Tested in game on a Longsword's one
+# handed R1, the attack's stamina used (with the hitbox) at 121 at 10 Dex and 100 and 101 at 99 Dex
 SPELL_UPKEEP = {"Black Flame Blade": 432}
 SPELL_START_ANIMATION = 45100
 SPELL_RELEASE_ANIMATION = 45110
+SPELL_RELEASE_FLAG = 93
 # The delay from a press until its animation starts (useMovesets.ts stepStartDelay)
 STEP_START_DELAY = 2 / 60
 
@@ -709,14 +712,27 @@ def main():
     def get_spell_upkeep(name, row):
         number = SPELL_UPKEEP[name]
         assert number == 400 + row["refType"], name
-        _, events, _, _ = read_tae(os.path.join(game_dir, TAE_DIR, f"a{number}.tae"))
-        # The start animation's length: where its events end (some run on forever)
-        start = max(end for _, end, _, _ in events[SPELL_START_ANIMATION] if end < 1e6)
+        _, events, data, _ = read_tae(os.path.join(game_dir, TAE_DIR, f"a{number}.tae"))
+        # The release's early window: (fastest, slowest)
+        (fastest, slowest), = [
+            (start, end)
+            for start, end, event_type, params in events[SPELL_START_ANIMATION]
+            if event_type == EARLY_JUMP_TABLE_EVENT
+            and struct.unpack_from("<h", data, params)[0] == SPELL_RELEASE_FLAG
+        ]
         release = animations.get_cancels(number, SPELL_RELEASE_ANIMATION)["rightHandAttack"]
-        cast = STEP_START_DELAY + animations.to_real_time(number, SPELL_START_ANIMATION, start)
-        cast += animations.to_real_time(number, SPELL_RELEASE_ANIMATION, release)
+        release = STEP_START_DELAY + animations.to_real_time(number, SPELL_RELEASE_ANIMATION, release)
+        cast, fast_cast = (
+            release + animations.to_real_time(number, SPELL_START_ANIMATION, time)
+            for time in (slowest, fastest)
+        )
         effect = next(row[f"refId{i}"] for i in range(1, 11) if row[f"refCategory{i}"] == 2)
-        return {"cast": round(cast, 3), "duration": float(sp_effects[effect]["effectEndurance"])}
+        return {
+            "cast": round(cast, 3),
+            "duration": float(sp_effects[effect]["effectEndurance"]),
+            "fastCast": round(fast_cast, 3),
+            "castDex": [row["analogDexterityMin"], row["analogDexterityMax"]],
+        }
 
     # Incantations and sorceries (spells' own buffs: refCategory 1 is a bullet, 2 an effect)
     for spell_id, row in sorted(param("Magic", "MagicParam").items()):

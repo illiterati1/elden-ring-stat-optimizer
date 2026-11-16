@@ -11,7 +11,7 @@ from here.
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
 | 15 | Mounted R1 chain | Longsword (any) | Hits 26, 66, and 104; the next chain's first hit 172 |
-| 20 | Black Flame Blade at 10 Dex or less, then R1 as soon as possible (casting speed scales with Dex from 10 to 70 and isn't counted; at 99 Dex the R1 attacked 100–101 frames after the cast press); also at 40 Dex for the curve | Any buffable weapon, seal in the left hand | R1 attacks 112 after the cast press (start animation 70 frames at full length, release 40, plus 2) |
+| 20 | Black Flame Blade at 40 Dex, then R1 as soon as possible: is casting speed linear in Dex from 10 to 70? (Tested: Longsword R1's stamina used 121 frames after the cast press at 10 Dex, 100 at 99) | Longsword (one handed), seal in the left hand | R1 attacks (stamina used) 110 after the cast press (R1 press 82, plus its 28) |
 | 41 | Causality's Wrath, any tier (all the same animation; none can follow itself) | Golden Order Flail | Hit 76; over (a roll) at 140 |
 | 48 | Powerstance rolling L1, roll, rolling L1 again (it attacks from the roll at its left hand attack cancel, 38 frames in, assumed) | Two Daggers | Hits 22; rolls at 44; the next L1 press 84 after the first |
 | 49 | Crouching R1, crouch, crouching R1 (no crouching animation of its own: assumed to be its rolling R1; the next one 15 frames into the crouch, fitted on the Greatsword) | Dagger, one handed | Hit 18 after the crouching R1 press; the next crouching R1 press 55 after the first; same damage as its rolling R1 |
