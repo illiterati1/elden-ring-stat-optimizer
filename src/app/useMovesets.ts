@@ -572,7 +572,10 @@ interface BowShot {
  * - ballistae's (a52: shot 37100): 85 frames to the hit, then every 263.5 (the Jar Cannon's hits at
  *   491, 755, and 1018 from an R2 at 406; its shot can be cancelled into another 180 frames in, so
  *   83 + 180), a roll or block 190 frames into the shot. The Hand Ballista and Rabbath's Cannon
- *   share the Jar Cannon's animations but for which projectile they fire, so assumed the same
+ *   share the Jar Cannon's animations but for which projectile they fire. The Hand Ballista's bolt
+ *   hits 3 frames sooner (its hits at 857, 1148, and 1411 from an R2 at 775: 82 frames, then 291,
+ *   the second R2 presumably pressed late, and 263), so its release at 80. Rabbath's Cannon's
+ *   assumed the Jar Cannon's
  */
 const longbowShot: BowShot = {
   release: 63 / 60,
@@ -623,6 +626,7 @@ const ballistaShot: BowShot = {
   roll: (83 + 190) / 60,
   block: (83 + 190) / 60,
 };
+const handBallistaShot: BowShot = { ...ballistaShot, release: 80 / 60 };
 const shortbowWeapons: ReadonlySet<string> = new Set([
   "Shortbow",
   "Misbegotten Shortbow",
@@ -657,9 +661,8 @@ const bowShots = new Map<string, BowShot>([
   ["Pulley Crossbow", pulleyCrossbowShot],
   ["Spread Crossbow", spreadCrossbowShot],
   ["Repeating Crossbow", repeatingCrossbowShot],
-  ...["Hand Ballista", "Jar Cannon", "Rabbath's Cannon"].map(
-    (name) => [name, ballistaShot] as const,
-  ),
+  ["Hand Ballista", handBallistaShot],
+  ...["Jar Cannon", "Rabbath's Cannon"].map((name) => [name, ballistaShot] as const),
 ]);
 
 function getBowShotTimes(weapon: Weapon, count = 1): StepTimes | undefined {

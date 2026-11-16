@@ -633,6 +633,20 @@ describe("bows", () => {
     expect(jarCannon.cycleTimes![0] * 60).toBeCloseTo(263.5);
     // (40 × 1.12, rounded down)
     expect(jarCannon.stamina).toEqual([44]);
+    // The Hand Ballista's bolt 82 frames after its R2, then every 263.5 (measured in game: 775, then
+    // 857, 1148, and 1411: 82, then 291 (the second R2 presumably pressed late) and 263)
+    const handBallista = getAttackData(
+      movesets,
+      withAmmo(
+        getWeapon("Hand Ballista"),
+        ammo.find((group) => group.names.includes("Ballista Bolt"))!,
+      ),
+      "Standard Shot",
+      true,
+      0.5,
+    )!;
+    expect(Math.round(handBallista.stepTimes![0].hits[0] * 60)).toBe(82);
+    expect(handBallista.cycleTimes![0] * 60).toBeCloseTo(263.5);
     // A Longbow's shot with Arrows costs 13
     const arrowShot = getAttackData(
       movesets,
