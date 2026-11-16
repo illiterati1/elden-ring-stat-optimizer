@@ -5049,7 +5049,7 @@ describe("Ashes of War", () => {
       ["Revenge of the Night Guard Counter", [15]],
     ]);
     // The guard counter hits 46 and 47 frames after L2 in game (its own animation, 40101), the
-    // skill's own hit 58
+    // skill's own hit 58; 56 after blocking a bigger hit, which pushed the player back (not counted)
     expect(
       night.map(({ ash }) =>
         "attack" in ash ? Math.round(ash.attack.stepTimes![0].hits[0] * 60) : null,

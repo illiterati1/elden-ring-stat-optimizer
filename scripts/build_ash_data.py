@@ -2036,7 +2036,9 @@ def get_skill_timing(
         # (or else any, for a bow's skill: the Lion Greatbow's Radahn's Rain is only in 44560; or for
         # one weapon's own, before matching loosely: the Shield of Night's Revenge of the Night guard
         # counter is 40101, its bigger bullet, not range 0's 40000, the plain one's; tested in game,
-        # it hits 46 and 47 frames after L2, as 40101's 0.733 s says)
+        # it hits 46 and 47 frames after L2, as 40101's 0.733 s says, after blocking a light hit; 56
+        # after a bigger one that pushed the player back, its effect starting 4 frames later, so a
+        # heavier hit blocked delays it)
         any_range = variation in BOW_AMMO_VARIATIONS.values() or one_weapon
         for loose in [False, True] if not poise_only else [False]:
             wanted_keys = wanted if poise_only else Counter({key(signature): 0 for signature in wanted})
