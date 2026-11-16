@@ -10,7 +10,7 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 12 | Rolling Sparks, repeated: when the second L2 is pressed (its explosions were 103 apart) | Firespark Perfume Bottle | Every 110 (its quick L2 cancel) |
+| 12 | Rolling Sparks, repeated: when the second cast's sparks appear, or a third explosion (the first two were 103 apart, L2 buffered from 78) | Firespark Perfume Bottle | Every 110 (its quick L2 cancel, 108 with its early window) |
 | 13 | Revenge of the Night's guard counter | Shield of Night | Hit 58 after the press |
 | 14 | Rolling R1, then R1 again | Greatsword | Hit 30; the next R1 can be pressed 62 after the first |
 | 15 | Mounted R1 chain | Longsword (any) | Hits 26, 66, and 104; the next chain's first hit 172 |
