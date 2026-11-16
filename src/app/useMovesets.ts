@@ -575,7 +575,10 @@ interface BowShot {
  *   share the Jar Cannon's animations but for which projectile they fire. The Hand Ballista's bolt
  *   hits 3 frames sooner (its hits at 857, 1148, and 1411 from an R2 at 775: 82 frames, then 291,
  *   the second R2 presumably pressed late, and 263), so its release at 80. Rabbath's Cannon's
- *   assumed the Jar Cannon's
+ *   (its own shot, a261's 37100, the same as the others') is slower all round: hits at 665, 933,
+ *   and 1199 from an R2 at 577 (88 frames, then 268 and 266), so its release at 86 and a shot
+ *   every 267. The data doesn't say why (a longer cycle as well as a later hit, so not just a
+ *   slower projectile)
  */
 const longbowShot: BowShot = {
   release: 63 / 60,
@@ -627,6 +630,12 @@ const ballistaShot: BowShot = {
   block: (83 + 190) / 60,
 };
 const handBallistaShot: BowShot = { ...ballistaShot, release: 80 / 60 };
+const rabbathsCannonShot: BowShot = {
+  release: 86 / 60,
+  cycle: 267 / 60,
+  roll: (86 + 190) / 60,
+  block: (86 + 190) / 60,
+};
 const shortbowWeapons: ReadonlySet<string> = new Set([
   "Shortbow",
   "Misbegotten Shortbow",
@@ -662,7 +671,8 @@ const bowShots = new Map<string, BowShot>([
   ["Spread Crossbow", spreadCrossbowShot],
   ["Repeating Crossbow", repeatingCrossbowShot],
   ["Hand Ballista", handBallistaShot],
-  ...["Jar Cannon", "Rabbath's Cannon"].map((name) => [name, ballistaShot] as const),
+  ["Jar Cannon", ballistaShot],
+  ["Rabbath's Cannon", rabbathsCannonShot],
 ]);
 
 function getBowShotTimes(weapon: Weapon, count = 1): StepTimes | undefined {

@@ -647,6 +647,20 @@ describe("bows", () => {
     )!;
     expect(Math.round(handBallista.stepTimes![0].hits[0] * 60)).toBe(82);
     expect(handBallista.cycleTimes![0] * 60).toBeCloseTo(263.5);
+    // Rabbath's Cannon's 88 frames after its R2, then every 267 (measured in game: 577, then 665,
+    // 933, and 1199: 88, then 268 and 266)
+    const rabbathsCannon = getAttackData(
+      movesets,
+      withAmmo(
+        getWeapon("Rabbath's Cannon"),
+        ammo.find((group) => group.names.includes("Ballista Bolt"))!,
+      ),
+      "Standard Shot",
+      true,
+      0.5,
+    )!;
+    expect(Math.round(rabbathsCannon.stepTimes![0].hits[0] * 60)).toBe(88);
+    expect(rabbathsCannon.cycleTimes![0] * 60).toBeCloseTo(267);
     // A Longbow's shot with Arrows costs 13
     const arrowShot = getAttackData(
       movesets,

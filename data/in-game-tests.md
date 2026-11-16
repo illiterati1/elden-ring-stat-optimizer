@@ -11,7 +11,6 @@ from here.
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
 | 15 | Mounted R1 chain | Longsword (any) | Hits 26, 66, and 104; the next chain's first hit 172 |
-| 17 | Standard shot, repeated (assumed the Jar Cannon's) | Rabbath's Cannon | Hit 85, then every 264 |
 | 20 | Black Flame Blade, then R1 as soon as possible; also at low and high Dex (casting speed isn't counted) | Any buffable weapon, seal in the left hand | R1 press 112 after the cast press (start animation 70 frames at full length, release 40, plus 2) |
 | 41 | Causality's Wrath, any tier (all the same animation; none can follow itself) | Golden Order Flail | Hit 76; over (a roll) at 140 |
 | 48 | Powerstance rolling L1, roll, rolling L1 again (it attacks from the roll at its left hand attack cancel, 38 frames in, assumed) | Two Daggers | Hits 22; rolls at 44; the next L1 press 84 after the first |
