@@ -1156,6 +1156,7 @@ export default function App() {
                         showStance={showStance}
                         showStamina={showStamina}
                         showDps={showDps}
+                        oneOffAttack={oneOffAttacks.has(attack)}
                         tooltipTimings={tooltipTimingsShown}
                         skill={attack === ashAttack}
                         showRequirements={showRequirements}

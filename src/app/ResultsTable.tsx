@@ -48,6 +48,11 @@ interface Props {
   showStamina: boolean;
   /** Show the chosen attack's damage per second */
   showDps: boolean;
+  /**
+   * The chosen attack is done once from a run, a backstep, a block, or a critical hit
+   * (oneOffAttacks): its values per second only count the attack itself, not setting it up again
+   */
+  oneOffAttack: boolean;
   /** Timings shown in the hits tooltip */
   tooltipTimings: TooltipTimings;
   /** The chosen attack is a skill (Ash of War) */
@@ -442,6 +447,7 @@ function ResultsTable({
   showStance,
   showStamina,
   showDps,
+  oneOffAttack,
   tooltipTimings,
   skill,
   sortBy,
@@ -553,9 +559,11 @@ function ResultsTable({
     });
 
   // Per second, e.g. "DPS (R1)"
+  // (with an asterisk for one-off attacks, whose time to set up again isn't counted)
   const perSecondLabel =
     (pointLabel === "damage" ? "DPS" : "AR/s") +
-    (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "");
+    (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "") +
+    (oneOffAttack ? "*" : "");
 
   return (
     // Scrolls within the viewport's height, since the header can only stick to the top of the
@@ -584,9 +592,15 @@ function ResultsTable({
             <TableCell rowSpan={headerRows} align="right">
               {showDps ? (
                 <Tooltip
-                  title={`${
-                    pointLabel === "damage" ? "Damage" : "Attack power"
-                  } per second, repeating the attack as fast as the game allows (a chain starts again after its last step), from its animations`}
+                  title={
+                    oneOffAttack
+                      ? `*${
+                          pointLabel === "damage" ? "Damage" : "Attack power"
+                        } per second over the attack itself, until anything can follow it, from its animations. It doesn't count the time to repeat it (running, backstepping, blocking, or getting a critical hit again).`
+                      : `${
+                          pointLabel === "damage" ? "Damage" : "Attack power"
+                        } per second, repeating the attack as fast as the game allows (a chain starts again after its last step), from its animations`
+                  }
                 >
                   {sortLabel("total", perSecondLabel, "desc")}
                 </Tooltip>
