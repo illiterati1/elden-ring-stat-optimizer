@@ -13393,6 +13393,33 @@ describe("timing coverage", () => {
     expect(
       getAttackData(movesets, getWeapon("Dagger"), "Crouching R1", false, 0.5)!.cycleTimes![0] * 60,
     ).toBeCloseTo(55, 0);
+    // One handed Longsword, its own crouching animation (030310): crouching R1, crouch, crouching R1
+    // (press 942, stamina taken 966 and 1037): the hit 24 after the press, as here, and the next one
+    // 71 after the first; here it crouches at its flag 32, 52 after the press, and attacks 15 into
+    // the crouch, 69 (2 early, as the Dagger's). At +25 with 99 in every stat on the training dummy,
+    // 429 damage and 5 poise, as here
+    const longsword = getAttackData(movesets, getWeapon("Longsword"), "Crouching R1", false, 0.5)!;
+    expect(longsword.stepTimes![0].hits[0] * 60).toBeCloseTo(24, 0);
+    expect(longsword.cycleTimes![0] * 60).toBeCloseTo(69, 0);
+    const longswordBuild = optimizeBuild({
+      weapon: getWeapon("Longsword"),
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: longsword,
+    });
+    expect(
+      longswordBuild.attackSteps![0].map((hit) => [Math.floor(hit.damage), hit.stance]),
+    ).toEqual([[429, 5]]);
     // Where it hits differently from the rolling attack, it's left out (the Falx's two handed one
     // hits once, its rolling R1 twice)
     expect(getAttackData(movesets, getWeapon("Falx"), "Crouching R1", true, 0.5)).toBeUndefined();
