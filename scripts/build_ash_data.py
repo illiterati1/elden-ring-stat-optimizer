@@ -1540,7 +1540,9 @@ HIT_TIME_FITS = {
     ("Wall of Sparks", "Charged"): [172 / 60],
     # Rolling Sparks's explosion lands 103 frames after L2 (measured in game on a Firespark Perfume
     # Bottle on the training dummy), though its first spark spawns it on hitting about 34 frames in;
-    # why so late isn't known (maybe the sparks' 0.5s hit record holding off the spawned bullets')
+    # why so late isn't known (maybe the sparks' 0.5s hit record holding off the spawned bullets').
+    # Used again every 110 (its quick L2 cancel), later casts' land 96 after their press (287, 390,
+    # 500 from the first press), so the first cast's counts
     ("Rolling Sparks", ""): [None, None, None, None, None, None, 101 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's

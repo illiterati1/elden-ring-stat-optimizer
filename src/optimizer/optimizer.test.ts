@@ -3270,8 +3270,9 @@ describe("Ashes of War", () => {
   it("matches Rolling Sparks in game", () => {
     // Tested in game on a Firespark Perfume Bottle +25 with 99 in every stat: 461 to 886, a spark 9
     // and the explosion 407, so 6 sparks and 1 explosion at least (2 explosions and 8 sparks at most).
-    // Its explosion lands 103 frames after L2, and used again, the next 103 after that (its quick L2
-    // cancel says 110: when the second L2 was pressed isn't known yet)
+    // Its explosion lands 103 frames after L2; used again (L2 held from its skill input window), the
+    // next explosions land 103 and 110 later (287, 390, 500), so it's used again every 110 (its quick
+    // L2 cancel) and later casts' explosions land 96 after their press
     const weapon = getWeapon("Firespark Perfume Bottle");
     const result = getAshAttack(ashes, movesets, weapon, "Rolling Sparks", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
