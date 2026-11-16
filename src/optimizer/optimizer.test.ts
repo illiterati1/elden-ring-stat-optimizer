@@ -13311,6 +13311,18 @@ describe("timing coverage", () => {
     expect(rolling.stepTimes![0].hits[0] * 60).toBeCloseTo(30, 0);
     expect(rolling.stepTimes![0].earliest!.time * 60).toBeCloseTo(62, 0);
     expect(rolling.cycleTimes![0] * 60).toBeCloseTo(102, 0);
+    // Two Daggers, powerstance rolling L1, roll, rolling L1 (b 1031, stamina taken 1099 and 1183): 84
+    // frames apart; here it rolls at 44 and attacks from the roll at its left hand attack cancel, 38
+    // frames into it, 84. (b to the first, 68 here 62, includes waiting for B's release.)
+    const paired = getAttackData(
+      movesets,
+      getWeapon("Dagger"),
+      "Powerstance Rolling L1",
+      false,
+      0.5,
+    )!;
+    expect(paired.stepTimes![0].hits[0] * 60).toBeCloseTo(22, 0);
+    expect(paired.cycleTimes![0] * 60).toBeCloseTo(84, 0);
     const crouching = getAttackData(movesets, getWeapon("Greatsword"), "Crouching R1", true, 0.5)!;
     expect(crouching.steps).toEqual(rolling.steps);
     expect(crouching.stepTimes![0].hits[0] * 60).toBeCloseTo(34.6, 0);

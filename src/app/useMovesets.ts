@@ -143,7 +143,8 @@ export const jumpAirTime = 53 / 60;
  * long into the roll: its right hand attack cancel (flag 4), 36 frames into the medium roll (027100;
  * its left hand attack cancel is 38, for the powerstance rolling L1). Tested in game on 60 fps
  * recordings, two handed Greatsword: rolling R1 → roll → rolling R1 hits 100 frames apart (this gives
- * 102). From standing, a roll press took 75 frames to the hit: the roll starts on releasing the button.
+ * 102), and Two Daggers: powerstance rolling L1 → roll → rolling L1 84 apart (this gives 84). From
+ * standing, a roll press took 75 frames to the hit: the roll starts on releasing the button.
  */
 const rollingAttackStarts: Partial<Record<AttackName, number>> = {
   "Rolling R1": 36 / 60,

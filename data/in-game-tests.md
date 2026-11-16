@@ -11,7 +11,6 @@ from here.
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
 | 15 | Mounted R1 chain | Longsword (any) | Hits 26, 66, and 104; the next chain's first hit 172 |
-| 48 | Powerstance rolling L1, roll, rolling L1 again (it attacks from the roll at its left hand attack cancel, 38 frames in, assumed) | Two Daggers | Hits 22; rolls at 44; the next L1 press 84 after the first |
 | 49 | Crouching R1, crouch, crouching R1 (no crouching animation of its own: assumed to be its rolling R1; the next one 15 frames into the crouch, fitted on the Greatsword) | Dagger, one handed | Hit 18 after the crouching R1 press; the next crouching R1 press 55 after the first; same damage as its rolling R1 |
 | 50 | Crouching R1, crouch, crouching R1 (its own crouching animation, 030310) | Longsword, one handed | Hit 24; the next crouching R1 press 69 after the first |
 | 51 | Powerstance crouching L1, crouch, crouching L1 (assumed to be its rolling L1, like #49) | Two Daggers | Hits 22; the next L1 press 67 after the first |
