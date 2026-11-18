@@ -9,6 +9,8 @@ Usage:
 Inputs:
   - <Game>/chr/c0000-anibnd-dcx-wanibnd/INTERROOT_win64/chr/c0000/tae/*.tae: the player's
     animations, chr/c0000.anibnd.dcx unpacked with WitchyBND, read with extract_tae.py
+  - <Game>/chr/c0000_*-anibnd-dcx-wanibnd: the animations' .hkx files, for their lengths,
+    extracted and unpacked with extract_game_files.py, read with extract_hkx.py
   - data/sheets/mv/MotionValues.csv, and the game data build_moveset_data.py uses
 
 Writes data/sheets/mv/ANIMATION_CHECK.md (the steps that differ) and data/animation-hits.csv
@@ -57,10 +59,15 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(__file__))
 from build_moveset_data import ATTACKS, CROUCHING_ATTACKS, MOTION_VALUE_FIXES, parse_numbers, read_tab, read_weapons  # noqa: E402
+from extract_hkx import read_hkx_length  # noqa: E402
 from extract_tae import read_tae  # noqa: E402
 from game_attacks import GameAttacks, get_motion_values  # noqa: E402
 
 TAE_DIR = os.path.join("chr", "c0000-anibnd-dcx-wanibnd", "INTERROOT_win64", "chr", "c0000", "tae")
+# The player's animations (.hkx, for their lengths), unpacked by extract_game_files.py into one
+# folder per archive, each with its .hkx files in INTERROOT_win64/chr/c0000/hkx/<archive>_compendium
+HKX_DIR = "chr"
+HKX_ARCHIVE_PREFIX = "c0000_"
 ATTACK_EVENT = 1
 # AttackBehavior's Source for a hit with the left hand's weapon, e.g. powerstance L1s' second weapon
 LEFT_HAND_SOURCE = 2
@@ -217,21 +224,18 @@ CANCEL_BUTTONS = ["R1", "R2", "L1"]
 # its landings (+42 is a slower one), e.g. the Longsword's one handed jumping R1 31030 lands in 31071
 JUMP_LANDING_OFFSET = 41
 
-# Animations' lengths in frames (30 a second), read in DS Anim Studio, by (file, animation ID): the
-# .tae files don't have them, and their events can run past the end (a138_030515's action flags to
-# 3.3s, though it's 80 frames, 2.667s). Only needed for steps that can't be cancelled into the same
-# button's attack or any attack: the Ruins Greatsword's one handed R2 2, and the backhand blades'
-# (the Backhand Blade's, Reverse-Bladed Sword's, and Curseblade's Cirque's).
-ANIMATION_FRAMES = {(138, 30515): 80, (58, 30515): 57}
-ANIMATION_FPS = 30
-
 
 class Animations:
     """The player's animations' hit windows, read as needed"""
 
     def __init__(self, game_dir):
+        self.game_dir = game_dir
         self.dir = os.path.join(game_dir, TAE_DIR)
         self.files = {}
+        # Each animation's .hkx file that plays another's (read_tae's hkx_sources), by file
+        self.hkx_sources = {}
+        # Every .hkx file's path, by name (e.g. a138_030515), found when first needed
+        self.hkx_paths = None
         # Each animation's speed changes (ANIM_SPEED_EVENT), by file: (start, end, speed at start,
         # speed at end)
         self.speeds = {}
@@ -244,7 +248,7 @@ class Animations:
             if not os.path.exists(path):
                 self.files[number] = None
             else:
-                _, animations, data, imports = read_tae(path)
+                _, animations, data, imports, self.hkx_sources[number] = read_tae(path)
                 windows = {}
                 for anim_id, events in animations.items():
                     # (start, end, judge ID, event type, AttackIndex, DummyPolyID for projectiles, and
@@ -357,10 +361,38 @@ class Animations:
             real += spent - (until - start)
         return real
 
-    def get_length(self, number, anim_id):
-        """@returns an animation's length, if it's been measured (ANIMATION_FRAMES), or None"""
-        frames = ANIMATION_FRAMES.get((number, anim_id))
-        return frames / ANIMATION_FPS if frames is not None else None
+    def get_hkx_path(self, name):
+        """@returns the path of a .hkx file by name (e.g. a138_030515), or None if it isn't unpacked"""
+        if self.hkx_paths is None:
+            self.hkx_paths = {}
+            base = os.path.join(self.game_dir, HKX_DIR)
+            for archive in sorted(os.listdir(base)) if os.path.isdir(base) else []:
+                if not (archive.startswith(HKX_ARCHIVE_PREFIX) and archive.endswith("-wanibnd")):
+                    continue
+                hkx_dir = os.path.join(base, archive, "INTERROOT_win64", "chr", "c0000", "hkx")
+                for folder in os.listdir(hkx_dir) if os.path.isdir(hkx_dir) else []:
+                    for file in os.listdir(os.path.join(hkx_dir, folder)):
+                        if file.endswith(".hkx"):
+                            self.hkx_paths.setdefault(file[:-4], os.path.join(hkx_dir, folder, file))
+        return self.hkx_paths.get(name)
+
+    def get_length(self, number, anim_id, depth=0):
+        """
+        @returns an animation's length in seconds (in animation time), from its .hkx file (the
+        .tae files don't have it, and their events can run past the end: a138_030515's action
+        flags run to 3.3s, though it's 2.7s), following imports, or None if it isn't unpacked (see
+        HKX_DIR)
+        """
+        file = self.get_file(number)
+        if not file or anim_id not in file[0]:
+            return None
+        _, imports, _, _, _ = file
+        if anim_id in imports and depth < 4:
+            return self.get_length(*imports[anim_id], depth + 1)
+        source_number, source_id = self.hkx_sources[number].get(anim_id, (number, anim_id))
+        path = self.get_hkx_path(f"a{source_number:03d}_{source_id:06d}")
+        length = read_hkx_length(path) if path else None
+        return length[0] if length else None
 
     def get_windows(self, number, anim_id, depth=0):
         """@returns an animation's hit windows, following imports"""
@@ -793,8 +825,8 @@ def get_timings(steps, param, moveset):
       - jump: when a jump (or crouch) can start
       - landing: for jumping attacks, when any attack, a roll, blocking, moving, and another jump can start
         after landing (the lighter landing, JUMP_LANDING_OFFSET)
-      - end: without a right hand attack cancel, when the animation ends, if it's been measured
-        (ANIMATION_FRAMES)
+      - end: without a right hand attack cancel, when the animation ends (its .hkx's length), if
+        its .hkx is unpacked (HKX_DIR)
       - stamina: what the step costs: its windows' behaviors' stamina (BehaviorParam_PC stamina)
         times the weapon's staminaConsumptionRate, each rounded down (charged_stamina)
       - leftStamina: how much of it the left hand's weapon's windows cost (powerstance attacks)
@@ -841,7 +873,8 @@ def get_timings(steps, param, moveset):
                     if name in cancels:
                         timing[name] = round(cancels[name], 3)
                 # Without a right hand attack cancel, the attack can only be repeated once it ends
-                if "rightHandAttack" not in cancels:
+                # (but jumping attacks end on landing: their animation is the time in the air)
+                if "rightHandAttack" not in cancels and "Jumping" not in attack:
                     length = steps.animations.get_length(file_number, anim_id)
                     if length is not None:
                         timing["end"] = round(real(length), 3)

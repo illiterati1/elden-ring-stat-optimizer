@@ -38,9 +38,12 @@ def read_template(path, bank_id=35):
 
 def read_tae(path):
     """
-    @returns (TAE ID, {animation id: [(start, end, event type, params offset)]}, data, imports);
-    times are in seconds, and imports are {animation id: (TAE ID, animation id)} for animations
-    that use another's (e.g. Moonveil's stance, a778_040050, is Unsheathe's, a614_040050)
+    @returns (TAE ID, {animation id: [(start, end, event type, params offset)]}, data, imports,
+    hkx_sources); times are in seconds, imports are {animation id: (TAE ID, animation id)} for
+    animations that use another's (e.g. Moonveil's stance, a778_040050, is Unsheathe's,
+    a614_040050), and hkx_sources are {animation id: (TAE ID, animation id)} for animations with
+    their own events that play another's .hkx (e.g. the Ruins Greatsword's one handed R2 2,
+    a138_030515, plays a026_030515)
     """
     data = open(path, "rb").read()
     if data[:4] != b"TAE ":
@@ -53,6 +56,7 @@ def read_tae(path):
     anims_offset = u64(0x58)
     animations = {}
     imports = {}
+    hkx_sources = {}
     for i in range(anim_count):
         anim_id = u64(anims_offset + i * 16)
         anim_offset = u64(anims_offset + i * 16 + 8)
@@ -63,6 +67,11 @@ def read_tae(path):
         if u64(file_offset) == 1:
             imported = u32(file_offset + 0x18)
             imports[anim_id] = (imported // 1_000_000, imported % 1_000_000)
+        # Type 0 has its own events: ImportsHKX (+0x19), and the animation whose .hkx it plays
+        # (+0x1c), or -1 for its own
+        elif data[file_offset + 0x19] == 1 and struct.unpack_from("<i", data, file_offset + 0x1c)[0] >= 0:
+            source = u32(file_offset + 0x1c)
+            hkx_sources[anim_id] = (source // 1_000_000, source % 1_000_000)
         events = []
         for j in range(event_count):
             header = headers_offset + j * 0x18
@@ -74,7 +83,7 @@ def read_tae(path):
             events.append((start, end, event_type, params_offset))
         animations[anim_id] = events
     # Parameters are read with read_params
-    return tae_id, animations, data, imports
+    return tae_id, animations, data, imports, hkx_sources
 
 
 def read_params(data, params_offset, fields):
@@ -97,7 +106,7 @@ if __name__ == "__main__":
     if "TAE_TEMPLATE" not in os.environ:
         sys.exit("Set TAE_TEMPLATE to WitchyBND's Assets/Templates/TAE.Template.ER.xml")
     template = read_template(os.environ["TAE_TEMPLATE"])
-    tae_id, animations, data, imports = read_tae(sys.argv[1])
+    tae_id, animations, data, imports, _ = read_tae(sys.argv[1])
     wanted = int(sys.argv[2]) if len(sys.argv) > 2 else None
     print(f"TAE {tae_id}: {len(animations)} animations")
     for anim_id, events in animations.items():

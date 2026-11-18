@@ -713,7 +713,7 @@ def main():
     def get_spell_upkeep(name, row):
         number = SPELL_UPKEEP[name]
         assert number == 400 + row["refType"], name
-        _, events, data, _ = read_tae(os.path.join(game_dir, TAE_DIR, f"a{number}.tae"))
+        _, events, data, _, _ = read_tae(os.path.join(game_dir, TAE_DIR, f"a{number}.tae"))
         # The release's early window: (fastest, slowest)
         (fastest, slowest), = [
             (start, end)
@@ -780,7 +780,7 @@ def main():
             effect_ids = []
             path = os.path.join(game_dir, TAE_DIR, f"a{600 + skill_type}.tae")
             if os.path.exists(path):
-                _, animations, data, _ = read_tae(path)
+                _, animations, data, _, _ = read_tae(path)
                 for events in animations.values():
                     for _, _, event_type, params in events:
                         if event_type not in SPEFFECT_EVENTS:
