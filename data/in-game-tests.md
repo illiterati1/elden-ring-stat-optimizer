@@ -16,8 +16,7 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 20 | Blind Spot | Backhand Blade | 39 (was 30) |
-| 21 | Jumping R2 | Backhand Blade | 19 (its landing's behavior) |
+| 21 | Jumping R2 (its landing is a step-like window, as in Blind Spot, whose step costs 12 rather than its behavior's 9: does this cost more too?) | Backhand Blade | 19 (its landing's behavior) |
 | 22 | Familial Rancor and Rain of Arrows (one bow class) | — | 0 in the data, so not known |
 | 43 | Starcaller Cry's chain (its #2's duplicate window left out, like Great-Serpent Hunt's) | Starscourge Greatsword | 30, then 15 (was 30.9) |
 | 44 | Promised Consort's chain (its #3's duplicate slash window left out) | Greatsword of Radahn (Lord) | 42, 42, then 33 (was 49.44) |

@@ -1577,6 +1577,12 @@ MEASURED_HIT_TIMES = {
     ("Causality's Wrath", "Tier 2"): {0},
     ("Causality's Wrath", "Tier 3"): {0},
 }
+# Skills' stamina costs measured in game, by skill and part: each window's (before the weapon's rate).
+# Blind Spot's step (a PCBehavior window, type 4, judge 560) costs 12 in game on a Backhand Blade,
+# then its slash 30, but its behavior (106400560, the Backhand Blade class's) costs 9, and none of
+# that class's behaviors costs 12, so where it comes from isn't known (a jumping attack's landing,
+# also a type 4 PCBehavior window, may cost more than its behavior too: see in-game-tests.md)
+STAMINA_FITS = {("Blind Spot", ""): [12, 30]}
 # Projectile hits with fitted times that the animations can't tie to a projectile (status-only hits),
 # so approximate all the same: Fires of Slumber's fire and its ground fire's ticks
 PROJECTILE_HIT_TIMES = {("Fires of Slumber", "")}
@@ -2283,6 +2289,7 @@ def get_skill_timing(
                     if animations.to_real_time(number, anim_id - 1, start) < release
                 ],
             )
+        stamina = STAMINA_FITS.get((name, label), stamina)
         if stamina:
             timing["stamina"] = stamina
         cancels = get_l2_cancels(animations.get_cancels(number, anim_id), quick_l2)

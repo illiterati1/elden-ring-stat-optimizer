@@ -2411,7 +2411,9 @@ describe("Ashes of War", () => {
 
   it("matches Blind Spot, Blinkbolt, and Blood Blade in game", () => {
     // Tested in game on a Backhand Blade +25 with 99 in every stat on the training dummy: Blind Spot
-    // is one hit of 813 (its two attack rows are alternatives, one per animation), Blinkbolt 186
+    // is one hit of 813 (its two attack rows are alternatives, one per animation), Blinkbolt 186.
+    // Blind Spot's stamina: 12 for its step, then 30 on its hit (its step's behavior costs 9, see
+    // build_ash_data.py's STAMINA_FITS)
     const weapon = getWeapon("Backhand Blade");
     const skill = (ash: string) => {
       const result = getAshAttack(ashes, movesets, weapon, ash, false);
@@ -2440,6 +2442,7 @@ describe("Ashes of War", () => {
     const blindSpot = build("Blind Spot");
     expect(blindSpot.attackSteps!.flat()).toHaveLength(1);
     expect(Math.floor(blindSpot.finalValue)).toBe(813);
+    expect(skill("Blind Spot").stamina).toEqual([42]);
     expect(Math.floor(build("Blinkbolt").finalValue)).toBe(186);
     // Blood Blade: the projectile does 560 and the whole skill 807. Its hits apply blood loss
     // through their own effects: the slash 55 (with the weapon's status correction, none here) and
