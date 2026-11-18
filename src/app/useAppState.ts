@@ -108,6 +108,10 @@ export interface AppState {
   readonly showStance: boolean;
   /** Show the chosen attack's stamina cost */
   readonly showStamina: boolean;
+  /** Show the chosen attack's damage per point of stamina */
+  readonly showDamagePerStamina: boolean;
+  /** Show the chosen attack's poise damage per point of stamina */
+  readonly showPoisePerStamina: boolean;
   /**
    * Show the chosen attack's damage, poise, stamina, and status per second, repeated as fast as
    * possible, instead of per attack
@@ -209,6 +213,8 @@ export type SortBy =
   | "level"
   | "stance"
   | "stamina"
+  | "damagePerStamina"
+  | "poisePerStamina"
   | `status:${AttackPowerType}`
   | `scaling:${Attribute}`
   | `requirement:${Attribute}`;
@@ -222,6 +228,8 @@ function isSortBy(value: unknown): value is SortBy {
     value === "level" ||
     value === "stance" ||
     value === "stamina" ||
+    value === "damagePerStamina" ||
+    value === "poisePerStamina" ||
     (typeof value === "string" &&
       (/^status:\d+$/.test(value) || /^(scaling|requirement):(str|dex|int|fai|arc)$/.test(value)))
   );
@@ -244,6 +252,8 @@ const defaultAppState: AppState = {
   showStatus: false,
   showStance: true,
   showStamina: false,
+  showDamagePerStamina: false,
+  showPoisePerStamina: false,
   showDps: false,
   tooltipTimings: {
     hits: true,

@@ -18,7 +18,7 @@ import { allAttributes, type AttackPowerType, type Attributes } from "../calcula
 import type { AttackResultHit, BuildResult, StepTimes } from "../optimizer/build.ts";
 import { getStatLabel } from "../optimizer/startingClasses.ts";
 import { limitReasonLabels, physicalTypeLabels, statusTypes } from "./uiUtils.ts";
-import { getResultStatus } from "./results.ts";
+import { getDamagePerStamina, getPoisePerStamina, getResultStatus } from "./results.ts";
 import { statusSortBy } from "./useAppState.ts";
 import BreakdownTable from "./BreakdownTable.tsx";
 import Details, { detailsBackground, tooltipCueSx } from "./Details.tsx";
@@ -46,6 +46,10 @@ interface Props {
   showStance: boolean;
   /** Show the chosen attack's stamina cost */
   showStamina: boolean;
+  /** Show the chosen attack's damage per point of stamina */
+  showDamagePerStamina: boolean;
+  /** Show the chosen attack's poise damage per point of stamina */
+  showPoisePerStamina: boolean;
   /** Show the chosen attack's damage per second */
   showDps: boolean;
   /**
@@ -71,6 +75,21 @@ function formatValue(value: number) {
 /** Poise damage is small, so it keeps one decimal place */
 function formatStance(value: number) {
   return (Math.round(value * 10) / 10).toFixed(1);
+}
+
+/** Damage per point of stamina keeps one decimal place */
+function formatDamagePerStamina(value: number) {
+  return (Math.round(value * 10) / 10).toFixed(1);
+}
+
+/** Poise damage per point of stamina is mostly below a few points, so it keeps two */
+function formatPoisePerStamina(value: number) {
+  return (Math.round(value * 100) / 100).toFixed(2);
+}
+
+/** A value per point of stamina, blank if the attack's stamina cost isn't known */
+function perStaminaCell(value: number | undefined, format: (value: number) => string) {
+  return value != null ? format(value) : "";
 }
 
 /** Stamina costs are mostly whole numbers, but a chain's weighted average keeps one decimal place */
@@ -466,6 +485,8 @@ function ResultsTable({
   showHits,
   showStance,
   showStamina,
+  showDamagePerStamina,
+  showPoisePerStamina,
   showDps,
   oneOffAttack,
   tooltipTimings,
@@ -634,6 +655,28 @@ function ResultsTable({
                 sortLabel("total", valueLabel, "desc")
               )}
             </TableCell>
+            {showDamagePerStamina && (
+              <TableCell rowSpan={headerRows} align="right">
+                <Tooltip
+                  title={
+                    showDps
+                      ? `${perSecondLabel.replace(
+                          / \(.*/,
+                          "",
+                        )} per point of stamina the attack costs (rewards attacks that are both fast and cheap)`
+                      : `${
+                          pointLabel === "damage" ? "Damage" : "Attack power"
+                        } per point of stamina, each weighted across a chain the same way`
+                  }
+                >
+                  {sortLabel(
+                    "damagePerStamina",
+                    showDps ? "Damage/stamina/s" : "Damage/stamina",
+                    "desc",
+                  )}
+                </Tooltip>
+              </TableCell>
+            )}
             {showHits && <TableCell rowSpan={headerRows}>Hits</TableCell>}
             {showStance && (
               <TableCell rowSpan={headerRows} align="right">
@@ -645,6 +688,23 @@ function ResultsTable({
                   }
                 >
                   {sortLabel("stance", showDps ? "Poise/s" : "Poise", "desc")}
+                </Tooltip>
+              </TableCell>
+            )}
+            {showPoisePerStamina && (
+              <TableCell rowSpan={headerRows} align="right">
+                <Tooltip
+                  title={
+                    showDps
+                      ? "Poise damage per second per point of stamina the attack costs (rewards attacks that are both fast and cheap)"
+                      : "Poise damage per point of stamina, each weighted across a chain the same way"
+                  }
+                >
+                  {sortLabel(
+                    "poisePerStamina",
+                    showDps ? "Poise/stamina/s" : "Poise/stamina",
+                    "desc",
+                  )}
                 </Tooltip>
               </TableCell>
             )}
@@ -816,6 +876,14 @@ function ResultsTable({
                         </>
                       )}
                     </TableCell>
+                    {showDamagePerStamina && (
+                      <TableCell align="right">
+                        {perStaminaCell(
+                          getDamagePerStamina(result, showDps),
+                          formatDamagePerStamina,
+                        )}
+                      </TableCell>
+                    )}
                     {showHits && (
                       <TableCell>
                         {result.fixedSkill && (
@@ -853,6 +921,11 @@ function ResultsTable({
                           : result.attackStance != null
                           ? formatStance(result.attackStance)
                           : ""}
+                      </TableCell>
+                    )}
+                    {showPoisePerStamina && (
+                      <TableCell align="right">
+                        {perStaminaCell(getPoisePerStamina(result, showDps), formatPoisePerStamina)}
                       </TableCell>
                     )}
                     {showStamina && (
@@ -980,6 +1053,8 @@ function ResultsTable({
                       +showHits +
                       +showStance +
                       +showStamina +
+                      +showDamagePerStamina +
+                      +showPoisePerStamina +
                       allAttributes.length * groups.length
                     }
                   >

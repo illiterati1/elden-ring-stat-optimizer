@@ -38,6 +38,8 @@ interface Props {
   showStatus: AppState["showStatus"];
   showStance: AppState["showStance"];
   showStamina: AppState["showStamina"];
+  showDamagePerStamina: AppState["showDamagePerStamina"];
+  showPoisePerStamina: AppState["showPoisePerStamina"];
   showRequirements: AppState["showRequirements"];
   closedAlerts: AppState["closedAlerts"];
   onlyBuffable: AppState["onlyBuffable"];
@@ -118,6 +120,8 @@ function BuildSettings({
   showStatus,
   showStance,
   showStamina,
+  showDamagePerStamina,
+  showPoisePerStamina,
   showRequirements,
   closedAlerts,
   onlyBuffable,
@@ -353,6 +357,18 @@ function BuildSettings({
         {/* Spell scaling has no attack to show poise, stamina, or status for */}
         <Box display="flex" flexWrap="wrap" columnGap={3}>
           <FormControlLabel
+            label="Damage/stamina"
+            sx={{ mr: 0 }}
+            disabled={spellScaling}
+            control={
+              <Checkbox
+                size="small"
+                checked={showDamagePerStamina}
+                onChange={(evt) => onChange({ showDamagePerStamina: evt.currentTarget.checked })}
+              />
+            }
+          />
+          <FormControlLabel
             label="Poise"
             sx={{ mr: 0 }}
             disabled={spellScaling}
@@ -361,6 +377,18 @@ function BuildSettings({
                 size="small"
                 checked={showStance}
                 onChange={(evt) => onChange({ showStance: evt.currentTarget.checked })}
+              />
+            }
+          />
+          <FormControlLabel
+            label="Poise/stamina"
+            sx={{ mr: 0 }}
+            disabled={spellScaling}
+            control={
+              <Checkbox
+                size="small"
+                checked={showPoisePerStamina}
+                onChange={(evt) => onChange({ showPoisePerStamina: evt.currentTarget.checked })}
               />
             }
           />

@@ -146,6 +146,8 @@ export default function App() {
     showStatus: savedShowStatus,
     showStance: savedShowStance,
     showStamina: savedShowStamina,
+    showDamagePerStamina: savedShowDamagePerStamina,
+    showPoisePerStamina: savedShowPoisePerStamina,
     showDps: savedShowDps,
     tooltipTimings,
     chainLimit,
@@ -193,6 +195,8 @@ export default function App() {
   const showStatus = savedShowStatus && !spellScalingMode;
   const showStance = savedShowStance && !spellScalingMode;
   const showStamina = savedShowStamina && !spellScalingMode;
+  const showDamagePerStamina = savedShowDamagePerStamina && !spellScalingMode;
+  const showPoisePerStamina = savedShowPoisePerStamina && !spellScalingMode;
   const showDps = savedShowDps && !spellScalingMode;
 
   const { weapons, loading, error } = useWeapons();
@@ -916,12 +920,24 @@ export default function App() {
     const hidden =
       (sortBy === "stance" && !showStance) ||
       (sortBy === "stamina" && !showStamina) ||
+      (sortBy === "damagePerStamina" && !showDamagePerStamina) ||
+      (sortBy === "poisePerStamina" && !showPoisePerStamina) ||
       (sortBy.startsWith("status:") &&
         !statusTypesShown.some((statusType) => statusSortBy(statusType) === sortBy));
     return hidden
       ? sortResults(results, "total", false)
       : sortResults(results, sortBy, reverse, showDps);
-  }, [results, sortBy, reverse, showStance, showStamina, showDps, statusTypesShown]);
+  }, [
+    results,
+    sortBy,
+    reverse,
+    showStance,
+    showStamina,
+    showDamagePerStamina,
+    showPoisePerStamina,
+    showDps,
+    statusTypesShown,
+  ]);
 
   // The chart shows the weapons checked in the table, each version of a fixed skill (e.g. Moonveil's
   // R1 and R2) as its own line
@@ -982,6 +998,8 @@ export default function App() {
         showStatus={savedShowStatus}
         showStance={savedShowStance}
         showStamina={savedShowStamina}
+        showDamagePerStamina={savedShowDamagePerStamina}
+        showPoisePerStamina={savedShowPoisePerStamina}
         showRequirements={showRequirements}
         closedAlerts={closedAlerts}
         onlyBuffable={onlyBuffable}
@@ -1157,6 +1175,8 @@ export default function App() {
                         showHits={showHits}
                         showStance={showStance}
                         showStamina={showStamina}
+                        showDamagePerStamina={showDamagePerStamina}
+                        showPoisePerStamina={showPoisePerStamina}
                         showDps={showDps}
                         oneOffAttack={oneOffAttacks.has(attack)}
                         tooltipTimings={tooltipTimingsShown}

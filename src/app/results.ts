@@ -39,6 +39,24 @@ export function getResultStatus(result: BuildResult, perSecond = false) {
 }
 
 /**
+ * Damage (or attack power) per point of stamina the chosen attack costs, or DPS per point of
+ * stamina (with DPS shown), if its stamina cost is known
+ */
+export function getDamagePerStamina(result: BuildResult, perSecond = false) {
+  const damage = perSecond ? result.attackDps : result.finalValue;
+  return damage != null && result.attackStamina ? damage / result.attackStamina : undefined;
+}
+
+/**
+ * Poise damage per point of stamina the chosen attack costs, or poise damage per second per point
+ * of stamina (with DPS shown), if both are known
+ */
+export function getPoisePerStamina(result: BuildResult, perSecond = false) {
+  const poise = perSecond ? result.attackPoisePerSecond : result.attackStance;
+  return poise != null && result.attackStamina ? poise / result.attackStamina : undefined;
+}
+
+/**
  * Sort keys where a higher number comes first by default
  */
 function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
@@ -58,6 +76,10 @@ function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
       const stamina = perSecond ? result.attackStaminaPerSecond : result.attackStamina;
       return stamina != null ? -stamina : -Infinity;
     }
+    case "damagePerStamina":
+      return getDamagePerStamina(result, perSecond) ?? -Infinity;
+    case "poisePerStamina":
+      return getPoisePerStamina(result, perSecond) ?? -Infinity;
     default:
       if (sortBy.startsWith("scaling:")) {
         return result.scaling[sortBy.slice("scaling:".length) as Attribute] ?? 0;
