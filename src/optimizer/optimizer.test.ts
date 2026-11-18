@@ -5212,9 +5212,18 @@ describe("Ashes of War", () => {
     if (!("attack" in rain)) throw new Error(rain.unavailableReason);
     const rainHits = rain.attack.stepTimes![0].hitTimes!.map((time) => Math.round(time! * 60));
     expect([rainHits[0], rainHits[11]]).toEqual([133, 176]);
-    // and it costs 30 stamina in game (its behavior's 50 in the data, see build_ash_data.py's
-    // STAMINA_FITS)
-    expect(rain.attack.stamina).toEqual([30]);
+    // It costs 50 stamina on a Longbow, its behavior's (tested in game), but nothing on a Greatbow,
+    // whose version's behavior costs 0 (also tested)
+    expect(rain.attack.stamina).toEqual([50]);
+    const greatbowRain = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Greatbow"),
+      "Rain of Arrows",
+      false,
+    );
+    if (!("attack" in greatbowRain)) throw new Error(greatbowRain.unavailableReason);
+    expect(greatbowRain.attack.stamina).toBeUndefined();
     // The Igon's Greatbow's Igon's Drake Hunt with Igon's Harpoons does 1213 to the dummy (tested in
     // game at +25 with 99 in every stat): its 155%, and the bow's ×1.2 physical for the harpoon's
     // category 135
