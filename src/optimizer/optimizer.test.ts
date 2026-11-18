@@ -11137,14 +11137,18 @@ describe("Ashes of War", () => {
     // Tested in game on the Sword of Night and Flame +10 with 99 in every stat on the training dummy:
     // the R2 2595, its swing 719 and one fire burst 1876 (its two fire rows hit one or the other); the
     // R1 3175, its swing 650, the point blank burst 195, the beam's loops 321 six times, and its final
-    // hit 404, and 49.5 poise in all (with 3 poise-only hits of 5)
+    // hit 404, and 49.5 poise in all (with 3 poise-only hits of 5). The R2's stamina 25: its swing's
+    // window's, not the 45 of an empty attack's window alongside it
     const weapon = getWeapon("Sword of Night and Flame");
-    const build = (followUp: string) => {
+    const getAsh = (followUp: string) => {
       const { ash } = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).find(
         ({ variant }) => variant?.short === followUp,
       )!;
       if (!("attack" in ash)) throw new Error(ash.unavailableReason);
-      return optimizeBuild({
+      return ash;
+    };
+    const build = (followUp: string) =>
+      optimizeBuild({
         weapon,
         regularUpgradeLevel: 25,
         twoHanding: false,
@@ -11158,12 +11162,12 @@ describe("Ashes of War", () => {
         ),
         physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
-        attack: ash.attack,
+        attack: getAsh(followUp).attack,
       });
-    };
     const r2 = build("R2");
     expect(r2.attackSteps!.map((step) => step.map((hit) => hit.damage))).toEqual([[719, 1876]]);
     expect(r2.finalValue).toBe(2595);
+    expect(getAsh("R2").attack.stamina).toEqual([25]);
     const r1 = build("R1");
     expect(
       r1.attackSteps!.map((step) => step.filter((hit) => hit.damage).map((hit) => hit.damage)),

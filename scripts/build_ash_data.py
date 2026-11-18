@@ -1619,19 +1619,22 @@ def get_windows_stamina(behaviors, variation, windows):
     """
     @param windows (start, judge, event type, AttackIndex) of each window
     @returns animation windows' stamina costs, each window's that has any: their behaviors', once
-    for attack windows starting at the same time with the same AttackIndex, the most of them (seen
-    in game: the Serpent-Hunter's Great-Serpent Hunt costs 77 for its chain, its thrusts' 30 and 40
-    once at its 1.12 rate, rounded down, not again for its "?" rows' windows alongside them, with
-    the same index; but the Starscourge Greatsword's Starcaller Cry #2 costs 30, its two 15
-    windows' at the same time, with indices 0 and 1, and the Greatsword of Radahn (Lord)'s Promised
-    Consort #3 48, its 18 and two 15s). Kept separate, as each is rounded down after
-    the weapon's rate (see check_animations.py's charged_stamina).
+    for attack windows starting at the same time with the same AttackIndex, the last of them in the
+    animation (seen in game: the Serpent-Hunter's Great-Serpent Hunt costs 77 for its chain, its
+    thrusts' 30 and 40 once at its 1.12 rate, rounded down, not again for its "?" rows' windows
+    alongside them, with the same index and cost; the Sword of Night and Flame's Night-and-Flame
+    Stance R2 costs 25, its swing's 3930 after an empty attack's 3920 that costs 45 (not the most:
+    the empty one is listed first, so it's the last or the one that can hit that counts); but the
+    Starscourge Greatsword's Starcaller Cry #2 costs 30, its two 15 windows' at the same time, with
+    indices 0 and 1, and the Greatsword of Radahn (Lord)'s Promised Consort #3 48, its 18 and two
+    15s). Kept separate, as each is rounded down after the weapon's rate (see check_animations.py's
+    charged_stamina).
     """
     costs = {}
     for i, (start, judge, event_type, index) in enumerate(windows):
         stamina = int((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
         key = (start, index) if event_type == ATTACK_EVENT else i
-        costs[key] = max(costs.get(key, 0), stamina)
+        costs[key] = stamina if event_type == ATTACK_EVENT else max(costs.get(key, 0), stamina)
     return [cost for cost in costs.values() if cost]
 
 

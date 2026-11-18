@@ -16,7 +16,7 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 61 | Night-and-Flame Stance's R2 (its 45 and 25 windows at once, with the same AttackIndex, charged once, like Great-Serpent Hunt's) | Sword of Night and Flame | 46 (was 71) |
+| 62 | Night-and-Flame Stance's R1 (its swing's 25, then its beam's bullet window's 45 at 1.03; the R2 charges only one of its two windows at once, so is the beam's charged too?) | Sword of Night and Flame | 71 |
 | 56 | One handed jumping R2 (its hits' behaviors, 163 and 164, cost nothing; 160's 10 assumed, as on the Backhand Blade, rather than its landing's 17) | Rellana's Twin Blades | 10 (was 17) |
 
 ## Damage
