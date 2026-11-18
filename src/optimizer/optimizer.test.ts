@@ -71,13 +71,13 @@ function plainHit(movesets: Movesets, weapon: Weapon): AttackData {
         {
           motionValue: 100,
           statusMotionValue: 100,
-          poiseMotionValue: 100,
+          stanceMotionValue: 100,
           physicalType: allPhysicalTypes[moveset.type] ?? "standard",
         },
       ],
     ],
     weights: [1],
-    poiseBase: moveset.poise,
+    stanceBase: moveset.stance,
   };
 }
 
@@ -765,18 +765,18 @@ describe("bows", () => {
     expect(build("Longbow", "Arrow").statusAtMaxArcane).toBeUndefined();
   });
 
-  it("uses the ammunition's poise", () => {
-    // Tested in game: Stormwing Bone Arrows do 5 poise damage from a Longbow, whose own is 2
-    const poise = (arrowName: string) =>
+  it("uses the ammunition's stance", () => {
+    // Tested in game: Stormwing Bone Arrows do 5 stance damage from a Longbow, whose own is 2
+    const stance = (arrowName: string) =>
       getAttackData(
         movesets,
         withAmmo(getWeapon("Longbow"), ammo.find((group) => group.names.includes(arrowName))!),
         "Standard Shot",
         true,
         0.5,
-      )!.poiseBase;
-    expect(poise("Stormwing Bone Arrow")).toBe(5);
-    expect(poise("Arrow")).toBe(2);
+      )!.stanceBase;
+    expect(stance("Stormwing Bone Arrow")).toBe(5);
+    expect(stance("Arrow")).toBe(2);
   });
 
   it("fires three bolts from the Spread Crossbow", () => {
@@ -997,24 +997,31 @@ describe("attacks", () => {
 
     const attack: AttackData = {
       steps: [
-        [{ motionValue: 100, statusMotionValue: 50, poiseMotionValue: 100, physicalType: "slash" }],
+        [
+          {
+            motionValue: 100,
+            statusMotionValue: 50,
+            stanceMotionValue: 100,
+            physicalType: "slash",
+          },
+        ],
         [
           {
             motionValue: 100,
             statusMotionValue: 100,
-            poiseMotionValue: 100,
+            stanceMotionValue: 100,
             physicalType: "slash",
           },
           {
             motionValue: 100,
             statusMotionValue: 100,
-            poiseMotionValue: 100,
+            stanceMotionValue: 100,
             physicalType: "slash",
           },
         ],
       ],
       weights: [2 / 3, 1 / 3],
-      poiseBase: 5,
+      stanceBase: 5,
     };
     const chain = optimizeBuild({ ...request, attack });
     expect(chain.attackStatus![AttackPowerType.BLEED]).toBeCloseTo(
@@ -1524,14 +1531,14 @@ describe("attacks", () => {
             {
               motionValue: 100,
               statusMotionValue: 100,
-              poiseMotionValue: 100,
+              stanceMotionValue: 100,
               physicalType: "standard",
             },
             {
               motionValue: 0,
               motionValues: [0, 0, 0, 0, 0],
               statusMotionValue: 0,
-              poiseMotionValue: 100,
+              stanceMotionValue: 100,
               physicalType: "standard",
               flatAttack: [0, 0, 0, 0, 100],
               attackElementCorrect: { [AttackPowerType.HOLY]: { fai: 0.25 } },
@@ -1539,7 +1546,7 @@ describe("attacks", () => {
           ],
         ],
         weights: [1],
-        poiseBase: 5,
+        stanceBase: 5,
       },
     });
     expect(result.attackSteps![0][1].damage).toBeCloseTo(562, -1);
@@ -1963,15 +1970,20 @@ describe("attacks", () => {
         attack: getAttackData(movesets, weapon, attack, twoHanding, 0.5),
       });
       const damage = result.attackSteps!.flat().reduce((sum, hit) => sum + hit.damage, 0);
-      const poise = result.attackSteps!.flat().reduce((sum, hit) => sum + hit.stance, 0);
-      return { dps: result.attackDps!, damage, poisePerSecond: result.attackPoisePerSecond, poise };
+      const stance = result.attackSteps!.flat().reduce((sum, hit) => sum + hit.stance, 0);
+      return {
+        dps: result.attackDps!,
+        damage,
+        stancePerSecond: result.attackStancePerSecond,
+        stance,
+      };
     };
     const r1 = dps("R1", false);
     expect(r1.dps).toBeCloseTo(r1.damage / (3.8 + 5 / 30), 0);
-    expect(r1.poisePerSecond).toBeCloseTo(r1.poise / (3.8 + 5 / 30), 1);
+    expect(r1.stancePerSecond).toBeCloseTo(r1.stance / (3.8 + 5 / 30), 1);
     const r2 = dps("R2", true);
     expect(r2.dps).toBeCloseTo(r2.damage / 2.3, 0);
-    expect(r2.poisePerSecond).toBeCloseTo(r2.poise / 2.3, 1);
+    expect(r2.stancePerSecond).toBeCloseTo(r2.stance / 2.3, 1);
     // One-off attacks (e.g. running ones) last until anything can follow them: the running R1 until
     // its roll at 0.996s (before its right hand attack at 1.03s), and the step start delay
     const running = dps("Running R1", false);
@@ -2564,7 +2576,7 @@ describe("Ashes of War", () => {
         },
       ],
     ]);
-    // Carian Grandeur: each charge level is one hit (level 1 1132 with 20 poise, level 2 1620 with
+    // Carian Grandeur: each charge level is one hit (level 1 1132 with 20 stance, level 2 1620 with
     // 30, level 3 2058 with 45), not the uncharged hit and then the charged one
     const level = (n: number) => skillSteps(withFollowUp("Carian Grandeur", `Level ${n}`)).flat();
     expect(level(1).map(({ damage, stance }) => [damage, stance])).toEqual([[1132, 20]]);
@@ -2614,7 +2626,7 @@ describe("Ashes of War", () => {
       [{ damage: 691 }],
       [{ damage: 948 }],
     ]);
-    // Hoarah Loux's Earthshaker is a chain: its roar (poise only) and first slam 1075, then its second
+    // Hoarah Loux's Earthshaker is a chain: its roar (stance only) and first slam 1075, then its second
     // slam 1222
     expect(skillSteps(withFollowUp("Hoarah Loux's Earthshaker", " chain"))).toMatchObject([
       [
@@ -2632,14 +2644,14 @@ describe("Ashes of War", () => {
     expect(hoarfrost.reduce((sum, hit) => sum + (hit.status[AttackPowerType.FROST] ?? 0), 0)).toBe(
       180,
     );
-    // Kick: 45, its 30 flat physical times 4 for the upgrade level, without stat scaling, and 6 poise
+    // Kick: 45, its 30 flat physical times 4 for the upgrade level, without stat scaling, and 6 stance
     expect(skillSteps("Kick")).toMatchObject([[{ damage: 45, stance: 6 }]]);
     // Lightning Ram: one hit of 551 (it can be chained indefinitely, so one counts)
     expect(skillSteps("Lightning Ram")).toMatchObject([[{ damage: 551 }]]);
     // Lightning Slash: the stomp 96, the slash 921 with its own 85 lightning weapon buff, and the
     // bullet 554 (1571 in total; its water AoE only hits in water)
     expect(skillSteps("Lightning Slash")[0].map((hit) => hit.damage)).toEqual([96, 921, 554]);
-    // Lion's Claw: one hit of 1273 with 30 poise
+    // Lion's Claw: one hit of 1273 with 30 stance
     expect(skillSteps("Lion's Claw")).toMatchObject([[{ damage: 1273, stance: 30 }]]);
     {
       // Poison Moth Flight on a Poison Longsword +25 (tested in game): 706 with a flat 250 poison,
@@ -2689,7 +2701,7 @@ describe("Ashes of War", () => {
       [0, 60],
       [0, 120],
     ]);
-    // Impaling Thrust: one hit of 992 with 30 poise
+    // Impaling Thrust: one hit of 992 with 30 stance
     expect(skillSteps("Impaling Thrust")).toMatchObject([[{ damage: 992, stance: 30 }]]);
     // Double Slash is a chain too: 962 in 2 hits, then 3 more for 2342 in total, then 1 more for 3105
     const doubleSlash = skillSteps(withFollowUp("Double Slash", " chain"));
@@ -2781,8 +2793,8 @@ describe("Ashes of War", () => {
     expect(attackSteps!.map((step) => step.reduce((sum, hit) => sum + hit.damage, 0))).toEqual([
       1484, 887,
     ]);
-    // Eruption: its weapon hits (552 and 674), then its lava: one hit of 136 with 5 poise, and ticks of
-    // 136 with 3 poise each
+    // Eruption: its weapon hits (552 and 674), then its lava: one hit of 136 with 5 stance, and ticks of
+    // 136 with 3 stance each
     const eruption = getAshAttack(ashes, movesets, weapon, "Eruption", false);
     if (!("attack" in eruption)) throw new Error(eruption.unavailableReason);
     const eruptionHits = optimizeBuild({
@@ -2945,7 +2957,7 @@ describe("Ashes of War", () => {
     if (!("attack" in groundSlam)) throw new Error(groundSlam.unavailableReason);
     expect(groundSlam.attack.steps).toMatchObject([[{ kind: "Tush" }]]);
     // So is the Rotten Staff's Erdtree Slam: tested in game at +10 with 99 in every stat, 1441 with 36
-    // poise close (the tush), or 1169 further away (the shockwave)
+    // stance close (the tush), or 1169 further away (the shockwave)
     const staff = getWeapon("Rotten Staff");
     const erdtreeSlam = getAshAttack(ashes, movesets, staff, "Lion's Claw", false);
     if (!("attack" in erdtreeSlam)) throw new Error(erdtreeSlam.unavailableReason);
@@ -2967,7 +2979,7 @@ describe("Ashes of War", () => {
         attack: erdtreeSlam.attack,
       }).attackSteps,
     ).toMatchObject([[{ damage: 1441, stance: 36, kind: "Tush" }]]);
-    // The Staff of the Avatar's is right in game too at +10 with 99 in every stat: 2175 with 36 poise
+    // The Staff of the Avatar's is right in game too at +10 with 99 in every stat: 2175 with 36 stance
     const avatar = getWeapon("Staff of the Avatar");
     const avatarSlam = getAshAttack(ashes, movesets, avatar, "Lion's Claw", false);
     if (!("attack" in avatarSlam)) throw new Error(avatarSlam.unavailableReason);
@@ -3019,7 +3031,7 @@ describe("Ashes of War", () => {
 
   it("matches Dryleaf Whirlwind and Palm Blast in game", () => {
     // Tested in game: Dryleaf Arts +25 with 99 in every stat on the training dummy, 1731 damage and 28
-    // poise
+    // stance
     const weapon = getWeapon("Dryleaf Arts");
     const result = getAshAttack(ashes, movesets, weapon, "Dryleaf Whirlwind", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -3047,8 +3059,8 @@ describe("Ashes of War", () => {
     ]);
     expect(build.finalValue).toBe(1731);
     expect(build.attackStance).toBe(28);
-    // An enemy's poise damage multiplier (SpEffectParam saReceiveDamageRate, e.g. 0.2 for ancient
-    // dragons) scales its poise damage, not its damage
+    // An enemy's stance damage multiplier (SpEffectParam saReceiveDamageRate, e.g. 0.2 for ancient
+    // dragons) scales its stance damage, not its damage
     const dragon = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,
@@ -3064,7 +3076,7 @@ describe("Ashes of War", () => {
       physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
       limits: { ...noLimits, maxLevels: 0 },
       attack: result.attack,
-      poiseDamageRate: 0.2,
+      stanceDamageRate: 0.2,
     });
     expect(dragon.finalValue).toBe(1731);
     expect(dragon.attackStance).toBeCloseTo(28 * 0.2);
@@ -3085,9 +3097,9 @@ describe("Ashes of War", () => {
       limits: { ...noLimits, maxLevels: 0 },
       attack: result.attack,
     });
-    expect(normal.attackPoisePerSecond).toBeGreaterThan(0);
-    expect(dragon.attackPoisePerSecond).toBeCloseTo(normal.attackPoisePerSecond! * 0.2);
-    // Palm Blast: uncharged 954 (20 poise), charged 1996 (36 poise)
+    expect(normal.attackStancePerSecond).toBeGreaterThan(0);
+    expect(dragon.attackStancePerSecond).toBeCloseTo(normal.attackStancePerSecond! * 0.2);
+    // Palm Blast: uncharged 954 (20 stance), charged 1996 (36 stance)
     const palmBlast = (level: string) => {
       const palm = getAshAttack(ashes, movesets, weapon, withFollowUp("Palm Blast", level), false);
       if (!("attack" in palm)) throw new Error(palm.unavailableReason);
@@ -3113,8 +3125,8 @@ describe("Ashes of War", () => {
   });
 
   it("matches Cragblade in game", () => {
-    // Tested in game on a Longsword +25 with 99 in every stat on the training dummy: 490 (7.5 poise)
-    // and 370 (5 poise)
+    // Tested in game on a Longsword +25 with 99 in every stat on the training dummy: 490 (7.5 stance)
+    // and 370 (5 stance)
     const weapon = getWeapon("Longsword");
     const result = getAshAttack(ashes, movesets, weapon, "Cragblade", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -3355,7 +3367,7 @@ describe("Ashes of War", () => {
 
   it("matches Repeating Thrust in game", () => {
     // Tested in game on a Bloody Longsword +25 with 99 in every stat on the training dummy: 534, 266,
-    // 266, and 640, with 10, 2, 2, and 5 poise and 118, 59, 59, and 118 blood loss
+    // 266, and 640, with 10, 2, 2, and 5 stance and 118, 59, 59, and 118 blood loss
     const weapon = getWeapon("Bloody Longsword");
     const result = getAshAttack(ashes, movesets, weapon, "Repeating Thrust", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -3417,7 +3429,7 @@ describe("Ashes of War", () => {
     };
     expect(steps("R1")[0].map((hit) => hit.damage)).toEqual([1008]);
     expect(steps("R2")[0].map((hit) => hit.damage)).toEqual([566, 645, 692]);
-    // Piercing Fang: one hit of 1454 (33 poise)
+    // Piercing Fang: one hit of 1454 (33 stance)
     const fang = getAshAttack(ashes, movesets, weapon, "Piercing Fang", false);
     if (!("attack" in fang)) throw new Error(fang.unavailableReason);
     expect(
@@ -3442,7 +3454,7 @@ describe("Ashes of War", () => {
 
   it("matches Ice Spear, Loretta's Slash, and Phantom Slash in game", () => {
     // Tested in game on a Spear +25 with 99 in every stat on the training dummy: the startup spin 361
-    // (10 poise), and the bullet 1219 (25 poise) with 160 frost
+    // (10 stance), and the bullet 1219 (25 stance) with 160 frost
     const weapon = getWeapon("Spear");
     const steps = (ash: string) => {
       const result = getAshAttack(ashes, movesets, weapon, ash, false);
@@ -3481,7 +3493,7 @@ describe("Ashes of War", () => {
       [905, 671],
       [931, 701],
     ]);
-    // Loretta's Slash: 196 (12.5 poise) and 637 (10 poise)
+    // Loretta's Slash: 196 (12.5 stance) and 637 (10 stance)
     expect(steps("Loretta's Slash")[0].map((hit) => [hit.damage, hit.stance])).toEqual([
       [196, 12.5],
       [637, 10],
@@ -3519,7 +3531,7 @@ describe("Ashes of War", () => {
 
   it("matches Piercing Throw in game", () => {
     // Tested in game on a Blood Smithscript Dagger +25 with 99 in every stat on the training dummy:
-    // one hit of 571, 3 poise, and 50 blood loss
+    // one hit of 571, 3 stance, and 50 blood loss
     const weapon = getWeapon("Blood Smithscript Dagger");
     const result = getAshAttack(ashes, movesets, weapon, "Piercing Throw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -3545,7 +3557,7 @@ describe("Ashes of War", () => {
 
   it("matches Prayerful Strike in game", () => {
     // Tested in game on Great Stars (fully upgraded) with 99 in every stat on the training dummy: one
-    // hit of 1600, 42 poise, and 55 blood loss
+    // hit of 1600, 42 stance, and 55 blood loss
     const weapon = getWeapon("Great Stars");
     const result = getAshAttack(ashes, movesets, weapon, "Prayerful Strike", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -3630,7 +3642,7 @@ describe("Ashes of War", () => {
 
   it("matches Carian Retaliation in game", () => {
     // Tested in game: a Beast Crest Heater Shield +25 with 99 in every stat on the training dummy
-    // fires 3 swords of 185 each, 555 in total (the swords' 270 magic doesn't scale), and 9 poise
+    // fires 3 swords of 185 each, 555 in total (the swords' 270 magic doesn't scale), and 9 stance
     const weapon = getWeapon("Beast Crest Heater Shield");
     const result = getAshAttack(ashes, movesets, weapon, "Carian Retaliation", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -3694,7 +3706,7 @@ describe("Ashes of War", () => {
   it("matches Scattershot Throw in game", () => {
     // 4 daggers a throw, 960; it can be chain thrown, but one throw is counted. Tested in game on a
     // Blood Smithscript Dagger +25 with 99 in every stat on the training dummy: 240 each, with 2.4
-    // poise and 35 blood loss
+    // stance and 35 blood loss
     const weapon = getWeapon("Blood Smithscript Dagger");
     expect(
       getAshChoices(ashes)
@@ -3728,7 +3740,7 @@ describe("Ashes of War", () => {
 
   it("matches Shield Bash in game", () => {
     // Tested in game on a Blood Brass Shield +25 with 99 in every stat on the training dummy: one hit
-    // of 456, with 6.9 poise and 118 blood loss
+    // of 456, with 6.9 stance and 118 blood loss
     const weapon = getWeapon("Blood Brass Shield");
     const result = getAshAttack(ashes, movesets, weapon, "Shield Bash", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -3760,7 +3772,7 @@ describe("Ashes of War", () => {
       "Shield Crash (Fully charged)",
     );
     // Tested in game on a Blood Brass Shield +25 with 99 in every stat on the training dummy, fully
-    // charged: 192 three times, 192, and 362, with 4.1 poise (6.9 for the last) and 11.8 blood loss
+    // charged: 192 three times, 192, and 362, with 4.1 stance (6.9 for the last) and 11.8 blood loss
     // (117.7 for the last two)
     const weapon = getWeapon("Blood Brass Shield");
     const result = getAshAttack(
@@ -3800,7 +3812,7 @@ describe("Ashes of War", () => {
 
   it("matches Spectral Lance in game", () => {
     // Tested in game on a Bloody Spear +25 with 99 in every stat on the training dummy: one hit of
-    // 616 with 25 poise, and 677 with the Smithing Talisman (×1.1 for thrown weapon skills)
+    // 616 with 25 stance, and 677 with the Smithing Talisman (×1.1 for thrown weapon skills)
     const weapon = getWeapon("Bloody Spear");
     const result = getAshAttack(ashes, movesets, weapon, "Spectral Lance", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -3837,7 +3849,7 @@ describe("Ashes of War", () => {
   it("matches Spinning Gravity Thrust in game", () => {
     // Spinning Gravity Thrust is a chain: 5 hits, then 4. Tested in game on a Blood Sword Lance +25
     // with 99 in every stat on the training dummy: 144 four times and 693, then 144 three times and
-    // 761, with 3.85 poise (5.5 and 13.2 for the big hits) and 112 blood loss a hit
+    // 761, with 3.85 stance (5.5 and 13.2 for the big hits) and 112 blood loss a hit
     const weapon = getWeapon("Blood Sword Lance");
     const result = getAshAttack(
       ashes,
@@ -4024,7 +4036,7 @@ describe("Ashes of War", () => {
       }).attackSteps!.map((step) => step.map((hit) => hit.damage));
     };
     expect(damage(0, 99, 99, false)).toEqual([[256], [151, 267, 140]]);
-    // Poise: 31.75 for the whole chain, the projectile's poise motion value alone (5, not its flat 10)
+    // Stance: 31.75 for the whole chain, the projectile's stance motion value alone (5, not its flat 10)
     const steps = getAshAttack(
       ashes,
       movesets,
@@ -4111,7 +4123,7 @@ describe("Ashes of War", () => {
       "Spinning Strikes (R2 follow-up)",
     ]);
     // Tested in game on a Scythe +25 with 99 in every stat on the training dummy: the spin 717, with
-    // 5.6 poise and 55 blood loss, then its R1 481 and 703, or its R2 589 and 1177
+    // 5.6 stance and 55 blood loss, then its R1 481 and 703, or its R2 589 and 1177
     const weapon = getWeapon("Scythe");
     const build = (choice: string) => {
       const result = getAshAttack(ashes, movesets, weapon, choice, false);
@@ -4152,8 +4164,8 @@ describe("Ashes of War", () => {
 
   it("matches Spinning Weapon in game", () => {
     // Tested in game at +25 with 99 in every stat on the training dummy: on a Longsword 312, 246 five
-    // times, and 312, with 2 poise each; on the Staff of the Guilty 74, 51 five times, and 74, with
-    // 1.2 poise and 22.5 blood loss each
+    // times, and 312, with 2 stance each; on the Staff of the Guilty 74, 51 five times, and 74, with
+    // 1.2 stance and 22.5 blood loss each
     const build = (name: string) => {
       const weapon = getWeapon(name);
       const result = getAshAttack(ashes, movesets, weapon, "Spinning Weapon", false);
@@ -4189,7 +4201,7 @@ describe("Ashes of War", () => {
 
   it("matches Square Off in game", () => {
     // Tested in game on a Bloody Longsword +25 with 99 in every stat on the training dummy: the R1 1149
-    // with 30 poise, the R2 1379 with 40, 2000 with Rellana's Cameo (×1.45), and 118 blood loss each
+    // with 30 stance, the R2 1379 with 40, 2000 with Rellana's Cameo (×1.45), and 118 blood loss each
     const weapon = getWeapon("Bloody Longsword");
     const cameo = getBuffEffects(
       (
@@ -4235,7 +4247,7 @@ describe("Ashes of War", () => {
 
   it("matches Stamp (Upward Cut) in game", () => {
     // Tested in game on Great Stars +25 with 99 in every stat on the training dummy: one hit of 1464,
-    // with 42 poise and 55 blood loss
+    // with 42 stance and 55 blood loss
     const weapon = getWeapon("Great Stars");
     const result = getAshAttack(ashes, movesets, weapon, "Stamp (Upward Cut)", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -4264,7 +4276,7 @@ describe("Ashes of War", () => {
 
   it("matches Stamp (Sweep) in game", () => {
     // Tested in game on Great Stars +25 with 99 in every stat on the training dummy: 601 and 755, with
-    // 10.5 and 17.5 poise and 55 blood loss each
+    // 10.5 and 17.5 stance and 55 blood loss each
     const weapon = getWeapon("Great Stars");
     const result = getAshAttack(ashes, movesets, weapon, "Stamp (Sweep)", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -4298,7 +4310,7 @@ describe("Ashes of War", () => {
 
   it("matches Storm Assault in game", () => {
     // Tested in game on a Bloody Spear +25 with 99 in every stat on the training dummy: a whirlwind
-    // (on the jump or the landing, not both) 231 with 5 poise, and the thrust 1139 with 20 poise and
+    // (on the jump or the landing, not both) 231 with 5 stance, and the thrust 1139 with 20 stance and
     // 118 blood loss; with the Enraged Divine Beast talisman (×1.1 for its storm skills) 254, and 1507
     // in all. Two handed, the whirlwind gets two handing's bonus (238) but the thrust doesn't
     // (isDisableBothHandsAtkBonus), 1139.
@@ -4347,9 +4359,9 @@ describe("Ashes of War", () => {
 
   it("matches Storm Blade in game", () => {
     // Tested in game on a Bloody Longsword +25 with 99 in every stat on the training dummy: the slash
-    // 314 with 3.25 poise and 118 blood loss, and the projectile 832 with 7.5; with the Enraged Divine
+    // 314 with 3.25 stance and 118 blood loss, and the projectile 832 with 7.5; with the Enraged Divine
     // Beast talisman 346 and 915, then 353 and 915, and 359 and 915. It's a chain, each slash firing the projectile: then 320 with 3.3
-    // poise and 832, and 327 with 3.35 poise and 832, looping over those two in game.
+    // stance and 832, and 327 with 3.35 stance and 832, looping over those two in game.
     const weapon = getWeapon("Bloody Longsword");
     const result = getAshAttack(
       ashes,
@@ -4439,7 +4451,7 @@ describe("Ashes of War", () => {
 
   it("matches Storm Stomp in game", () => {
     // Tested in game on a Bloody Longsword +25 with 99 in every stat on the training dummy: one hit of
-    // 216 with 10 poise, 237 with the Enraged Divine Beast talisman
+    // 216 with 10 stance, 237 with the Enraged Divine Beast talisman
     const weapon = getWeapon("Bloody Longsword");
     const result = getAshAttack(ashes, movesets, weapon, "Storm Stomp", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -4528,7 +4540,7 @@ describe("Ashes of War", () => {
       }).attackSteps!.map((step) => step.map((hit) => [hit.damage, hit.stance, hit.status]));
     };
     // Tested in game at +25 with 99 in every stat on the training dummy: on a Longsword 441, 453, and
-    // 472, then 478 and 490, then 508 and 582, with 12 poise for the first hit and 5 for the rest
+    // 472, then 478 and 490, then 508 and 582, with 12 stance for the first hit and 5 for the rest
     expect(
       build("Longsword", "").map((step) => step.map(([damage, stance]) => [damage, stance])),
     ).toEqual([
@@ -4551,7 +4563,7 @@ describe("Ashes of War", () => {
       [AttackPowerType.BLEED]: expect.closeTo(88.3, 1),
     });
     // The whirlwinds alone on a Forked Hatchet: 266, 273, and 284, then 288 and 296, then 191 twice,
-    // 5 poise each
+    // 5 stance each
     expect(build("Forked Hatchet", "AoE only")).toEqual(
       [
         [266, 273, 284],
@@ -4600,7 +4612,7 @@ describe("Ashes of War", () => {
       );
     };
     // Tested in game on a Blood Backhand Blade +25 with 99 in every stat on the training dummy:
-    // uncharged 518 and 712 with 5 poise each, charged 602 with 15 poise and 965 with 5, 118 blood
+    // uncharged 518 and 712 with 5 stance each, charged 602 with 15 stance and 965 with 5, 118 blood
     // loss each; with the Godfrey Icon, charged 692 and 965, and with it and the Shard of Alexander
     // 1760 in all, uncharged 1308 with the Shard (skill buffs don't boost the second slash)
     const shard = getBuffEffects(
@@ -4637,7 +4649,7 @@ describe("Ashes of War", () => {
       { value: withFollowUp("Sword Dance", " chain"), label: "Sword Dance" },
     ]);
     // A single chain entry. Tested in game on a Bloody Longsword +25 with 99 in every stat on the
-    // training dummy: 673 twice with 6 poise, then 861 with 7.5, with 88, 118, and 118 blood loss;
+    // training dummy: 673 twice with 6 stance, then 861 with 7.5, with 88, 118, and 118 blood loss;
     // with the Shard of Alexander 774 twice, then 991
     const weapon = getWeapon("Bloody Longsword");
     const result = getAshAttack(
@@ -4693,7 +4705,7 @@ describe("Ashes of War", () => {
 
   it("matches The Poison Flower Blooms Twice in game", () => {
     // Tested in game on a Longsword +25 with 99 in every stat on the training dummy: the kick 765 with
-    // 11 poise and 160 scarlet rot, and the projectile 300 with 9. On a poisoned or rotted target the
+    // 11 stance and 160 scarlet rot, and the projectile 300 with 9. On a poisoned or rotted target the
     // kick does 5% of its max HP plus 250 instead of the rot (3960 on the dummy's 74212 HP), about
     // 5025 in all in game.
     const weapon = getWeapon("Longsword");
@@ -4760,7 +4772,7 @@ describe("Ashes of War", () => {
 
   it("matches Thunderbolt in game", () => {
     // Tested in game on a Longsword +25 with 99 in every stat on the training dummy: the bolt 554 with
-    // 5 poise, 621 with the Lightning Scorpion Charm (×1.12 lightning)
+    // 5 stance, 621 with the Lightning Scorpion Charm (×1.12 lightning)
     const weapon = getWeapon("Longsword");
     const result = getAshAttack(ashes, movesets, weapon, "Thunderbolt", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -4833,7 +4845,7 @@ describe("Ashes of War", () => {
 
   it("matches Unsheathe in game", () => {
     // Tested in game on an Uchigatana +25 with 99 in every stat on the training dummy: the R1 1109 with
-    // 15 poise, the R2 1430 with 30, and 45 blood loss each
+    // 15 stance, the R2 1430 with 30, and 45 blood loss each
     const weapon = getWeapon("Uchigatana");
     const build = (followUp: string) => {
       const result = getAshAttack(
@@ -4869,7 +4881,7 @@ describe("Ashes of War", () => {
 
   it("matches Vacuum Slice in game", () => {
     // Tested in game on an Uchigatana +25 with 99 in every stat on the training dummy: the slash 385
-    // with 7.5 poise and 45 blood loss, and the projectile 1029 with 20 poise
+    // with 7.5 stance and 45 blood loss, and the projectile 1029 with 20 stance
     const weapon = getWeapon("Uchigatana");
     const result = getAshAttack(ashes, movesets, weapon, "Vacuum Slice", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -5062,16 +5074,16 @@ describe("Ashes of War", () => {
         .attackSteps!.flat()
         .map((hit) => [Math.floor(hit.damage), hit.stance, hit.status]);
     };
-    // The Smithscript Shield's Discus Hurl (+25): 263 and 627, 5 poise each
+    // The Smithscript Shield's Discus Hurl (+25): 263 and 627, 5 stance each
     expect(skillHits("Smithscript Shield", "Discus Hurl")).toEqual([
       [263, 5, {}],
       [627, 5, {}],
     ]);
-    // The Coil Shield's Viper Bite (+10): 638, 11 poise, and 322 poison
+    // The Coil Shield's Viper Bite (+10): 638, 11 stance, and 322 poison
     expect(skillHits("Coil Shield", "Viper Bite")).toEqual([
       [638, 11, { [AttackPowerType.POISON]: 322 }],
     ]);
-    // The Visage Shield's Tongues of Fire (+10): 501 and 13 poise each breath
+    // The Visage Shield's Tongues of Fire (+10): 501 and 13 stance each breath
     expect(skillHits("Visage Shield", "Tongues of Fire")).toEqual([[501, 13, {}]]);
     // The Visage Shield's Tongues of Fire, held: a breath every 60.75 frames (measured; its first 87
     // after L2), each pass of its loop starting with one
@@ -5086,12 +5098,12 @@ describe("Ashes of War", () => {
     expect(tongues.attack.stepTimes![0].hits).toEqual([0]);
     expect(tongues.attack.cycleTimes![0] * 60).toBeCloseTo(60.75, 0);
     // The Shield of Night's Revenge of the Night, and its guard counter on its own, which only does
-    // its bigger hit (tested in game: damage and poise right)
+    // its bigger hit (tested in game: damage and stance right)
     const night = getAshAttacks(ashes, movesets, getWeapon("Shield of Night"), "", false);
     expect(
       night.map(({ ash, variant }) => [
         variant?.label,
-        "attack" in ash ? ash.attack.steps.flat().map((hit) => hit.flatPoise) : [],
+        "attack" in ash ? ash.attack.steps.flat().map((hit) => hit.flatStance) : [],
       ]),
     ).toEqual([
       ["Revenge of the Night", [3]],
@@ -5141,28 +5153,28 @@ describe("Ashes of War", () => {
       [831, "Projectile", false],
       [498, "Explosion", true],
     ]);
-    // The Verdigris Greatshield's Moore's Charge only does poise damage: 30 charged
+    // The Verdigris Greatshield's Moore's Charge only does stance damage: 30 charged
     const moore = getAshAttack(ashes, movesets, getWeapon("Verdigris Greatshield"), "", false);
     if (!("attack" in moore)) throw new Error(moore.unavailableReason);
     expect(
       moore.attack.steps
         .flat()
-        .reduce((total, hit) => total + (moore.attack.poiseBase * hit.poiseMotionValue) / 100, 0),
+        .reduce((total, hit) => total + (moore.attack.stanceBase * hit.stanceMotionValue) / 100, 0),
     ).toBeCloseTo(30);
     expect(skillHits("Verdigris Greatshield", "Moore's Charge").map(([damage]) => damage)).toEqual(
       Array(6).fill(0),
     );
-    // Its hits from its animation, matched by their poise: 72 to 152 frames after L2 (71 to 151 in
+    // Its hits from its animation, matched by their stance: 72 to 152 frames after L2 (71 to 151 in
     // game), used again every 198 (as in game)
     expect(moore.attack.stepTimes![0].hits.map((time) => Math.round(time * 60))).toEqual([
       72, 86, 100, 114, 150, 152,
     ]);
     expect(Math.round(moore.attack.cycleTimes![0] * 60)).toBe(198);
-    // The Madding Hand's Madding Spear-Hand Strike (+10): 730 and 15 poise (its 305 madness untested)
+    // The Madding Hand's Madding Spear-Hand Strike (+10): 730 and 15 stance (its 305 madness untested)
     expect(
-      skillHits("Madding Hand", "Madding Spear-Hand Strike").map(([damage, poise]) => [
+      skillHits("Madding Hand", "Madding Spear-Hand Strike").map(([damage, stance]) => [
         damage,
-        poise,
+        stance,
       ]),
     ).toEqual([[730, 15]]);
     // The Golden Lion Shield's Roaring Bash (+10): 467, its first strike alone
@@ -5177,9 +5189,9 @@ describe("Ashes of War", () => {
       if (!("attack" in result)) throw new Error(result.unavailableReason);
       return result.attack.steps;
     };
-    // Mighty Shot fires an arrow at 153% of its attack (its own judge 811 for arrows), 300% poise
+    // Mighty Shot fires an arrow at 153% of its attack (its own judge 811 for arrows), 300% stance
     const mighty = steps("Longbow", "Mighty Shot");
-    expect(mighty.flat().map((hit) => [hit.motionValue, hit.poiseMotionValue])).toEqual([
+    expect(mighty.flat().map((hit) => [hit.motionValue, hit.stanceMotionValue])).toEqual([
       [153, 300],
     ]);
     // A greatbow's version fires a greatarrow: Rain of Arrows' 50% (70% for arrows), all 12 of its
@@ -5557,7 +5569,7 @@ describe("Ashes of War", () => {
 
   it("matches Aspects of the Crucible: Wings on each weapon class in game", () => {
     // Its versions differ by weapon class. Tested in game on Sacred weapons +25 with 99 in every stat
-    // on the training dummy: a Dagger 1320 with 12 poise, a Broadsword (Straight Sword) 1583 with 20,
+    // on the training dummy: a Dagger 1320 with 12 stance, a Broadsword (Straight Sword) 1583 with 20,
     // a Flamberge (Greatsword) 1816 with 22, a Fire Knight's Greatsword (Colossal Sword) 2089 with 24,
     // and a Twinblade's 8 hits 2014 with 20 in all
     const build = (name: string) => {
@@ -6023,7 +6035,7 @@ describe("Ashes of War", () => {
 
   it("matches Wing Stance in game", () => {
     // Tested in game on a Blood Milady +25 with 99 in every stat on the training dummy: the R1 472, 480,
-    // and 501 with 5.5, 2.75, and 8.25 poise and 94 blood loss each; the R2 1558 with 30.25 poise and
+    // and 501 with 5.5, 2.75, and 8.25 stance and 94 blood loss each; the R2 1558 with 30.25 stance and
     // 118 blood loss
     const weapon = getWeapon("Blood Milady");
     // Timed from the Ash of War's animations (not the Milady's own skill's): its R1 goes on to another
@@ -6078,7 +6090,7 @@ describe("Ashes of War", () => {
   it("matches Glintstone Dart in game", () => {
     // The Glintstone Kris has a chain for its uncharged and charged dart, each then its R2.
     // Tested in game on a Glintstone Kris +10 with 99 in every stat on the training dummy: the dart
-    // 959 with 3 poise or charged 1176 with 5.5, then the R2 746 with 30. With the Godfrey Icon, the
+    // 959 with 3 stance or charged 1176 with 5.5, then the R2 746 with 30. With the Godfrey Icon, the
     // charged dart 1352 (×1.15), the rest the same.
     const weapon = getWeapon("Glintstone Kris");
     const icon = getBuffEffects(
@@ -6124,7 +6136,7 @@ describe("Ashes of War", () => {
 
   it("matches Blade of Gold in game", () => {
     // The Blade of Calling's skill. Tested in game on a Blade of Calling +10 with 99 in every stat on
-    // the training dummy: one hit of 1226 with 10 poise.
+    // the training dummy: one hit of 1226 with 10 stance.
     const weapon = getWeapon("Blade of Calling");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -6149,7 +6161,7 @@ describe("Ashes of War", () => {
 
   it("matches Repeating Thrust on the Scorpion's Stinger in game", () => {
     // Its fixed skill. Tested in game on a Scorpion's Stinger +10 with 99 in every stat on the training
-    // dummy: 320, 209, 209, and 320, with 6, 1.2, 1.2, and 2.4 poise and 50, 25, 25, and 50 scarlet rot
+    // dummy: 320, 209, 209, and 320, with 6, 1.2, 1.2, and 2.4 stance and 50, 25, 25, and 50 scarlet rot
     const weapon = getWeapon("Scorpion's Stinger");
     const result = getAshAttack(ashes, movesets, weapon, "Repeating Thrust", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -6321,7 +6333,7 @@ describe("Ashes of War", () => {
       hits(chain).map((step) => step.map((hit) => Math.floor(hit.damage)));
     expect(damage("R2 chain")).toEqual([[563, 563, 612], [1155]]);
     expect(damage("Charged R2 chain")).toEqual([[681, 681, 720], [1669]]);
-    // Its poise damage and blood loss are right too
+    // Its stance damage and blood loss are right too
     expect(hits("R2 chain").map((step) => step.map((hit) => hit.stance))).toEqual([
       [5.5, 5.5, 8.25],
       [11],
@@ -6333,7 +6345,7 @@ describe("Ashes of War", () => {
 
   it("matches White Light Charge in game", () => {
     // The Ancient Meteoric Ore Greatsword's skill, one chain: the swing, then the projectile. Tested
-    // in game at +10 with 99 in every stat on the training dummy (damage and poise)
+    // in game at +10 with 99 in every stat on the training dummy (damage and stance)
     const weapon = getWeapon("Ancient Meteoric Ore Greatsword");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -6506,7 +6518,7 @@ describe("Ashes of War", () => {
       limits: { ...noLimits, maxLevels: 0 },
       attack: result.attack,
     });
-    // Tested in game at +10 with 99 in every stat on the training dummy: 4135 and 52 poise for the
+    // Tested in game at +10 with 99 in every stat on the training dummy: 4135 and 52 stance for the
     // whole chain, with only #3's last projectile hitting. The small ones are left out, and their
     // damage is in the note.
     const steps = build.attackSteps!;
@@ -6579,7 +6591,7 @@ describe("Ashes of War", () => {
       limits: { ...noLimits, maxLevels: 0 },
       attack: result.attack,
     });
-    // Tested in game at +10 with 99 in every stat on the training dummy (damage and poise)
+    // Tested in game at +10 with 99 in every stat on the training dummy (damage and stance)
     expect(
       build.attackSteps!.map((step) => step.map((hit) => [Math.floor(hit.damage), hit.stance])),
     ).toEqual([
@@ -6594,7 +6606,7 @@ describe("Ashes of War", () => {
 
   it("matches Wolf's Assault in game", () => {
     // The Royal Greatsword's skill. Tested in game at +10 with 99 in every stat on the training dummy
-    // (damage, poise, and frost)
+    // (damage, stance, and frost)
     const weapon = getWeapon("Royal Greatsword");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -6630,7 +6642,7 @@ describe("Ashes of War", () => {
 
   it("matches Wave of Destruction in game", () => {
     // The Ruins Greatsword's skill. Tested in game at +10 with 99 in every stat on the training dummy
-    // (damage and poise)
+    // (damage and stance)
     const weapon = getWeapon("Ruins Greatsword");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -6660,7 +6672,7 @@ describe("Ashes of War", () => {
 
   it("matches Starcaller Cry in game", () => {
     // The Starscourge Greatsword's skill, a chain of two hits. Tested in game at +10 with 99 in every
-    // stat on the training dummy: 685 and 15 poise, then 2461 and 10.2. Its stamina, seen in game: 30
+    // stat on the training dummy: 685 and 15 stance, then 2461 and 10.2. Its stamina, seen in game: 30
     // for each step, #2's two 15 windows at once both charged (different AttackIndex, unlike
     // Great-Serpent Hunt's)
     const weapon = getWeapon("Starscourge Greatsword");
@@ -6693,7 +6705,7 @@ describe("Ashes of War", () => {
 
   it("matches the Troll Knight's Sword's Troll's Roar in game", () => {
     // Its own version of the skill, a chain like the Ash of War's. Tested in game at +10 with 99 in
-    // every stat on the training dummy (damage and poise)
+    // every stat on the training dummy (damage and stance)
     const weapon = getWeapon("Troll Knight's Sword");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -6719,7 +6731,7 @@ describe("Ashes of War", () => {
     expect(
       build.attackSteps!.map((step) => step.map((hit) => [Math.floor(hit.damage), hit.stance])),
     ).toEqual([[[1003, 40]], [[1695, 36]]]);
-    // The Troll's Hammer's, also right in game at +25 with 99 in every stat: 953 with 40 poise, then
+    // The Troll's Hammer's, also right in game at +25 with 99 in every stat: 953 with 40 stance, then
     // 1546 with 45
     const hammer = getWeapon("Troll's Hammer");
     const hammerVariants = getAshAttacks(ashes, movesets, hammer, "Lion's Claw", false);
@@ -6753,7 +6765,7 @@ describe("Ashes of War", () => {
     // upgrades' 202% at +25: 1035. The Boss Arena mod it was tested with gives it the standard
     // scaling instead (10000: physical with Strength and Dexterity only), so the test does too.
     // Vanilla's INT scaling is confirmed at +0 and +24 by the next test.
-    // Tested in game at +25 with 99 in every stat on the training dummy: 795 (damage and poise)
+    // Tested in game at +25 with 99 in every stat on the training dummy: 795 (damage and stance)
     const vanilla = getWeapon("Carian Sorcery Sword");
     expect(vanilla.attackElementCorrect[AttackPowerType.PHYSICAL]).toEqual({
       str: true,
@@ -6886,7 +6898,7 @@ describe("Ashes of War", () => {
   });
 
   it("matches the Frozen Needle's Impaling Thrust in game", () => {
-    // Tested in game at +25 with 99 in every stat on the training dummy (damage, poise, and frost)
+    // Tested in game at +25 with 99 in every stat on the training dummy (damage, stance, and frost)
     const weapon = getWeapon("Frozen Needle");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -6913,7 +6925,7 @@ describe("Ashes of War", () => {
         hit.status[AttackPowerType.FROST],
       ]),
     ).toEqual([[899, 24, 60]]);
-    // The Crystal Spear's, also right in game at +25 with 99 in every stat: 1139 with 30 poise
+    // The Crystal Spear's, also right in game at +25 with 99 in every stat: 1139 with 30 stance
     const crystal = getWeapon("Crystal Spear");
     const crystalResult = getAshAttack(ashes, movesets, crystal, "Lion's Claw", false);
     if (!("attack" in crystalResult)) throw new Error(crystalResult.unavailableReason);
@@ -7027,7 +7039,7 @@ describe("Ashes of War", () => {
 
   it("matches Dynast's Finesse in game", () => {
     // The Bloody Helice's skill, one chain labeled "Follow-up R2": its thrust, then the follow-up R2.
-    // Tested in game at +25 with 99 in every stat on the training dummy (damage, poise, and blood loss)
+    // Tested in game at +25 with 99 in every stat on the training dummy (damage, stance, and blood loss)
     const weapon = getWeapon("Bloody Helice");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants.map(({ variant }) => variant)).toEqual([
@@ -7077,7 +7089,7 @@ describe("Ashes of War", () => {
 
   it("matches Thundercloud Form in game", () => {
     // The Dragon King's Cragblade's skill. Tested in game at +10 with 99 in every stat on the training
-    // dummy: uncharged right as it was (its lightning once), charged 2783 and 45 poise in all (its
+    // dummy: uncharged right as it was (its lightning once), charged 2783 and 45 stance in all (its
     // lightning loops 6 times)
     const weapon = getWeapon("Dragon King's Cragblade");
     const totals = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
@@ -7146,7 +7158,7 @@ describe("Ashes of War", () => {
 
   it("matches Death Flare in game", () => {
     // The Eclipse Shotel's skill, labeled as a follow-up. Tested in game at +25 with 99 in every stat
-    // on the training dummy (damage and poise)
+    // on the training dummy (damage and stance)
     const weapon = getWeapon("Eclipse Shotel");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants.map(({ variant }) => variant)).toEqual([
@@ -7177,8 +7189,8 @@ describe("Ashes of War", () => {
 
   it("matches Revenger's Blade in game", () => {
     // The Falx's skill: its slash, or its charged slash, each followed by its R2. Tested in game at
-    // +25 with 99 in every stat on the training dummy: the slash and R2 right (damage, poise, and
-    // blood loss), the charged slash 1327, 15 poise, and 110 blood loss
+    // +25 with 99 in every stat on the training dummy: the slash and R2 right (damage, stance, and
+    // blood loss), the charged slash 1327, 15 stance, and 110 blood loss
     const weapon = getWeapon("Falx");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -7215,7 +7227,7 @@ describe("Ashes of War", () => {
 
   it("matches Horn Calling in game", () => {
     // The Horned Warrior's Sword's skill: its slash and its projectile. Tested in game at +10 with 99
-    // in every stat on the training dummy (damage and poise)
+    // in every stat on the training dummy (damage and stance)
     const weapon = getWeapon("Horned Warrior's Sword");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -7245,7 +7257,7 @@ describe("Ashes of War", () => {
 
   it("matches Magma Shower in game", () => {
     // The Magma Blade's skill, one chain: its slash and magma, then its follow-up. Tested in game at
-    // +25 with 99 in every stat on the training dummy: poise right, and its magma's pool can hit many
+    // +25 with 99 in every stat on the training dummy: stance right, and its magma's pool can hit many
     // times, counted at the most seen: 1119 for #1, its 619 slash and 4 hits of 125, and 3239 with #2's
     // 346 and 774 and 8 more
     const weapon = getWeapon("Magma Blade");
@@ -7312,7 +7324,7 @@ describe("Ashes of War", () => {
 
   it("matches Flowing Form in game", () => {
     // The Nox Flowing Sword's skill. Tested in game at +25 with 99 in every stat on the training dummy
-    // (damage and poise)
+    // (damage and stance)
     const weapon = getWeapon("Nox Flowing Sword");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -7343,7 +7355,7 @@ describe("Ashes of War", () => {
     // The Spirit Sword's and Spirit Glaive's skill, one chain: its 2 slashes and 2 spirit projectiles,
     // then its follow-up and 3 more. Every hit gets the skill's 20 magic buff. Tested in game on the
     // Spirit Sword +10 with 99 in every stat on the training dummy: the 5 spirits 995 by themselves,
-    // #1 1142, and 2042 with #2 (one spirit missed: 2241 if all hit), and poise right
+    // #1 1142, and 2042 with #2 (one spirit missed: 2241 if all hit), and stance right
     for (const name of ["Spirit Sword", "Spirit Glaive"]) {
       const variants = getAshAttacks(ashes, movesets, getWeapon(name), "Lion's Claw", false);
       expect(variants).toHaveLength(1);
@@ -7427,7 +7439,7 @@ describe("Ashes of War", () => {
 
   it("matches the Wing of Astel's and Bastard's Stars' Nebula in game", () => {
     // Its 11 explosions can each hit, 4 on a human-sized enemy: counted, and noted. Tested in game at
-    // +25 with 99 in every stat on the training dummy: 703 and 13 poise each
+    // +25 with 99 in every stat on the training dummy: 703 and 13 stance each
     const weapon = getWeapon("Wing of Astel");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -7578,7 +7590,7 @@ describe("Ashes of War", () => {
     const total = (step: number[]) => step.reduce((sum, damage) => sum + damage, 0);
     expect(total(steps[0])).toBe(2526);
     expect(total(steps[0]) + total(steps[1])).toBe(4841);
-    // Poise right too, and the lava hits are hits, not damage over time
+    // Stance right too, and the lava hits are hits, not damage over time
     expect(build.attackSteps!.flat().map((hit) => hit.stance)).toEqual([
       16.5, 0, 0, 0, 0, 0, 33, 5.5,
     ]);
@@ -7617,7 +7629,7 @@ describe("Ashes of War", () => {
 
   it("matches Cursed-Blood Slice in game", () => {
     // Morgott's Cursed Sword's skill, one chain: its slash, then its follow-up. Tested in game at +10
-    // with 99 in every stat on the training dummy (damage, poise, and blood loss)
+    // with 99 in every stat on the training dummy (damage, stance, and blood loss)
     const weapon = getWeapon("Morgott's Cursed Sword");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -7655,7 +7667,7 @@ describe("Ashes of War", () => {
 
   it("matches Onyx Lords' Repulsion in game", () => {
     // The Onyx Lord's Greatsword's skill: its swing and one of its three rings. Tested in game at +10
-    // with 99 in every stat on the training dummy (damage and poise)
+    // with 99 in every stat on the training dummy (damage and stance)
     const weapon = getWeapon("Onyx Lord's Greatsword");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -7713,13 +7725,13 @@ describe("Ashes of War", () => {
     ]);
     expect(build.finalValue).toBe(2075);
     expect(build.attackStatus![AttackPowerType.FROST]).toBe(790);
-    // Poise right too: its projectiles' flat poise adds to their motion value's (Revenger's Blade)
+    // Stance right too: its projectiles' flat stance adds to their motion value's (Revenger's Blade)
     expect(build.attackSteps![0].map((hit) => hit.stance)).toEqual([5.5, 7.5, 7.5, 7.5, 7.5, 7.5]);
   });
 
   it("matches Deadly Dance in game", () => {
     // Curseblade's Cirque's skill, one chain: its dance, then its follow-up. Tested in game at +25 with
-    // 99 in every stat on the training dummy (damage, poise, and blood loss)
+    // 99 in every stat on the training dummy (damage, stance, and blood loss)
     const weapon = getWeapon("Curseblade's Cirque");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -7754,7 +7766,7 @@ describe("Ashes of War", () => {
     // The Dragonscale Blade's skill puts the Dragon Halberd's 160 lightning and 80 frost on it. Tested
     // in game at +10 with 99 in every stat on the training dummy: 1792 damage (the stomp lightning
     // 167, 161 here for its 30 flat lightning, not yet explained; the slash and projectile right),
-    // about 148 frost (its slash's own 70 and the buff's), and poise right
+    // about 148 frost (its slash's own 70 and the buff's), and stance right
     const weapon = getWeapon("Dragonscale Blade");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -7781,7 +7793,7 @@ describe("Ashes of War", () => {
   });
 
   it("matches Waterfowl Dance and the Meteoric Ore Blade's Gravitas in game", () => {
-    // Tested in game at +10 with 99 in every stat on the training dummy (damage, poise, and status)
+    // Tested in game at +10 with 99 in every stat on the training dummy (damage, stance, and status)
     const steps = (name: string) => {
       const weapon = getWeapon(name);
       const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
@@ -7849,7 +7861,7 @@ describe("Ashes of War", () => {
 
   it("matches Transient Moonlight in game", () => {
     // Moonveil's skill, its R1 and R2 versions: the slash and its projectile. Tested in game at +10
-    // with 99 in every stat on the training dummy (damage, poise, and blood loss)
+    // with 99 in every stat on the training dummy (damage, stance, and blood loss)
     const weapon = getWeapon("Moonveil");
     const versions = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -7900,7 +7912,7 @@ describe("Ashes of War", () => {
   it("matches Corpse Piler in game", () => {
     // The Rivers of Blood's skill: three steps of slashes, each hitting with the blade or its blood
     // extension, not both (seen in game), so the extensions are left out. Tested in game at +10 with
-    // 99 in every stat on the training dummy: damage and poise right, the first slash about 77 blood
+    // 99 in every stat on the training dummy: damage and stance right, the first slash about 77 blood
     // loss (about 600 for the chain)
     const weapon = getWeapon("Rivers of Blood");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
@@ -7938,7 +7950,7 @@ describe("Ashes of War", () => {
 
   it("matches Onze's Line of Stars in game", () => {
     // The Star-Lined Sword's skill, one chain of its three steps. Tested in game at +25 with 99 in
-    // every stat on the training dummy (damage, poise, and blood loss)
+    // every stat on the training dummy (damage, stance, and blood loss)
     const variants = getAshAttacks(
       ashes,
       movesets,
@@ -7989,7 +8001,7 @@ describe("Ashes of War", () => {
 
   it("matches the Serpentbone Blade's Double Slash in game", () => {
     // Its fixed skill, the Double Slash chain. Tested in game at +25 with 99 in every stat on the
-    // training dummy (damage, poise, and poison)
+    // training dummy (damage, stance, and poison)
     const weapon = getWeapon("Serpentbone Blade");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -8031,7 +8043,7 @@ describe("Ashes of War", () => {
 
   it("matches Witching Hour Slash in game", () => {
     // The Sword of Night's skill, uncharged and charged. Tested in game at +10 with 99 in every stat
-    // on the training dummy (damage, poise, and blood loss), and with the Godfrey Icon, which only
+    // on the training dummy (damage, stance, and blood loss), and with the Godfrey Icon, which only
     // boosts the charged one
     const weapon = getWeapon("Sword of Night");
     const icon = getBuffEffects(
@@ -8176,7 +8188,7 @@ describe("Ashes of War", () => {
   it("matches Euporia Vortex in game", () => {
     // Euporia's skill and its separate Luster Tier 1 and 2 versions, whose first three hits get the
     // luster buff (95 and 120 holy) before the luster runs out. Tested in game on the training dummy,
-    // one handed. At +25 with 99 in every stat: 2040; Luster Tier 1 2530; Tier 2 6921 with 61 poise.
+    // one handed. At +25 with 99 in every stat: 2040; Luster Tier 1 2530; Tier 2 6921 with 61 stance.
     // At 89 Strength and Dexterity and 25 Faith: Tier 1 1676, Tier 2 4416. At +0 with 99 in every
     // stat, Tier 1 hit by hit: a projectile 77, a swing 59, a projectile 77 (87-93 frames after the
     // press, with the buff), then 9, 9 + 7, 9, 9, 7, 9, 9, 7, 11, 7 (projectiles 9, swings 7, the last
@@ -8209,11 +8221,11 @@ describe("Ashes of War", () => {
           label: variant?.label,
           hits: hits.map((hit) => Math.floor(hit.damage)),
           total: hits.reduce((sum, hit) => sum + Math.floor(hit.damage), 0),
-          poise: hits.reduce((sum, hit) => sum + hit.stance, 0),
+          stance: hits.reduce((sum, hit) => sum + hit.stance, 0),
         };
       });
     const all99 = { str: 99, dex: 99, int: 99, fai: 99, arc: 99 };
-    expect(versions(all99).map(({ label, total, poise }) => [label, total, poise])).toEqual([
+    expect(versions(all99).map(({ label, total, stance }) => [label, total, stance])).toEqual([
       ["Euporia Vortex", 2040, 6.25],
       ["Euporia Vortex (Luster Tier 1)", 2530, 21.25],
       ["Euporia Vortex (Luster Tier 2)", 6921, 61],
@@ -8513,7 +8525,7 @@ describe("Ashes of War", () => {
 
   it("matches the Icerind Hatchet's Hoarfrost Stomp in game", () => {
     // Its fixed skill: the ice spikes and the shatter. Tested in game at +25 with 99 in every stat on
-    // the training dummy (damage, poise, and frost)
+    // the training dummy (damage, stance, and frost)
     const weapon = getWeapon("Icerind Hatchet");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -8709,7 +8721,7 @@ describe("Ashes of War", () => {
     // The Stormhawk Axe's skill, one chain of three steps: its lightning strikes only (not its weapon
     // rows), with its 120 lightning buff at their 150% share. Tested in game at +25 on the training
     // dummy: 1470, 2632, and 3882 for the chain with 99 in every stat (#1's strikes 443, 482, 545;
-    // 28.5 poise), and 883 for #1 at 20 Strength and 15 Dexterity
+    // 28.5 stance), and 883 for #1 at 20 Strength and 15 Dexterity
     const weapon = getWeapon("Stormhawk Axe");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -8751,7 +8763,7 @@ describe("Ashes of War", () => {
   it("matches I Command Thee, Kneel! in game", () => {
     // The Axe of Godrick's skill, one chain: each swing hits with the axe or its shockwave, not both,
     // so its shockwaves are counted (less point blank, noted). Tested in game at +25 with 99 in every
-    // stat on the training dummy: #1 1663 at most, 16.5 poise
+    // stat on the training dummy: #1 1663 at most, 16.5 stance
     const weapon = getWeapon("Axe of Godrick");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
@@ -8868,7 +8880,7 @@ describe("Ashes of War", () => {
 
   it("matches Spinning Guillotine in game", () => {
     // The Putrescence Cleaver's skill, and its L2 (repeatable) and R2 follow-ups on their own. Tested in
-    // game at +25 with 99 in every stat on the training dummy (damage, poise, and status)
+    // game at +25 with 99 in every stat on the training dummy (damage, stance, and status)
     const weapon = getWeapon("Putrescence Cleaver");
     const versions = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -9032,7 +9044,7 @@ describe("Ashes of War", () => {
 
   it("matches Gold Breaker, the Nox Flowing Hammer's Flowing Form, and Claw Flick in game", () => {
     // Tested in game at +25 with 99 in every stat on the training dummy (Marika's Hammer and the
-    // Ringed Finger at +10). Claw Flick's first hit only does poise damage (13)
+    // Ringed Finger at +10). Claw Flick's first hit only does stance damage (13)
     const hits = (name: string) => {
       const weapon = getWeapon(name);
       const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
@@ -9118,7 +9130,7 @@ describe("Ashes of War", () => {
 
   it("matches Familial Rancor in game", () => {
     // The Family Heads' skill: 1 large skull, 2 medium, and 4 small. Tested in game at +25 with 99 in
-    // every stat on the training dummy: 1417 and 19.8 poise. It costs no stamina (in game too)
+    // every stat on the training dummy: 1417 and 19.8 stance. It costs no stamina (in game too)
     const weapon = getWeapon("Family Heads");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -9235,7 +9247,7 @@ describe("Ashes of War", () => {
     // Flails' weapon hits get a 12.5% sweet spot bonus. Tested in game at +10 one handed on the
     // training dummy: the first R1 644 and R2 811 with 99 in every stat, 493 and 618 at 99 Dexterity
     // and 21 Faith. Flare, O Serpent's R2 is the flail's R2 with its 90 fire buff and its fire
-    // explosion: 1465 in 2 hits (the explosion 550) and 19 poise
+    // explosion: 1465 in 2 hits (the explosion 550) and 19 stance
     const weapon = getWeapon("Serpent Flail");
     const firstHit = (attack: AttackData, attributes: Attributes) =>
       optimizeBuild({
@@ -9440,7 +9452,7 @@ describe("Ashes of War", () => {
 
   it("matches Shield Strike in game", () => {
     // It's the shield's R1 chain: tested in game two handed with 99 in every stat, with the two handed
-    // R1s' poise: the Carian Thrusting Shield +25's total 2768, and the Heater Shield +25's hits with
+    // R1s' stance: the Carian Thrusting Shield +25's total 2768, and the Heater Shield +25's hits with
     // the Two-Handed Sword Talisman (×1.15 for two handed attacks)
     const allBuffs = JSON.parse(
       readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"),
@@ -9538,7 +9550,7 @@ describe("Ashes of War", () => {
 
   it("matches Regal Beastclaw in game", () => {
     // The Beastclaw Greathammer's fixed skill: its swing and its claw projectile. Tested in game at
-    // +10 with 99 in every stat on a 123.2 defense target: 588 with 7 poise, then 1946 with 20
+    // +10 with 99 in every stat on a 123.2 defense target: 588 with 7 stance, then 1946 with 20
     const weapon = getWeapon("Beastclaw Greathammer");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -9581,7 +9593,7 @@ describe("Ashes of War", () => {
 
   it("matches Surge of Faith in game", () => {
     // The Cranial Vessel Candlestand's fixed skill, a chain: a slam and an explosion, then the
-    // explosion again. Tested in game at +10 with 99 in every stat: the slam 13 with 9.1 poise, the
+    // explosion again. Tested in game at +10 with 99 in every stat: the slam 13 with 9.1 stance, the
     // explosion 1647 with 10.5, and its random small projectiles 336 with 4.9 each (at least 10 hit),
     // left out of the total
     const weapon = getWeapon("Cranial Vessel Candlestand");
@@ -9621,7 +9633,7 @@ describe("Ashes of War", () => {
 
   it("matches Devourer of Worlds in game", () => {
     // The Devourer's Scepter's fixed skill, its fire projectile. Tested in game at +10 with 99 in every
-    // stat on a 123.2 defense target: 463 with 12.9 poise
+    // stat on a 123.2 defense target: 463 with 12.9 stance
     const weapon = getWeapon("Devourer's Scepter");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -9650,7 +9662,7 @@ describe("Ashes of War", () => {
   it("matches Bubble Shower in game", () => {
     // The Envoy's Long Horn's fixed skill: its bubbles, 6 of which usually hit a human-sized enemy (at
     // most 17 seen on Dragonlord Placidusax). Tested in game at +10 with 99 in every stat on a 123.2
-    // defense target: 182 damage and 1.9 poise each, 1092 for the usual 6
+    // defense target: 182 damage and 1.9 stance each, 1092 for the usual 6
     const weapon = getWeapon("Envoy's Long Horn");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -9681,7 +9693,7 @@ describe("Ashes of War", () => {
 
   it("matches Smithing Art Spears in game", () => {
     // The Anvil Hammer's fixed skill: its slam, then its spears and their second hit. Tested in game at
-    // +10 with 99 in every stat on a 123.2 defense target: 964 with 15 poise, 1404 with 30, and 455
+    // +10 with 99 in every stat on a 123.2 defense target: 964 with 15 stance, 1404 with 30, and 455
     const weapon = getWeapon("Anvil Hammer");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -9716,7 +9728,7 @@ describe("Ashes of War", () => {
   it("matches Regal Roar in game", () => {
     // The Axe of Godfrey's fixed skill: its roar, then its slam's shockwave. Its buff applies to the
     // skill itself, so roaring again with it does more. Its R2s with the buff are its R2 chains.
-    // Tested in game at +10 with 99 in every stat on a 123.2 defense target: the roar 3 poise, the
+    // Tested in game at +10 with 99 in every stat on a 123.2 defense target: the roar 3 stance, the
     // shockwave 1774 with 18, and 1946 roaring again
     const weapon = getWeapon("Axe of Godfrey");
     const allBuffs = JSON.parse(
@@ -9774,7 +9786,7 @@ describe("Ashes of War", () => {
   it("matches Devonia's Vortex in game", () => {
     // Devonia's Hammer's fixed skill, uncharged and charged: a swing, its first projectile (twice
     // charged), and its second. Tested in game at +10 with 99 in every stat on a 123.2 defense target:
-    // uncharged 2265 with 37.5 poise, charged 3504 with 52.5. The uncharged hits are 376.95 (physical
+    // uncharged 2265 with 37.5 stance, charged 3504 with 52.5. The uncharged hits are 376.95 (physical
     // and holy), which the game shows as 377 (see the stacked buff rounding note: the calculator
     // floors them, 2263)
     const weapon = getWeapon("Devonia's Hammer");
@@ -9814,7 +9826,7 @@ describe("Ashes of War", () => {
 
   it("matches Gravity Bolt in game", () => {
     // The Fallingstar Beast Jaw's fixed skill, one bolt a cast: it can be chain cast, but one cast is
-    // counted. Tested in game at +10 with 99 in every stat on a 123.2 defense target: 1054 and 7 poise
+    // counted. Tested in game at +10 with 99 in every stat on a 123.2 defense target: 1054 and 7 stance
     const weapon = getWeapon("Fallingstar Beast Jaw");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -9885,7 +9897,7 @@ describe("Ashes of War", () => {
     // first loop's 8 hits) is counted once, then one pass of its loop (8 hits), the only part repeated
     // for values per second. Tested in game at +10 with 99 in every stat on the training dummy, 194 a
     // hit, L2 at 1056: the downswing at 1089, its other hits at 1149-1244, then 8 hits every 60
-    // frames from 1249 (39 hits by 1429). Poise: 19.5 for an earlier test's 26 hits. Rolled out of as
+    // frames from 1249 (39 hits by 1429). Stance: 19.5 for an earlier test's 26 hits. Rolled out of as
     // soon as possible, the roll visibly started 83 frames after the downswing: its window opens 76
     // after it here (a roll shows a few frames after it takes effect, as for Euporia Vortex)
     const weapon = getWeapon("Ghiza's Wheel");
@@ -9931,7 +9943,7 @@ describe("Ashes of War", () => {
 
   it("hits once a headbutt with Shadow Sunflower Headbutt", () => {
     // The Shadow Sunflower Blossom's fixed skill, a chain of three headbutts (two hits in #2), each
-    // hitting with its head or the AoE around it, not both (tested in game: damage and poise right)
+    // hitting with its head or the AoE around it, not both (tested in game: damage and stance right)
     const weapon = getWeapon("Shadow Sunflower Blossom");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -9980,7 +9992,7 @@ describe("Ashes of War", () => {
 
   it("matches Ancient Lightning Spear in game", () => {
     // The Bolt of Gransax's fixed skill, uncharged and charged. Tested in game at +10 with 99 in every
-    // stat on a 123.2 defense target: 1061 and 1459, each with 7.5 poise
+    // stat on a 123.2 defense target: 1061 and 1459, each with 7.5 stance
     const weapon = getWeapon("Bolt of Gransax");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -10016,7 +10028,7 @@ describe("Ashes of War", () => {
 
   it("matches Sacred Phalanx in game", () => {
     // The Cleanrot Spear's fixed skill: its thrust and its holy spears. Tested in game at +25 with 99 in
-    // every stat on a 123.2 defense target: 911 and 1055, each with 10 poise
+    // every stat on a 123.2 defense target: 911 and 1055, each with 10 stance
     const weapon = getWeapon("Cleanrot Spear");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -10078,7 +10090,7 @@ describe("Ashes of War", () => {
 
   it("matches the spears' fixed Charge Forth in game", () => {
     // Four hits as it charges, then its final thrust. Tested in game at +25 with 99 in every stat on a
-    // 123.2 defense target (damage and poise)
+    // 123.2 defense target (damage and stance)
     const hits = (name: string) => {
       const weapon = getWeapon(name);
       const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
@@ -10112,7 +10124,7 @@ describe("Ashes of War", () => {
 
   it("matches Jori's Inquisition in game", () => {
     // The Barbed Staff-Spear's fixed skill only hits with its bullet, 5 times. Tested in game at +25
-    // with 99 in every stat on a 123.2 defense target: 2300, 15 poise, and about 130 blood loss
+    // with 99 in every stat on a 123.2 defense target: 2300, 15 stance, and about 130 blood loss
     const weapon = getWeapon("Barbed Staff-Spear");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -10143,7 +10155,7 @@ describe("Ashes of War", () => {
   it("chains Bloodfiends' Bloodboon's bullets", () => {
     // The Bloodfiend's Sacred Spear's fixed skill, a chain whose bullets hit several times, reportedly
     // up to 4, 4, and 8 (tested in game: 2 or 3 for #1 and #2, and at least 5 for #3); at +25 with 99 in
-    // every stat on a 123.2 defense target, 176 damage, 3 poise, and about 71 blood loss each
+    // every stat on a 123.2 defense target, 176 damage, 3 stance, and about 71 blood loss each
     const weapon = getWeapon("Bloodfiend's Sacred Spear");
     expect(
       getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(({ ash }) =>
@@ -10266,7 +10278,7 @@ describe("Ashes of War", () => {
 
   it("matches Great-Serpent Hunt in game", () => {
     // The Serpent-Hunter's fixed skill, a chain of two thrusts. Tested in game at +25 with 99 in every
-    // stat on a 123.2 defense target: 2075, then 2195 (damage and poise). Its timing, tested in game:
+    // stat on a 123.2 defense target: 2075, then 2195 (damage and stance). Its timing, tested in game:
     // hits 154 and 257 frames after the L2 (154 and 258 here), the next chain's first hit 517 (518).
     // Its stamina, seen in game: 77 for the chain, each thrust's 30 and 40 once at the weapon's 1.12
     // rate, each rounded down (33 and 44), not again for the "?" rows' windows alongside them
@@ -10548,7 +10560,7 @@ describe("Ashes of War", () => {
 
   it("matches Angel's Wings in game", () => {
     // The Winged Scythe's fixed skill. Tested in game at +25 with 99 in every stat on a 123.2 defense
-    // target: 548 with 10 poise, and 1211 with 19.5
+    // target: 548 with 10 stance, and 1211 with 19.5
     const weapon = getWeapon("Winged Scythe");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -10591,7 +10603,7 @@ describe("Ashes of War", () => {
 
   it("matches Flame Dance in game", () => {
     // The Giant's Red Braid's fixed skill: 4 spins, then its last. Tested in game at +25 with 99 in every
-    // stat on a 123.2 defense target: 447 each, then 627, each with 4 poise
+    // stat on a 123.2 defense target: 447 each, then 627, each with 4 stance
     const weapon = getWeapon("Giant's Red Braid");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -10625,7 +10637,7 @@ describe("Ashes of War", () => {
   it("matches Sea of Magma in game", () => {
     // The Magma Whip Candlestick's fixed skill, counted without looping: one lash of its start, its
     // final lash, and 3 magma ticks; a loop's lash and tick are shown but not counted. Tested in game at
-    // +25 with 99 in every stat on a 123.2 defense target: 2195 and 8 poise (sometimes 2538, a 4th tick),
+    // +25 with 99 in every stat on a 123.2 defense target: 2195 and 8 stance (sometimes 2538, a 4th tick),
     // 2989 with a loop, and 3783 with two
     const weapon = getWeapon("Magma Whip Candlestick");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
@@ -10703,7 +10715,7 @@ describe("Ashes of War", () => {
 
   it("matches Bear Witness! in game", () => {
     // The Grafted Dragon's fixed skill: its fire and explosion, and 18 projectiles that land at random,
-    // noted. Tested in game at +25 with 99 in every stat on a 123.2 defense target: 1282 and 10 poise;
+    // noted. Tested in game at +25 with 99 in every stat on a 123.2 defense target: 1282 and 10 stance;
     // up close its windup's weapon hit (238) and the fire twice, 442
     const weapon = getWeapon("Grafted Dragon");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
@@ -10741,7 +10753,7 @@ describe("Ashes of War", () => {
 
   it("matches Madding and Poison Spear-Hand Strike in game", () => {
     // The Madding Hand's and Poisoned Hand's fixed skills. Tested in game at +25 (+10 for the somber
-    // Poisoned Hand) with 99 in every stat on a 123.2 defense target, each with 15 poise: the Madding
+    // Poisoned Hand) with 99 in every stat on a 123.2 defense target, each with 15 stance: the Madding
     // Hand's 730, and the Poisoned Hand's 733, with its instant deadly poison proc's first tick (0.14%
     // of the training dummy's 74212 HP plus 14, 117) on top of the hit's 616
     const hit = (name: string) => {
@@ -10773,7 +10785,7 @@ describe("Ashes of War", () => {
   });
   it("matches the Fire Knight's Fire Greatsword's Flame of the Redmanes in game", () => {
     // The Ash of War on a Fire Knight's Greatsword (Colossal Sword) with the Fire affinity. Tested in
-    // game at +25 with 99 in every stat on the training dummy: 988 with 10 poise
+    // game at +25 with 99 in every stat on the training dummy: 988 with 10 stance
     const weapon = getWeapon("Fire Knight's Fire Greatsword");
     const result = getAshAttack(ashes, movesets, weapon, "Flame of the Redmanes", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -10801,7 +10813,7 @@ describe("Ashes of War", () => {
   it("matches Sleep Evermore in game", () => {
     // Thiollier's Hidden Needle's fixed skill, on an awake or sleeping target: on a sleeping one it also
     // does 6.5% of the target's max HP plus 300. Tested in game at +25 with 99 in every stat on a 123.2
-    // defense target: 714 and 15 poise, and its sleep; 5837 on the sleeping training dummy
+    // defense target: 714 and 15 stance, and its sleep; 5837 on the sleeping training dummy
     const weapon = getWeapon("Thiollier's Hidden Needle");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -10835,7 +10847,7 @@ describe("Ashes of War", () => {
 
   it("matches Storm Kick in game", () => {
     // The Veteran's Prosthesis's fixed skill, a chain of its kick and its R2 follow-up. Tested in game
-    // at +10 with 99 in every stat on a 123.2 defense target: 1006 and 10 poise, then 1506 and 25 (its
+    // at +10 with 99 in every stat on a 123.2 defense target: 1006 and 10 stance, then 1506 and 25 (its
     // wind and the R2's lightning not hitting)
     const weapon = getWeapon("Veteran's Prosthesis");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
@@ -10868,7 +10880,7 @@ describe("Ashes of War", () => {
 
   it("matches the Claws of Night's Scattershot in game", () => {
     // Its fixed Scattershot (Claws), which the sheet lists as Scattershot Throw: 4 claws. Tested in
-    // game at +25 with 99 in every stat on a 123.2 defense target: 1296, 11.2 poise, and about 124
+    // game at +25 with 99 in every stat on a 123.2 defense target: 1296, 11.2 stance, and about 124
     // blood loss
     const weapon = getWeapon("Claws of Night");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
@@ -10975,7 +10987,7 @@ describe("Ashes of War", () => {
 
   it("matches Feeble Lord's Frenzied Flame in game", () => {
     // Nanaya's Torch's fixed skill. Tested in game at +25 with 99 in every stat on a 123.2 defense
-    // target: 80 with 1 poise
+    // target: 80 with 1 stance
     const weapon = getWeapon("Nanaya's Torch");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -11092,7 +11104,7 @@ describe("Ashes of War", () => {
 
   it("matches Reduvia Blood Blade in game", () => {
     // Its fixed skill. Tested in game on a Reduvia +25 with 99 in every stat on the training dummy: the
-    // slash 208 with 1.65 poise and 209 blood loss, and the projectile 683 with 3 poise and 179
+    // slash 208 with 1.65 stance and 209 blood loss, and the projectile 683 with 3 stance and 179
     const weapon = getWeapon("Reduvia");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -11137,7 +11149,7 @@ describe("Ashes of War", () => {
     // Tested in game on the Sword of Night and Flame +10 with 99 in every stat on the training dummy:
     // the R2 2595, its swing 719 and one fire burst 1876 (its two fire rows hit one or the other); the
     // R1 3175, its swing 650, the point blank burst 195, the beam's loops 321 six times, and its final
-    // hit 404, and 49.5 poise in all (with 3 poise-only hits of 5). The R2's stamina 25: its swing's
+    // hit 404, and 49.5 stance in all (with 3 stance-only hits of 5). The R2's stamina 25: its swing's
     // window's, not the 45 of an empty attack's window alongside it
     const weapon = getWeapon("Sword of Night and Flame");
     const getAsh = (followUp: string) => {
@@ -11178,8 +11190,8 @@ describe("Ashes of War", () => {
 
   it("matches Golden Tempering in game", () => {
     // The Ornamental Straight Sword's skill puts 100 holy on it for its R2s. Tested in game on a +25
-    // with 99 in every stat on the training dummy: the R2 1048 with 10 poise (1046 here: each hit is
-    // 523.97, 495.49 physical and 28.48 holy, rounded down, where the game shows 524), and the fully charged R2 3282 with 50 poise (5 thrusts with each hand, 200 each, then the
+    // with 99 in every stat on the training dummy: the R2 1048 with 10 stance (1046 here: each hit is
+    // 523.97, 495.49 physical and 28.48 holy, rounded down, where the game shows 524), and the fully charged R2 3282 with 50 stance (5 thrusts with each hand, 200 each, then the
     // final hits, 641 each)
     const weapon = getWeapon("Ornamental Straight Sword");
     const results = Object.fromEntries(
@@ -11211,7 +11223,7 @@ describe("Ashes of War", () => {
 
   it("matches Eochaid's Dancing Blade in game", () => {
     // The Regalia of Eochaid's skill. Tested in game on a +10 with 99 in every stat on the training
-    // dummy: charged 2834 with 35.5 poise; uncharged 1933 with 23.5 (1926 here: its seven small hits
+    // dummy: charged 2834 with 35.5 stance; uncharged 1933 with 23.5 (1926 here: its seven small hits
     // are each 129.976, rounded down, where the game shows 130)
     const weapon = getWeapon("Regalia of Eochaid");
     const results = Object.fromEntries(
@@ -11243,7 +11255,7 @@ describe("Ashes of War", () => {
 
   it("matches the Carian Knight's Sword's skill in game", () => {
     // Its fixed Carian Grandeur. Tested in game on a Carian Knight's Sword +25 with 99 in every stat on
-    // the training dummy: level 1 1148 with 20 poise, level 2 1644 with 30, level 3 2088 with 45, and
+    // the training dummy: level 1 1148 with 20 stance, level 2 1644 with 30, level 3 2088 with 45, and
     // with the Godfrey Icon only level 3 changes, 2401
     const weapon = getWeapon("Carian Knight's Sword");
     const icon = getBuffEffects(
@@ -11414,7 +11426,7 @@ describe("Ashes of War", () => {
 
   it("matches Taker's Flames in game", () => {
     // The Blasphemous Blade's fixed skill. Tested in game on a +10 with 99 in every stat on the training
-    // dummy: the swing 478 with 8.25 poise and the flames 1666 with 15.95; with the Talisman of the
+    // dummy: the swing 478 with 8.25 stance and the flames 1666 with 15.95; with the Talisman of the
     // Dread (×1.15 for its category 123 hits) the flames 1916
     const weapon = getWeapon("Blasphemous Blade");
     const icon = getBuffEffects(
@@ -11470,7 +11482,7 @@ describe("Ashes of War", () => {
 
   it("matches Ordovis's Vortex in game", () => {
     // Ordovis's Greatsword's fixed skill. Tested in game on a +10 with 99 in every stat on the training
-    // dummy: uncharged 1242 and 540 with 11 and 8.25 poise; charged 1294 with 33, 438 twice, and 540,
+    // dummy: uncharged 1242 and 540 with 11 and 8.25 stance; charged 1294 with 33, 438 twice, and 540,
     // with 11 each
     const weapon = getWeapon("Ordovis's Greatsword");
     const build = (buffs: BuffEffect[] = []) =>
@@ -11519,7 +11531,7 @@ describe("Ashes of War", () => {
 
   it("matches the Marais Executioner's Sword's skill in game", () => {
     // Its fixed Eochaid's Dancing Blade. Tested in game on a +10 with 99 in every stat on the training
-    // dummy, damage and poise uncharged and charged, and with the Godfrey Icon (only the charged one
+    // dummy, damage and stance uncharged and charged, and with the Godfrey Icon (only the charged one
     // changes)
     const weapon = getWeapon("Marais Executioner's Sword");
     const icon = getBuffEffects(
@@ -11571,7 +11583,7 @@ describe("Ashes of War", () => {
 
   it("matches the Crystal Sword's skill in game", () => {
     // Its fixed Spinning Slash chain. Tested in game on a Crystal Sword +10 with 99 in every stat on
-    // the training dummy: 681 with 14.5 poise, then 337 with 4.5 and 719 with 14.5
+    // the training dummy: 681 with 14.5 stance, then 337 with 4.5 and 719 with 14.5
     const weapon = getWeapon("Crystal Sword");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -11613,7 +11625,7 @@ describe("Ashes of War", () => {
 
   it("matches Solitary Moon Slash in game", () => {
     // The Greatsword of Solitude's fixed skill, a chain. Tested in game on a +10 with 99 in every stat
-    // on the training dummy: 324 and 993, then 1299 (its startup stagger adds poise, 5.5 here)
+    // on the training dummy: 324 and 993, then 1299 (its startup stagger adds stance, 5.5 here)
     const weapon = getWeapon("Greatsword of Solitude");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -11658,7 +11670,7 @@ describe("Ashes of War", () => {
 
   it("matches Alabaster Lords' Pull in game", () => {
     // Its fixed skill hits with the thrust and one of its rings (the outer one). Tested in game on a
-    // +10 with 99 in every stat on the training dummy: 1726 with 25.5 poise.
+    // +10 with 99 in every stat on the training dummy: 1726 with 25.5 stance.
     const weapon = getWeapon("Alabaster Lord's Sword");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -11699,7 +11711,7 @@ describe("Ashes of War", () => {
 
   it("matches Ghostflame Ignition in game", () => {
     // The Death's Poker's fixed skill, without a follow-up. Tested in game on a +10 with 99 in every
-    // stat on the training dummy: 1504 (4 ticks of 209 and the explosion 668), 15.5 poise (the thrust
+    // stat on the training dummy: 1504 (4 ticks of 209 and the explosion 668), 15.5 stance (the thrust
     // 5.5), and about 660 frost (665 here: the thrust's 65, 120 a tick, and 120)
     const weapon = getWeapon("Death's Poker");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false, 0.5, true);
@@ -11747,7 +11759,7 @@ describe("Ashes of War", () => {
       limits: { ...noLimits, maxLevels: 0 },
       attack: r1.attack,
     });
-    // With the R1 follow-up: 5318 with 26 poise, and about 2000 frost as it decays (2095 here)
+    // With the R1 follow-up: 5318 with 26 stance, and about 2000 frost as it decays (2095 here)
     expect([r1Build.finalValue, r1Build.attackStance]).toEqual([5318, 26]);
     expect(r1Build.attackStatus![AttackPowerType.FROST]).toBe(2095);
     const r2 = variants.find(({ variant }) => variant?.short === "with R2 follow-up")!.ash;
@@ -11768,14 +11780,14 @@ describe("Ashes of War", () => {
       limits: { ...noLimits, maxLevels: 0 },
       attack: r2.attack,
     });
-    // With the R2 follow-up: 2483 with 32 poise (the R2's swing 5.5), and about 860 frost (875 here)
+    // With the R2 follow-up: 2483 with 32 stance (the R2's swing 5.5), and about 860 frost (875 here)
     expect([r2Build.finalValue, r2Build.attackStance]).toEqual([2483, 32]);
     expect(r2Build.attackStatus![AttackPowerType.FROST]).toBe(875);
   });
 
   it("matches Wave of Gold in game", () => {
     // The Sacred Relic Sword's fixed skill hits once. Tested in game on a +10 with 99 in every stat on
-    // the training dummy: 1483 with 6 poise.
+    // the training dummy: 1483 with 6 stance.
     const weapon = getWeapon("Sacred Relic Sword");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -11849,7 +11861,7 @@ describe("Ashes of War", () => {
 
   it("matches Needle Piercer in game", () => {
     // Leda's Sword's fixed skill. Tested in game on a +10 with 99 in every stat on the training dummy:
-    // the thrust 448, then 10 needles, all of which can hit, 157 each (1570 with 11 poise)
+    // the thrust 448, then 10 needles, all of which can hit, 157 each (1570 with 11 stance)
     const weapon = getWeapon("Leda's Sword");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -11915,7 +11927,7 @@ describe("Ashes of War", () => {
 
   it("matches Mists of Slumber in game", () => {
     // The Sword of St. Trina's skill puts a sleep buff on it (1881: 20 a hit). Tested in game on a +10
-    // with 99 in every stat on the training dummy: 907 with 6.5 poise, and about 241 sleep at once: the
+    // with 99 in every stat on the training dummy: 907 with 6.5 stance, and about 241 sleep at once: the
     // swing's 86 (its own 66 and the buff's 20) and its cloud's 156 (90 and the sword's 66), 242 here
     const weapon = getWeapon("Sword of St. Trina");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
@@ -11960,7 +11972,7 @@ describe("Ashes of War", () => {
   it("matches Mists of Eternal Sleep in game", () => {
     // The Velvet Sword of St. Trina's skill puts a sleep buff on it (20001031: 15 a hit) and releases a
     // cloud. Tested in game on a +10 with 99 in every stat on the training dummy: the swing 863 with 6.5
-    // poise, and the cloud 112 sleep (70 and the sword's own 42)
+    // stance, and the cloud 112 sleep (70 and the sword's own 42)
     const weapon = getWeapon("Velvet Sword of St. Trina");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -12003,7 +12015,7 @@ describe("Ashes of War", () => {
 
   it("matches the Stone-Sheathed Sword's skill in game", () => {
     // Its fixed Square Off. Tested in game on a Stone-Sheathed Sword +25 with 99 in every stat on the
-    // training dummy: the R1 1032 with 30 poise, the R2 1239 with 40
+    // training dummy: the R1 1032 with 30 stance, the R2 1239 with 40
     const weapon = getWeapon("Stone-Sheathed Sword");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -12037,7 +12049,7 @@ describe("Ashes of War", () => {
 
   it("matches Unblockable Blade in game", () => {
     // The Coded Sword's fixed skill. Tested in game on a Coded Sword (fully upgraded) with 99 in every
-    // stat on the training dummy: one hit of 1269 with 30 poise
+    // stat on the training dummy: one hit of 1269 with 30 stance
     const weapon = getWeapon("Coded Sword");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -12064,7 +12076,7 @@ describe("Ashes of War", () => {
       },
     );
     expect(results).toEqual([[undefined, [[[1269, 30]]]]]);
-    // The Cipher Pata's, also right in game fully upgraded with 99 in every stat: 1358 with 30 poise
+    // The Cipher Pata's, also right in game fully upgraded with 99 in every stat: 1358 with 30 stance
     const pata = getWeapon("Cipher Pata");
     const pataResult = getAshAttack(ashes, movesets, pata, "Lion's Claw", false);
     if (!("attack" in pataResult)) throw new Error(pataResult.unavailableReason);
@@ -12092,7 +12104,7 @@ describe("Ashes of War", () => {
 
   it("matches the Miquellan Knight's Sword's skill in game", () => {
     // Its fixed Sacred Blade. Tested in game on a Miquellan Knight's Sword +10 with 99 in every stat on
-    // the training dummy: the slash 394 with 5 poise (with the skill's 90 holy buff), the projectile
+    // the training dummy: the slash 394 with 5 stance (with the skill's 90 holy buff), the projectile
     // 939 with 13
     const weapon = getWeapon("Miquellan Knight's Sword");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
@@ -12134,7 +12146,7 @@ describe("Ashes of War", () => {
 
   it("matches the Sword of Darkness's skill in game", () => {
     // Its fixed Darkness. Tested in game on a Sword of Darkness +10 with 99 in every stat on the
-    // training dummy: one hit of 1578 with 20 poise
+    // training dummy: one hit of 1578 with 20 stance
     const weapon = getWeapon("Sword of Darkness");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
       ({ ash, variant }) => {
@@ -12165,7 +12177,7 @@ describe("Ashes of War", () => {
 
   it("matches the Rotten Crystal Sword's skill in game", () => {
     // Its fixed Spinning Slash chain. Tested in game on a Rotten Crystal Sword +10 with 99 in every
-    // stat on the training dummy: 647, then 319 and 683, with 14.5, 4.5, and 14.5 poise and 32.5, 25,
+    // stat on the training dummy: 647, then 319 and 683, with 14.5, 4.5, and 14.5 stance and 32.5, 25,
     // and 35 scarlet rot
     const weapon = getWeapon("Rotten Crystal Sword");
     const results = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).map(
@@ -12271,7 +12283,7 @@ describe("Ashes of War", () => {
   it("matches Golden Crux in game", () => {
     // The Greatsword of Damnation's fixed skill: a chain of its thrust and bullet, and a version of
     // its grab, which only NPCs take. Tested in game on a +10 with 99 in every stat: on the training
-    // dummy 1137 then 1386 (16.5 poise each); on Sir Gideon Ofnir (the Ashen Capital's) the grab 1810.
+    // dummy 1137 then 1386 (16.5 stance each); on Sir Gideon Ofnir (the Ashen Capital's) the grab 1810.
     const weapon = getWeapon("Greatsword of Damnation");
     const build = (attack: AttackData, gideon: boolean) => {
       const defense = [105.5, 139.1, 129.5, 103.1, 110.3];
@@ -12313,7 +12325,7 @@ describe("Ashes of War", () => {
 
   it("matches Savage Claws in game", () => {
     // Tested in game on the Beast Claw (fully upgraded) with 99 in every stat on the training dummy:
-    // 325, 330, 289, 294, 299, and 442, with 4, 4, 2, 2, 2, and 8 poise and 27 blood loss each
+    // 325, 330, 289, 294, 299, and 442, with 4, 4, 2, 2, 2, and 8 stance and 27 blood loss each
     const weapon = getWeapon("Beast Claw");
     const result = getAshAttack(ashes, movesets, weapon, "Savage Claws", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -12347,7 +12359,7 @@ describe("Ashes of War", () => {
 
   it("matches Sacred Ring of Light in game", () => {
     // Tested in game on a Scythe +25 with 99 in every stat on the training dummy: the swing 348 and
-    // the ring 620, with 5 and 3 poise
+    // the ring 620, with 5 and 3 stance
     const weapon = getWeapon("Scythe");
     const result = getAshAttack(ashes, movesets, weapon, "Sacred Ring of Light", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -12412,7 +12424,7 @@ describe("Ashes of War", () => {
       (row) => row.damageType === AttackPowerType.HOLY,
     )!;
     expect([holy.buff, holy.total]).toEqual([90, 90]);
-    // The Inseparable Sword +10 (tested in game, damage and poise): 524 and 939, 18.5 poise
+    // The Inseparable Sword +10 (tested in game, damage and stance): 524 and 939, 18.5 stance
     const inseparable = sacredBladeBuild("Inseparable Sword");
     expect(inseparable.attackSteps![0].map((hit) => Math.floor(hit.damage))).toEqual([524, 939]);
     expect(inseparable.finalValue).toBe(1463);
@@ -12631,8 +12643,8 @@ describe("Ashes of War", () => {
     );
     if (!("attack" in result)) throw new Error(result.unavailableReason);
     expect(result.attack.stepLabels).toEqual(["War Cry Charged R2 #1", "Charged R2 #2"]);
-    // The running charge's poise is one hit in game: 3 in #1, 2 in #2
-    expect(result.attack.steps.map((step) => step.map((hit) => hit.flatPoise))).toEqual([
+    // The running charge's stance is one hit in game: 3 in #1, 2 in #2
+    expect(result.attack.steps.map((step) => step.map((hit) => hit.flatStance))).toEqual([
       [3, undefined],
       [2, undefined],
     ]);
@@ -12682,8 +12694,8 @@ describe("Ashes of War", () => {
     ).toEqual({ unavailableReason: "Two handed only" });
 
     // Barbaric Roar's Fist and Hand-to-Hand versions, two handed with the Roar Medallion (×1.15 for
-    // roar attacks): its charged R2 #1 does 1875 with 27 poise on a Golem Fist, 1668 on an Iron Ball,
-    // and 1497 with 21.6 poise with Dryleaf Arts in game, each of its three hits the same (fitted: the
+    // roar attacks): its charged R2 #1 does 1875 with 27 stance on a Golem Fist, 1668 on an Iron Ball,
+    // and 1497 with 21.6 stance with Dryleaf Arts in game, each of its three hits the same (fitted: the
     // data's third hit is higher). The Claw version's third hit is higher, as the data says (tested
     // on the Hookclaws, 505, 505, and 598)
     const buffList = JSON.parse(
@@ -12766,8 +12778,8 @@ describe("Ashes of War", () => {
     expect(r2Damage(r2, getBuffEffects([warCry], 3))).toBeGreaterThan(r2Damage(r2, rateOnly));
   });
 
-  it("adds skills' flat poise damage", () => {
-    // Tested in game: Sacred Blade's projectile does 13 poise damage from a Longsword +25
+  it("adds skills' flat stance damage", () => {
+    // Tested in game: Sacred Blade's projectile does 13 stance damage from a Longsword +25
     const longsword = getWeapon("Longsword");
     const result = getAshAttack(ashes, movesets, longsword, "Sacred Blade", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -12924,7 +12936,7 @@ describe("powerstance off hand weapons", () => {
         offhand: {
           weapon: getWeapon(offhand.name),
           regularUpgradeLevel: offhand.regularUpgradeLevel ?? 25,
-          poiseBase: movesets[getWeapon(offhand.name).weaponName].poise,
+          stanceBase: movesets[getWeapon(offhand.name).weaponName].stance,
         },
       }),
     }).attackSteps![0].map((hit) => [+hit.damage.toFixed(1), hit.stance]);
@@ -12951,9 +12963,9 @@ describe("powerstance off hand weapons", () => {
 
   it("uses the left hand weapon's own attack rows", () => {
     // The right hand weapon's animations decide the hits, but each hand's weapon has its own rows:
-    // a Wakizashi's L1 #1 with a katana is 115 (poise 80), not the katana's 90 (40). Tested in game:
+    // a Wakizashi's L1 #1 with a katana is 115 (stance 80), not the katana's 90 (40). Tested in game:
     // an Uchigatana +25 with a Wakizashi +25 in the left hand, 99 in every stat, does 464 + 551 on
-    // the training dummy, with 6.4 poise
+    // the training dummy, with 6.4 stance
     const weapon = getWeapon("Uchigatana");
     const wakizashi = getWeapon("Wakizashi");
     const attack = withOffhandRows(
@@ -12983,7 +12995,7 @@ describe("powerstance off hand weapons", () => {
       offhand: {
         weapon: wakizashi,
         regularUpgradeLevel: 25,
-        poiseBase: movesets["Wakizashi"]!.poise,
+        stanceBase: movesets["Wakizashi"]!.stance,
       },
       attack,
     }).attackSteps!;
@@ -13010,7 +13022,7 @@ describe("powerstance off hand weapons", () => {
       offhand: {
         weapon: getWeapon("Main-gauche"),
         regularUpgradeLevel: 25,
-        poiseBase: movesets["Main-gauche"]!.poise,
+        stanceBase: movesets["Main-gauche"]!.stance,
       },
       attack: withOffhandRows(
         getAttackData(movesets, getWeapon("Rapier"), "Powerstance L1", false, 0.5)!,
@@ -13441,7 +13453,7 @@ describe("timing coverage", () => {
     // apart; here it crouches at its flag 32, 38 after the press, and attacks 15 into the crouch, 55
     // (not fitted: the Greatsword's fit, 1 to 3 frames early here). Crouching R1 from a crouch (press
     // 368, stamina taken 385, hit 387): 19 after the press, 18 here; at +25 with 99 in every stat on
-    // the training dummy, 297 damage and 3 poise, as its rolling R1 here
+    // the training dummy, 297 damage and 3 stance, as its rolling R1 here
     const dagger = (attack: AttackChoice) =>
       getAttackData(movesets, getWeapon("Dagger"), attack, false, 0.5)!.stepTimes![0].hits;
     expect(dagger("Crouching R1")).toEqual(dagger("Rolling R1"));
@@ -13472,7 +13484,7 @@ describe("timing coverage", () => {
     // (press 942, stamina taken 966 and 1037): the hit 24 after the press, as here, and the next one
     // 71 after the first; here it crouches at its flag 32, 52 after the press, and attacks 15 into
     // the crouch, 69 (2 early, as the Dagger's). At +25 with 99 in every stat on the training dummy,
-    // 429 damage and 5 poise, as here
+    // 429 damage and 5 stance, as here
     const longsword = getAttackData(movesets, getWeapon("Longsword"), "Crouching R1", false, 0.5)!;
     expect(longsword.stepTimes![0].hits[0] * 60).toBeCloseTo(24, 0);
     expect(longsword.cycleTimes![0] * 60).toBeCloseTo(69, 0);
@@ -13497,7 +13509,7 @@ describe("timing coverage", () => {
     ).toEqual([[429, 5]]);
     // Two Daggers, powerstance crouching L1, crouch, crouching L1 (press 576, stamina taken 598 and
     // 665): the hits 22 after the press and the next ones 67 after the first, as here (its rolling
-    // L1). At +25 (both) with 99 in every stat on the training dummy, 544 damage and 3.6 poise, the
+    // L1). At +25 (both) with 99 in every stat on the training dummy, 544 damage and 3.6 stance, the
     // two daggers' 272 and 1.8 each here
     const pairedCrouching = getAttackData(
       movesets,
@@ -13526,7 +13538,7 @@ describe("timing coverage", () => {
       offhand: {
         weapon: getWeapon("Dagger"),
         regularUpgradeLevel: 25,
-        poiseBase: movesets[getWeapon("Dagger").weaponName].poise,
+        stanceBase: movesets[getWeapon("Dagger").weaponName].stance,
       },
     });
     expect(pairedBuild.attackSteps![0].map((hit) => [Math.floor(hit.damage), hit.stance])).toEqual([
@@ -13537,7 +13549,7 @@ describe("timing coverage", () => {
     // play the rolling attack, as do crouching animations with no hits (only effects). At +25 (+10
     // somber) with 99 in every stat on the training dummy: the two handed Falx's crouching R1 hits
     // twice for 440 (its rolling R1's two hits, not its class's crouching R1's one); the Dark Moon
-    // Greatsword's 627 damage and 10.175 poise one handed, 683 and 13.2 two handed; the powerstance
+    // Greatsword's 627 damage and 10.175 stance one handed, 683 and 13.2 two handed; the powerstance
     // Sword Lance's crouching L1 910 and 6.6 (448 and 462 here, 3.3 each)
     const crouchingDamage = (
       name: string,
@@ -13566,7 +13578,7 @@ describe("timing coverage", () => {
           offhand: {
             weapon,
             regularUpgradeLevel: 25,
-            poiseBase: movesets[weapon.weaponName].poise,
+            stanceBase: movesets[weapon.weaponName].stance,
           },
         }),
       }).attackSteps![0].map((hit) => [Math.floor(hit.damage), hit.stance]);

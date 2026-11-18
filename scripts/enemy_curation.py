@@ -89,8 +89,8 @@ def stats_key(enemy):
         bool(enemy.get("neutral")),
         tuple(enemy["ripostes"]),
         enemy.get("criticalDamageRate", 1),
-        enemy.get("poiseDamageRate", 1),
-        enemy.get("poiseNote"),
+        enemy.get("stanceDamageRate", 1),
+        enemy.get("stanceNote"),
         enemy.get("weakPartDamageRate", 1),
         json.dumps(enemy.get("ngPlus")),
     )

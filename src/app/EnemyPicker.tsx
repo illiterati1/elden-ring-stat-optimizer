@@ -72,7 +72,7 @@ function EnemyPicker({ enemyArea, enemyKey, ngPlus, radahnBeaten, onChange }: Pr
       enemyInRealmOfShadow: null,
       enemyHp: 0,
       criticalDamageRate: 1,
-      poiseDamageRate: 1,
+      stanceDamageRate: 1,
       enemyRipostes: null,
       enemyTypes: [],
       defenses: {
@@ -102,7 +102,7 @@ function EnemyPicker({ enemyArea, enemyKey, ngPlus, radahnBeaten, onChange }: Pr
       enemyInRealmOfShadow: !!area?.dlc,
       enemyHp: stats.hp,
       criticalDamageRate: newEnemy.criticalDamageRate ?? 1,
-      poiseDamageRate: newEnemy.poiseDamageRate ?? 1,
+      stanceDamageRate: newEnemy.stanceDamageRate ?? 1,
       enemyRipostes: newEnemy.ripostes,
       enemyTypes: newEnemy.types ?? [],
       defenses: {
@@ -204,14 +204,14 @@ function EnemyPicker({ enemyArea, enemyKey, ngPlus, radahnBeaten, onChange }: Pr
           ripostes
         </Typography>
       )}
-      {enemy?.poiseDamageRate != null && (
+      {enemy?.stanceDamageRate != null && (
         <Typography variant="body2" color="text.secondary">
-          Takes {enemy.poiseDamageRate}× poise damage
+          Takes {enemy.stanceDamageRate}× stance damage
         </Typography>
       )}
-      {enemy?.poiseNote && (
+      {enemy?.stanceNote && (
         <Typography variant="body2" color="text.secondary">
-          {enemy.poiseNote}
+          {enemy.stanceNote}
         </Typography>
       )}
       {enemy?.weakPartDamageRate != null && (

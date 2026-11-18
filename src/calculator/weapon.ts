@@ -10,7 +10,7 @@ export interface AmmoShots {
   count: number;
   motionValue: number;
   statusMotionValue: number;
-  poiseMotionValue: number;
+  stanceMotionValue: number;
 }
 
 /**
@@ -111,8 +111,8 @@ export interface Weapon {
   /** The weapon's weight, which counts towards equip weight (e.g. for the Blue Dancer Charm) */
   weight?: number;
 
-  /** Poise damage of the ammunition a ranged weapon is firing, which replaces the weapon's own */
-  ammoPoise?: number;
+  /** Stance damage of the ammunition a ranged weapon is firing, which replaces the weapon's own */
+  ammoStance?: number;
 
   /** Each shot's stamina cost with the ammunition a ranged weapon is firing (before its rate) */
   ammoStamina?: number;

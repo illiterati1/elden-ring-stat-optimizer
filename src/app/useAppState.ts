@@ -110,10 +110,10 @@ export interface AppState {
   readonly showStamina: boolean;
   /** Show the chosen attack's damage per point of stamina */
   readonly showDamagePerStamina: boolean;
-  /** Show the chosen attack's poise damage per point of stamina */
-  readonly showPoisePerStamina: boolean;
+  /** Show the chosen attack's stance damage per point of stamina */
+  readonly showStancePerStamina: boolean;
   /**
-   * Show the chosen attack's damage, poise, stamina, and status per second, repeated as fast as
+   * Show the chosen attack's damage, stance, stamina, and status per second, repeated as fast as
    * possible, instead of per attack
    */
   readonly showDps: boolean;
@@ -152,8 +152,8 @@ export interface AppState {
   readonly enemyHp: number;
   /** The picked enemy's damage multiplier for critical hits (1 for most) */
   readonly criticalDamageRate: number;
-  /** The picked enemy's poise damage multiplier (1 for most, e.g. 0.2 for ancient dragons) */
-  readonly poiseDamageRate: number;
+  /** The picked enemy's stance damage multiplier (1 for most, e.g. 0.2 for ancient dragons) */
+  readonly stanceDamageRate: number;
   /** The picked enemy's ripostes, to only offer those, or null without an enemy */
   readonly enemyRipostes: readonly string[] | null;
   /** The enemy's types, for weapons and buffs that do more damage to them (e.g. dragons) */
@@ -214,7 +214,7 @@ export type SortBy =
   | "stance"
   | "stamina"
   | "damagePerStamina"
-  | "poisePerStamina"
+  | "stancePerStamina"
   | `status:${AttackPowerType}`
   | `scaling:${Attribute}`
   | `requirement:${Attribute}`;
@@ -229,7 +229,7 @@ function isSortBy(value: unknown): value is SortBy {
     value === "stance" ||
     value === "stamina" ||
     value === "damagePerStamina" ||
-    value === "poisePerStamina" ||
+    value === "stancePerStamina" ||
     (typeof value === "string" &&
       (/^status:\d+$/.test(value) || /^(scaling|requirement):(str|dex|int|fai|arc)$/.test(value)))
   );
@@ -253,7 +253,7 @@ const defaultAppState: AppState = {
   showStance: true,
   showStamina: false,
   showDamagePerStamina: false,
-  showPoisePerStamina: false,
+  showStancePerStamina: false,
   showDps: false,
   tooltipTimings: {
     hits: true,
@@ -296,7 +296,7 @@ const defaultAppState: AppState = {
   enemyKey: null,
   enemyHp: 0,
   criticalDamageRate: 1,
-  poiseDamageRate: 1,
+  stanceDamageRate: 1,
   enemyRipostes: null,
   enemyTypes: [],
   enemyInRealmOfShadow: null,

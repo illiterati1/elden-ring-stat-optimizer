@@ -37,10 +37,10 @@ Output format:
 where hits is { "main": [hit, ...], "followUps": [{ "label", "hands"?: "1h"/"2h", "hits" }],
 "timing"?: each part's timing by weapon animation range (see get_skill_timing) } (main
 is empty for skills that only do damage with follow-ups, e.g. stances like Unsheathe), and
-each hit is like build_moveset_data.py's: [motion value, status motion value, poise motion value,
+each hit is like build_moveset_data.py's: [motion value, status motion value, stance motion value,
 physical type, details], except physical type 4 and 5 are the weapon's own first and second types.
 Details can also have "fixed": true for flat attack not added to the weapon's base attack (assumed
-unscaled), "tickInterval" in seconds, "tickDuration" in seconds (for lingering status), "poise" for flat poise damage, and "buff" for a weapon buff's
+unscaled), "tickInterval" in seconds, "tickDuration" in seconds (for lingering status), "stance" for flat stance damage, and "buff" for a weapon buff's
 flat attack by damage type (unscaled, times "buffMotionValue" if it isn't 100). "status" and
 "scaledStatus" are status buildup the hit applies through its own effects, by AttackPowerType, not
 scaled by its status motion value: "status" as is, "scaledStatus" with the weapon's status correction
@@ -251,19 +251,19 @@ NO_STATUS_ROWS = {"700000033", "700000043", *(f"3017119{row}" for row in ["05", 
 # 3xxx0098x), going by their animations in game; one handed R2s are unchanged
 BORROWED_FOLLOW_UPS = {"Braggart's Roar": ("War Cry", "2h")}
 
-# Follow-ups whose poise-only ticks are one hit in game, and its total poise damage, tested in game:
-# War Cry's charged R2s' running charge does 3 poise in #1 (two tick rows of 1 each) and 2 in #2
+# Follow-ups whose stance-only ticks are one hit in game, and its total stance damage, tested in game:
+# War Cry's charged R2s' running charge does 3 stance in #1 (two tick rows of 1 each) and 2 in #2
 # (one tick row)
 MERGED_TICKS = {"War Cry": {"Charged R2 #1": 3, "Charged R2 #2": 2}}
 
-# Skills whose main attack is only some of its hits, by kind, for damage and poise. Tested in game:
+# Skills whose main attack is only some of its hits, by kind, for damage and stance. Tested in game:
 # Beast's Roar's bullet and its AoE don't both hit (Quality Longsword +25 with 99 in every stat:
-# bullet 542, AoE 363, sometimes 457 between them), and it's mostly ranged, so the roar's poise
+# bullet 542, AoE 363, sometimes 457 between them), and it's mostly ranged, so the roar's stance
 # doesn't count either
 # Golden Slam and Ground Slam hit once, close or far (Golden Slam on a Greatsword +25 with 99 in every
 # stat: the tush 1584 close, the shockwave 1132 further away), so only the close hit counts, and so
 # does the Staff of the Avatar's and Rotten Staff's Erdtree Slam (tested in game on a Rotten Staff +10
-# with 99 in every stat: the tush 1441 with 36 poise, or the shockwave 1169; its "?" row doesn't hit).
+# with 99 in every stat: the tush 1441 with 36 stance, or the shockwave 1169; its "?" row doesn't hit).
 # Lifesteal Fist's grab doesn't do damage itself once it lands, only the confirmed grab's hits: 5,
 # like in game (Iron Ball +25 with 99 in every stat: 281, 281, 281, then 682 for the last two, 1525
 # in total). Their damage doesn't match the sheet's rows yet: 281 is the grab row's motion value
@@ -306,7 +306,7 @@ ROW_NAMES = {"300000305": "Black Flame Tornado - Swing"}
 # chains of the main attack then it (like Carian Sovereignty's; an empty label is the skill's name):
 # the Glintstone Kris's Glintstone Dart, its dart (charged or not) then its R2, and the Falx's
 # Revenger's Blade, its slash (charged or not) then its follow-up R2, which the sheet calls "R1"
-# (tested in game at +25 with 99 in every stat on the training dummy: damage, poise, and status)
+# (tested in game at +25 with 99 in every stat on the training dummy: damage, stance, and status)
 SHARED_FOLLOW_UPS = {
     "Glintstone Dart": ("R2", "Charged", ["Uncharged", "Charged"]),
     "Revenger's Blade": ("R1", "Charged", ["", "Charged"]),
@@ -315,13 +315,13 @@ SHARED_FOLLOW_UPS = {
 # Skills whose main attack is one version of several, shown with its label: Shield Crash's hits are
 # its full charge (tested in game on a Blood Brass Shield +25); an empty label is the skill's name:
 # Euporia's Euporia Vortex, whose Luster Tier 1 and 2 versions are separate (tested in game at +25 with
-# 99 in every stat: 2040, 2530 with Luster Tier 1, 6921 and 61 poise with Tier 2)
+# 99 in every stat: 2040, 2530 with Luster Tier 1, 6921 and 61 stance with Tier 2)
 MAIN_LABELS = {"Shield Crash": "Fully charged", "Euporia Vortex": "", "Spinning Guillotine": ""}
 
 # Skills whose main attack is part of each of its follow-ups, which are versions of the skill: the
 # Gazing Finger's Kowtower's Resentment's first swing, then a second swing and its projectile,
 # released early (uncharged) or not (tested in game at +10 with 99 in every stat: uncharged 2091,
-# 653, 510, and 928; charged 2724, 653, 722, and 1349; each 22.5 poise)
+# 653, 510, and 928; charged 2724, 653, 722, and 1349; each 22.5 stance)
 MAIN_IN_VERSIONS = {"Kowtower's Resentment"}
 
 # Hits whose own effects' status buildup also gets their status motion value, by AtkId: the Rivers
@@ -453,7 +453,7 @@ FIXED_FLAT_ROWS = {"300000682", "300000683"}
 # explosions, and the odd spark), so 1 explosion counts. Charged, it sprays the same first wall, then a
 # second (Bullet 200002920: 3.5 m/s for 1.4s, about 4.9 m out, against the first's 2.0 m/s for 1.5s,
 # about 3 m) whose explosions are the sheet's "Charged Weapon Skill" row (600000021, 165). Only the
-# first wall's reached the training dummy up close in game (the same 245 and poise as tapped); from
+# first wall's reached the training dummy up close in game (the same 245 and stance as tapped); from
 # farther out a 165 did land, though it's hard to get to hit, so the second's don't count (a note
 # says they can hit farther enemies).
 # Waves of Darkness's waves (30000812) are three expanding rings (Bullet 2811, 2814, and 2817), each
@@ -462,22 +462,22 @@ FIXED_FLAT_ROWS = {"300000682", "300000683"}
 # (tested in game on the Sword of Night and Flame +10: 2595, the swing 719 and the fire 1876). Its R1
 # beam's loops hit as often as the sheet's names say (300214907 "Loop 2x", 300214906 "Loop 4x"): the
 # R1 does 3175 in all (the swing 650, the point blank burst 195, 321 six times, and the final 404),
-# 2330 for the beam alone, and 2525 with the burst. Its "Loop 5x" (300214905) only does poise damage,
-# 3 times going by its 49.5 poise in all in game (25 for the swing and burst with it, 24.5 the beam).
+# 2330 for the beam alone, and 2525 with the burst. Its "Loop 5x" (300214905) only does stance damage,
+# 3 times going by its 49.5 stance in all in game (25 for the swing and burst with it, 24.5 the beam).
 # The Sword of Light's Light fires 16 bolts (8 at once, then 8 more; Bullet 200002410 and 200002415,
 # bursting into 200002411 with 600000880), of which only some reach a target: at most 5 in game on the
 # training dummy (298 each, 1490; 4 most often, 1192), and 5 on Magma Wyrm Makar (920 at most, about
 # 185 a bolt) though many more beams reached him, so 5 count. Leda's Sword's Needle Piercer fires 10
 # needles (600000501, "10x" in the sheet), all of which can hit (tested in game: 157 each, 1570 in all
-# with 11 poise). The Golden Order Greatsword's Establish Order's second step does one of its three
+# with 11 stance). The Golden Order Greatsword's Establish Order's second step does one of its three
 # holy hits (300317906, or the bullets 300317910 and 300317911, all the same), a bullet going by the
 # game: tested in game, 977 then 531 and 1466, 2974 in all. The Sacred Relic Sword's Wave of Gold
 # hits once, though the sheet has four wave rows (300310905 to 300310908; tested in game: 1483). The
 # 1364 rows (300310906 and 300310908) are what it does at range instead (seen in game). The Alabaster
 # Lord's Sword's Alabaster Lords' Pull hits with one of its three rings, the outer one (303400707,
-# with 20 poise; tested in game on the training dummy: 1726 and 25.5 poise, the thrust 706 and 5.5).
+# with 20 stance; tested in game on the training dummy: 1726 and 25.5 stance, the thrust 706 and 5.5).
 # The Onyx Lord's Greatsword's Onyx Lords' Repulsion likewise hits with one, counted as the outer
-# (303400807, with 20 poise; tested in game at +10 with 99 in every stat: damage and poise).
+# (303400807, with 20 stance; tested in game at +10 with 99 in every stat: damage and stance).
 # Eleonora's Poleblade's Bloodblade Dance's second slash (301005905) doesn't land (tested in game at
 # +25 with 99 in every stat: 1949 for #1). The Rivers of Blood's Corpse Piler's slashes hit with either the blade or its blood extension, not
 # both, so the extensions (303400320-325) are left out (tested in game). The Magma Wyrm's Scalesword's Magma Guillotine's explosion (300729001) doesn't add to its slash's
@@ -487,34 +487,34 @@ FIXED_FLAT_ROWS = {"300000682", "300000683"}
 # only the first one hits, and only point blank, so none are counted (tested in game at +25
 # with 99 in every stat on the training dummy: 1919 for #1, its slashes and one 131, 3741 with #2's
 # slashes, 5597 with #3's). The Wing of Astel's Nebula fires 11 projectiles (Bullet 2770, 10 at once, and 2771), each exploding
-# into 300707902: 4 hit a human-sized enemy (tested in game: 703 and 13 poise each, at +25 with 99 in
+# into 300707902: 4 hit a human-sized enemy (tested in game: 703 and 13 stance each, at +25 with 99 in
 # every stat), more a bigger one (noted). The Spirit Sword's and Spirit Glaive's Rancor Slash fires 2 spirits with its slashes (700000033,
 # 700000043; see CHAIN_SHARED_KINDS). The Magma Blade's Magma Shower's magma pool (303400507: Bullet 2981, isEndlessHit) hits 4 times
 # in its first step at most (see CHAIN_SHARED_KINDS). The Family Heads' Familial Rancor spawns 1 large
 # skull (301302900), 2 medium (301302902-903), and 4 small (301302904-905) (tested in game at +25 with
-# 99 in every stat: 1417 and 19.8 poise). The Envoy's Horn's Oracular Bubble hits with its
+# 99 in every stat: 1417 and 19.8 stance). The Envoy's Horn's Oracular Bubble hits with its
 # bubble or its burst, not both (the same damage), so the burst (301110901) is left out (tested in
 # game), and so does the Envoy's Greathorn's Great Oracular Bubble (302306901 left out; tested in
 # game). The Axe of Godrick's I Command Thee, Kneel!
 # hits with the axe or its shockwave, not both, so the axe hits (301504900, 910, 920) are left out,
-# the shockwaves doing more (tested in game at +25 with 99 in every stat: 1663 at most and 16.5 poise
+# the shockwaves doing more (tested in game at +25 with 99 in every stat: 1663 at most and 16.5 stance
 # for #1, its shockwaves' 823 and 840; less point blank, noted). The Stormhawk Axe's Thunderstorm only hits with
 # its lightning strikes, not its weapon rows (301414900-902, 915-916, 930-931; tested in game: 28.5
-# poise for #1, its three strikes' 9.5). The Starscourge Greatsword's Starcaller Cry is a chain of two hits, one of each of its identical
+# stance for #1, its three strikes' 9.5). The Starscourge Greatsword's Starcaller Cry is a chain of two hits, one of each of its identical
 # rows (300405900-904, then 300405910, 300405911, and its bullet 300405915), and the 300405920-921
 # hits don't land (tested in game at +10 with 99 in every stat on the training dummy: 685 and 15
-# poise, then 2461 and 10.2). Moonrithyll's Knight Sword's Tremendous Phalanx fires 3 of its swords (700000052; tested in game at
-# +10 with 99 in every stat: 334 and 8 poise each, then its R2 1395 and 15). The Greatsword
+# stance, then 2461 and 10.2). Moonrithyll's Knight Sword's Tremendous Phalanx fires 3 of its swords (700000052; tested in game at
+# +10 with 99 in every stat: 334 and 8 stance each, then its R2 1395 and 15). The Greatsword
 # of Radahn (Lord)'s Promised Consort #3 swings its second slash once (700000106 is
 # the same as 700000105; tested in game at +10 with 99 in every stat on the training dummy: 4135 and
-# 52 poise for the whole chain, with only #3's last projectile hitting).
+# 52 stance for the whole chain, with only #3's last projectile hitting).
 
 # How many times hits count, by the sheet's name, for rows whose AtkId other rows share: the
 # Ornamental Straight Sword's fully charged Golden Tempering R2 thrusts 5 times with each hand before
-# its final hits (tested in game with its 100 holy buff: 3282 and 50 poise in all on a +25 with 99
-# in every stat, 200 a thrust and 641 a final hit; the R2 1048 with 10 poise), and the Dragon King's
+# its final hits (tested in game with its 100 holy buff: 3282 and 50 stance in all on a +25 with 99
+# in every stat, 200 a thrust and 641 a final hit; the R2 1048 with 10 stance), and the Dragon King's
 # Cragblade's charged Thundercloud Form loops its lightning 6 times (tested in game at +10 with 99 in
-# every stat: 2783 and 45 poise in all; uncharged, its once is right), and the Zamor Curved Sword's
+# every stat: 2783 and 45 stance in all; uncharged, its once is right), and the Zamor Curved Sword's
 # Zamor Ice Storm's "4x" projectile hits 4 times (tested in game at +25 with 99 in every stat: 2075,
 # the swing's 385 and 5 projectile hits of 338). The Scepter of the All-Knowing's Knowledge Above All
 # does no damage (tested in game); the sheet gives it Helphen's Steeple's Ruinous Ghostflame swing
@@ -527,7 +527,7 @@ NAME_REPEATS = {
     "Knowledge Above All": 0,
     # The Bloodfiend's Sacred Spear's Bloodfiends' Bloodboon is a chain whose bullets hit several times,
     # reportedly up to 4, 4, and 8; tested in game, 2 or 3 for #1 and #2, and at least 5 for #3 (176
-    # damage, 3 poise, and 71 blood loss each at +25 with 99 in every stat)
+    # damage, 3 stance, and 71 blood loss each at +25 with 99 in every stat)
     "Bloodfiends' Bloodboon #1 - Bullet": 4,
     "Bloodfiends' Bloodboon #2 - Bullet": 4,
     "Bloodfiends' Bloodboon #3 - Bullet": 8,
@@ -548,13 +548,13 @@ SKILL_CLOUDS = {"300208910": 1885, "700000401": 20001035}
 # training dummy, 248 without)
 SKILL_DAMAGE_EFFECTS = {"600000880": 20000980}
 
-# Hits that only do poise damage through their poise motion value (no attack or flat poise), kept
+# Hits that only do stance damage through their stance motion value (no attack or flat stance), kept
 # rather than left out as doing nothing, by AtkId: Night-and-Flame Stance's R1 "Loop 5x", and the
 # Death's Poker's Ghostflame Ignition thrust and R2 swing, which also apply the weapon's frost (tested
-# in game: 1504, 15.5 poise and about 660 frost with its ticks and explosion; with the R2, 32 poise
+# in game: 1504, 15.5 stance and about 660 frost with its ticks and explosion; with the R2, 32 stance
 # and about 860 frost), and the Greatsword of Solitude's Solitary Moon Slash R2's startup stagger, and
-# the Ringed Finger's Claw Flick's first hit (13 poise, tested in game), and the Axe of Godfrey's Regal
-# Roar's roar (3 poise, tested in game)
+# the Ringed Finger's Claw Flick's first hit (13 stance, tested in game), and the Axe of Godfrey's Regal
+# Roar's roar (3 stance, tested in game)
 # Status motion values fitted to tests in game, by AtkId, where the data's don't match and the cause
 # is unknown: the Red Bear's Claw's Red Bear Hunt's #1 and #2 swipes build up twice its 45 blood loss
 # (tested in game at +25 with 99 in every stat: about 90 for #1 and 265 for the chain; its bullets,
@@ -564,10 +564,10 @@ STATUS_MOTION_VALUE_FITS = {"600000640": 200, "600000642": 200}
 
 # Rows that hit like another row in game, by AtkId, where the data's values don't match and the cause
 # is unknown (the rest of each row, e.g. its name, is kept): Barbaric Roar's Fist and Hand-to-Hand
-# two handed charged R2 #1's third hit does the same as its first (motion value 97 and its poise, not
+# two handed charged R2 #1's third hit does the same as its first (motion value 97 and its stance, not
 # the data's 111 and 250), tested in game with the Roar Medallion at +25 with 99 in every stat: the
-# Golem Fist 1875 with 27 poise (625 and 9 three times), the Iron Ball 1668 (556 three times), and
-# Dryleaf Arts 1497 with 21.6 poise (499 and 7.2 three times). The Claw and Beast Claw versions, with
+# Golem Fist 1875 with 27 stance (625 and 9 three times), the Iron Ball 1668 (556 three times), and
+# Dryleaf Arts 1497 with 21.6 stance (499 and 7.2 three times). The Claw and Beast Claw versions, with
 # the same values in the data, are right as the data says (tested on the Hookclaws and Beast Claw).
 ROW_FITS = {"302100962": "302100960", "306300962": "306300960"}
 
@@ -593,7 +593,7 @@ EXTRA_SHEET_ROWS = [
     {**_STATUS_ONLY, "Unique Skill Weapon": "Deadly Poison Perfume Bottle", "Name": "Deadly Poison Spray - Cloud", "AtkId": "6151305"},
 ]
 
-POISE_ONLY_ROWS = {
+STANCE_ONLY_ROWS = {
     "300214905",
     "303401300",
     "303401302",
@@ -604,7 +604,7 @@ POISE_ONLY_ROWS = {
     # St. Trina's Torch's Fires of Slumber, which only builds up sleep
     "302404900",
     "302404901",
-    # The Verdigris Greatshield's Moore's Charge, which only does poise (and stamina) damage: 30
+    # The Verdigris Greatshield's Moore's Charge, which only does stance (and stamina) damage: 30
     # charged (tested in game), its 4 charging hits' 75% of the shield's 6, its last 125%, and its
     # shockwave 75%
     "700000190",
@@ -625,10 +625,10 @@ ROW_REPEATS = {
     # slams: 905 and 906-908)
     "302305900": 0,
     # Devonia's Hammer's charged Devonia's Vortex's first projectile hits twice (tested in game at +10
-    # with 99 in every stat: 3504 and 52.5 poise, two of its 535 and 7.5)
+    # with 99 in every stat: 3504 and 52.5 stance, two of its 535 and 7.5)
     "600000844": 2,
     # The Fallingstar Beast Jaw's Gravity Bolt fires one bolt a cast (its animations' bullet 3905;
-    # 302308909, the same, isn't used): tested in game at +10 with 99 in every stat, 1054 and 7 poise
+    # 302308909, the same, isn't used): tested in game at +10 with 99 in every stat, 1054 and 7 stance
     "302308909": 0,
     # The Watchdog's Staff's Sorcery of the Crozier fires 8 bullets (Bullet 2920's numShoot, each
     # becoming 2923, 302301901; tested in game: 8 hits)
@@ -639,7 +639,7 @@ ROW_REPEATS = {
     # version (tested in game: only 305 hits, at random)
     # The Barbed Staff-Spear's Jori's Inquisition only hits with its bullet (Bullet 200002390, out for
     # 2.3s in its animation 40000), 5 times; 600000851 is its lacking FP version (tested in game at +25
-    # with 99 in every stat: 2300, 15 poise, and about 130 blood loss)
+    # with 99 in every stat: 2300, 15 stance, and about 130 blood loss)
     "600000850": 5,
     # The Red Bear's Claw's Red Bear Hunt's bullets each hit twice (tested in game at +25 with 99 in
     # every stat: 1229 for #1, its swing's 743 and 2 of 243, and 3655 for the chain)
@@ -648,7 +648,7 @@ ROW_REPEATS = {
     "600000646": 2,
     # The Veteran's Prosthesis's Storm Kick's "(Left)" rows are its left handed version, the same, and
     # its [2] wind and its R2's [3] lightning don't hit (tested in game at +10 with 99 in every stat: #1
-    # 1006 and 10 poise, #2 1506 and 25)
+    # 1006 and 10 stance, #2 1506 and 25)
     **{f"3021129{row}": 0 for row in range(10, 15)},
     "302112901": 0,
     "302112904": 0,
@@ -666,7 +666,7 @@ ROW_REPEATS = {
     # counted (NOT_COUNTED_ROWS)
     "302404900": 3,
     # The Grafted Dragon's Bear Witness! hits directly with its fire ([2]) and its explosion (tested in
-    # game at +25 with 99 in every stat: 1282 and 10 poise, 102 and 1180); its windup's weapon hit ([1],
+    # game at +25 with 99 in every stat: 1282 and 10 stance, 102 and 1180); its windup's weapon hit ([1],
     # 302106900, 238) only hits up close, with the fire twice (442), and its 18 projectiles (903-905:
     # Bullet 2388-2390's numShoot, 8, 6, and 4) and their lingering fire (906) land at random, so they're
     # noted
@@ -676,8 +676,8 @@ ROW_REPEATS = {
     "302106906": 0,
     # The Magma Whip Candlestick's Sea of Magma: its start (animation 40000: 302003900-901 and its magma,
     # 905), loops while held (40003: 902-903 and magma), and final (40004: 904 and magma); one of each
-    # pair of lashes hits: the start's first (0 poise). Counted without loops (tested in game at +25
-    # with 99 in every stat: 2195 and 8 poise, a lash's 451, the final's 715, and 3 magma ticks of 343,
+    # pair of lashes hits: the start's first (0 stance). Counted without loops (tested in game at +25
+    # with 99 in every stat: 2195 and 8 stance, a lash's 451, the final's 715, and 3 magma ticks of 343,
     # sometimes 4, 2538; each loop 794 more, a lash and a tick, shown but not counted: 902 and 906, the
     # same magma)
     "302003901": 0,
@@ -691,7 +691,7 @@ ROW_REPEATS = {
     # (301702910 left out; tested in game at +25 with 99 in every stat: one 2225)
     "301702910": 0,
     # The One-Eyed Shield's Flame Spit hits with its bullet or its AoE, not both (the same damage and
-    # poise, tested in game; 303215901 left out)
+    # stance, tested in game; 303215901 left out)
     "303215901": 0,
     # The Serpent-Hunter's Great-Serpent Hunt only hits with its two thrusts (301703950, 951); its "?"
     # rows don't (tested in game at +25 with 99 in every stat: 2075, then 2195)
@@ -714,10 +714,10 @@ ROW_REPEATS = {
     # not both (the same motion values; tested in game: one of each), so the AoE rows are left out
     **{f"60000098{row}": 0 for row in "1357"},
     # Ghiza's Wheel's Spinning Wheel: its opening (animation 40050) has 6 windows of 302309903, its
-    # downswing, which only hits once (tested in game: 0.6 poise, then about 2 for the next hit, 901),
+    # downswing, which only hits once (tested in game: 0.6 stance, then about 2 for the next hit, 901),
     # then 901 3 times and 900 4 times, then its loops while it's held: 40051 with 902 twice and 900 6
     # times, and 40052 with 902 twice and 900 8 times (tested in game at +10 with 99 in every stat: 194 a
-    # hit; poise 19.5 for 26 hits, and 6.9 after 7). Which of them land, and in what order, is
+    # hit; stance 19.5 for 26 hits, and 6.9 after 7). Which of them land, and in what order, is
     # LOOP_HIT_ORDERS (its timing, LOOP_FITS)
     "302309903": 1,
     "302309901": 3,
@@ -806,8 +806,8 @@ ROW_REPEATS = {
 # (skill, follow-up) key is only shown with that follow-up
 # Labels for fixed skills with one version, shown with their name: the Bloody Helice's Dynast's
 # Finesse is its thrust then a follow-up R2 (tested in game at +25 with 99 in every stat on the
-# training dummy: damage, poise, and blood loss), and the Eclipse Shotel's Death Flare is a
-# follow-up (tested in game at +25 with 99 in every stat: damage and poise)
+# training dummy: damage, stance, and blood loss), and the Eclipse Shotel's Death Flare is a
+# follow-up (tested in game at +25 with 99 in every stat: damage and stance)
 SKILL_LABELS = {
     "Dynast's Finesse": "Follow-up R2",
     "Death Flare": "Follow-up",
@@ -855,7 +855,7 @@ SKILL_NOTES = {
     "Promised Consort": "Doesn't count its small light projectiles, which may miss: {damage} damage each",
     # Each explosion fires 36 (Bullet 2371-2374's numShoot, 3 or 4 a volley, 10 volleys in its
     # animations); tested in game: at least 10 hit the training dummy
-    # Tested in game: 182 damage and 1.9 poise each, usually 6 hitting a human-sized enemy, and at most
+    # Tested in game: 182 damage and 1.9 stance each, usually 6 hitting a human-sized enemy, and at most
     # 17 on Dragonlord Placidusax (some of its bubbles are only for show)
     "Bubble Shower": "Counts the 6 bubbles that usually hit a human-sized enemy: bigger enemies can take more",
     "Surge of Faith": "Doesn't count its 36 small projectiles an explosion, which fly at random: {damage} damage each",
@@ -885,8 +885,8 @@ SKILL_NOTES = {
 # light beams (700000071-072, and 700000076-077 charged; tested in game on the Greatsword of Radahn
 # (Light) +10 with 99 in every stat. Charged with the Godfrey Icon: the swing 1319, then totals of
 # 2012, 2243, 2315, and 2474, whole numbers of its unboosted 231 and 72 beams; with the Shard of
-# Alexander, 2690. Uncharged: 1917 and 20 poise without talismans, the swing's 829 and 15 and five
-# 206 beams (1 poise each) and a 58; with the Shard, 1835, the swing's 953 and unboosted beams)
+# Alexander, 2690. Uncharged: 1917 and 20 stance without talismans, the swing's 829 and 15 and five
+# 206 beams (1 stance each) and a 58; with the Shard, 1835, the swing's 953 and unboosted beams)
 # Lightning Slash's projectile (300000371) is neither a skill (112) nor a Dragon Cult skill (133) in
 # game, though the data says it's both. Tested on a Lightning Longsword +25 with 99 in every stat:
 # with the Death Knight set (×1.08 for Dragon Cult skills), 1836 in all, the stomp and slash boosted
@@ -963,7 +963,7 @@ HIT_ORDER = {"Hoarah Loux's Earthshaker": ["Initial Roar", "Roar Tick"]}
 # Skills whose charged versions are alternatives to the uncharged one rather than follow-ups, as
 # levels: the main attack and its charged follow-ups, in order, are shown as these instead (with no
 # main attack, like a stance). Tested in game: Carian Grandeur's levels are one hit each (Longsword
-# +25, 99 in every stat: level 2 1620 with 30 poise, level 3 2058 with 45), and Carian Greatsword's
+# +25, 99 in every stat: level 2 1620 with 30 stance, level 3 2058 with 45), and Carian Greatsword's
 # charged version. Skills whose only follow-up is "Charged" get CHARGED_LEVELS.
 CHARGE_LEVELS = {"Carian Grandeur": ["Level 1", "Level 2", "Level 3"]}
 CHARGED_LEVELS = ["Uncharged", "Charged"]
@@ -1186,7 +1186,7 @@ def parse_hit(row, tick_bullets, hp_damage, attack_categories, hit_status):
         and not any(flat)
         and not float(row["AtkSuperArmor"] or 0)
         and row["AtkId"] not in hit_status
-        and row["AtkId"] not in POISE_ONLY_ROWS
+        and row["AtkId"] not in STANCE_ONLY_ROWS
     ):
         return None
     attribute = row["PhysAtkAttribute"]
@@ -1227,22 +1227,22 @@ def parse_hit(row, tick_bullets, hp_damage, attack_categories, hit_status):
         details["uncounted"] = True
     if row["AtkId"] in NOT_COUNTED_ROWS:
         details["notCounted"] = True
-    # Flat poise damage, for hits without a poise motion value (tested in game: Sacred Blade's
+    # Flat stance damage, for hits without a stance motion value (tested in game: Sacred Blade's
     # projectile does 13). A hit with both uses the motion value's alone if its flat attack is fixed:
-    # the Dragon Halberd's Spinning Slash projectile (poise motion value 100, flat 10) does 5, its
-    # weapon's base poise (tested in game: 31.75 for the whole chain, its weapon hits' 11.5, 3.75, and
+    # the Dragon Halberd's Spinning Slash projectile (stance motion value 100, flat 10) does 5, its
+    # weapon's base stance (tested in game: 31.75 for the whole chain, its weapon hits' 11.5, 3.75, and
     # 11.5). If it's added to the weapon's (isAddBaseAtk), both count: the Falx's charged Revenger's
-    # Blade's second hit (poise motion value 100, flat 5) does 10 (tested in game: 15 with its first),
+    # Blade's second hit (stance motion value 100, flat 5) does 10 (tested in game: 15 with its first),
     # and the Zamor Curved Sword's Zamor Ice Storm's projectiles (100 and 2) 7.5 each (tested in game)
     if float(row["AtkSuperArmor"] or 0) and (
         not float(row["Poise Dmg MV"] or 0) or row["isAddBaseAtk"] == "TRUE"
     ):
-        details["poise"] = number(row["AtkSuperArmor"])
+        details["stance"] = number(row["AtkSuperArmor"])
     if row["AtkId"] in ROW_KINDS:
         details["kind"] = ROW_KINDS[row["AtkId"]]
     elif kind:
         details["kind"] = kind.group(1).strip()
-    # An initial tick (e.g. Eruption's lava's, with more poise than the ticks after it) happens once,
+    # An initial tick (e.g. Eruption's lava's, with more stance than the ticks after it) happens once,
     # so it's a hit rather than damage over time. Areas left on the ground hit again too, if their
     # bullet can (e.g. Ghostflame Call's R1's ground flame, 43 every 0.5s for 5s: tested in game, its
     # 10 ticks and the wave's 205 make 635 from a distance).
@@ -1403,8 +1403,8 @@ LOOP_FITS = {
         "opening": 193 / 60,
     },
 }
-# Hits of a loop with an opening (LOOP_FITS openingHits), in order, by the poise motion value of the
-# skill's hit to use (its hits differ only in poise): Spinning Wheel's downswing (302309903, 10), an
+# Hits of a loop with an opening (LOOP_FITS openingHits), in order, by the stance motion value of the
+# skill's hit to use (its hits differ only in stance): Spinning Wheel's downswing (302309903, 10), an
 # opening spin (901, 30), 4 more (900, 10), then its first loop's 902 (15) twice and 900 6 times, then
 # a pass of its loop, the same
 LOOP_HIT_ORDERS = {
@@ -1647,9 +1647,9 @@ def get_window_attacks(behaviors, bullets, attacks, variation, judge):
     return [atk for atk, _ in get_window_hits(behaviors, bullets, attacks, variation, judge)]
 
 
-def get_window_hits(behaviors, bullets, attacks, variation, judge, poise_only=False):
+def get_window_hits(behaviors, bullets, attacks, variation, judge, stance_only=False):
     """
-    @param poise_only also return rows that only do poise damage
+    @param stance_only also return rows that only do stance damage
     @returns get_window_attacks's rows, each with the BulletParam row it's a projectile's (or None)
     """
     behavior = get_window_behavior(behaviors, variation, judge)
@@ -1675,7 +1675,7 @@ def get_window_hits(behaviors, bullets, attacks, variation, judge, poise_only=Fa
         and (
             any(get_motion_values(attacks[atk_id]))
             or any(float(attacks[atk_id][field]) for field in FLAT_ATTACK_FIELDS)
-            or (poise_only and float(attacks[atk_id]["atkSuperArmorCorrection"]))
+            or (stance_only and float(attacks[atk_id]["atkSuperArmorCorrection"]))
         )
     ]
 
@@ -1692,7 +1692,7 @@ BOW_AMMO_CLASSES = {50: 81, 51: 81, 53: 83, 55: 85}
 # Shot fires 8 (judges 880 and 881, 4 each) but only 2 can hit one target, and Rain of Arrows drops
 # 12, all counted (it's best against big enemies; about 8 hit Flying Dragon Agheel, 1453 with a
 # Longbow +25 and Arrows at 99 in every stat, and 10 the Mt. Gelmir Ulcerated Tree Spirit, 2088)
-# The Lion Greatbow's Radahn's Rain can hit 16 times (its damage and poise per arrow tested in game
+# The Lion Greatbow's Radahn's Rain can hit 16 times (its damage and stance per arrow tested in game
 # with Great Arrows and Radahn's Spears)
 BOW_HIT_COUNTS = {"Fan Shot": 2, "Rain of Arrows": 12, "Radahn's Rain": 16}
 
@@ -1769,7 +1769,7 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
     animations = steps.animations
     # Each animation's windows: its file, and each hit's start and signature
     windows = {}
-    poise_windows = {}
+    stance_windows = {}
     for number in files:
         file = animations.get_file(number)
         for anim_id in file[0] if file else []:
@@ -1782,10 +1782,10 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
                 for atk, _ in get_window_hits(behaviors, bullets, steps.game.attacks, variation, judge)
             ]
             windows[anim_id] = (number, hits)
-            # and its windows whose attack does no damage (start and poise), for hits that don't
+            # and its windows whose attack does no damage (start and stance), for hits that don't
             # (e.g. War Cry's charged R2s' first, its roar's ticks while charging: their rows have
-            # no poise either, the sheet's 3 notwithstanding)
-            poise_windows[anim_id] = []
+            # no stance either, the sheet's 3 notwithstanding)
+            stance_windows[anim_id] = []
             for start, _, judge, *_ in animations.get_windows(number, anim_id) or []:
                 behavior = get_window_behavior(behaviors, variation, judge)
                 atk = behavior and behavior["refType"] == "0" and steps.game.attacks.get(int(behavior["refId"]))
@@ -1794,8 +1794,8 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
                     and not any(get_motion_values(atk))
                     and not any(float(atk[field]) for field in FLAT_ATTACK_FIELDS)
                 ):
-                    poise_windows[anim_id].append((start, round(float(atk["atkSuperArmorCorrection"]))))
-            poise_windows[anim_id].sort()
+                    stance_windows[anim_id].append((start, round(float(atk["atkSuperArmorCorrection"]))))
+            stance_windows[anim_id].sort()
 
     def wanted_of(part_hits):
         wanted = Counter(
@@ -1838,7 +1838,7 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
             if len(timing["hits"]) != len(part_hits):
                 ordered = sorted(hits)
                 taken = set()
-                poise_taken = set()
+                stance_taken = set()
                 hit_times = []
                 for hit in part_hits:
                     signature = hit_signature(
@@ -1853,22 +1853,22 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
                         taken.add(index)
                         hit_times.append(real(ordered[index][0]))
                         continue
-                    # or else a window without damage, with its poise if any has it
+                    # or else a window without damage, with its stance if any has it
                     free = [
-                        j for j in range(len(poise_windows.get(anim_id, []))) if j not in poise_taken
+                        j for j in range(len(stance_windows.get(anim_id, []))) if j not in stance_taken
                     ]
-                    poise_index = (
+                    stance_index = (
                         next(
-                            (j for j in free if poise_windows[anim_id][j][1] == round(hit[2])),
+                            (j for j in free if stance_windows[anim_id][j][1] == round(hit[2])),
                             free[0] if free else None,
                         )
                         if signature == hit_signature([0], [0] * 5)
                         else None
                     )
-                    if poise_index is not None:
-                        poise_taken.add(poise_index)
+                    if stance_index is not None:
+                        stance_taken.add(stance_index)
                     hit_times.append(
-                        real(poise_windows[anim_id][poise_index][0]) if poise_index is not None else None
+                        real(stance_windows[anim_id][stance_index][0]) if stance_index is not None else None
                     )
                 if any(time is not None for time in hit_times):
                     timing["hitTimes"] = hit_times
@@ -1953,7 +1953,7 @@ def get_skill_timing(
     # projectile (BulletParam row, or None)
     animation_hits = {}
     window_hits = {}
-    poise_hits = {}
+    stance_hits = {}
     for anim_id in file[0]:
         if not SKILL_ANIMATIONS[0] <= anim_id < SKILL_ANIMATIONS[1] or anim_id % 10 >= LACKING_FP_ANIMATION:
             continue
@@ -1971,13 +1971,13 @@ def get_skill_timing(
                 starts.append(start)
         animation_hits[anim_id] = (signatures, sorted(starts))
         window_hits[anim_id] = sorted(own_hits, key=lambda hit: hit[0])
-        # Its poise-only hits (poise motion values, and when they start), to match skills that only
-        # do poise damage by (e.g. Moore's Charge)
-        poise_hits[anim_id] = sorted(
+        # Its stance-only hits (stance motion values, and when they start), to match skills that only
+        # do stance damage by (e.g. Moore's Charge)
+        stance_hits[anim_id] = sorted(
             (start, round(float(atk["atkSuperArmorCorrection"])), bullet)
             for start, _, judge, *_ in animations.get_windows(number, anim_id) or []
             for atk, bullet in get_window_hits(
-                behaviors, bullets, steps.game.attacks, variation, judge, poise_only=True
+                behaviors, bullets, steps.game.attacks, variation, judge, stance_only=True
             )
             if not any(get_motion_values(atk))
             and not any(float(atk[field]) for field in FLAT_ATTACK_FIELDS)
@@ -1995,11 +1995,11 @@ def get_skill_timing(
             for hit in part_hits
         )
         wanted.pop(hit_signature([0], [0] * 5), None)
-        # A part that only does poise damage is matched by its poise instead (e.g. Moore's Charge:
+        # A part that only does stance damage is matched by its stance instead (e.g. Moore's Charge:
         # tested in game, its hits 71, 85, 99, 113, 149, and 151 frames after L2, a frame before its
         # animation's, and used again every 198, as its L2 cancel says)
-        poise_only = not wanted
-        if poise_only:
+        stance_only = not wanted
+        if stance_only:
             wanted = Counter(round(hit[2]) for hit in part_hits if hit[2])
         # A part that only does status (e.g. Deadly Poison Spray's) is its main animation's windows,
         # each hit one in order (approximate: its projectiles' or clouds' rows have no attack)
@@ -2009,11 +2009,11 @@ def get_skill_timing(
         loose = False
 
         def key(signature):
-            return signature[0] if loose and not poise_only and signature is not None else signature
+            return signature[0] if loose and not stance_only and signature is not None else signature
 
         def signatures_of(anim_id):
-            if poise_only:
-                return [poise for _, poise, _ in poise_hits[anim_id]]
+            if stance_only:
+                return [stance for _, stance, _ in stance_hits[anim_id]]
             return [key(signature) for signature in animation_hits[anim_id][0]]
 
         def windows_of(anim_id):
@@ -2022,13 +2022,13 @@ def get_skill_timing(
                     (start, None, None)
                     for start in sorted(start for start, *_ in animations.get_windows(number, anim_id) or [])
                 ]
-            return poise_hits[anim_id] if poise_only else window_hits[anim_id]
+            return stance_hits[anim_id] if stance_only else window_hits[anim_id]
 
         def starts_of(anim_id):
             if status_only:
                 return sorted({start for start, _, _ in windows_of(anim_id)})
-            if poise_only:
-                return sorted({start for start, _, _ in poise_hits[anim_id]})
+            if stance_only:
+                return sorted({start for start, _, _ in stance_hits[anim_id]})
             return animation_hits[anim_id][1]
 
         def release_of(anim_id):
@@ -2045,11 +2045,11 @@ def get_skill_timing(
             charging = animations.get_effect_start([number], charged, SKILL_CHARGING_SPEFFECT)
             return None if charging is None else animations.to_real_time(number, charged, charging) + CHARGING_LAG
 
-        def before_release(anim_id, poise=False):
+        def before_release(anim_id, stance=False):
             """
             @returns an uncharged version's hits in its charged animation before it's released (e.g.
             Kowtower's Resentment's first swing, Thundercloud Form's first lightning), each (time from
-            the release, signature or poise, projectile)
+            the release, signature or stance, projectile)
             """
             release = release_of(anim_id)
             if release is None or status_only:
@@ -2057,7 +2057,7 @@ def get_skill_timing(
             charged = anim_id - 1
             return [
                 (round(when - release, 3), signature, bullet)
-                for start, signature, bullet in (poise_hits if poise else window_hits)[charged]
+                for start, signature, bullet in (stance_hits if stance else window_hits)[charged]
                 if (when := animations.to_real_time(number, charged, start)) < release
             ]
 
@@ -2069,9 +2069,9 @@ def get_skill_timing(
         # 56 after blocking a bigger hit that pushed the player back, its effect starting 4 frames
         # later: presumably that block reaction's own animation, longer, cancels into skills later)
         any_range = variation in BOW_AMMO_VARIATIONS.values() or one_weapon
-        for loose in [False, True] if not poise_only else [False]:
-            wanted_keys = wanted if poise_only else Counter({key(signature): 0 for signature in wanted})
-            if not poise_only:
+        for loose in [False, True] if not stance_only else [False]:
+            wanted_keys = wanted if stance_only else Counter({key(signature): 0 for signature in wanted})
+            if not stance_only:
                 for signature, count in wanted.items():
                     wanted_keys[key(signature)] += count
             for wanted_range in dict.fromkeys([skill_range, 0, *([None] if any_range else [])]):
@@ -2084,7 +2084,7 @@ def get_skill_timing(
                             best = (1, anim_id)
                             break
                         continue
-                    early = [] if poise_only else [key(signature) for _, signature, _ in before_release(anim_id)]
+                    early = [] if stance_only else [key(signature) for _, signature, _ in before_release(anim_id)]
                     score = sum((Counter(signatures_of(anim_id) + early) & wanted_keys).values())
                     if score and (best is None or score > best[0]):
                         best = (score, anim_id)
@@ -2142,24 +2142,24 @@ def get_skill_timing(
                     for start in starts_of(segment)
                     if (when := in_segment(i, start)) is not None
                 }
-                | ({time for time, _, _ in before_release(anim_id)} if len(segments) == 1 and not poise_only else set())
+                | ({time for time, _, _ in before_release(anim_id)} if len(segments) == 1 and not stance_only else set())
             )
         }
         # Each of the part's hits' own time, in order: its window's (the first of its kind not taken
         # yet), or a projectile's again after it can hit the same target again (dmgHitRecordLifeTime),
         # or a measured one (HIT_TIME_FITS). Projectiles' are approximate: when they're created, not
         # when they reach the target
-        # (and the poise-only windows', for hits that only do poise)
-        all_poise_hits = sorted(
+        # (and the stance-only windows', for hits that only do stance)
+        all_stance_hits = sorted(
             [
-                (when, poise, bullet)
+                (when, stance, bullet)
                 for i, (segment, _) in enumerate(segments)
-                for start, poise, bullet in poise_hits[segment]
+                for start, stance, bullet in stance_hits[segment]
                 if (when := in_segment(i, start)) is not None
             ]
-            + (before_release(anim_id, poise=True) if len(segments) == 1 else [])
+            + (before_release(anim_id, stance=True) if len(segments) == 1 else [])
         )
-        poise_taken = set()
+        stance_taken = set()
         hit_times = []
         # and when each one's window starts in the animation (a projectile's when it's created)
         window_times = []
@@ -2172,7 +2172,7 @@ def get_skill_timing(
                 None
                 if status_only
                 else round(hit[2])
-                if poise_only
+                if stance_only
                 else key(
                     hit_signature(
                         hit[0] if isinstance(hit[0], list) else [hit[0]],
@@ -2184,13 +2184,13 @@ def get_skill_timing(
                 (
                     j
                     for j, (_, other, _) in enumerate(all_hits)
-                    if j not in taken and (other if poise_only or status_only else key(other)) == signature
+                    if j not in taken and (other if stance_only or status_only else key(other)) == signature
                 ),
                 None,
             )
             # or else a window with its motion value, whose row's flat attack the hit doesn't get (a
             # weapon hit's fixed flat attack, e.g. The Queen's Black Flame's first swing's 60 fire)
-            if index is None and not poise_only and not status_only and signature[0]:
+            if index is None and not stance_only and not status_only and signature[0]:
                 index = next(
                     (
                         j
@@ -2206,25 +2206,25 @@ def get_skill_timing(
                 time, _, bullet = all_hits[index]
                 window_times.append(time)
             elif (
-                not poise_only
+                not stance_only
                 and not status_only
                 and signature == key(hit_signature([0], [0] * 5))
                 and hit[2]
                 and (
-                    poise_index := next(
+                    stance_index := next(
                         (
                             j
-                            for j, (_, poise, _) in enumerate(all_poise_hits)
-                            if j not in poise_taken and poise == round(hit[2])
+                            for j, (_, stance, _) in enumerate(all_stance_hits)
+                            if j not in stance_taken and stance == round(hit[2])
                         ),
                         None,
                     )
                 )
                 is not None
             ):
-                # A hit that only does poise (and status), by its poise (e.g. Claw Flick's first, 200)
-                poise_taken.add(poise_index)
-                time, _, bullet = all_poise_hits[poise_index]
+                # A hit that only does stance (and status), by its stance (e.g. Claw Flick's first, 200)
+                stance_taken.add(stance_index)
+                time, _, bullet = all_stance_hits[stance_index]
                 window_times.append(time)
             elif signature in last and last[signature][1]:
                 previous, bullet = last[signature]
@@ -2987,15 +2987,15 @@ def main():
         versions = [skills[name]["generic"], *skills[name]["classes"].values(), *skills[name]["unique"].values()]
         for hits in filter(None, versions):
             for follow_up in hits["followUps"]:
-                poise = labels.get(follow_up["label"])
-                if poise is None:
+                stance = labels.get(follow_up["label"])
+                if stance is None:
                     continue
                 ticks = [hit for hit in follow_up["hits"] if len(hit) > 4 and hit[4].get("tick")]
                 rest = [hit for hit in follow_up["hits"] if hit not in ticks]
                 if ticks:
                     merged = copy.deepcopy(ticks[0])
                     merged[4] = {k: v for k, v in merged[4].items() if k not in ("tick", "tickInterval")}
-                    merged[4]["poise"] = poise
+                    merged[4]["stance"] = stance
                     follow_up["hits"] = [merged, *rest]
 
     for name, (source, hands) in BORROWED_FOLLOW_UPS.items():
@@ -3073,10 +3073,10 @@ def main():
                         follow_up["label"] = f"{first} / {second}"
     for (name, weapon), note in VERSION_NOTES.items():
         skills[name]["unique"][weapon]["note"] = note
-    for (name, weapon), poises in LOOP_HIT_ORDERS.items():
+    for (name, weapon), stances in LOOP_HIT_ORDERS.items():
         version = skills[name]["unique"][weapon]
-        by_poise = {hit[2]: hit for hit in version["main"]}
-        version["main"] = [copy.deepcopy(by_poise[poise]) for poise in poises]
+        by_stance = {hit[2]: hit for hit in version["main"]}
+        version["main"] = [copy.deepcopy(by_stance[stance]) for stance in stances]
     for (name, weapon, label), (flat, count) in FOLLOW_UP_BUFFS.items():
         version = skills[name]["unique"][weapon]
         version["weaponBuff"] = True

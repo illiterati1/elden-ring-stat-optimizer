@@ -11,7 +11,7 @@ is set here.
 Each ammunition's physical damage type comes from its attack (all pierce in 1.17), since ranged
 weapons' own types don't apply to their shots.
 
-Ammunition's poise damage (saWeaponDamage) replaces the weapon's when fired (tested in game:
+Ammunition's stance damage (saWeaponDamage) replaces the weapon's when fired (tested in game:
 Stormwing Bone Arrows do 5 from a Longbow, whose own is 2).
 
 Some ranged weapons boost some ammunition with an always-on effect (residentSpEffectId) limited to
@@ -177,7 +177,7 @@ def main():
             "count": count or int(bullet["numShoot"]),
             "motionValue": float(attack["atkPhysCorrection"]),
             "statusMotionValue": float(attack["statusAilmentAtkPowerCorrectRate"]),
-            "poiseMotionValue": float(attack["atkSuperArmorCorrection"]),
+            "stanceMotionValue": float(attack["atkSuperArmorCorrection"]),
         }
 
     def get_physical_type(row):
@@ -231,7 +231,7 @@ def main():
                 "name": name,
                 "attack": attack,
                 "status": status,
-                "poise": row["saWeaponDamage"],
+                "stance": row["saWeaponDamage"],
                 # Its shot's stamina cost, e.g. an Arrow's 13 and a Ballista Bolt's 40
                 "stamina": shot_stamina.get(row["behaviorVariationId"]),
                 "physicalType": get_physical_type(row),
@@ -249,7 +249,7 @@ def main():
             entry["class"],
             tuple(sorted(entry["attack"].items())),
             tuple(sorted(entry["status"].items())),
-            entry["poise"],
+            entry["stance"],
             entry["stamina"],
             entry["physicalType"],
             tuple(sorted(entry["enemyTypeRates"].items())),
@@ -275,7 +275,7 @@ def main():
                 "names": [],
                 "attack": entry["attack"],
                 "status": entry["status"],
-                "poise": entry["poise"],
+                "stance": entry["stance"],
                 **({"stamina": entry["stamina"]} if entry["stamina"] is not None else {}),
                 "physicalType": entry["physicalType"],
                 **({"enemyTypeRates": entry["enemyTypeRates"]} if entry["enemyTypeRates"] else {}),

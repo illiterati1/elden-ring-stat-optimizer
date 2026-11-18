@@ -772,7 +772,7 @@ def get_attack_animation(steps, param, attack, hands, step):
     - the weapon's own file has its rolling attack but only its class's file has a crouching one:
       the two handed Falx's, 2 hits of 440 (its rolling R1's two, not its class's crouching R1's one)
     - the crouching animation has no hits (only effects): the Dark Moon Greatsword's (a129, 627
-      damage and 10.175 poise one handed, 683 and 13.2 two handed) and the powerstance Sword Lance's
+      damage and 10.175 stance one handed, 683 and 13.2 two handed) and the powerstance Sword Lance's
       (a39, 910 and 6.6)
     None where it hits with other behavior judges than the rolling attack, whose hits it copies
     """
@@ -967,8 +967,8 @@ def get_left_hand_hits(steps, param, moveset):
 def get_left_hand_rows(steps, param, judges):
     """
     @param judges behavior judge IDs of powerstance hits with the left hand's weapon
-    @returns the weapon's own motion value, poise motion value, and stamina cost for each of the
-    judges, through its behavior variation, as { judge: [motion value, poise, stamina] }: the left
+    @returns the weapon's own motion value, stance motion value, and stamina cost for each of the
+    judges, through its behavior variation, as { judge: [motion value, stance, stamina] }: the left
     hand's weapon's hits use its own attack rows, e.g. a Wakizashi's L1 #1 with a katana (115, not
     the katana's 90), and its own behaviors' stamina (times its staminaConsumptionRate, rounded down)
     """

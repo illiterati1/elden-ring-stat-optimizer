@@ -848,9 +848,9 @@ BOSS_NPC_PARAM_IDS = {
 NOT_BOSS_NAMES = set()
 
 # What a SpEffect's deleteCriteriaDamage (the damage that removes it) means, where known: the
-# Abductor Virgins' 14300 (5 poise per hit) and 14302 (15 more), which lightning staggers in
+# Abductor Virgins' 14300 (5 stance per hit) and 14302 (15 more), which lightning staggers in
 # game. Unnamed in the Paramdex; 10 is only on 14302. Untested
-POISE_DELETE_DAMAGE_TYPES = {1: "per hit", 10: "per lightning hit (untested)"}
+STANCE_DELETE_DAMAGE_TYPES = {1: "per hit", 10: "per lightning hit (untested)"}
 
 # Damage multipliers for critical hits (backstabs and ripostes), after defenses: Crucible Knights
 # take 30% less (tested in game: a Longsword riposte does 833 rather than 1190 at +25, and 274 at +0,
@@ -1330,13 +1330,13 @@ def main():
         ng_plus_hp = math.floor(base_hp * ng_plus_rate)
         return defense, negation, hp, ng_plus_hp, ng_plus_stats(base_hp * ng_plus_rate, defense)
 
-    def get_poise(row):
+    def get_stance(row):
         """
-        @returns an enemy's poise damage multiplier (SpEffectParam saReceiveDamageRate) from its
+        @returns an enemy's stance damage multiplier (SpEffectParam saReceiveDamageRate) from its
         permanent SpEffects (e.g. 0.2 for ancient dragons, SpEffect 14857), and a note on how its
-        poise differs otherwise: a multiplier only on some body parts (applyPartsGroup, e.g. the
+        stance differs otherwise: a multiplier only on some body parts (applyPartsGroup, e.g. the
         Giant Crayfish's 0.5), or none from attacks with a fixed amount per hit instead (an effect
-        removed by damage, deleteCriteriaDamage, that replaces itself with one that takes poise,
+        removed by damage, deleteCriteriaDamage, that replaces itself with one that takes stance,
         changeSaPoint: the Abductor Virgins'). Effects that apply to no one (every effectTarget off,
         e.g. the Basilisk Eyes', applied by its scripts) are left out.
         """
@@ -1359,15 +1359,15 @@ def main():
                 rate *= effect["saReceiveDamageRate"]
         notes = []
         if part_rates:
-            notes.append(f"Takes {min(part_rates):g}× poise damage on some body parts (others normal)")
+            notes.append(f"Takes {min(part_rates):g}× stance damage on some body parts (others normal)")
         if per_hit:
             amounts = ", plus ".join(
-                f"{points:g} {POISE_DELETE_DAMAGE_TYPES.get(kind, f'per damage type {kind} hit')}"
+                f"{points:g} {STANCE_DELETE_DAMAGE_TYPES.get(kind, f'per damage type {kind} hit')}"
                 for kind, points in sorted(per_hit)
             )
             notes.append(
-                f"Attacks do no poise damage; each hit takes a fixed amount instead: {amounts} "
-                f"({row['superArmorDurability']:g} poise)"
+                f"Attacks do no stance damage; each hit takes a fixed amount instead: {amounts} "
+                f"({row['superArmorDurability']:g} stance)"
             )
         return round(rate, 3), " ".join(notes)
 
@@ -1439,14 +1439,14 @@ def main():
             # so rows that look different stay apart, e.g. the Academy's Glintstone
             # Sorcerers' two outfits
             appearance = tuple(i for i in range(32) if row[f"modelDispMask{i}"])
-            poise = get_poise(row)
+            stance = get_stance(row)
             weak_part_rate = (
                 row["weakPartsDamageRate"]
                 if row["partsDamageType"] == 1 and row["weakPartsDamageRate"] >= WEAK_PART_NOTE_MIN_RATE
                 else 1
             )
             key = (
-                name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance, poise,
+                name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance, stance,
                 weak_part_rate, json.dumps(ng_plus),
             )
             riposte_override = next(
@@ -1475,8 +1475,8 @@ def main():
                         if (critical_rate := get_critical_damage_rate(row, name)) != 1
                         else {}
                     ),
-                    **({"poiseDamageRate": poise[0]} if poise[0] != 1 else {}),
-                    **({"poiseNote": poise[1]} if poise[1] else {}),
+                    **({"stanceDamageRate": stance[0]} if stance[0] != 1 else {}),
+                    **({"stanceNote": stance[1]} if stance[1] else {}),
                     **({"weakPartDamageRate": round(weak_part_rate, 2)} if weak_part_rate != 1 else {}),
                     "ripostes": riposte_override
                     or get_ripostes(model_id := int(model[1:]) if re.fullmatch(r"c\d{4}", model) else -1),

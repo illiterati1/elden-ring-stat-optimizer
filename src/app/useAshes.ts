@@ -24,7 +24,7 @@ import {
 export const ashAttack = "ash";
 
 /**
- * [motion value, status motion value, poise motion value, physical type, details?], like a moveset
+ * [motion value, status motion value, stance motion value, physical type, details?], like a moveset
  * hit, except physical type 4 and 5 are the weapon's own first and second types
  */
 type AshHit = [
@@ -46,8 +46,8 @@ type AshHit = [
     tickDuration?: number;
     /** Seconds before the first tick, if not right away */
     tickDelay?: number;
-    /** Flat poise damage */
-    poise?: number;
+    /** Flat stance damage */
+    stance?: number;
     /** The skill's own weapon buff's flat attack by damage type */
     buff?: number[];
     /** How much of a weapon buff's flat attack the hit gets, in percent, if not 100 */
@@ -565,7 +565,7 @@ export const buffedR2Skills: ReadonlySet<string> = new Set([
 /**
  * Skills that are one of the weapon's own attacks, by attack: Shield Strike is the shield's R1
  * chain, one or two handed (tested in game: the Carian Thrusting Shield +25's two handed total
- * 2768 with 99 in every stat, and the Heater Shield's, with the R1s' poise). One handed, its own
+ * 2768 with 99 in every stat, and the Heater Shield's, with the R1s' stance). One handed, its own
  * rows have the one handed R1s' motion values. Torches' Torch Attack is their R2 (seen in game).
  */
 const movesetSkills: ReadonlyMap<string, AttackName> = new Map([
@@ -596,11 +596,11 @@ function doesDamage(ashes: Ashes, skill: string) {
     ...Object.values(skillData?.classes ?? {}),
     ...Object.values(skillData?.unique ?? {}),
   ];
-  // (or poise damage: e.g. the Verdigris Greatshield's Moore's Charge only does poise damage)
+  // (or stance damage: e.g. the Verdigris Greatshield's Moore's Charge only does stance damage)
   return versions.some((hits) =>
     [...(hits?.main ?? []), ...(hits?.followUps.flatMap((followUp) => followUp.hits) ?? [])].some(
-      ([motionValue, , poiseMotionValue, , details]) =>
-        [motionValue, details?.flat, details?.buff, poiseMotionValue, details?.poise]
+      ([motionValue, , stanceMotionValue, , details]) =>
+        [motionValue, details?.flat, details?.buff, stanceMotionValue, details?.stance]
           .flat()
           .some((value) => value != null && value > 0),
     ),
@@ -979,13 +979,13 @@ function getSkillAttack(
 
   const physicalType = (type: number): PhysicalType =>
     allPhysicalTypes[type >= 4 ? info.types[type - 4] : type] ?? "standard";
-  const toHit = ([motionValue, statusMotionValue, poiseMotionValue, type, details]: AshHit) => {
+  const toHit = ([motionValue, statusMotionValue, stanceMotionValue, type, details]: AshHit) => {
     const hit: AttackDataHit = {
       ...(Array.isArray(motionValue)
         ? { motionValue: Math.max(...motionValue), motionValues: motionValue }
         : { motionValue }),
       statusMotionValue,
-      poiseMotionValue,
+      stanceMotionValue,
       physicalType: physicalType(type),
     };
     if (details?.flat) hit.flatAttack = details.flat;
@@ -997,7 +997,7 @@ function getSkillAttack(
     if (details?.tickDuration) hit.tickDuration = details.tickDuration;
     if (details?.tickDelay) hit.tickDelay = details.tickDelay;
     if (details?.notCounted) hit.notCounted = true;
-    if (details?.poise) hit.flatPoise = details.poise;
+    if (details?.stance) hit.flatStance = details.stance;
     if (details?.hpDamage) hit.hpDamage = details.hpDamage;
     if (details?.categories) hit.categories = details.categories;
     if (details?.status) hit.status = details.status;
@@ -1041,7 +1041,7 @@ function getSkillAttack(
       }`,
     };
   }
-  const poiseBase = weapon.ammoPoise ?? movesets[weapon.weaponName]?.poise ?? 0;
+  const stanceBase = weapon.ammoStance ?? movesets[weapon.weaponName]?.stance ?? 0;
   const skillRange = info.skillRange ?? 0;
   // Each call's timing, with its weapon's stamina rate
   const timingOf = (parts: SkillStepPart[]) =>
@@ -1109,7 +1109,7 @@ function getSkillAttack(
         stepLabels: steps.map((followUp, i) =>
           i === 0 ? `${skill} ${followUp.label}` : followUp.label,
         ),
-        poiseBase,
+        stanceBase,
         ...ownBuff,
         ...notedHit,
         // The chain has its skill's buff, which replaces other weapon buffs (War Cry's on the weapon)
@@ -1258,7 +1258,7 @@ function getSkillAttack(
         steps: [countedHits(followUp!.hits).map(toHit)],
         weights: [1],
         stepLabels: [`${skill} ${followUp!.label}`],
-        poiseBase,
+        stanceBase,
         ...ownBuff,
         ...notedHit,
         ...followUpNote,
@@ -1286,7 +1286,7 @@ function getSkillAttack(
         steps: [countedHits(followUp.hits).map(toHit)],
         weights: [1],
         stepLabels: [`${skill} ${followUp.label}`],
-        poiseBase,
+        stanceBase,
         ...ownBuff,
         ...notedHit,
         ...followUpNote,
@@ -1307,7 +1307,7 @@ function getSkillAttack(
         weights: [1, 1],
         stepLabels: [`${skill} opening`, "Loop"],
         repeatFrom: 1,
-        poiseBase,
+        stanceBase,
         ...ownBuff,
         ...notedHit,
         ...timingOf([{ label: "" }]),
@@ -1330,7 +1330,7 @@ function getSkillAttack(
         : [1 / (1 + chainWeight), chainWeight / (1 + chainWeight)],
       ...(followUp && { chain: true }),
       stepLabels: [skill, ...(followUp ? [followUp.label] : [])],
-      poiseBase,
+      stanceBase,
       ...ownBuff,
       ...notedHit,
       ...followUpNote,

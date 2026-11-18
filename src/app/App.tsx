@@ -147,7 +147,7 @@ export default function App() {
     showStance: savedShowStance,
     showStamina: savedShowStamina,
     showDamagePerStamina: savedShowDamagePerStamina,
-    showPoisePerStamina: savedShowPoisePerStamina,
+    showStancePerStamina: savedShowStancePerStamina,
     showDps: savedShowDps,
     tooltipTimings,
     chainLimit,
@@ -169,7 +169,7 @@ export default function App() {
     enemyKey,
     enemyHp,
     criticalDamageRate,
-    poiseDamageRate,
+    stanceDamageRate,
     enemyRipostes,
     enemyTypes,
     enemyInRealmOfShadow,
@@ -190,13 +190,13 @@ export default function App() {
     selectedAmmo,
     weaponTypes,
   } = appState;
-  // Spell scaling has no attack, so no poise, stamina, status, or timing (the settings are kept)
+  // Spell scaling has no attack, so no stance, stamina, status, or timing (the settings are kept)
   const spellScalingMode = objective === "spellScaling";
   const showStatus = savedShowStatus && !spellScalingMode;
   const showStance = savedShowStance && !spellScalingMode;
   const showStamina = savedShowStamina && !spellScalingMode;
   const showDamagePerStamina = savedShowDamagePerStamina && !spellScalingMode;
-  const showPoisePerStamina = savedShowPoisePerStamina && !spellScalingMode;
+  const showStancePerStamina = savedShowStancePerStamina && !spellScalingMode;
   const showDps = savedShowDps && !spellScalingMode;
 
   const { weapons, loading, error } = useWeapons();
@@ -769,7 +769,7 @@ export default function App() {
             physicalNegation,
             enemyHp: countedEnemyHp,
             criticalDamageRate,
-            poiseDamageRate,
+            stanceDamageRate,
             enemyTypes,
             scadutreeBlessingRate,
             // A weapon with a unique skill that can also be buffed (the Bonny Butchering Knife) only
@@ -803,7 +803,7 @@ export default function App() {
               offhand: {
                 weapon: offhand,
                 regularUpgradeLevel: offhandUpgradeLevel,
-                poiseBase: movesets[offhand.weaponName]?.poise ?? 0,
+                stanceBase: movesets[offhand.weaponName]?.stance ?? 0,
               },
             }),
             // Unless the skill's buff is the one picked, e.g. War Cry's R2s with War Cry
@@ -854,7 +854,7 @@ export default function App() {
     physicalNegation,
     countedEnemyHp,
     criticalDamageRate,
-    poiseDamageRate,
+    stanceDamageRate,
     enemyTypes,
     scadutreeBlessingRate,
     offhandWeaponData,
@@ -921,7 +921,7 @@ export default function App() {
       (sortBy === "stance" && !showStance) ||
       (sortBy === "stamina" && !showStamina) ||
       (sortBy === "damagePerStamina" && !showDamagePerStamina) ||
-      (sortBy === "poisePerStamina" && !showPoisePerStamina) ||
+      (sortBy === "stancePerStamina" && !showStancePerStamina) ||
       (sortBy.startsWith("status:") &&
         !statusTypesShown.some((statusType) => statusSortBy(statusType) === sortBy));
     return hidden
@@ -934,7 +934,7 @@ export default function App() {
     showStance,
     showStamina,
     showDamagePerStamina,
-    showPoisePerStamina,
+    showStancePerStamina,
     showDps,
     statusTypesShown,
   ]);
@@ -999,7 +999,7 @@ export default function App() {
         showStance={savedShowStance}
         showStamina={savedShowStamina}
         showDamagePerStamina={savedShowDamagePerStamina}
-        showPoisePerStamina={savedShowPoisePerStamina}
+        showStancePerStamina={savedShowStancePerStamina}
         showRequirements={showRequirements}
         closedAlerts={closedAlerts}
         onlyBuffable={onlyBuffable}
@@ -1176,7 +1176,7 @@ export default function App() {
                         showStance={showStance}
                         showStamina={showStamina}
                         showDamagePerStamina={showDamagePerStamina}
-                        showPoisePerStamina={showPoisePerStamina}
+                        showStancePerStamina={showStancePerStamina}
                         showDps={showDps}
                         oneOffAttack={oneOffAttacks.has(attack)}
                         tooltipTimings={tooltipTimingsShown}

@@ -231,7 +231,7 @@ function getEffects(
           effect.status ||
           effect.hitStatus ||
           effect.hpDamage ||
-          effect.poiseRate ||
+          effect.stanceRate ||
           effect.scalingBonus ||
           effect.enemyTypeRates,
       )
@@ -243,7 +243,7 @@ function getEffects(
           status,
           hitStatus,
           hpDamage,
-          poiseRate,
+          stanceRate,
           scalingBonus,
           enemyTypeRates,
           categories,
@@ -259,7 +259,7 @@ function getEffects(
           ...(status && { status }),
           ...(hitStatus && { hitStatus }),
           ...(hpDamage && { hpDamage }),
-          ...(poiseRate && { poiseRate }),
+          ...(stanceRate && { stanceRate }),
           ...(scalingBonus && { scalingBonus }),
           ...(enemyTypeRates && { enemyTypeRates }),
           ...(categories && { categories }),
@@ -408,7 +408,7 @@ export function describeBuff(buff: Buff) {
               }% max HP` + (effect.hpDamage.flat ? ` + ${effect.hpDamage.flat}` : ""),
             ]
           : []),
-        ...(effect.poiseRate ? [`×${effect.poiseRate} poise damage`] : []),
+        ...(effect.stanceRate ? [`×${effect.stanceRate} stance damage`] : []),
         ...Object.entries(effect.scalingBonus ?? {}).map(
           ([stat, bonus]) => `+${Math.round(bonus * 100)} ${statNames[stat]} scaling`,
         ),

@@ -48,7 +48,7 @@ def main():
     tabs = {
         "mv": read_tab(project_dir, "MotionValues"),
         "status": read_tab(project_dir, "StatusMVs"),
-        "poise": read_tab(project_dir, "PoiseMVs"),
+        "stance": read_tab(project_dir, "PoiseMVs"),
         "type": read_tab(project_dir, "PhysicalAtkAttribute"),
     }
 
@@ -76,10 +76,10 @@ def main():
             report(weapon_name, "", "weapon", weapon_name, "no weapon with this name")
             continue
 
-        sheet_poise = parse_numbers(tabs["poise"].get(weapon_name, {}).get("Base", ""))
+        sheet_stance = parse_numbers(tabs["stance"].get(weapon_name, {}).get("Base", ""))
         checked["base stance"] += 1
-        if not same(sheet_poise, [float(weapon["saWeaponDamage"])]):
-            report(weapon_name, "Base", "base stance", sheet_poise, weapon["saWeaponDamage"])
+        if not same(sheet_stance, [float(weapon["saWeaponDamage"])]):
+            report(weapon_name, "Base", "base stance", sheet_stance, weapon["saWeaponDamage"])
 
         for hands in ["1h", "2h"]:
             for columns in ATTACKS.values():
@@ -105,18 +105,18 @@ def main():
                         # projectile
                         "mv": [max(get_motion_values(hit)) for hit in hits],
                         "status": [float(hit["statusAilmentAtkPowerCorrectRate"]) for hit in hits],
-                        "poise": [float(hit["atkSuperArmorCorrection"]) for hit in hits],
+                        "stance": [float(hit["atkSuperArmorCorrection"]) for hit in hits],
                         "type": [physical_type(weapon, int(hit["atkAttribute"])) for hit in hits],
                     }
                     sheet = {
                         field: parse_numbers(tabs[field].get(weapon_name, {}).get(key, ""))
-                        for field in ["mv", "status", "poise"]
+                        for field in ["mv", "status", "stance"]
                     }
                     sheet["type"] = [
                         hit.lower() for hit in split_hits(tabs["type"].get(weapon_name, {}).get(key, ""))
                     ]
 
-                    for field in ["mv", "status", "poise", "type"]:
+                    for field in ["mv", "status", "stance", "type"]:
                         checked[field] += 1
                         if field == "type":
                             ok = sheet[field] == game[field]

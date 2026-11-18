@@ -36,7 +36,7 @@ Each buff has a list of effects (SpEffectParam), each with:
   - stats: points added to stats (addStrengthStatus etc.)
   - scalingBonus: points added to the weapon's stat scaling, as fractions (changeStrengthPoint etc.,
     e.g. War Cry's +5 Strength scaling, tested in game with its R2s)
-  - poiseRate: stance damage multiplier (saAttackPowerRate)
+  - stanceRate: stance damage multiplier (saAttackPowerRate)
   - enemyTypeRates: damage multipliers against enemy types (weakDmgRateA-D, see
     build_enemy_data.py's ENEMY_TYPES), e.g. Sacred Order's ×2 against those who live in death
   - categories: the attack subcategories (AtkParam subCategory1-4) it only applies to, if any
@@ -493,7 +493,7 @@ def main():
         if enemy_type_rates:
             effect["enemyTypeRates"] = enemy_type_rates
         if row["saAttackPowerRate"] > 1:
-            effect["poiseRate"] = round(row["saAttackPowerRate"], 4)
+            effect["stanceRate"] = round(row["saAttackPowerRate"], 4)
         stats = {stat: row[field] for stat, field in STAT_FIELDS.items() if row[field]}
         if stats:
             effect["stats"] = stats
@@ -755,7 +755,7 @@ def main():
         add(
             "spell",
             name,
-            [effect for effect in effects if set(effect) - {"poiseRate", "group"}],
+            [effect for effect in effects if set(effect) - {"stanceRate", "group"}],
             **({"requirements": requirements} if requirements else {}),
             **({"upkeep": get_spell_upkeep(name, row)} if name in SPELL_UPKEEP else {}),
         )

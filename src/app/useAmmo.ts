@@ -15,8 +15,8 @@ export interface AmmoGroup {
   attack: Partial<Record<AttackPowerType, number>>;
   /** Status buildup added to the weapon's */
   status: Partial<Record<AttackPowerType, number>>;
-  /** Poise damage, which replaces the weapon's */
-  poise?: number;
+  /** Stance damage, which replaces the weapon's */
+  stance?: number;
   /** Each shot's stamina cost, before the weapon's stamina rate */
   stamina?: number;
   /** Physical damage type, which replaces the weapon's */
@@ -87,7 +87,7 @@ export function withAmmo(weapon: Weapon, group: AmmoGroup): Weapon {
   const bonus = group.weaponBonuses?.[weapon.weaponName];
   return {
     ...(bonus?.damageMultipliers && { damageMultipliers: bonus.damageMultipliers }),
-    ...(group.poise != null && { ammoPoise: group.poise }),
+    ...(group.stance != null && { ammoStance: group.stance }),
     ammoNames: group.names,
     ...(group.stamina != null && { ammoStamina: group.stamina }),
     ...(bonus?.shots && { ammoShots: bonus.shots }),

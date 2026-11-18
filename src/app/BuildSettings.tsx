@@ -39,7 +39,7 @@ interface Props {
   showStance: AppState["showStance"];
   showStamina: AppState["showStamina"];
   showDamagePerStamina: AppState["showDamagePerStamina"];
-  showPoisePerStamina: AppState["showPoisePerStamina"];
+  showStancePerStamina: AppState["showStancePerStamina"];
   showRequirements: AppState["showRequirements"];
   closedAlerts: AppState["closedAlerts"];
   onlyBuffable: AppState["onlyBuffable"];
@@ -121,7 +121,7 @@ function BuildSettings({
   showStance,
   showStamina,
   showDamagePerStamina,
-  showPoisePerStamina,
+  showStancePerStamina,
   showRequirements,
   closedAlerts,
   onlyBuffable,
@@ -354,7 +354,7 @@ function BuildSettings({
         />
       </Box>
       <CollapsibleGroup title="Columns">
-        {/* Spell scaling has no attack to show poise, stamina, or status for */}
+        {/* Spell scaling has no attack to show stance, stamina, or status for */}
         <Box display="flex" flexWrap="wrap" columnGap={3}>
           <FormControlLabel
             label="Damage/stamina"
@@ -369,7 +369,7 @@ function BuildSettings({
             }
           />
           <FormControlLabel
-            label="Poise"
+            label="Stance"
             sx={{ mr: 0 }}
             disabled={spellScaling}
             control={
@@ -381,14 +381,14 @@ function BuildSettings({
             }
           />
           <FormControlLabel
-            label="Poise/stamina"
+            label="Stance/stamina"
             sx={{ mr: 0 }}
             disabled={spellScaling}
             control={
               <Checkbox
                 size="small"
-                checked={showPoisePerStamina}
-                onChange={(evt) => onChange({ showPoisePerStamina: evt.currentTarget.checked })}
+                checked={showStancePerStamina}
+                onChange={(evt) => onChange({ showStancePerStamina: evt.currentTarget.checked })}
               />
             }
           />

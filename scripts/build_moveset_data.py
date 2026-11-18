@@ -20,7 +20,7 @@ ties, or else its type in data/EquipParamWeapon-vanilla.csv (atkAttribute). Both
 from <Game>/msg/engus/item-msgbnd-dcx and item_dlc02-msgbnd-dcx, unpacked with WitchyBND.
 
 Output format, keyed by base weapon name:
-  { "Longsword": { "poise": 5, "type": 0, "1h": { "R1": [[hit, ...], ...], ... }, "2h": { ... } } }
+  { "Longsword": { "stance": 5, "type": 0, "1h": { "R1": [[hit, ...], ...], ... }, "2h": { ... } } }
 "timing" has each attack step's timing from the game's animations, if <Game>/chr/c0000.anibnd.dcx
 has been unpacked (see check_animations.py's get_timings), by hands and attack like the attacks: [{
 "start": for tapped R2s, seconds from the press until the step starts, "hits": [seconds when each
@@ -36,14 +36,14 @@ second),
 (powerstance attacks), "sweetSpot": true if its hits are in
 a flail's sweet spot (×1.125 damage) }], each left out if the animation doesn't allow it (or costs
 nothing, or has no sweet spot).
-"leftHandRows" has the weapon's own motion value, poise motion value, and stamina cost for each
-behavior judge ID of the left hand's powerstance hits ({ judge: [motion value, poise, stamina] }, see
+"leftHandRows" has the weapon's own motion value, stance motion value, and stamina cost for each
+behavior judge ID of the left hand's powerstance hits ({ judge: [motion value, stance, stamina] }, see
 check_animations.py's get_left_hand_rows): the left hand's weapon's hits use its own attack rows.
 Those hits have "judge".
 "oneHanded": true is added for weapons that can't be two handed (bothHandEquipable), whose two
 handed attacks are left out even if the sheet lists them.
 Each attack is a list of chain steps, each step a list of hits (more than one for multi-hit
-attacks), and each hit is [motion value, status motion value, poise motion value, physical type]
+attacks), and each hit is [motion value, status motion value, stance motion value, physical type]
 where physical type is 0 standard, 1 slash, 2 strike, 3 pierce. The motion value is a number, or a
 list of one per damage type (physical, magic, fire, lightning, holy) if they differ. A hit may have
 a fifth element with more details: "flat", flat attack for each damage type added to the weapon's
@@ -186,7 +186,7 @@ MOTION_VALUE_FIXES["Dane's Footwork"] = {
 
 # Base stance damage where the sheet disagrees with EquipParamWeapon saWeaponDamage (found by
 # check_movesets.py)
-BASE_POISE_FIXES = {"Black Steel Greathammer": 7.5, "Hookclaws": 3}
+BASE_STANCE_FIXES = {"Black Steel Greathammer": 7.5, "Hookclaws": 3}
 
 
 def read_weapon_rows(project_dir):
@@ -478,7 +478,7 @@ def main():
     weapons = read_weapons(game_dir, project_dir)
     motion = read_tab(project_dir, "MotionValues")
     status = read_tab(project_dir, "StatusMVs")
-    poise = read_tab(project_dir, "PoiseMVs")
+    stance = read_tab(project_dir, "PoiseMVs")
     types = read_tab(project_dir, "PhysicalAtkAttribute")
     game_attacks = GameAttacks(project_dir)
     unique_hits = read_unique_hits(project_dir)
@@ -491,10 +491,10 @@ def main():
     output = {}
     hit_count = 0
     for weapon, row in motion.items():
-        base_poise = parse_numbers(poise.get(weapon, {}).get("Base", ""))
+        base_stance = parse_numbers(stance.get(weapon, {}).get("Base", ""))
         attribute = int(weapons[weapon]["atkAttribute"]) if weapon in weapons else 3
         entry = {
-            "poise": BASE_POISE_FIXES.get(weapon, base_poise[0] if base_poise else 0),
+            "stance": BASE_STANCE_FIXES.get(weapon, base_stance[0] if base_stance else 0),
             "type": PHYSICAL_TYPES[WEAPON_ATTRIBUTE_TYPES.get(attribute, "standard")],
         }
         if weapon not in weapons:
@@ -526,7 +526,7 @@ def main():
                     if not mvs:
                         break
                     status_mvs = parse_numbers(status.get(weapon, {}).get(key, ""))
-                    poise_mvs = parse_numbers(poise.get(weapon, {}).get(key, ""))
+                    stance_mvs = parse_numbers(stance.get(weapon, {}).get(key, ""))
                     hit_types = parse_types(types.get(weapon, {}).get(key, ""))
                     if weapon in weapons and column:
                         candidates, attack_row_count = game_attacks.get_candidate_rows(
@@ -576,7 +576,7 @@ def main():
                         if correct_id and correct_id != "-1":
                             details["correct"] = read_attack_element_correct(project_dir, correct_id)
                         step.append(
-                            [mv, pick(status_mvs, i, 100), pick(poise_mvs, i, 100), pick(hit_types, i, 0)]
+                            [mv, pick(status_mvs, i, 100), pick(stance_mvs, i, 100), pick(hit_types, i, 0)]
                             + ([details] if details else [])
                         )
                     steps.append(step)

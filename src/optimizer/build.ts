@@ -134,8 +134,8 @@ export interface BuildRequest {
   enemyHp?: number;
   /** The enemy's damage multiplier for critical hits, e.g. 0.7 for Crucible Knights */
   criticalDamageRate?: number;
-  /** The enemy's poise damage multiplier, e.g. 0.2 for ancient dragons */
-  poiseDamageRate?: number;
+  /** The enemy's stance damage multiplier, e.g. 0.2 for ancient dragons */
+  stanceDamageRate?: number;
   /** The enemy's types, for weapons and buffs that do more damage to them (e.g. dragons) */
   enemyTypes?: readonly EnemyType[];
   /** The Scadutree Blessing's damage multiplier (scadutreeBlessingRates), if it applies */
@@ -143,12 +143,12 @@ export interface BuildRequest {
   /**
    * The off hand weapon for a powerstance attack's hits with the left hand (AttackDataHit leftHand),
    * if not the same weapon: its upgrade level (on the regular scale, like regularUpgradeLevel) and
-   * base poise
+   * base stance
    */
   offhand?: {
     weapon: Weapon;
     regularUpgradeLevel: number;
-    poiseBase: number;
+    stanceBase: number;
   };
   /** Effects of the player's buffs (talismans, tears, etc.), applied to the hits they apply to */
   buffs?: readonly BuffEffect[];
@@ -228,8 +228,8 @@ export interface AttackDataHit {
   tickDelay?: number;
   /** True for a hit shown but not counted, e.g. one that only hits in some situations */
   notCounted?: boolean;
-  /** Flat poise damage, added to the poise motion value's */
-  flatPoise?: number;
+  /** Flat stance damage, added to the stance motion value's */
+  flatStance?: number;
   /** A weapon buff's flat attack by damage type (times its motion value), which doesn't scale */
   buffAttack?: readonly number[];
   /**
@@ -258,14 +258,14 @@ export interface AttackDataHit {
    */
   hpDamage?: HpDamage;
   statusMotionValue: number;
-  poiseMotionValue: number;
+  stanceMotionValue: number;
   physicalType: PhysicalType;
   /** True for a powerstance hit with the left hand's weapon */
   leftHand?: boolean;
   /** For a left hand hit, its behavior judge ID (useMovesets.ts's withOffhandRows) */
   judge?: number;
-  /** For a hit with an off hand weapon, its base stance (poise) damage, instead of the attack's */
-  poiseBase?: number;
+  /** For a hit with an off hand weapon, its base stance damage, instead of the attack's */
+  stanceBase?: number;
   /** For a hit with an off hand weapon, its status attack power, instead of the weapon's */
   statusAttackPower?: Partial<Record<AttackPowerType, number>>;
 }
@@ -298,8 +298,8 @@ export interface BuffEffect {
    * Flame Blade's black flame (unless the hit applies its own)
    */
   hpDamage?: HpDamage;
-  /** Stance (poise) damage multiplier */
-  poiseRate?: number;
+  /** Stance damage multiplier */
+  stanceRate?: number;
   /** Damage multipliers against enemy types, e.g. Sacred Blade's ×2 against those who live in death */
   enemyTypeRates?: EnemyTypeRates;
   /**
@@ -411,21 +411,21 @@ function applyHpDamageBuffs(attack: AttackData, buffs: readonly BuffEffect[]): A
 }
 
 /** @returns the attack with buffs' stance damage multipliers applied to its hits */
-function applyPoiseBuffs(attack: AttackData, buffs: readonly BuffEffect[]): AttackData {
-  if (!buffs.some((effect) => effect.poiseRate)) return attack;
+function applyStanceBuffs(attack: AttackData, buffs: readonly BuffEffect[]): AttackData {
+  if (!buffs.some((effect) => effect.stanceRate)) return attack;
   return {
     ...attack,
     steps: attack.steps.map((step) =>
       step.map((hit) => {
         const rate = buffs
-          .filter((effect) => effect.poiseRate && buffAppliesTo(effect, hit, attack))
-          .reduce((product, effect) => product * effect.poiseRate!, 1);
+          .filter((effect) => effect.stanceRate && buffAppliesTo(effect, hit, attack))
+          .reduce((product, effect) => product * effect.stanceRate!, 1);
         return rate === 1
           ? hit
           : {
               ...hit,
-              poiseMotionValue: hit.poiseMotionValue * rate,
-              ...(hit.flatPoise != null && { flatPoise: hit.flatPoise * rate }),
+              stanceMotionValue: hit.stanceMotionValue * rate,
+              ...(hit.flatStance != null && { flatStance: hit.flatStance * rate }),
             };
       }),
     ),
@@ -608,8 +608,8 @@ export interface AttackData {
   fixedSkill?: string;
   /** True for a chain, whose steps are weighted by the chain weighting (or added up) */
   chain?: boolean;
-  /** The weapon's base stance (poise) damage, which stance motion values multiply */
-  poiseBase: number;
+  /** The weapon's base stance damage, which stance motion values multiply */
+  stanceBase: number;
   /** The stamina each step costs, if known */
   stamina?: (number | undefined)[];
   /** How much of each step's stamina its left hand hits cost (powerstance attacks), if known */
@@ -721,8 +721,8 @@ export interface BuildResult {
    * chain's, over the time it takes, if known
    */
   attackDps?: number;
-  /** Poise damage per second of the chosen attack, repeated the same way as attackDps, if known */
-  attackPoisePerSecond?: number;
+  /** Stance damage per second of the chosen attack, repeated the same way as attackDps, if known */
+  attackStancePerSecond?: number;
   /** Stamina spent per second of the chosen attack, repeated the same way as attackDps, if known */
   attackStaminaPerSecond?: number;
   /** Each step's timing of the chosen attack, if known */
@@ -916,7 +916,7 @@ function getHitStatus(
  * either isn't known
  */
 function getTickCount(hit: AttackDataHit) {
-  // A hit shown but not counted counts no times, in damage, poise, and status
+  // A hit shown but not counted counts no times, in damage, stance, and status
   if (hit.notCounted) return 0;
   return getTicks(hit) ?? 1;
 }
@@ -983,9 +983,9 @@ function addBuffAttack(
 }
 
 /** An attack's stance damage: each step's hits added up, weighted by step */
-function getAttackStance(attack: AttackData, poiseDamageRate = 1) {
+function getAttackStance(attack: AttackData, stanceDamageRate = 1) {
   return (
-    poiseDamageRate *
+    stanceDamageRate *
     attack.steps.reduce(
       (total, step, i) =>
         total +
@@ -993,8 +993,8 @@ function getAttackStance(attack: AttackData, poiseDamageRate = 1) {
           step.reduce(
             (sum, hit) =>
               sum +
-              (((hit.poiseBase ?? attack.poiseBase) * hit.poiseMotionValue) / 100 +
-                (hit.flatPoise ?? 0)) *
+              (((hit.stanceBase ?? attack.stanceBase) * hit.stanceMotionValue) / 100 +
+                (hit.flatStance ?? 0)) *
                 getTickCount(hit),
             0,
           ),
@@ -1070,22 +1070,22 @@ function getAttackStatusPerSecond(
   );
 }
 
-/** An attack's poise damage per second repeated as fast as possible, like getAttackDps */
-function getAttackPoisePerSecond(attack: AttackData, poiseDamageRate = 1) {
+/** An attack's stance damage per second repeated as fast as possible, like getAttackDps */
+function getAttackStancePerSecond(attack: AttackData, stanceDamageRate = 1) {
   const repeated = getRepeatedSteps(attack);
   if (!repeated) return undefined;
-  const poise = attack.steps
+  const stance = attack.steps
     .slice(repeated.from)
     .flat()
     .reduce(
       (sum, hit) =>
         sum +
-        (((hit.poiseBase ?? attack.poiseBase) * hit.poiseMotionValue) / 100 +
-          (hit.flatPoise ?? 0)) *
+        (((hit.stanceBase ?? attack.stanceBase) * hit.stanceMotionValue) / 100 +
+          (hit.flatStance ?? 0)) *
           getTickCount(hit),
       0,
     );
-  return (poiseDamageRate * poise) / repeated.time;
+  return (stanceDamageRate * stance) / repeated.time;
 }
 
 /**
@@ -1135,7 +1135,7 @@ function getAttackStaminaPerSecond(attack: AttackData) {
 }
 
 /**
- * Each hit of an attack's damage (unweighted, including flat attack), poise damage, and status
+ * Each hit of an attack's damage (unweighted, including flat attack), stance damage, and status
  * buildup with the given attack power, and each step's stamina cost on its first hit
  */
 function getAttackSteps(
@@ -1144,7 +1144,7 @@ function getAttackSteps(
   getHitDamageFor: (hit: AttackDataHit) => number,
   enemyHp: number | undefined,
   hitStatusOf?: (hit: AttackDataHit) => StatusBuildup,
-  poiseDamageRate = 1,
+  stanceDamageRate = 1,
 ): AttackResultHit[][] {
   return attack.steps.map((step, stepIndex) =>
     step.map((hit, hitIndex) => {
@@ -1160,9 +1160,9 @@ function getAttackSteps(
           ...(hit.tickInterval > 0 && { perSecond: damage / hit.tickInterval }),
         }),
         stance:
-          (((hit.poiseBase ?? attack.poiseBase) * hit.poiseMotionValue) / 100 +
-            (hit.flatPoise ?? 0)) *
-          poiseDamageRate,
+          (((hit.stanceBase ?? attack.stanceBase) * hit.stanceMotionValue) / 100 +
+            (hit.flatStance ?? 0)) *
+          stanceDamageRate,
         status,
         // Physical damage from the weapon's attack, flat attack (e.g. Beast's Roar's bullet), or a buff
         physicalType:
@@ -1290,7 +1290,7 @@ export function optimizeBuild(
     physicalNegation,
     enemyHp,
     criticalDamageRate = 1,
-    poiseDamageRate = 1,
+    stanceDamageRate = 1,
     enemyTypes = [],
     scadutreeBlessingRate = 1,
     offhand,
@@ -1368,7 +1368,7 @@ export function optimizeBuild(
       )
     : undefined;
   const attack =
-    requestedAttack && applyHpDamageBuffs(applyPoiseBuffs(requestedAttack, buffs), buffs);
+    requestedAttack && applyHpDamageBuffs(applyStanceBuffs(requestedAttack, buffs), buffs);
   const spellScaling = buffs.find((effect) => effect.flat && effect.spellScaling)?.spellScaling;
   const spellBuffWeapon =
     catalyst && spellScaling
@@ -1655,7 +1655,7 @@ export function optimizeBuild(
       ]);
   };
   const hitStatusOf = getHitStatusOf(finalAttributes);
-  // An off hand weapon's hits' status attack power and poise are its own
+  // An off hand weapon's hits' status attack power and stance are its own
   const offhandStatusPower =
     offhandWeapon &&
     getWeaponAttack({
@@ -1683,7 +1683,7 @@ export function optimizeBuild(
               hit.leftHand
                 ? {
                     ...hit,
-                    poiseBase: offhand!.poiseBase,
+                    stanceBase: offhand!.stanceBase,
                     statusAttackPower: offhandStatusPower,
                   }
                 : hit,
@@ -1746,7 +1746,7 @@ export function optimizeBuild(
           (hit) => hitDamage(hit, finalAttributes),
           enemyHp,
           hitStatusOf,
-          poiseDamageRate,
+          stanceDamageRate,
         )
       : undefined;
   const notedHitDamage =
@@ -1820,7 +1820,7 @@ export function optimizeBuild(
         : attack?.note,
     fixedSkill: attack?.fixedSkill,
     skillVariant,
-    attackStance: resultAttack ? getAttackStance(resultAttack, poiseDamageRate) : undefined,
+    attackStance: resultAttack ? getAttackStance(resultAttack, stanceDamageRate) : undefined,
     attackStamina: attack ? getAttackStamina(attack) : undefined,
     attackDps:
       attack?.needsRequirements && objective !== "spellScaling" && ineffectiveAttributes.length > 0
@@ -1828,8 +1828,8 @@ export function optimizeBuild(
         : resultAttack && attackSteps
         ? getAttackDps(resultAttack, attackSteps)
         : undefined,
-    attackPoisePerSecond: resultAttack
-      ? getAttackPoisePerSecond(resultAttack, poiseDamageRate)
+    attackStancePerSecond: resultAttack
+      ? getAttackStancePerSecond(resultAttack, stanceDamageRate)
       : undefined,
     attackStaminaPerSecond: resultAttack ? getAttackStaminaPerSecond(resultAttack) : undefined,
     attackStepTimes: resultAttack?.stepTimes,

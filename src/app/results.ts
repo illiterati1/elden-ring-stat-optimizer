@@ -48,12 +48,12 @@ export function getDamagePerStamina(result: BuildResult, perSecond = false) {
 }
 
 /**
- * Poise damage per point of stamina the chosen attack costs, or poise damage per second per point
+ * Stance damage per point of stamina the chosen attack costs, or stance damage per second per point
  * of stamina (with DPS shown), if both are known
  */
-export function getPoisePerStamina(result: BuildResult, perSecond = false) {
-  const poise = perSecond ? result.attackPoisePerSecond : result.attackStance;
-  return poise != null && result.attackStamina ? poise / result.attackStamina : undefined;
+export function getStancePerStamina(result: BuildResult, perSecond = false) {
+  const stance = perSecond ? result.attackStancePerSecond : result.attackStance;
+  return stance != null && result.attackStamina ? stance / result.attackStamina : undefined;
 }
 
 /**
@@ -61,7 +61,7 @@ export function getPoisePerStamina(result: BuildResult, perSecond = false) {
  */
 function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
   switch (sortBy) {
-    // Per second, the attack's damage, poise, and stamina repeated as fast as possible
+    // Per second, the attack's damage, stance, and stamina repeated as fast as possible
     case "total":
       return perSecond ? result.attackDps ?? -Infinity : result.finalValue;
     // Names are compared separately (sortResults)
@@ -70,7 +70,7 @@ function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
     case "level":
       return -result.finalLevel;
     case "stance":
-      return (perSecond ? result.attackPoisePerSecond : result.attackStance) ?? -Infinity;
+      return (perSecond ? result.attackStancePerSecond : result.attackStance) ?? -Infinity;
     // The lowest stamina cost first
     case "stamina": {
       const stamina = perSecond ? result.attackStaminaPerSecond : result.attackStamina;
@@ -78,8 +78,8 @@ function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
     }
     case "damagePerStamina":
       return getDamagePerStamina(result, perSecond) ?? -Infinity;
-    case "poisePerStamina":
-      return getPoisePerStamina(result, perSecond) ?? -Infinity;
+    case "stancePerStamina":
+      return getStancePerStamina(result, perSecond) ?? -Infinity;
     default:
       if (sortBy.startsWith("scaling:")) {
         return result.scaling[sortBy.slice("scaling:".length) as Attribute] ?? 0;
@@ -94,7 +94,7 @@ function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
   }
 }
 
-/** @param perSecond true to sort by per second values (damage, poise, stamina, and status) */
+/** @param perSecond true to sort by per second values (damage, stance, stamina, and status) */
 export function sortResults(
   results: BuildResult[],
   sortBy: SortBy,

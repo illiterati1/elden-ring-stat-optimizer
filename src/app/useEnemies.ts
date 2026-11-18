@@ -23,10 +23,10 @@ export interface Enemy {
   neutral?: boolean;
   /** Damage multiplier for critical hits, if not 1 (e.g. 0.7 for Crucible Knights) */
   criticalDamageRate?: number;
-  /** Poise damage multiplier, if not 1 (e.g. 0.2 for ancient dragons), from its permanent SpEffects */
-  poiseDamageRate?: number;
-  /** How its poise differs otherwise, e.g. only on some body parts */
-  poiseNote?: string;
+  /** Stance damage multiplier, if not 1 (e.g. 0.2 for ancient dragons), from its permanent SpEffects */
+  stanceDamageRate?: number;
+  /** How its stance differs otherwise, e.g. only on some body parts */
+  stanceNote?: string;
   /** Damage multiplier on its weak spot from every attack, if noted (e.g. 3 for Smith Golems) */
   weakPartDamageRate?: number;
   /** The ripostes the player can do to it (e.g. ["Large Riposte"]), none if it can't be riposted */
