@@ -134,9 +134,21 @@ export const stepStartDelay = 1 / 30;
  * Torrent's own animations, which aren't read. Mounted R2s don't slow down: they start at their
  * charging window anyway (an Uchigatana's repeated every 94 standing still, 95 running, 96 here).
  */
+const rollingNote =
+  "Timed from the attack press: the next attack's time includes rolling again first";
+const crouchingNote =
+  "Timed from the attack press: the next attack's time includes crouching again first";
+const jumpingNote = "Timed from the jump press, not the attack press";
 export const attackTimingNotes: Partial<Record<string, string>> = {
   "Mounted R1/L1":
     "Timed with Torrent standing still: while moving, each R1 after the first starts about 0.12s later",
+  "Rolling R1": rollingNote,
+  "Powerstance Rolling L1": rollingNote,
+  "Crouching R1": crouchingNote,
+  "Powerstance Crouching L1": crouchingNote,
+  "Jumping R1": jumpingNote,
+  "Jumping R2": jumpingNote,
+  "Powerstance Jumping L1": jumpingNote,
 };
 
 /**
