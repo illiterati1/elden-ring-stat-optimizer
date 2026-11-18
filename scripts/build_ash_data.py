@@ -1583,7 +1583,11 @@ MEASURED_HIT_TIMES = {
 # that class's behaviors costs 12. A roll costs 12 too (tested in game), so the step probably costs
 # a roll's, not its behavior's (a jumping attack's landing, also a type 4 PCBehavior window, costs
 # nothing: the Backhand Blade's jumping R2 costs its attack behavior's 22, see check_animations.py)
-STAMINA_FITS = {("Blind Spot", ""): [12, 30]}
+# Keyed by (skill, part, ammunition behavior variation) where it differs by bow class: Rain of Arrows
+# costs 30 in game on a Longbow (with arrows: variation 5000), though its one window's behavior
+# (105000851, judge 851) costs 50 and the animation has no other windows; why is unknown. Its
+# greatbow version's behavior (105100851) costs 0 (untested)
+STAMINA_FITS = {("Blind Spot", ""): [12, 30], ("Rain of Arrows", "", 5000): [30]}
 # Projectile hits with fitted times that the animations can't tie to a projectile (status-only hits),
 # so approximate all the same: Fires of Slumber's fire and its ground fire's ticks
 PROJECTILE_HIT_TIMES = {("Fires of Slumber", "")}
@@ -2290,7 +2294,7 @@ def get_skill_timing(
                     if animations.to_real_time(number, anim_id - 1, start) < release
                 ],
             )
-        stamina = STAMINA_FITS.get((name, label), stamina)
+        stamina = STAMINA_FITS.get((name, label, variation), STAMINA_FITS.get((name, label), stamina))
         if stamina:
             timing["stamina"] = stamina
         cancels = get_l2_cancels(animations.get_cancels(number, anim_id), quick_l2)

@@ -5212,6 +5212,9 @@ describe("Ashes of War", () => {
     if (!("attack" in rain)) throw new Error(rain.unavailableReason);
     const rainHits = rain.attack.stepTimes![0].hitTimes!.map((time) => Math.round(time! * 60));
     expect([rainHits[0], rainHits[11]]).toEqual([133, 176]);
+    // and it costs 30 stamina in game (its behavior's 50 in the data, see build_ash_data.py's
+    // STAMINA_FITS)
+    expect(rain.attack.stamina).toEqual([30]);
     // The Igon's Greatbow's Igon's Drake Hunt with Igon's Harpoons does 1213 to the dummy (tested in
     // game at +25 with 99 in every stat): its 155%, and the bow's ×1.2 physical for the harpoon's
     // category 135
@@ -9100,10 +9103,11 @@ describe("Ashes of War", () => {
 
   it("matches Familial Rancor in game", () => {
     // The Family Heads' skill: 1 large skull, 2 medium, and 4 small. Tested in game at +25 with 99 in
-    // every stat on the training dummy: 1417 and 19.8 poise
+    // every stat on the training dummy: 1417 and 19.8 poise. It costs no stamina (in game too)
     const weapon = getWeapon("Family Heads");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
+    expect(result.attack.stamina).toBeUndefined();
     const hits = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,
