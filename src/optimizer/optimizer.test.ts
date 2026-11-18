@@ -13521,13 +13521,23 @@ describe("timing coverage", () => {
     ).toBeUndefined();
   });
 
+  it("costs a rolling attack's roll's stamina, but not a crouching attack's", () => {
+    // Tested in game: a roll costs 12
+    const weapon = getWeapon("Dagger");
+    const rolling = getAttackData(movesets, weapon, "Rolling R1", false, 0.5)!;
+    const crouching = getAttackData(movesets, weapon, "Crouching R1", false, 0.5)!;
+    expect(rolling.moveStamina).toEqual({ action: "roll", stamina: 12 });
+    expect(rolling.stamina![0]).toBe(crouching.stamina![0]! + 12);
+    expect(crouching.moveStamina).toBeUndefined();
+  });
+
   it("costs a jumping attack's first window's behavior's stamina when its hit costs none", () => {
     // Tested in game: the Backhand Blade's one handed jumping R2 costs 22, and its jump 10. Its hit's
     // behavior (judge 161) costs none, its 160 22, and its landing's (550) 19
     const weapon = getWeapon("Backhand Blade");
     const jumping = getAttackData(movesets, weapon, "Jumping R2", false, 0.5)!;
     expect(jumping.stamina).toEqual([32]);
-    expect(jumping.jumpStamina).toBe(10);
+    expect(jumping.moveStamina).toEqual({ action: "jump", stamina: 10 });
     const steps = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,
@@ -13545,7 +13555,10 @@ describe("timing coverage", () => {
       attack: jumping,
     }).attackSteps!;
     // The hits table shows the jump's part of it
-    expect(steps[0][0]).toMatchObject({ stamina: 32, jumpStamina: 10 });
+    expect(steps[0][0]).toMatchObject({
+      stamina: 32,
+      moveStamina: { action: "jump", stamina: 10 },
+    });
   });
 });
 

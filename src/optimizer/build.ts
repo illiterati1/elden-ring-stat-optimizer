@@ -195,6 +195,12 @@ export interface ValueCurve {
   allocations?: Attributes[];
 }
 
+/** The stamina of a movement an attack starts with (a jump or a roll) */
+export interface MoveStamina {
+  action: "jump" | "roll";
+  stamina: number;
+}
+
 export interface AttackDataHit {
   /** The highest motion value of any damage type */
   motionValue: number;
@@ -610,8 +616,8 @@ export interface AttackData {
   leftStamina?: number[];
   /** What each hit of each step costs (its attack windows'), for steps of more than one hit, if known */
   hitStamina?: (number[] | undefined)[];
-  /** A jumping attack's jump's stamina, included in its first step's (and first hit's) */
-  jumpStamina?: number;
+  /** The stamina of a jump or roll the attack starts with, included in its first step's (and hit's) */
+  moveStamina?: MoveStamina;
   /** How long each step takes when the attack is repeated as fast as possible, if known */
   cycleTimes?: number[];
   /** Each step's timing (when its hits land and it can be cancelled), if known */
@@ -667,8 +673,8 @@ export interface AttackResultHit {
   hpDamage?: { label: string; damage: number };
   /** The stamina the hit's step costs, on its first hit */
   stamina?: number;
-  /** How much of stamina is a jumping attack's jump's */
-  jumpStamina?: number;
+  /** How much of stamina is the jump's or roll's the attack starts with */
+  moveStamina?: MoveStamina;
 }
 
 export interface BuildResult {
@@ -1172,11 +1178,12 @@ function getAttackSteps(
             hpDamage: { label: hit.hpDamage.label, damage: getHpDamage(hit.hpDamage, enemyHp) },
           }),
         ...getHitStamina(attack, step, stepIndex, hitIndex),
-        // (the jump's on the first hit whose stamina includes it: the right hand's, for powerstance)
-        ...(attack.jumpStamina &&
+        // (the jump's or roll's on the first hit whose stamina includes it: the right hand's, for
+        // powerstance)
+        ...(attack.moveStamina &&
           stepIndex === 0 &&
           hitIndex === step.findIndex((other) => !other.leftHand || !attack.leftStamina?.[0]) && {
-            jumpStamina: attack.jumpStamina,
+            moveStamina: attack.moveStamina,
           }),
       };
     }),

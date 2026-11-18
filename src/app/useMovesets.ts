@@ -5,6 +5,7 @@ import {
   getEarliestAttack,
   type AttackData,
   type AttackDataHit,
+  type MoveStamina,
   type StepTimes,
 } from "../optimizer/build.ts";
 
@@ -162,33 +163,38 @@ export const attackTimingNotes: Partial<Record<string, string>> = {
 const jumpAttackStart = 14 / 60;
 export const jumpAirTime = 53 / 60;
 /**
- * A jump's own stamina, which a jumping attack costs on top of its attack's (tested in game: 10,
- * jumping before the Backhand Blade's one handed jumping R2, which costs 22 more). Assumed not
- * changed by the weapon's stamina rate.
+ * The stamina of the movement an attack starts with, on top of the attack's own: a jumping attack's
+ * jump (tested in game: 10, jumping before the Backhand Blade's one handed jumping R2, which costs 22
+ * more) and a rolling attack's roll (tested in game: 12). Assumed not changed by the weapon's stamina
+ * rate. (A crouching attack plays the rolling attack's animation without rolling.)
  */
-export const jumpStamina = 10;
-const jumpingAttacks: ReadonlySet<AttackChoice> = new Set([
-  "Jumping R1",
-  "Jumping R2",
-  "Powerstance Jumping L1",
-  "Jump Shot + Landing Shot",
-]);
+const jumpStamina: MoveStamina = { action: "jump", stamina: 10 };
+const rollStamina: MoveStamina = { action: "roll", stamina: 12 };
+const moveStamina: Partial<Record<AttackChoice, MoveStamina>> = {
+  "Jumping R1": jumpStamina,
+  "Jumping R2": jumpStamina,
+  "Powerstance Jumping L1": jumpStamina,
+  "Jump Shot + Landing Shot": jumpStamina,
+  "Rolling R1": rollStamina,
+  "Powerstance Rolling L1": rollStamina,
+};
 
-/** A jumping attack's data with its jump's stamina added to its first step's (and first hit's) */
-function withJumpStamina(attack: AttackChoice, data: AttackData): AttackData {
+/** An attack's data with its movement's stamina (moveStamina) added to its first step's and hit's */
+function withMoveStamina(attack: AttackChoice, data: AttackData): AttackData {
+  const move = moveStamina[attack];
   const first = data.stamina?.[0];
-  if (!jumpingAttacks.has(attack) || first == null) return data;
+  if (!move || first == null) return data;
   const firstHits = data.hitStamina?.[0];
   return {
     ...data,
-    stamina: [first + jumpStamina, ...data.stamina!.slice(1)],
+    stamina: [first + move.stamina, ...data.stamina!.slice(1)],
     ...(firstHits && {
       hitStamina: [
-        [firstHits[0] + jumpStamina, ...firstHits.slice(1)],
+        [firstHits[0] + move.stamina, ...firstHits.slice(1)],
         ...data.hitStamina!.slice(1),
       ],
     }),
-    jumpStamina,
+    moveStamina: move,
   };
 }
 
@@ -855,7 +861,7 @@ export function getAttackData(
       weapon.ammoStamina != null
         ? chargedStamina(weapon.ammoStamina, moveset.staminaRate)
         : undefined;
-    return withJumpStamina(attack, {
+    return withMoveStamina(attack, {
       ...(shotStamina != null && { stamina: [jumpLandingShot ? shotStamina * 2 : shotStamina] }),
       steps: [
         jumpLandingShot
@@ -895,7 +901,7 @@ export function getAttackData(
 
   const rawWeights = steps.map((_, i) => (chainAttacks.has(attack) ? chainWeight ** i : 1));
   const totalWeight = rawWeights.reduce((sum, weight) => sum + weight, 0);
-  return withJumpStamina(attack, {
+  return withMoveStamina(attack, {
     steps: steps.map((step, stepIndex) =>
       step.map(([motionValue, statusMotionValue, poiseMotionValue, physicalType, details]) => ({
         ...(details?.flat && { flatAttack: details.flat }),

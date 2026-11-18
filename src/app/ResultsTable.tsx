@@ -359,10 +359,12 @@ function AttackHits({
                   {showStaminaColumn && (
                     <TableCell sx={cellSx} align="right">
                       {hit.stamina != null
-                        ? hit.jumpStamina
+                        ? hit.moveStamina
                           ? `${formatStamina(hit.stamina)} (${formatStamina(
-                              hit.stamina - hit.jumpStamina,
-                            )} + ${formatStamina(hit.jumpStamina)} jump)`
+                              hit.stamina - hit.moveStamina.stamina,
+                            )} + ${formatStamina(hit.moveStamina.stamina)} ${
+                              hit.moveStamina.action
+                            })`
                           : formatStamina(hit.stamina)
                         : ""}
                     </TableCell>
