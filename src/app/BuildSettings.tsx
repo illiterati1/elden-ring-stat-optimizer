@@ -349,68 +349,69 @@ function BuildSettings({
           }
         />
       </Box>
-      {/* Spell scaling has no attack to show these for */}
-      <Box display="flex" flexWrap="wrap" columnGap={3}>
-        <FormControlLabel
-          label="Show poise"
-          sx={{ mr: 0 }}
-          disabled={spellScaling}
-          control={
-            <Checkbox
-              size="small"
-              checked={showStance}
-              onChange={(evt) => onChange({ showStance: evt.currentTarget.checked })}
-            />
-          }
-        />
-        <FormControlLabel
-          label="Show stamina cost"
-          sx={{ mr: 0 }}
-          disabled={spellScaling}
-          control={
-            <Checkbox
-              size="small"
-              checked={showStamina}
-              onChange={(evt) => onChange({ showStamina: evt.currentTarget.checked })}
-            />
-          }
-        />
-        <FormControlLabel
-          label="Show status"
-          sx={{ mr: 0 }}
-          disabled={spellScaling}
-          control={
-            <Checkbox
-              size="small"
-              checked={showStatus}
-              onChange={(evt) => onChange({ showStatus: evt.currentTarget.checked })}
-            />
-          }
-        />
-        <FormControlLabel
-          label="Show scaling"
-          sx={{ mr: 0 }}
-          control={
-            <Checkbox
-              size="small"
-              checked={showScaling}
-              onChange={(evt) => onChange({ showScaling: evt.currentTarget.checked })}
-            />
-          }
-        />
-        <FormControlLabel
-          label="Show requirements"
-          sx={{ mr: 0 }}
-          control={
-            <Checkbox
-              size="small"
-              checked={showRequirements}
-              onChange={(evt) => onChange({ showRequirements: evt.currentTarget.checked })}
-            />
-          }
-        />
-      </Box>
-
+      <CollapsibleGroup title="Columns">
+        {/* Spell scaling has no attack to show poise, stamina, or status for */}
+        <Box display="flex" flexWrap="wrap" columnGap={3}>
+          <FormControlLabel
+            label="Poise"
+            sx={{ mr: 0 }}
+            disabled={spellScaling}
+            control={
+              <Checkbox
+                size="small"
+                checked={showStance}
+                onChange={(evt) => onChange({ showStance: evt.currentTarget.checked })}
+              />
+            }
+          />
+          <FormControlLabel
+            label="Stamina cost"
+            sx={{ mr: 0 }}
+            disabled={spellScaling}
+            control={
+              <Checkbox
+                size="small"
+                checked={showStamina}
+                onChange={(evt) => onChange({ showStamina: evt.currentTarget.checked })}
+              />
+            }
+          />
+          <FormControlLabel
+            label="Status"
+            sx={{ mr: 0 }}
+            disabled={spellScaling}
+            control={
+              <Checkbox
+                size="small"
+                checked={showStatus}
+                onChange={(evt) => onChange({ showStatus: evt.currentTarget.checked })}
+              />
+            }
+          />
+          <FormControlLabel
+            label="Scaling"
+            sx={{ mr: 0 }}
+            control={
+              <Checkbox
+                size="small"
+                checked={showScaling}
+                onChange={(evt) => onChange({ showScaling: evt.currentTarget.checked })}
+              />
+            }
+          />
+          <FormControlLabel
+            label="Requirements"
+            sx={{ mr: 0 }}
+            control={
+              <Checkbox
+                size="small"
+                checked={showRequirements}
+                onChange={(evt) => onChange({ showRequirements: evt.currentTarget.checked })}
+              />
+            }
+          />
+        </Box>
+      </CollapsibleGroup>
       <CollapsibleGroup
         title={`Weapon types${weaponTypes.length > 0 ? ` (${weaponTypes.length} selected)` : ""}`}
       >
