@@ -13558,6 +13558,20 @@ describe("timing coverage", () => {
       [448, 3.3],
       [462, 3.3],
     ]);
+    // One handed Broadsword, its own rolling R1 too (its class's crouching R1 would hit at 24):
+    // crouching R1, crouch, crouching R1 (press 720, stamina taken 739, L3 753, press 796, stamina
+    // taken 815): 19 after the press, 20 here, and 76 apart; here it crouches at its flag 32, 56
+    // after the press, and attacks 15 into the crouch, 73 (3 early, as the Dagger's and Longsword's
+    // 1 to 3)
+    const broadsword = getAttackData(
+      movesets,
+      getWeapon("Broadsword"),
+      "Crouching R1",
+      false,
+      0.5,
+    )!;
+    expect(broadsword.stepTimes![0].hits[0] * 60).toBeCloseTo(20, 0);
+    expect(broadsword.cycleTimes![0] * 60).toBeCloseTo(73, 0);
   });
 
   it("leaves out catalysts' jumping R1s (a jumping cast)", () => {
