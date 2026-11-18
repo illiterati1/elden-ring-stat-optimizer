@@ -3,6 +3,8 @@
 Enter your current stats and the weapons you're considering to see where your next levels should
 go. For patch 1.17.2.
 
+Live site: https://elden-ring-stat-optimizer.pages.dev/
+
 Weapon data and damage calculations are adapted from Tom Clark's
 [Elden Ring Weapon Calculator](https://github.com/ThomasJClark/elden-ring-weapon-calculator).
 
