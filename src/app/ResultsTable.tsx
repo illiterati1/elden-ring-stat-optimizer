@@ -21,7 +21,6 @@ import { limitReasonLabels, physicalTypeLabels, statusTypes } from "./uiUtils.ts
 import { getResultStatus } from "./results.ts";
 import { statusSortBy } from "./useAppState.ts";
 import BreakdownTable from "./BreakdownTable.tsx";
-import { oneOffNote } from "./useMovesets.ts";
 import Details, { detailsBackground, tooltipCueSx } from "./Details.tsx";
 import type { AppState, SortBy, TooltipTimings, UpdateAppState } from "./useAppState.ts";
 import { maxSeries } from "./ValueChart.tsx";
@@ -580,9 +579,10 @@ function ResultsTable({
       );
     });
 
-  // Values per second: a one-off attack's don't count the time to set it up again, noted in the
-  // hits' timings (and the timing settings)
+  // Values per second: a one-off attack's don't count the time to set it up again, noted briefly in
+  // the hits' timings (and at length in the timing settings)
   const oneOffPerSecond = showDps && oneOffAttack;
+  const oneOffNote = "Per second without the time to repeat it";
   const perSecondOver = oneOffAttack
     ? " over the attack itself, until anything can follow it, not counting the time to repeat it"
     : ", repeating the attack as fast as the game allows";
