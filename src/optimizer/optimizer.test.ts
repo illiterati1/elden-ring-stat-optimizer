@@ -13522,10 +13522,30 @@ describe("timing coverage", () => {
   });
 
   it("costs a jumping attack's first window's behavior's stamina when its hit costs none", () => {
-    // Tested in game: the Backhand Blade's one handed jumping R2 costs 22 (and its jump 10). Its hit's
+    // Tested in game: the Backhand Blade's one handed jumping R2 costs 22, and its jump 10. Its hit's
     // behavior (judge 161) costs none, its 160 22, and its landing's (550) 19
-    const jumping = getAttackData(movesets, getWeapon("Backhand Blade"), "Jumping R2", false, 0.5)!;
-    expect(jumping.stamina).toEqual([22]);
+    const weapon = getWeapon("Backhand Blade");
+    const jumping = getAttackData(movesets, weapon, "Jumping R2", false, 0.5)!;
+    expect(jumping.stamina).toEqual([32]);
+    expect(jumping.jumpStamina).toBe(10);
+    const steps = optimizeBuild({
+      weapon,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: jumping,
+    }).attackSteps!;
+    // The hits table shows the jump's part of it
+    expect(steps[0][0]).toMatchObject({ stamina: 32, jumpStamina: 10 });
   });
 });
 

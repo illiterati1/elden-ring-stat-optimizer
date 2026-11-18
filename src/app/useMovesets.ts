@@ -161,6 +161,36 @@ export const attackTimingNotes: Partial<Record<string, string>> = {
  */
 const jumpAttackStart = 14 / 60;
 export const jumpAirTime = 53 / 60;
+/**
+ * A jump's own stamina, which a jumping attack costs on top of its attack's (tested in game: 10,
+ * jumping before the Backhand Blade's one handed jumping R2, which costs 22 more). Assumed not
+ * changed by the weapon's stamina rate.
+ */
+export const jumpStamina = 10;
+const jumpingAttacks: ReadonlySet<AttackChoice> = new Set([
+  "Jumping R1",
+  "Jumping R2",
+  "Powerstance Jumping L1",
+  "Jump Shot + Landing Shot",
+]);
+
+/** A jumping attack's data with its jump's stamina added to its first step's (and first hit's) */
+function withJumpStamina(attack: AttackChoice, data: AttackData): AttackData {
+  const first = data.stamina?.[0];
+  if (!jumpingAttacks.has(attack) || first == null) return data;
+  const firstHits = data.hitStamina?.[0];
+  return {
+    ...data,
+    stamina: [first + jumpStamina, ...data.stamina!.slice(1)],
+    ...(firstHits && {
+      hitStamina: [
+        [firstHits[0] + jumpStamina, ...firstHits.slice(1)],
+        ...data.hitStamina!.slice(1),
+      ],
+    }),
+    jumpStamina,
+  };
+}
 
 /**
  * Rolling attacks, repeated by rolling at their roll cancel and attacking again from the roll (an R1
@@ -825,7 +855,7 @@ export function getAttackData(
       weapon.ammoStamina != null
         ? chargedStamina(weapon.ammoStamina, moveset.staminaRate)
         : undefined;
-    return {
+    return withJumpStamina(attack, {
       ...(shotStamina != null && { stamina: [jumpLandingShot ? shotStamina * 2 : shotStamina] }),
       steps: [
         jumpLandingShot
@@ -835,7 +865,7 @@ export function getAttackData(
       weights: [1],
       poiseBase: weapon.ammoPoise ?? moveset.poise,
       ...(shotTimes && { stepTimes: [shotTimes], cycleTimes: [shotTimes.cycle!] }),
-    };
+    });
   }
   const twoHanded =
     (twoHanding && canTwoHand(movesets, weapon, attack)) ||
@@ -865,7 +895,7 @@ export function getAttackData(
 
   const rawWeights = steps.map((_, i) => (chainAttacks.has(attack) ? chainWeight ** i : 1));
   const totalWeight = rawWeights.reduce((sum, weight) => sum + weight, 0);
-  return {
+  return withJumpStamina(attack, {
     steps: steps.map((step, stepIndex) =>
       step.map(([motionValue, statusMotionValue, poiseMotionValue, physicalType, details]) => ({
         ...(details?.flat && { flatAttack: details.flat }),
@@ -905,7 +935,7 @@ export function getAttackData(
     ...(stepTimes && { stepTimes }),
     ...(cycleTimes && { cycleTimes }),
     ...(criticalAttacks.has(attack) && { critical: true }),
-  };
+  });
 }
 
 let movesetsPromise: Promise<Movesets> | undefined;

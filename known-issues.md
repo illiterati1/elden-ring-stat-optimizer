@@ -7,8 +7,6 @@
 - **Lifesteal Fist:** its damage is inaccurate.
 - **Attacks that need extra movement:** time-scaled numbers are questionable for any attack that
   needs another action first, such as jumping, rolling, backstepping, running, or buffing.
-- **Jumping attacks' stamina:** the jump's own stamina (10, tested in game) isn't counted, only
-  the attack's.
 - **Untimed attacks:** backstabs, ripostes, shields' mounted R2, bow and crossbow jump shots,
   Carian Retaliation, Lifesteal Fist, Spinning Chain's loop, and how often Feeble Lord's Frenzied
   Flame can be repeated haven't been timed yet.

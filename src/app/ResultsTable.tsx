@@ -358,7 +358,13 @@ function AttackHits({
                   </TableCell>
                   {showStaminaColumn && (
                     <TableCell sx={cellSx} align="right">
-                      {hit.stamina != null ? formatStamina(hit.stamina) : ""}
+                      {hit.stamina != null
+                        ? hit.jumpStamina
+                          ? `${formatStamina(hit.stamina)} (${formatStamina(
+                              hit.stamina - hit.jumpStamina,
+                            )} + ${formatStamina(hit.jumpStamina)} jump)`
+                          : formatStamina(hit.stamina)
+                        : ""}
                     </TableCell>
                   )}
                   {statusTypesShown.map(([statusType]) => (

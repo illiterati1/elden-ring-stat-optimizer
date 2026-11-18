@@ -610,6 +610,8 @@ export interface AttackData {
   leftStamina?: number[];
   /** What each hit of each step costs (its attack windows'), for steps of more than one hit, if known */
   hitStamina?: (number[] | undefined)[];
+  /** A jumping attack's jump's stamina, included in its first step's (and first hit's) */
+  jumpStamina?: number;
   /** How long each step takes when the attack is repeated as fast as possible, if known */
   cycleTimes?: number[];
   /** Each step's timing (when its hits land and it can be cancelled), if known */
@@ -665,6 +667,8 @@ export interface AttackResultHit {
   hpDamage?: { label: string; damage: number };
   /** The stamina the hit's step costs, on its first hit */
   stamina?: number;
+  /** How much of stamina is a jumping attack's jump's */
+  jumpStamina?: number;
 }
 
 export interface BuildResult {
@@ -1168,6 +1172,12 @@ function getAttackSteps(
             hpDamage: { label: hit.hpDamage.label, damage: getHpDamage(hit.hpDamage, enemyHp) },
           }),
         ...getHitStamina(attack, step, stepIndex, hitIndex),
+        // (the jump's on the first hit whose stamina includes it: the right hand's, for powerstance)
+        ...(attack.jumpStamina &&
+          stepIndex === 0 &&
+          hitIndex === step.findIndex((other) => !other.leftHand || !attack.leftStamina?.[0]) && {
+            jumpStamina: attack.jumpStamina,
+          }),
       };
     }),
   );
