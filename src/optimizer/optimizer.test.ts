@@ -13531,6 +13531,12 @@ describe("timing coverage", () => {
     expect(crouching.moveStamina).toBeUndefined();
   });
 
+  it("costs a backstep attack's backstep's stamina", () => {
+    // Tested in game: a backstep costs 8
+    const backstep = getAttackData(movesets, getWeapon("Dagger"), "Backstep R1", false, 0.5)!;
+    expect(backstep.moveStamina).toEqual({ action: "backstep", stamina: 8 });
+  });
+
   it("costs a jumping attack's first window's behavior's stamina when its hit costs none", () => {
     // Tested in game: the Backhand Blade's one handed jumping R2 costs 22, and its jump 10. Its hit's
     // behavior (judge 161) costs none, its 160 22, and its landing's (550) 19

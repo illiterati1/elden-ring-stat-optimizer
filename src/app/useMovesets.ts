@@ -165,11 +165,12 @@ export const jumpAirTime = 53 / 60;
 /**
  * The stamina of the movement an attack starts with, on top of the attack's own: a jumping attack's
  * jump (tested in game: 10, jumping before the Backhand Blade's one handed jumping R2, which costs 22
- * more) and a rolling attack's roll (tested in game: 12). Assumed not changed by the weapon's stamina
- * rate. (A crouching attack plays the rolling attack's animation without rolling.)
+ * more), a rolling attack's roll (tested in game: 12), and a backstep attack's backstep (tested in
+ * game: 8). Assumed not changed by the weapon's stamina rate. (A crouching attack plays the rolling attack's animation without rolling.)
  */
 const jumpStamina: MoveStamina = { action: "jump", stamina: 10 };
 const rollStamina: MoveStamina = { action: "roll", stamina: 12 };
+const backstepStamina: MoveStamina = { action: "backstep", stamina: 8 };
 const moveStamina: Partial<Record<AttackChoice, MoveStamina>> = {
   "Jumping R1": jumpStamina,
   "Jumping R2": jumpStamina,
@@ -177,6 +178,8 @@ const moveStamina: Partial<Record<AttackChoice, MoveStamina>> = {
   "Jump Shot + Landing Shot": jumpStamina,
   "Rolling R1": rollStamina,
   "Powerstance Rolling L1": rollStamina,
+  "Backstep R1": backstepStamina,
+  "Powerstance Backstep L1": backstepStamina,
 };
 
 /** An attack's data with its movement's stamina (moveStamina) added to its first step's and hit's */
