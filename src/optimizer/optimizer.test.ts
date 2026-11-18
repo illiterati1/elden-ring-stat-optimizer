@@ -13558,11 +13558,21 @@ describe("timing coverage", () => {
       [448, 3.3],
       [462, 3.3],
     ]);
+    // Two handed, their own rolling R1's two hits rather than their class's crouching R1's one: the
+    // Starscourge Greatsword +10, 2 hits of 746; the Ornamental Straight Sword +25, 2 of 379
+    expect(crouchingDamage("Starscourge Greatsword", "Crouching R1", true)).toEqual([
+      [746, 5.4],
+      [746, 5.4],
+    ]);
+    expect(crouchingDamage("Ornamental Straight Sword", "Crouching R1", true)).toEqual([
+      [379, 3],
+      [379, 3],
+    ]);
     // One handed Broadsword, its own rolling R1 too (its class's crouching R1 would hit at 24):
     // crouching R1, crouch, crouching R1 (press 720, stamina taken 739, L3 753, press 796, stamina
     // taken 815): 19 after the press, 20 here, and 76 apart; here it crouches at its flag 32, 56
     // after the press, and attacks 15 into the crouch, 73 (3 early, as the Dagger's and Longsword's
-    // 1 to 3)
+    // 1 to 3; maybe pressed late: the window is tight, as too early cancels the crouch)
     const broadsword = getAttackData(
       movesets,
       getWeapon("Broadsword"),

@@ -25,10 +25,7 @@ from here.
 
 At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation).
 
-| # | Test | Weapon | Calculated |
-|---|---|---|---|
-| 58 | Two handed crouching R1 (its own rolling R1 assumed, as the Falx's, rather than its class's one hit) | Starscourge Greatsword (or either Greatsword of Radahn) | 2 hits of 746, 5.4 poise each, 36 after the press |
-| 59 | Two handed crouching R1 (as #58), at +25 | Ornamental Straight Sword | 2 hits of 379, 3 poise each |
+None right now.
 
 ## Discrepancies to look into
 
