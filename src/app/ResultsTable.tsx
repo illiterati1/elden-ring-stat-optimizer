@@ -717,289 +717,305 @@ function ResultsTable({
           )}
         </TableHead>
         <TableBody>
-          {sorted.map((result) => (
-            <TableRow key={`${result.weaponName} ${result.skillVariant?.label ?? ""}`}>
-              <TableCell padding="checkbox">
-                {result.applicable && chartCheckbox(result.weaponName)}
-              </TableCell>
-              <TableCell>
-                {result.url ? (
-                  <Link href={result.url} target="_blank" rel="noopener noreferrer" color="inherit">
-                    {result.weaponName}
-                  </Link>
-                ) : (
-                  result.weaponName
-                )}
-              </TableCell>
-              {result.applicable ? (
-                <>
-                  <TableCell
-                    align="right"
-                    sx={
-                      result.ineffectiveAttributes.length > 0 ? { color: "error.main" } : undefined
-                    }
-                  >
-                    {result.skillRequirementsUnmet ? (
-                      // A skill can't be used without the weapon's requirements
-                      "Skill requirements not met"
-                    ) : (
-                      <>
-                        {!result.exact && (
-                          <Tooltip title="This weapon scales with many stats, so a faster approximate search was used. The result may be slightly below optimal.">
-                            <span>≈</span>
-                          </Tooltip>
+          {sorted.map((result) => {
+            // Notes on the value, shown above its breakdown
+            const valueNotes = [
+              oneOffPerSecond && result.attackDps != null && oneOffNote,
+              result.attackNote,
+              result.buffNote,
+            ]
+              .filter((note): note is string => !!note)
+              .map((note) => (note.endsWith(".") ? note : `${note}.`));
+            return (
+              <TableRow key={`${result.weaponName} ${result.skillVariant?.label ?? ""}`}>
+                <TableCell padding="checkbox">
+                  {result.applicable && chartCheckbox(result.weaponName)}
+                </TableCell>
+                <TableCell>
+                  {result.url ? (
+                    <Link
+                      href={result.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      color="inherit"
+                    >
+                      {result.weaponName}
+                    </Link>
+                  ) : (
+                    result.weaponName
+                  )}
+                </TableCell>
+                {result.applicable ? (
+                  <>
+                    <TableCell
+                      align="right"
+                      sx={
+                        result.ineffectiveAttributes.length > 0
+                          ? { color: "error.main" }
+                          : undefined
+                      }
+                    >
+                      {result.skillRequirementsUnmet ? (
+                        // A skill can't be used without the weapon's requirements
+                        "Skill requirements not met"
+                      ) : (
+                        <>
+                          {!result.exact && (
+                            <Tooltip title="This weapon scales with many stats, so a faster approximate search was used. The result may be slightly below optimal.">
+                              <span>≈</span>
+                            </Tooltip>
+                          )}
+                          <Details
+                            title={`${result.weaponName}: ${valueLabel}`}
+                            content={
+                              (result.breakdown.length > 0 || valueNotes.length > 0) && (
+                                <>
+                                  {valueNotes.map((note) => (
+                                    <Box key={note} sx={{ maxWidth: 360, px: 1, mb: 1 }}>
+                                      {note}
+                                    </Box>
+                                  ))}
+                                  {result.hpDamage && (
+                                    <Box sx={{ maxWidth: 360, px: 1, mb: 1 }}>
+                                      Includes {formatValue(result.hpDamage.damage)}{" "}
+                                      {result.hpDamage.label.toLowerCase()} damage, a percentage of
+                                      the enemy&apos;s max HP, which stats don&apos;t change.
+                                    </Box>
+                                  )}
+                                  {result.uncountedHpDamage && (
+                                    <Box sx={{ maxWidth: 360, px: 1, mb: 1 }}>
+                                      {result.uncountedHpDamage.label} isn&apos;t counted: it does{" "}
+                                      {result.uncountedHpDamage.rate * 100}% of the enemy&apos;s max
+                                      HP
+                                      {result.uncountedHpDamage.flat
+                                        ? ` plus ${result.uncountedHpDamage.flat}`
+                                        : ""}{" "}
+                                      {result.uncountedHpDamage.ticks} times after each hit. Enter
+                                      the enemy&apos;s HP in the enemy defenses, or pick an enemy,
+                                      to include it.
+                                    </Box>
+                                  )}
+                                  {result.breakdown.length > 0 && (
+                                    <BreakdownTable
+                                      rows={result.breakdown}
+                                      pointLabel={pointLabel}
+                                    />
+                                  )}
+                                  {result.menuAttackPower && (
+                                    <Box sx={{ maxWidth: 360, px: 1, mt: 1 }}>
+                                      This is the attack power the game&apos;s menu shows, which
+                                      uses the catalyst&apos;s own scaling, but its melee attacks
+                                      scale like regular weapons (Strength and Dexterity), so
+                                      it&apos;s misleading. Choose the R1 chain attack to see its
+                                      actual melee damage.
+                                    </Box>
+                                  )}
+                                </>
+                              )
+                            }
+                          >
+                            {showDps
+                              ? result.attackDps != null
+                                ? formatValue(result.attackDps)
+                                : "–"
+                              : formatValue(result.finalValue)}
+                            {/* Marks a value with notes, which are in its details (the value is
+                              easier to tap than a lone asterisk) */}
+                            {(valueNotes.length > 0 || result.uncountedHpDamage) && "*"}
+                          </Details>
+                        </>
+                      )}
+                    </TableCell>
+                    {showHits && (
+                      <TableCell>
+                        {result.fixedSkill && (
+                          <Typography
+                            variant="caption"
+                            display="block"
+                            color="text.secondary"
+                            whiteSpace="nowrap"
+                          >
+                            {result.skillVariant?.label ?? result.fixedSkill}
+                          </Typography>
                         )}
-                        <Details
-                          title={`${result.weaponName}: ${valueLabel}`}
-                          content={
-                            result.breakdown.length > 0 && (
-                              <>
-                                {result.hpDamage && (
-                                  <Box sx={{ maxWidth: 360, px: 1, mb: 1 }}>
-                                    Includes {formatValue(result.hpDamage.damage)}{" "}
-                                    {result.hpDamage.label.toLowerCase()} damage, a percentage of
-                                    the enemy&apos;s max HP, which stats don&apos;t change.
-                                  </Box>
-                                )}
-                                {result.uncountedHpDamage && (
-                                  <Box sx={{ maxWidth: 360, px: 1, mb: 1 }}>
-                                    {result.uncountedHpDamage.label} isn&apos;t counted: it does{" "}
-                                    {result.uncountedHpDamage.rate * 100}% of the enemy&apos;s max
-                                    HP
-                                    {result.uncountedHpDamage.flat
-                                      ? ` plus ${result.uncountedHpDamage.flat}`
-                                      : ""}{" "}
-                                    {result.uncountedHpDamage.ticks} times after each hit. Enter the
-                                    enemy&apos;s HP in the enemy defenses, or pick an enemy, to
-                                    include it.
-                                  </Box>
-                                )}
-                                <BreakdownTable rows={result.breakdown} pointLabel={pointLabel} />
-                                {result.menuAttackPower && (
-                                  <Box sx={{ maxWidth: 360, px: 1, mt: 1 }}>
-                                    This is the attack power the game&apos;s menu shows, which uses
-                                    the catalyst&apos;s own scaling, but its melee attacks scale
-                                    like regular weapons (Strength and Dexterity), so it&apos;s
-                                    misleading. Choose the R1 chain attack to see its actual melee
-                                    damage.
-                                  </Box>
-                                )}
-                              </>
-                            )
+                        {result.attackSteps && (
+                          <AttackHits
+                            steps={result.attackSteps}
+                            stepTimes={result.attackStepTimes}
+                            repeatFrom={result.attackRepeatFrom}
+                            timings={tooltipTimings}
+                            skill={skill}
+                            label={pointLabel === "damage" ? "Damage" : "AR"}
+                            title={`${result.weaponName}: hits`}
+                            note={hitsNote}
+                          />
+                        )}
+                      </TableCell>
+                    )}
+                    {showStance && (
+                      <TableCell align="right">
+                        {showDps ? (
+                          result.attackPoisePerSecond != null ? (
+                            <>
+                              {formatStance(result.attackPoisePerSecond)}
+                              {oneOffMark}
+                            </>
+                          ) : (
+                            ""
+                          )
+                        ) : result.attackStance != null ? (
+                          formatStance(result.attackStance)
+                        ) : (
+                          ""
+                        )}
+                      </TableCell>
+                    )}
+                    {showStamina && (
+                      <TableCell align="right">
+                        {showDps ? (
+                          result.attackStaminaPerSecond != null ? (
+                            <>
+                              {formatStamina(result.attackStaminaPerSecond)}
+                              {oneOffMark}
+                            </>
+                          ) : (
+                            ""
+                          )
+                        ) : result.attackStamina != null ? (
+                          formatStamina(result.attackStamina)
+                        ) : (
+                          ""
+                        )}
+                      </TableCell>
+                    )}
+                    {statusColumns.map((statusType) => {
+                      const buildup = getResultStatus(result, showDps)[statusType];
+                      // Status that scales with Arcane when damage doesn't is left to the user (noted
+                      // per hit, not per second)
+                      const atMaxArcane = showDps
+                        ? undefined
+                        : result.statusAtMaxArcane?.[statusType];
+                      return (
+                        <TableCell key={statusType} align="right" sx={statusCellSx}>
+                          {buildup && atMaxArcane ? (
+                            <Tooltip
+                              title={`${
+                                statusTypes.get(statusType)!.label
+                              } buildup scales with Arcane, but this weapon's damage doesn't, so Arcane isn't raised for it. At 99 Arcane: ${formatValue(
+                                atMaxArcane,
+                              )}`}
+                            >
+                              <Box component="span" sx={tooltipCueSx}>
+                                {formatValue(buildup)}
+                              </Box>
+                            </Tooltip>
+                          ) : buildup ? (
+                            <>
+                              {formatValue(buildup)}
+                              {oneOffMark}
+                            </>
+                          ) : (
+                            "–"
+                          )}
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell align="right">
+                      <Tooltip title={`${result.runes.toLocaleString()} runes`}>
+                        <Box component="span" sx={tooltipCueSx}>
+                          {result.finalLevel} (+{result.levels})
+                        </Box>
+                      </Tooltip>
+                    </TableCell>
+                    {allAttributes.map((attribute, i) => {
+                      const leveled = result.attributes[attribute];
+                      const effective = result.effectiveAttributes[attribute];
+                      const added = leveled - startAttributes[attribute];
+                      const ineffective = result.ineffectiveAttributes.includes(attribute);
+                      const details = [
+                        ineffective &&
+                          `Requires ${result.requirements[attribute]} ${getStatLabel(attribute)}`,
+                        effective !== leveled &&
+                          `Counts as ${effective} (bonus stats${
+                            attribute === "str" ? " and two handing" : ""
+                          } included)`,
+                        added > 0 && `+${added} levels`,
+                      ].filter(Boolean);
+                      const value = (
+                        <Box
+                          component="span"
+                          color={
+                            ineffective
+                              ? "error.main"
+                              : added > 0
+                              ? "primary.main"
+                              : "text.secondary"
+                          }
+                          // Mark values that count as something else, e.g. two handed Strength
+                          sx={
+                            effective !== leveled
+                              ? { textDecoration: "underline dotted", textUnderlineOffset: 3 }
+                              : undefined
                           }
                         >
-                          {showDps
-                            ? result.attackDps != null
-                              ? formatValue(result.attackDps)
-                              : "–"
-                            : formatValue(result.finalValue)}
-                        </Details>
-                        {(result.buffNote ||
-                          result.uncountedHpDamage ||
-                          result.attackNote ||
-                          (oneOffPerSecond && result.attackDps != null)) && (
-                          <Tooltip
-                            title={[
-                              oneOffPerSecond && result.attackDps != null && oneOffNote,
-                              result.attackNote,
-                              result.buffNote,
-                              result.uncountedHpDamage &&
-                                `${result.uncountedHpDamage.label} isn't counted, since the enemy's HP isn't known: enter it in the enemy defenses, or pick an enemy`,
-                            ]
-                              .filter(Boolean)
-                              .join(". ")}
-                          >
-                            <span>*</span>
-                          </Tooltip>
-                        )}
-                      </>
-                    )}
-                  </TableCell>
-                  {showHits && (
-                    <TableCell>
-                      {result.fixedSkill && (
-                        <Typography
-                          variant="caption"
-                          display="block"
-                          color="text.secondary"
-                          whiteSpace="nowrap"
+                          {leveled}
+                        </Box>
+                      );
+                      return (
+                        <TableCell
+                          key={attribute}
+                          align="right"
+                          sx={groupBorderSx(i, lastGroup === "stats")}
                         >
-                          {result.skillVariant?.label ?? result.fixedSkill}
-                        </Typography>
-                      )}
-                      {result.attackSteps && (
-                        <AttackHits
-                          steps={result.attackSteps}
-                          stepTimes={result.attackStepTimes}
-                          repeatFrom={result.attackRepeatFrom}
-                          timings={tooltipTimings}
-                          skill={skill}
-                          label={pointLabel === "damage" ? "Damage" : "AR"}
-                          title={`${result.weaponName}: hits`}
-                          note={hitsNote}
-                        />
-                      )}
-                    </TableCell>
-                  )}
-                  {showStance && (
-                    <TableCell align="right">
-                      {showDps ? (
-                        result.attackPoisePerSecond != null ? (
-                          <>
-                            {formatStance(result.attackPoisePerSecond)}
-                            {oneOffMark}
-                          </>
-                        ) : (
-                          ""
-                        )
-                      ) : result.attackStance != null ? (
-                        formatStance(result.attackStance)
-                      ) : (
-                        ""
-                      )}
-                    </TableCell>
-                  )}
-                  {showStamina && (
-                    <TableCell align="right">
-                      {showDps ? (
-                        result.attackStaminaPerSecond != null ? (
-                          <>
-                            {formatStamina(result.attackStaminaPerSecond)}
-                            {oneOffMark}
-                          </>
-                        ) : (
-                          ""
-                        )
-                      ) : result.attackStamina != null ? (
-                        formatStamina(result.attackStamina)
-                      ) : (
-                        ""
-                      )}
-                    </TableCell>
-                  )}
-                  {statusColumns.map((statusType) => {
-                    const buildup = getResultStatus(result, showDps)[statusType];
-                    // Status that scales with Arcane when damage doesn't is left to the user (noted
-                    // per hit, not per second)
-                    const atMaxArcane = showDps
-                      ? undefined
-                      : result.statusAtMaxArcane?.[statusType];
-                    return (
-                      <TableCell key={statusType} align="right" sx={statusCellSx}>
-                        {buildup && atMaxArcane ? (
-                          <Tooltip
-                            title={`${
-                              statusTypes.get(statusType)!.label
-                            } buildup scales with Arcane, but this weapon's damage doesn't, so Arcane isn't raised for it. At 99 Arcane: ${formatValue(
-                              atMaxArcane,
-                            )}`}
-                          >
-                            <Box component="span" sx={tooltipCueSx}>
-                              {formatValue(buildup)}
-                            </Box>
-                          </Tooltip>
-                        ) : buildup ? (
-                          <>
-                            {formatValue(buildup)}
-                            {oneOffMark}
-                          </>
-                        ) : (
-                          "–"
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell align="right">
-                    <Tooltip title={`${result.runes.toLocaleString()} runes`}>
-                      <Box component="span" sx={tooltipCueSx}>
-                        {result.finalLevel} (+{result.levels})
-                      </Box>
-                    </Tooltip>
+                          {details.length > 0 ? (
+                            <Tooltip title={details.join(" · ")}>{value}</Tooltip>
+                          ) : (
+                            value
+                          )}
+                        </TableCell>
+                      );
+                    })}
+                    {showScaling &&
+                      allAttributes.map((attribute, i) => (
+                        <TableCell
+                          key={`${attribute}-scaling`}
+                          align="right"
+                          sx={groupBorderSx(i, lastGroup === "scaling")}
+                        >
+                          {formatScaling(result.scaling[attribute])}
+                        </TableCell>
+                      ))}
+                    {showRequirements &&
+                      allAttributes.map((attribute, i) => (
+                        <TableCell
+                          key={`${attribute}-requirement`}
+                          align="right"
+                          sx={groupBorderSx(i, lastGroup === "requirements")}
+                        >
+                          {result.requirements[attribute] ?? "–"}
+                        </TableCell>
+                      ))}
+                    <TableCell>{limitReasonLabels[result.reason]}</TableCell>
+                  </>
+                ) : (
+                  <TableCell
+                    colSpan={
+                      3 +
+                      statusColumns.length +
+                      +showHits +
+                      +showStance +
+                      +showStamina +
+                      allAttributes.length * groups.length
+                    }
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      {result.unavailableReason ?? notApplicableLabel}
+                    </Typography>
                   </TableCell>
-                  {allAttributes.map((attribute, i) => {
-                    const leveled = result.attributes[attribute];
-                    const effective = result.effectiveAttributes[attribute];
-                    const added = leveled - startAttributes[attribute];
-                    const ineffective = result.ineffectiveAttributes.includes(attribute);
-                    const details = [
-                      ineffective &&
-                        `Requires ${result.requirements[attribute]} ${getStatLabel(attribute)}`,
-                      effective !== leveled &&
-                        `Counts as ${effective} (bonus stats${
-                          attribute === "str" ? " and two handing" : ""
-                        } included)`,
-                      added > 0 && `+${added} levels`,
-                    ].filter(Boolean);
-                    const value = (
-                      <Box
-                        component="span"
-                        color={
-                          ineffective ? "error.main" : added > 0 ? "primary.main" : "text.secondary"
-                        }
-                        // Mark values that count as something else, e.g. two handed Strength
-                        sx={
-                          effective !== leveled
-                            ? { textDecoration: "underline dotted", textUnderlineOffset: 3 }
-                            : undefined
-                        }
-                      >
-                        {leveled}
-                      </Box>
-                    );
-                    return (
-                      <TableCell
-                        key={attribute}
-                        align="right"
-                        sx={groupBorderSx(i, lastGroup === "stats")}
-                      >
-                        {details.length > 0 ? (
-                          <Tooltip title={details.join(" · ")}>{value}</Tooltip>
-                        ) : (
-                          value
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                  {showScaling &&
-                    allAttributes.map((attribute, i) => (
-                      <TableCell
-                        key={`${attribute}-scaling`}
-                        align="right"
-                        sx={groupBorderSx(i, lastGroup === "scaling")}
-                      >
-                        {formatScaling(result.scaling[attribute])}
-                      </TableCell>
-                    ))}
-                  {showRequirements &&
-                    allAttributes.map((attribute, i) => (
-                      <TableCell
-                        key={`${attribute}-requirement`}
-                        align="right"
-                        sx={groupBorderSx(i, lastGroup === "requirements")}
-                      >
-                        {result.requirements[attribute] ?? "–"}
-                      </TableCell>
-                    ))}
-                  <TableCell>{limitReasonLabels[result.reason]}</TableCell>
-                </>
-              ) : (
-                <TableCell
-                  colSpan={
-                    3 +
-                    statusColumns.length +
-                    +showHits +
-                    +showStance +
-                    +showStamina +
-                    allAttributes.length * groups.length
-                  }
-                >
-                  <Typography variant="body2" color="text.secondary">
-                    {result.unavailableReason ?? notApplicableLabel}
-                  </Typography>
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
+                )}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </TableContainer>
