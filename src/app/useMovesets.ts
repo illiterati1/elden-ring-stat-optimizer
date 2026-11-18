@@ -81,6 +81,10 @@ export const riposteAttacks: ReadonlySet<string> = new Set([
  * when the same attack could start again, and their values per second last until the earliest
  * attack, roll, block, or movement can start
  */
+/** How a one-off attack's values per second are timed */
+export const oneOffNote =
+  "Per second over the attack itself, until anything can follow it: it doesn't count the time to repeat it (running, backstepping, blocking, or getting a critical hit again)";
+
 export const oneOffAttacks: ReadonlySet<string> = new Set([
   "Running R1",
   "Running R2",

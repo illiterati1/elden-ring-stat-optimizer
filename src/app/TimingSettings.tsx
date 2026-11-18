@@ -1,5 +1,6 @@
 import { memo } from "react";
 import {
+  Alert,
   Box,
   Checkbox,
   FormControl,
@@ -12,6 +13,7 @@ import {
 } from "@mui/material";
 import NumberTextField from "./NumberTextField.tsx";
 import Section from "./Section.tsx";
+import { oneOffNote } from "./useMovesets.ts";
 import type { AppState, ChainLimitSetting, TooltipTimings, UpdateAppState } from "./useAppState.ts";
 
 interface Props {
@@ -22,6 +24,8 @@ interface Props {
   spellScaling: boolean;
   /** The chosen attack is on horseback, where there's no rolling (so no time to dodge) */
   mounted: boolean;
+  /** The chosen attack is done once from a run, a backstep, etc. (oneOffAttacks) */
+  oneOffAttack: boolean;
   onChange: UpdateAppState;
 }
 
@@ -51,6 +55,7 @@ function TimingSettings({
   chainLimit,
   spellScaling,
   mounted,
+  oneOffAttack,
   onChange,
 }: Props) {
   return (
@@ -75,6 +80,7 @@ function TimingSettings({
       }
     >
       <Box display="grid" gap={1}>
+        {showDps && !spellScaling && oneOffAttack && <Alert severity="info">{oneOffNote}.</Alert>}
         <Typography variant="body2" color="text.secondary">
           In the hits tooltip, from the start of the chain
         </Typography>

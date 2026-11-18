@@ -21,6 +21,7 @@ import { limitReasonLabels, physicalTypeLabels, statusTypes } from "./uiUtils.ts
 import { getResultStatus } from "./results.ts";
 import { statusSortBy } from "./useAppState.ts";
 import BreakdownTable from "./BreakdownTable.tsx";
+import { oneOffNote } from "./useMovesets.ts";
 import Details, { detailsBackground, tooltipCueSx } from "./Details.tsx";
 import type { AppState, SortBy, TooltipTimings, UpdateAppState } from "./useAppState.ts";
 import { maxSeries } from "./ValueChart.tsx";
@@ -580,11 +581,8 @@ function ResultsTable({
     });
 
   // Values per second: a one-off attack's don't count the time to set it up again, noted in the
-  // value's details and the hits' timings, and marked with an asterisk on each value
+  // hits' timings (and the timing settings)
   const oneOffPerSecond = showDps && oneOffAttack;
-  const oneOffNote =
-    "Per second over the attack itself, until anything can follow it: it doesn't count the time to repeat it (running, backstepping, blocking, or getting a critical hit again)";
-  const oneOffMark = oneOffPerSecond && "*";
   const perSecondOver = oneOffAttack
     ? " over the attack itself, until anything can follow it, not counting the time to repeat it"
     : ", repeating the attack as fast as the game allows";
@@ -715,11 +713,7 @@ function ResultsTable({
         <TableBody>
           {sorted.map((result) => {
             // Notes on the value, shown above its breakdown
-            const valueNotes = [
-              oneOffPerSecond && result.attackDps != null && oneOffNote,
-              result.attackNote,
-              result.buffNote,
-            ]
+            const valueNotes = [result.attackNote, result.buffNote]
               .filter((note): note is string => !!note)
               .map((note) => (note.endsWith(".") ? note : `${note}.`));
             return (
@@ -852,38 +846,24 @@ function ResultsTable({
                     )}
                     {showStance && (
                       <TableCell align="right">
-                        {showDps ? (
-                          result.attackPoisePerSecond != null ? (
-                            <>
-                              {formatStance(result.attackPoisePerSecond)}
-                              {oneOffMark}
-                            </>
-                          ) : (
-                            ""
-                          )
-                        ) : result.attackStance != null ? (
-                          formatStance(result.attackStance)
-                        ) : (
-                          ""
-                        )}
+                        {showDps
+                          ? result.attackPoisePerSecond != null
+                            ? formatStance(result.attackPoisePerSecond)
+                            : ""
+                          : result.attackStance != null
+                          ? formatStance(result.attackStance)
+                          : ""}
                       </TableCell>
                     )}
                     {showStamina && (
                       <TableCell align="right">
-                        {showDps ? (
-                          result.attackStaminaPerSecond != null ? (
-                            <>
-                              {formatStamina(result.attackStaminaPerSecond)}
-                              {oneOffMark}
-                            </>
-                          ) : (
-                            ""
-                          )
-                        ) : result.attackStamina != null ? (
-                          formatStamina(result.attackStamina)
-                        ) : (
-                          ""
-                        )}
+                        {showDps
+                          ? result.attackStaminaPerSecond != null
+                            ? formatStamina(result.attackStaminaPerSecond)
+                            : ""
+                          : result.attackStamina != null
+                          ? formatStamina(result.attackStamina)
+                          : ""}
                       </TableCell>
                     )}
                     {statusColumns.map((statusType) => {
@@ -908,10 +888,7 @@ function ResultsTable({
                               </Box>
                             </Tooltip>
                           ) : buildup ? (
-                            <>
-                              {formatValue(buildup)}
-                              {oneOffMark}
-                            </>
+                            formatValue(buildup)
                           ) : (
                             "–"
                           )}
