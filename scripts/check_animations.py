@@ -733,10 +733,16 @@ CROUCHING_ANIMATION_OFFSET = 10
 def get_attack_animation(steps, param, attack, hands, step):
     """
     @returns the animation ID of a weapon's moveset attack's step, or None if it has none: for a
-    crouching attack, its own animation (CROUCHING_ANIMATION_OFFSET), or if the weapon's classes have
-    none (most), the rolling attack's, assumed to be played instead; None where it hits with other
-    behavior judges than the rolling attack, whose hits it copies (e.g. the Falx's, only its rolling
-    R1's first hit; the Starscourge Greatsword's, its class's, as its own rolling R1 is unique)
+    crouching attack, its own animation (CROUCHING_ANIMATION_OFFSET) where the file with the rolling
+    attack has one with hits, otherwise the rolling attack's, played instead. Tested in game at +25
+    (+10 somber) with 99 in every stat on the training dummy, each as its rolling attack here:
+    - the weapon's classes have none (most), e.g. the one handed Dagger's
+    - the weapon's own file has its rolling attack but only its class's file has a crouching one:
+      the two handed Falx's, 2 hits of 440 (its rolling R1's two, not its class's crouching R1's one)
+    - the crouching animation has no hits (only effects): the Dark Moon Greatsword's (a129, 627
+      damage and 10.175 poise one handed, 683 and 13.2 two handed) and the powerstance Sword Lance's
+      (a39, 910 and 6.6)
+    None where it hits with other behavior judges than the rolling attack, whose hits it copies
     """
     rolling = CROUCHING_ATTACKS.get(attack)
     if rolling is None:
@@ -745,10 +751,12 @@ def get_attack_animation(steps, param, attack, hands, step):
     if rolling_id is None:
         return None
     files = [n for n in (int(param["spAtkcategory"]), int(param["wepmotionCategory"])) if n]
-    _, crouching_windows = steps.animations.find(files, rolling_id + CROUCHING_ANIMATION_OFFSET)
-    if crouching_windows is None:
+    rolling_file, rolling_windows = steps.animations.find(files, rolling_id)
+    if rolling_file is None:
         return rolling_id
-    _, rolling_windows = steps.animations.find(files, rolling_id)
+    crouching_windows = steps.animations.get_windows(rolling_file, rolling_id + CROUCHING_ANIMATION_OFFSET)
+    if not crouching_windows:
+        return rolling_id
 
     def judges(windows):
         return sorted((window[2], window[3]) for window in windows or [])

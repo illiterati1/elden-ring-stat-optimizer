@@ -13510,9 +13510,54 @@ describe("timing coverage", () => {
       [272, 1.8],
       [272, 1.8],
     ]);
-    // Where it hits differently from the rolling attack, it's left out (the Falx's two handed one
-    // hits once, its rolling R1 twice)
-    expect(getAttackData(movesets, getWeapon("Falx"), "Crouching R1", true, 0.5)).toBeUndefined();
+    // Weapons whose own file has their rolling attack but only their class's file a crouching one
+    // play the rolling attack, as do crouching animations with no hits (only effects). At +25 (+10
+    // somber) with 99 in every stat on the training dummy: the two handed Falx's crouching R1 hits
+    // twice for 440 (its rolling R1's two hits, not its class's crouching R1's one); the Dark Moon
+    // Greatsword's 627 damage and 10.175 poise one handed, 683 and 13.2 two handed; the powerstance
+    // Sword Lance's crouching L1 910 and 6.6 (448 and 462 here, 3.3 each)
+    const crouchingDamage = (
+      name: string,
+      attackName: AttackChoice,
+      twoHanding: boolean,
+      powerstance = false,
+    ) => {
+      const weapon = getWeapon(name);
+      const attack = getAttackData(movesets, weapon, attackName, twoHanding, 0.5)!;
+      return optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack,
+        ...(powerstance && {
+          offhand: {
+            weapon,
+            regularUpgradeLevel: 25,
+            poiseBase: movesets[weapon.weaponName].poise,
+          },
+        }),
+      }).attackSteps![0].map((hit) => [Math.floor(hit.damage), hit.stance]);
+    };
+    expect(crouchingDamage("Falx", "Crouching R1", true)).toEqual([
+      [440, 3],
+      [440, 3],
+    ]);
+    expect(crouchingDamage("Dark Moon Greatsword", "Crouching R1", false)).toEqual([[627, 10.175]]);
+    expect(crouchingDamage("Dark Moon Greatsword", "Crouching R1", true)).toEqual([[683, 13.2]]);
+    expect(crouchingDamage("Sword Lance", "Powerstance Crouching L1", false, true)).toEqual([
+      [448, 3.3],
+      [462, 3.3],
+    ]);
   });
 
   it("leaves out catalysts' jumping R1s (a jumping cast)", () => {

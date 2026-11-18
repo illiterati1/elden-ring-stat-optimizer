@@ -11,6 +11,7 @@ from here.
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
 | 55 | Mounted R1 chain while running (low priority: is the Longsword's 7 frame slowdown per R1 after the first the same for other classes?) | Dagger, Claymore, Zweihander | Standing still: Dagger 26, 58, 92, next chain 158; Claymore 36, 90, 148, 250; Zweihander 46, 152, 270, 398. Running, if the same: each hit after the first 7 later per R1 before it (Dagger 26, 65, 106, 179) |
+| 57 | One handed crouching R1, crouch, crouching R1 (its own rolling R1 now assumed, as the Falx's, rather than its class's crouching R1) | Broadsword (or Cane Sword, Stone-Sheathed Sword) | Hit 20 after the press (was 24), the next one 73 after it |
 
 ## Stamina
 
@@ -25,7 +26,10 @@ from here.
 
 At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation).
 
-None right now.
+| # | Test | Weapon | Calculated |
+|---|---|---|---|
+| 58 | Two handed crouching R1 (its own rolling R1 assumed, as the Falx's, rather than its class's one hit) | Starscourge Greatsword (or either Greatsword of Radahn) | 2 hits of 746, 5.4 poise each, 36 after the press |
+| 59 | Two handed crouching R1 (as #58), at +25 | Ornamental Straight Sword | 2 hits of 379, 3 poise each |
 
 ## Discrepancies to look into
 

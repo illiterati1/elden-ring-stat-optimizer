@@ -10,14 +10,11 @@
 - **Untimed attacks:** backstabs, ripostes, shields' mounted R2, bow and crossbow jump shots,
   Carian Retaliation, Lifesteal Fist, Spinning Chain's loop, and how often Feeble Lord's Frenzied
   Flame can be repeated haven't been timed yet.
-- **Crouching attacks:** most weapon classes have no crouching attack animation of their own, so
-  they're assumed to play their rolling attack (the one handed Dagger's and powerstanced Daggers'
-  timing and damage match it). A few weapons' crouching attacks hit differently from their rolling
-  attacks and are left out: the two handed crouching R1 of the Ornamental Straight Sword, Falx,
-  Dancing Blade of Ranah, Horned Warrior's Sword, Dark Moon Greatsword (also one handed),
-  Starscourge Greatsword, and both Greatswords of Radahn, and the powerstance crouching L1 of the
-  Great Épée, Godskin Stitcher, Queelign's Greatsword, Bloody Helice, Dragon King's Cragblade, and
-  Sword Lance.
+- **Crouching attacks:** most weapons have no crouching attack animation of their own, so they're
+  assumed to play their rolling attack (tested on several, e.g. the Dagger, Falx, Dark Moon
+  Greatsword, and powerstanced Sword Lances). This is untested for the two handed crouching R1 of
+  the Starscourge Greatsword, both Greatswords of Radahn, and the Ornamental Straight Sword, and
+  the timing of the Broadsword's, Cane Sword's, and Stone-Sheathed Sword's.
 - **Feint attacks:** the attacks that follow a cancelled charged R2 aren't included. The motion
   value spreadsheet has them for Thrusting Swords, Heavy Thrusting Swords, Curved Swords, Great
   Katanas, Perfume Bottles, Beast Claws, the Smithscript Cirque, Claws of Night, and the
