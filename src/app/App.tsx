@@ -1017,7 +1017,7 @@ export default function App() {
         tooltipTimings={tooltipTimings}
         chainLimit={chainLimit}
         mounted={mountedAttacks.has(attack)}
-        oneOffAttack={oneOffAttacks.has(attack)}
+        closedAlerts={closedAlerts}
         onChange={updateAppState}
       />
       <BuffSettings

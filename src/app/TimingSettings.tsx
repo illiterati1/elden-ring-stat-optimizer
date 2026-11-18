@@ -1,6 +1,5 @@
 import { memo } from "react";
 import {
-  Alert,
   Box,
   Checkbox,
   FormControl,
@@ -13,7 +12,7 @@ import {
 } from "@mui/material";
 import NumberTextField from "./NumberTextField.tsx";
 import Section from "./Section.tsx";
-import { oneOffNote } from "./useMovesets.ts";
+import DismissableNote from "./DismissableNote.tsx";
 import type { AppState, ChainLimitSetting, TooltipTimings, UpdateAppState } from "./useAppState.ts";
 
 interface Props {
@@ -24,8 +23,7 @@ interface Props {
   spellScaling: boolean;
   /** The chosen attack is on horseback, where there's no rolling (so no time to dodge) */
   mounted: boolean;
-  /** The chosen attack is done once from a run, a backstep, etc. (oneOffAttacks) */
-  oneOffAttack: boolean;
+  closedAlerts: AppState["closedAlerts"];
   onChange: UpdateAppState;
 }
 
@@ -55,7 +53,7 @@ function TimingSettings({
   chainLimit,
   spellScaling,
   mounted,
-  oneOffAttack,
+  closedAlerts,
   onChange,
 }: Props) {
   return (
@@ -80,7 +78,14 @@ function TimingSettings({
       }
     >
       <Box display="grid" gap={1}>
-        {showDps && !spellScaling && oneOffAttack && <Alert severity="info">{oneOffNote}.</Alert>}
+        {/* One-off attacks' values per second (oneOffAttacks) */}
+        {showDps && !spellScaling && (
+          <DismissableNote id="oneOffTimingNote" closedAlerts={closedAlerts} onChange={onChange}>
+            Running, backstep, guard counter, and critical attacks are timed from the attack until
+            anything can follow it, and don&apos;t include the time to repeat it (running,
+            backstepping, blocking, or getting a critical hit again).
+          </DismissableNote>
+        )}
         <Typography variant="body2" color="text.secondary">
           In the hits tooltip, from the start of the chain
         </Typography>
