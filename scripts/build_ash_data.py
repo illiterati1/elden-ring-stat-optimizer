@@ -1623,7 +1623,8 @@ def get_windows_stamina(behaviors, variation, windows):
     in game: the Serpent-Hunter's Great-Serpent Hunt costs 77 for its chain, its thrusts' 30 and 40
     once at its 1.12 rate, rounded down, not again for its "?" rows' windows alongside them, with
     the same index; but the Starscourge Greatsword's Starcaller Cry #2 costs 30, its two 15
-    windows' at the same time, with indices 0 and 1). Kept separate, as each is rounded down after
+    windows' at the same time, with indices 0 and 1, and the Greatsword of Radahn (Lord)'s Promised
+    Consort #3 48, its 18 and two 15s). Kept separate, as each is rounded down after
     the weapon's rate (see check_animations.py's charged_stamina).
     """
     costs = {}

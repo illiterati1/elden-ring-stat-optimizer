@@ -6480,13 +6480,16 @@ describe("Ashes of War", () => {
   });
 
   it("matches Promised Consort in game", () => {
-    // The Greatsword of Radahn (Lord)'s skill, one chain: three steps, the first two with the same hits
+    // The Greatsword of Radahn (Lord)'s skill, one chain: three steps, the first two with the same hits.
+    // Its stamina, seen in game: 42, 42, then 48 (#3's two slash windows at once both charged, having
+    // different AttackIndex)
     const weapon = getWeapon("Greatsword of Radahn (Lord)");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
     const result = variants[0].ash;
     if (!result || !("attack" in result)) throw new Error();
     expect(result.attack.stepLabels).toEqual(["Promised Consort #1", "#2", "#3"]);
+    expect(result.attack.stamina).toEqual([42, 42, 48]);
     const build = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,

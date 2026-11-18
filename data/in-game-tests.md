@@ -16,7 +16,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 44 | Promised Consort's chain (its #3's two slash windows at once both charged, having different AttackIndex, like Starcaller Cry #2's) | Greatsword of Radahn (Lord) | 42, 42, then 48 |
 | 61 | Night-and-Flame Stance's R2 (its 45 and 25 windows at once, with the same AttackIndex, charged once, like Great-Serpent Hunt's) | Sword of Night and Flame | 46 (was 71) |
 | 56 | One handed jumping R2 (its hits' behaviors, 163 and 164, cost nothing; 160's 10 assumed, as on the Backhand Blade, rather than its landing's 17) | Rellana's Twin Blades | 10 (was 17) |
 
