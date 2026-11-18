@@ -123,7 +123,7 @@ export interface AppState {
    * and target value limits don't apply)
    */
   readonly fastMode: boolean;
-  /** Alerts closed by the user, by ID, until they choose to show all alerts again */
+  /** Alerts closed by the user, by ID, until they choose to show closed notes again */
   readonly closedAlerts: readonly string[];
   readonly meetRequirements: boolean;
   /** Only include weapons that can be buffed, e.g. with greases */

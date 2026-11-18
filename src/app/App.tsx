@@ -1055,7 +1055,7 @@ export default function App() {
         disabled={closedAlerts.length === 0}
         onClick={() => updateAppState({ closedAlerts: [] })}
       >
-        Show all alerts
+        Show closed notes
       </Button>
     </Stack>
   );

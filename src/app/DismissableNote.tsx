@@ -4,7 +4,7 @@ import { colors } from "./theme.ts";
 import type { AppState, UpdateAppState } from "./useAppState.ts";
 
 interface Props {
-  /** Saved in closedAlerts once closed, until "Show all alerts" brings it back */
+  /** Saved in closedAlerts once closed, until "Show closed notes" brings it back */
   id: string;
   closedAlerts: AppState["closedAlerts"];
   onChange: UpdateAppState;
