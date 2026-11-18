@@ -81,8 +81,8 @@ function TimingSettings({
         {/* One-off attacks' values per second (oneOffAttacks) */}
         {showDps && !spellScaling && (
           <DismissableNote id="oneOffTimingNote" closedAlerts={closedAlerts} onChange={onChange}>
-            Running, backstep, guard counter, and critical attacks are timed from the attack until
-            anything can follow it, and don&apos;t include the time to repeat it (running,
+            Running, backstep, guard counter, and critical attacks are timed from the attack press
+            until anything can follow it, and don&apos;t include the time to repeat it (running,
             backstepping, blocking, or getting a critical hit again).
           </DismissableNote>
         )}
