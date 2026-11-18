@@ -6657,13 +6657,16 @@ describe("Ashes of War", () => {
 
   it("matches Starcaller Cry in game", () => {
     // The Starscourge Greatsword's skill, a chain of two hits. Tested in game at +10 with 99 in every
-    // stat on the training dummy: 685 and 15 poise, then 2461 and 10.2
+    // stat on the training dummy: 685 and 15 poise, then 2461 and 10.2. Its stamina, seen in game: 30
+    // for each step, #2's two 15 windows at once both charged (different AttackIndex, unlike
+    // Great-Serpent Hunt's)
     const weapon = getWeapon("Starscourge Greatsword");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);
     const result = variants[0].ash;
     if (!result || !("attack" in result)) throw new Error();
     expect(result.attack.stepLabels).toEqual(["Starcaller Cry #1", "#2"]);
+    expect(result.attack.stamina).toEqual([30, 30]);
     const build = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,

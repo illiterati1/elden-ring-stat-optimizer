@@ -68,7 +68,7 @@ from build_moveset_data import (  # noqa: E402
 )
 from extract_fmg import read_fmg  # noqa: E402
 from game_attacks import get_motion_values  # noqa: E402
-from check_animations import CHARGING_LAG, CHARGING_SPEFFECT  # noqa: E402
+from check_animations import ATTACK_EVENT, CHARGING_LAG, CHARGING_SPEFFECT  # noqa: E402
 
 # EquipParamGem canMountWep_* flags, by weapon type (EquipParamWeapon wepType). SpearLarge and
 # Sorcery aren't used.
@@ -1617,28 +1617,21 @@ def get_window_behavior(behaviors, variation, judge):
 
 def get_windows_stamina(behaviors, variation, windows):
     """
-    @param windows (start, judge) of each window
-    @returns animation windows' stamina costs, each window's that has any: their behaviors', except a
-    window whose attack never hits (ROW_REPEATS 0) alongside one that does, at the same time, its
-    alternative (seen in game: the Serpent-Hunter's Great-Serpent Hunt costs 77 for its chain, its
-    thrusts' 30 and 40 once at its 1.12 rate, rounded down, not again for its "?" rows' windows
-    alongside them). Kept separate, as each is rounded down after the weapon's rate (see
-    check_animations.py's charged_stamina).
+    @param windows (start, judge, event type, AttackIndex) of each window
+    @returns animation windows' stamina costs, each window's that has any: their behaviors', once
+    for attack windows starting at the same time with the same AttackIndex, the most of them (seen
+    in game: the Serpent-Hunter's Great-Serpent Hunt costs 77 for its chain, its thrusts' 30 and 40
+    once at its 1.12 rate, rounded down, not again for its "?" rows' windows alongside them, with
+    the same index; but the Starscourge Greatsword's Starcaller Cry #2 costs 30, its two 15
+    windows' at the same time, with indices 0 and 1). Kept separate, as each is rounded down after
+    the weapon's rate (see check_animations.py's charged_stamina).
     """
-    windows = [(start, get_window_behavior(behaviors, variation, judge) or {}) for start, judge in windows]
-
-    def never_hits(behavior):
-        return behavior.get("refType") == "0" and ROW_REPEATS.get(behavior.get("refId")) == 0
-
-    return [
-        int(behavior["stamina"])
-        for start, behavior in windows
-        if int(behavior.get("stamina") or 0)
-        and (
-            not never_hits(behavior)
-            or not any(other_start == start and not never_hits(other) for other_start, other in windows)
-        )
-    ]
+    costs = {}
+    for i, (start, judge, event_type, index) in enumerate(windows):
+        stamina = int((get_window_behavior(behaviors, variation, judge) or {}).get("stamina") or 0)
+        key = (start, index) if event_type == ATTACK_EVENT else i
+        costs[key] = max(costs.get(key, 0), stamina)
+    return [cost for cost in costs.values() if cost]
 
 
 def get_window_attacks(behaviors, bullets, attacks, variation, judge):
@@ -1886,7 +1879,10 @@ def get_moveset_timings(steps, files, variation, parts, behaviors, bullets):
             stamina = get_windows_stamina(
                 behaviors,
                 variation,
-                [(start, judge) for start, _, judge, *_ in animations.get_windows(number, anim_id) or []],
+                [
+                    (start, judge, event_type, index)
+                    for start, _, judge, event_type, index, *_ in animations.get_windows(number, anim_id) or []
+                ],
             )
             if stamina:
                 timing["stamina"] = stamina
@@ -2269,9 +2265,13 @@ def get_skill_timing(
         bow = variation in BOW_AMMO_VARIATIONS.values()
 
         def segment_windows(i, segment):
-            windows = [(start, judge) for start, _, judge, *_ in animations.get_windows(number, segment) or ()]
-            windows = set(windows) if bow else windows
-            return [(start, judge) for start, judge in windows if in_segment(i, start) is not None]
+            windows = [
+                (start, judge, event_type, index)
+                for start, _, judge, event_type, index, *_ in animations.get_windows(number, segment) or ()
+            ]
+            if bow:
+                windows = list({window[:2]: window for window in windows}.values())
+            return [window for window in windows if in_segment(i, window[0]) is not None]
 
         stamina = [
             cost
@@ -2285,8 +2285,8 @@ def get_skill_timing(
                 behaviors,
                 variation,
                 [
-                    (start, judge)
-                    for start, _, judge, *_ in animations.get_windows(number, anim_id - 1) or []
+                    (start, judge, event_type, index)
+                    for start, _, judge, event_type, index, *_ in animations.get_windows(number, anim_id - 1) or []
                     if animations.to_real_time(number, anim_id - 1, start) < release
                 ],
             )
