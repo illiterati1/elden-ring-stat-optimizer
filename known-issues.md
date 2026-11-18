@@ -18,6 +18,10 @@
   Starscourge Greatsword, and both Greatswords of Radahn, and the powerstance crouching L1 of the
   Great Épée, Godskin Stitcher, Queelign's Greatsword, Bloody Helice, Dragon King's Cragblade, and
   Sword Lance.
+- **Feint attacks:** the attacks that follow a cancelled charged R2 aren't included. The motion
+  value spreadsheet has them for Thrusting Swords, Heavy Thrusting Swords, Curved Swords, Great
+  Katanas, Perfume Bottles, Beast Claws, the Smithscript Cirque, Claws of Night, and the
+  Smithscript Dagger.
 - **Unverified timings:** many attack timings and stamina costs haven't been checked in game yet.
 - **NG+ stats:** enemies' NG+ HP and defenses match the datamining spreadsheet's, but haven't been
   tested in game. HP after beating Radahn can be 1 off, as can a few enemies' NG+ HP (e.g.
