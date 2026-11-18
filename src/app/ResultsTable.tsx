@@ -106,7 +106,7 @@ function AttackHits({
   label,
   skill,
   title,
-  note,
+  notes,
 }: {
   steps: AttackResultHit[][];
   stepTimes?: StepTimes[];
@@ -118,8 +118,8 @@ function AttackHits({
   skill: boolean;
   /** The heading of the details drawer on touch devices */
   title: string;
-  /** A note on the attack's timing, under its hits */
-  note?: string;
+  /** Notes on the attack's timing, under its hits */
+  notes: string[];
 }) {
   // When each step starts, from the start of the chain (as far as the steps' lengths are known),
   // or for a loop, from the press (after its opening)
@@ -425,13 +425,13 @@ function AttackHits({
                 </TableCell>
               </TableRow>
             )}
-            {note && (
-              <TableRow>
+            {notes.map((note) => (
+              <TableRow key={note}>
                 <TableCell sx={cellSx} colSpan={99}>
                   {note}
                 </TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       }
@@ -579,16 +579,12 @@ function ResultsTable({
       );
     });
 
-  // Values per second: a one-off attack's don't count the time to set it up again, noted with an
-  // asterisk on each value
+  // Values per second: a one-off attack's don't count the time to set it up again, noted in the
+  // value's details and the hits' timings, and marked with an asterisk on each value
   const oneOffPerSecond = showDps && oneOffAttack;
   const oneOffNote =
     "Per second over the attack itself, until anything can follow it: it doesn't count the time to repeat it (running, backstepping, blocking, or getting a critical hit again)";
-  const oneOffMark = oneOffPerSecond && (
-    <Tooltip title={oneOffNote}>
-      <span>*</span>
-    </Tooltip>
-  );
+  const oneOffMark = oneOffPerSecond && "*";
   const perSecondOver = oneOffAttack
     ? " over the attack itself, until anything can follow it, not counting the time to repeat it"
     : ", repeating the attack as fast as the game allows";
@@ -847,7 +843,9 @@ function ResultsTable({
                             skill={skill}
                             label={pointLabel === "damage" ? "Damage" : "AR"}
                             title={`${result.weaponName}: hits`}
-                            note={hitsNote}
+                            notes={[hitsNote, oneOffPerSecond && oneOffNote].filter(
+                              (note): note is string => !!note,
+                            )}
                           />
                         )}
                       </TableCell>
