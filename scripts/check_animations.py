@@ -588,11 +588,10 @@ class Steps:
         extra_hitboxes = False
         stamina = 0
         left_stamina = 0
-        landing_stamina = 0
         for start, end, hit_judge, event_type, attack_index, _, hand in windows or []:
-            # PCBehavior's type is where the others' AttackIndex is
+            # PCBehavior's type is where the others' AttackIndex is (e.g. type 4, a jumping attack's
+            # landing, judge 550, whose behavior's stamina isn't taken)
             if event_type == PC_BEHAVIOR_EVENT and attack_index != PC_BEHAVIOR_ATTACK_TYPE:
-                landing_stamina += charged_stamina(self.behaviors.get_stamina(variation, hit_judge), rate)
                 continue
             if hit_judge >= 1000 and not paired:
                 continue
@@ -639,10 +638,17 @@ class Steps:
             if alternate:
                 merged.remove(alternate)
         cancels = self.animations.get_cancels(file_number, anim_id) if file_number is not None else {}
-        # A jumping attack whose hits cost nothing costs its landing's (judge 550) instead (e.g. the
-        # Backhand Blade's jumping R2, whose hit's behavior has none; untested)
+        # An attack whose hits cost nothing costs its first window's behavior's (the judge ending in
+        # 0, as a second window's costs nothing, e.g. 101 after 100) instead: tested in game, the
+        # Backhand Blade's one handed jumping R2 (judge 161, 0) costs 22, its 160's, not its
+        # landing's (judge 550, 19), and its jump 10 more
         if not stamina:
-            stamina = landing_stamina
+            first = min(
+                (judge for _, _, judge, event_type, *_ in windows or [] if event_type != PC_BEHAVIOR_EVENT),
+                default=None,
+            )
+            if first is not None:
+                stamina = charged_stamina(self.behaviors.get_stamina(variation, first // 10 * 10), rate)
         return file_number, hits, merged, cancels, extra_hitboxes, stamina, left_stamina
 
 

@@ -1581,7 +1581,8 @@ MEASURED_HIT_TIMES = {
 # Blind Spot's step (a PCBehavior window, type 4, judge 560) costs 12 in game on a Backhand Blade,
 # then its slash 30, but its behavior (106400560, the Backhand Blade class's) costs 9, and none of
 # that class's behaviors costs 12, so where it comes from isn't known (a jumping attack's landing,
-# also a type 4 PCBehavior window, may cost more than its behavior too: see in-game-tests.md)
+# also a type 4 PCBehavior window, costs nothing: the Backhand Blade's jumping R2 costs its attack
+# behavior's 22, see check_animations.py)
 STAMINA_FITS = {("Blind Spot", ""): [12, 30]}
 # Projectile hits with fitted times that the animations can't tie to a projectile (status-only hits),
 # so approximate all the same: Fires of Slumber's fire and its ground fire's ticks

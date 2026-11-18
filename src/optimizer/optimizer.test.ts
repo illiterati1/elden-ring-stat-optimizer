@@ -13521,9 +13521,11 @@ describe("timing coverage", () => {
     ).toBeUndefined();
   });
 
-  it("costs a jumping attack's landing stamina when its hit costs none", () => {
+  it("costs a jumping attack's first window's behavior's stamina when its hit costs none", () => {
+    // Tested in game: the Backhand Blade's one handed jumping R2 costs 22 (and its jump 10). Its hit's
+    // behavior (judge 161) costs none, its 160 22, and its landing's (550) 19
     const jumping = getAttackData(movesets, getWeapon("Backhand Blade"), "Jumping R2", false, 0.5)!;
-    expect(jumping.stamina![0]).toBeGreaterThan(0);
+    expect(jumping.stamina).toEqual([22]);
   });
 });
 
