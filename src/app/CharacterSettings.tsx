@@ -111,26 +111,6 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
         Stats to respec into or level towards before damage stats are optimized. A stat at or below
         the lowest any class starts with ("-") doesn't matter.
       </Typography>
-      {bestClass && (
-        <Typography variant="body2" gutterBottom>
-          Best class:{" "}
-          <Tooltip
-            title={[
-              `${bestClass.runes.toLocaleString()} runes`,
-              ...bestClass.classes.map(
-                (name, i) =>
-                  `${name}: level ${bestClass.levels[i].start} to ${bestClass.levels[i].end}`,
-              ),
-            ].join(" · ")}
-          >
-            <Box component="span" sx={tooltipCueSx}>
-              {bestClass.classes.length === Object.keys(startingClasses).length
-                ? "Any"
-                : bestClass.classes.join(", ")}
-            </Box>
-          </Tooltip>
-        </Typography>
-      )}
       <Box display="grid" gridTemplateColumns="repeat(4, 1fr)" gap={1}>
         {allStats.map((stat) => (
           <NumberTextField
@@ -156,6 +136,26 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
           />
         ))}
       </Box>
+      {bestClass && (
+        <Typography variant="body2" mt={1}>
+          Best class:{" "}
+          <Tooltip
+            title={[
+              `${bestClass.runes.toLocaleString()} runes`,
+              ...bestClass.classes.map(
+                (name, i) =>
+                  `${name}: level ${bestClass.levels[i].start} to ${bestClass.levels[i].end}`,
+              ),
+            ].join(" · ")}
+          >
+            <Box component="span" sx={tooltipCueSx}>
+              {bestClass.classes.length === Object.keys(startingClasses).length
+                ? "Any"
+                : bestClass.classes.join(", ")}
+            </Box>
+          </Tooltip>
+        </Typography>
+      )}
     </Section>
   );
 }
