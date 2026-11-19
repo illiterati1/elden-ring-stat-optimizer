@@ -111,10 +111,10 @@ function TimingSettings({
         </Box>
         <Box display="grid" gridTemplateColumns="1fr 1fr" gap={1} mt={1}>
           <FormControl fullWidth size="small">
-            <InputLabel id="chainLimitLabel">Chains</InputLabel>
+            <InputLabel id="chainLimitLabel">Chain cutoff</InputLabel>
             <Select
               labelId="chainLimitLabel"
-              label="Chains"
+              label="Chain cutoff"
               value={chainLimit.mode}
               onChange={(evt) =>
                 onChange({
