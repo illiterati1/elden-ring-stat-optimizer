@@ -23,6 +23,7 @@ import {
 import { allAttributes, type AttackPowerType, type Attributes } from "../calculator/calculator.ts";
 import type { AttackResultHit, BuildResult, StepTimes } from "../optimizer/build.ts";
 import {
+  allStats,
   getOptimalStartingClasses,
   getStatLabel,
   type Stats,
@@ -114,6 +115,12 @@ const RestoreIcon = (props: SvgIconProps) => (
   </SvgIcon>
 );
 
+const PlanIcon = (props: SvgIconProps) => (
+  <SvgIcon {...props}>
+    <path d="M21 3.01H3c-1.1 0-2 .9-2 2V9h2V4.99h18v14.03H3V15H1v4.01c0 1.1.9 1.98 2 1.98h18c1.1 0 2-.88 2-1.98v-14c0-1.11-.9-2-2-2zM11 16l4-4-4-4v3H1v2h10v3z" />
+  </SvgIcon>
+);
+
 /** A row's pin button is faint until the row is hovered (always shown on touch devices) */
 const pinHoverSx = {
   "& .pin-hover": { opacity: 0.3 },
@@ -186,6 +193,8 @@ interface Props {
   hitsNote?: string;
   sortBy: AppState["sortBy"];
   reverse: AppState["reverse"];
+  /** Plans a row's final stats */
+  onPlanStats: (finalStats: Stats) => void;
   onChange: UpdateAppState;
 }
 
@@ -661,6 +670,7 @@ function ResultsTable({
   hitsNote,
   sortBy,
   reverse,
+  onPlanStats,
   onChange,
 }: Props) {
   /**
@@ -822,9 +832,9 @@ function ResultsTable({
   const headerRows = groups.length > 1 ? 2 : 1;
 
   // Each attribute column group gets a border on its left, and the last group also gets one on its
-  // right
-  const groupBorderSx = (i: number, lastGroup: boolean) => {
-    if (i === 0) return leftBorderSx;
+  // right. The final stats start with the button to plan them, which has the left border instead.
+  const groupBorderSx = (i: number, lastGroup: boolean, planCell = false) => {
+    if (i === 0) return planCell ? undefined : leftBorderSx;
     if (lastGroup && i === allAttributes.length - 1) {
       return { borderRight: 1, borderRightColor: "divider" };
     }
@@ -832,15 +842,16 @@ function ResultsTable({
   };
 
   // Scaling (highest first) and requirement (lowest first) columns can be sorted by
-  const attributeHeaders = (group: typeof groups[number][0], lastGroup = false) =>
-    allAttributes.map((attribute, i) => {
+  const attributeHeaders = (group: typeof groups[number][0], lastGroup = false) => [
+    group === "stats" && <TableCell key="stats-plan" padding="none" sx={leftBorderSx} />,
+    ...allAttributes.map((attribute, i) => {
       const label = getStatLabel(attribute).slice(0, 3);
       return (
         <TableCell
           key={`${group}-${attribute}`}
           align="right"
           title={getStatLabel(attribute)}
-          sx={groupBorderSx(i, lastGroup)}
+          sx={groupBorderSx(i, lastGroup, group === "stats")}
         >
           {group === "scaling"
             ? sortLabel(`scaling:${attribute}`, label, "desc", true)
@@ -849,7 +860,8 @@ function ResultsTable({
             : label}
         </TableCell>
       );
-    });
+    }),
+  ];
 
   // Values per second: a one-off attack's don't count the time to set it up again, noted briefly in
   // the hits' timings (and at length in the timing settings)
@@ -861,6 +873,28 @@ function ResultsTable({
   const perSecondLabel =
     (pointLabel === "damage" ? "DPS" : "AR/s") +
     (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "");
+
+  /** Copies a row's final stats into the planned stats, unless they're the plan already */
+  const planStatsButton = (result: BuildResult, row: RowOptions) => {
+    const finalStats = { ...row.planStats, ...result.attributes };
+    const planned = allStats.every((stat) => finalStats[stat] === planStats[stat]);
+    return (
+      <Tooltip title={planned ? "These are the planned stats" : "Plan these stats"}>
+        <span>
+          <IconButton
+            size="small"
+            className="pin-hover"
+            sx={pinButtonSx}
+            disabled={planned}
+            aria-label={`Plan ${row.name}'s final stats`}
+            onClick={() => onPlanStats(finalStats)}
+          >
+            <PlanIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
+    );
+  };
 
   /** A row of the table: a weapon's, or a pinned row's with its own attack */
   const renderRow = (result: BuildResult, row: RowOptions) => {
@@ -1052,6 +1086,9 @@ function ResultsTable({
               </Tooltip>
             </TableCell>
             {showBestClass && optimalClassCell({ ...row.planStats, ...result.attributes })}
+            <TableCell padding="none" sx={leftBorderSx}>
+              {planStatsButton(result, row)}
+            </TableCell>
             {allAttributes.map((attribute, i) => {
               const leveled = result.attributes[attribute];
               const effective = result.effectiveAttributes[attribute];
@@ -1084,7 +1121,7 @@ function ResultsTable({
                 <TableCell
                   key={attribute}
                   align="right"
-                  sx={groupBorderSx(i, lastGroup === "stats")}
+                  sx={groupBorderSx(i, lastGroup === "stats", true)}
                 >
                   {details.length > 0 ? (
                     <Tooltip title={details.join(" · ")}>{value}</Tooltip>
@@ -1127,7 +1164,7 @@ function ResultsTable({
         ) : (
           <TableCell
             colSpan={
-              3 +
+              4 +
               +showBestClass +
               statusColumns.length +
               +showHits +
@@ -1313,7 +1350,7 @@ function ResultsTable({
               ? groups.map(([group, label]) => (
                   <TableCell
                     key={group}
-                    colSpan={allAttributes.length}
+                    colSpan={allAttributes.length + +(group === "stats")}
                     align="center"
                     sx={group === lastGroup ? bothBordersSx : leftBorderSx}
                   >

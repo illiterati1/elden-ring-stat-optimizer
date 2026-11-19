@@ -30,9 +30,11 @@ import {
 } from "../optimizer/build.ts";
 import type { Limits } from "../optimizer/limits.ts";
 import {
+  allStats,
   getCharacterLevel,
   getPlannedStats,
   startingClasses,
+  type Stats,
 } from "../optimizer/startingClasses.ts";
 import theme from "./theme.ts";
 import { CloseIcon, useBackClosable, useTouch } from "./Details.tsx";
@@ -41,6 +43,7 @@ import useAppState, {
   minEquipWeight,
   statusSortBy,
   type AppState,
+  type PlannedStats,
 } from "./useAppState.ts";
 import useWeapons from "./useWeapons.ts";
 import type { Weapon } from "../calculator/weapon.ts";
@@ -1285,6 +1288,31 @@ export default function App() {
     },
   }));
 
+  // The planned stats before a row's final stats were planned, to undo it (not saved). Undo is only
+  // offered while the plan is still the one the row set: changing it in any other way drops it.
+  const [planUndo, setPlanUndo] = useState<{ previous: PlannedStats; applied: PlannedStats }>();
+
+  // Plans a row's final stats, leaving stats that are the same as the current ones unplanned
+  const [planFinalStats] = useState(() => (finalStats: Stats) => {
+    const { stats, plannedStats: previous } = latest.current.appState;
+    const applied: PlannedStats = Object.fromEntries(
+      allStats
+        .filter((stat) => finalStats[stat] !== stats[stat])
+        .map((stat) => [stat, finalStats[stat]]),
+    );
+    setPlanUndo({ previous, applied });
+    updateAppState({ plannedStats: applied });
+  });
+  const undoPlan = useMemo(
+    () =>
+      planUndo &&
+      (() => {
+        setPlanUndo(undefined);
+        updateAppState({ plannedStats: planUndo.previous });
+      }),
+    [planUndo, updateAppState],
+  );
+
   // The chart shows the weapons checked in the table, each version of a fixed skill (e.g. Moonveil's
   // R1 and R2) as its own line, and pinned rows checked, named with their attacks
   const chartedResults = useMemo(
@@ -1398,6 +1426,7 @@ export default function App() {
         startingClass={startingClass}
         stats={stats}
         plannedStats={plannedStats}
+        onUndoPlan={planUndo?.applied === plannedStats ? undoPlan : undefined}
         onChange={updateAppState}
       />
       <LimitSettings
@@ -1611,6 +1640,7 @@ export default function App() {
                         showBestClass={showBestClass}
                         sortBy={sortBy}
                         reverse={reverse}
+                        onPlanStats={planFinalStats}
                         onChange={updateAppState}
                       />
                     </Stack>

@@ -17,13 +17,15 @@ interface Props {
   startingClass: AppState["startingClass"];
   stats: AppState["stats"];
   plannedStats: AppState["plannedStats"];
+  /** Restores the planned stats from before a row's final stats were planned, if that can be undone */
+  onUndoPlan?: () => void;
   onChange: UpdateAppState;
 }
 
 /**
  * Form controls for the starting class and current stats
  */
-function CharacterSettings({ startingClass, stats, plannedStats, onChange }: Props) {
+function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onChange }: Props) {
   const baseStats = startingClasses[startingClass];
   const plan = getPlannedStats(stats, plannedStats, baseStats);
 
@@ -76,13 +78,19 @@ function CharacterSettings({ startingClass, stats, plannedStats, onChange }: Pro
         <Typography variant="subtitle2" color="text.secondary">
           Planned stats — level {getCharacterLevel(plan)}
         </Typography>
-        <Button
-          size="small"
-          disabled={Object.keys(plannedStats).length === 0}
-          onClick={() => onChange({ plannedStats: {} })}
-        >
-          Reset
-        </Button>
+        {onUndoPlan ? (
+          <Button size="small" onClick={onUndoPlan}>
+            Undo
+          </Button>
+        ) : (
+          <Button
+            size="small"
+            disabled={Object.keys(plannedStats).length === 0}
+            onClick={() => onChange({ plannedStats: {} })}
+          >
+            Reset
+          </Button>
+        )}
       </Box>
       <Typography variant="body2" color="text.secondary" gutterBottom>
         Stats to respec into or level towards before damage stats are optimized
