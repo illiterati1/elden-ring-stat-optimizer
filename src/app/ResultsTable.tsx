@@ -17,7 +17,8 @@ import {
 import { allAttributes, type AttackPowerType, type Attributes } from "../calculator/calculator.ts";
 import type { AttackResultHit, BuildResult, StepTimes } from "../optimizer/build.ts";
 import { getStatLabel } from "../optimizer/startingClasses.ts";
-import { limitReasonLabels, physicalTypeLabels, statusTypes } from "./uiUtils.ts";
+import type { ScalingSource } from "../optimizer/optimizer.ts";
+import { damageTypeLabels, limitReasonLabels, physicalTypeLabels, statusTypes } from "./uiUtils.ts";
 import { getDamagePerStamina, getStancePerStamina, getResultStatus } from "./results.ts";
 import { statusSortBy } from "./useAppState.ts";
 import BreakdownTable from "./BreakdownTable.tsx";
@@ -466,6 +467,30 @@ const statusCellSx = { px: 0.75 };
 
 function formatScaling(scaling: number | undefined) {
   return scaling ? Math.round(scaling * 100).toString() : "–";
+}
+
+const scalingKindLabels: Record<NonNullable<ScalingSource["kind"]>, string> = {
+  offhand: "off hand",
+  flat: "flat attack",
+  spellBuff: "buff, from the catalyst",
+};
+
+/** @returns e.g. "40: Physical, Fire · 25: Fire (flat attack)", highest first */
+function formatMixedScaling(sources: readonly ScalingSource[]) {
+  const byValue = new Map<number, string[]>();
+  for (const { value, damageType, kind } of sources) {
+    const rounded = Math.round(value * 100);
+    const label = `${damageTypeLabels.get(damageType) ?? damageType}${
+      kind ? ` (${scalingKindLabels[kind]})` : ""
+    }`;
+    const labels = byValue.get(rounded) ?? [];
+    if (!labels.includes(label)) labels.push(label);
+    byValue.set(rounded, labels);
+  }
+  return [...byValue]
+    .sort(([a], [b]) => b - a)
+    .map(([value, labels]) => `${value}: ${labels.join(", ")}`)
+    .join(" · ");
 }
 
 /**
@@ -1033,7 +1058,15 @@ function ResultsTable({
                           align="right"
                           sx={groupBorderSx(i, lastGroup === "scaling")}
                         >
-                          {formatScaling(result.scaling[attribute])}
+                          {result.mixedScaling?.[attribute] ? (
+                            <Tooltip title={formatMixedScaling(result.mixedScaling[attribute]!)}>
+                              <Box component="span" sx={tooltipCueSx}>
+                                {formatScaling(result.scaling[attribute])}
+                              </Box>
+                            </Tooltip>
+                          ) : (
+                            formatScaling(result.scaling[attribute])
+                          )}
                         </TableCell>
                       ))}
                     {showRequirements &&

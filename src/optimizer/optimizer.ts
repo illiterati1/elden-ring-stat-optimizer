@@ -556,15 +556,52 @@ function getTermGroups(options: OptimizeOptions, splitHits = true): Term[][] | n
  * Strength, whatever the weapon's own scaling. Without hits, the weapon's own.
  */
 export function getAttackScaling(options: OptimizeOptions): Partial<Record<Attribute, number>> {
+  const { weapon, upgradeLevel } = options;
+  const sources = getScalingSources(options);
+  if (!sources) return weapon.attributeScaling[upgradeLevel];
+  const scaling: Partial<Record<Attribute, number>> = {};
+  for (const attribute of allAttributes) {
+    for (const { value } of sources[attribute] ?? []) {
+      if (value > (scaling[attribute] ?? 0)) scaling[attribute] = value;
+    }
+  }
+  return scaling;
+}
+
+/** One of the scaling values an attack uses for an attribute, and what it applies to */
+export interface ScalingSource {
+  value: number;
+  damageType: AttackPowerType;
+  /**
+   * What the scaled attack is, if not the weapon's own: the off hand weapon's attack (powerstance),
+   * a hit's flat attack (e.g. a skill's), or a weapon buff's attack scaled by the catalyst
+   */
+  kind?: "offhand" | "flat" | "spellBuff";
+}
+
+/**
+ * @returns each attribute's nonzero scaling values for an attack's damage (each term whose hits have
+ * a motion value for it), or null if there are no hits (so the weapon's own scaling applies)
+ */
+function getScalingSources(
+  options: OptimizeOptions,
+): Partial<Record<Attribute, ScalingSource[]>> | null {
   const { weapon, upgradeLevel, hits } = options;
   const terms = hits?.length ? getTermGroups(options)?.[0] : undefined;
-  if (!terms) return weapon.attributeScaling[upgradeLevel];
-  const scaling: Partial<Record<Attribute, number>> = {};
+  if (!terms) return null;
+  const sources: Partial<Record<Attribute, ScalingSource[]>> = {};
   for (const term of terms) {
     const termHits = term.hits ?? hits!;
     if (!termHits.some((hit) => (hit.motionValues?.[term.damageType] ?? hit.motionValue) > 0)) {
       continue;
     }
+    const kind = term.noRequirements
+      ? "spellBuff"
+      : term.flat
+      ? "flat"
+      : termHits.every((hit) => (hit.source ?? hit).offhand) && options.offhandWeapon
+      ? "offhand"
+      : undefined;
     for (const attribute of allAttributes) {
       const value = getAttributeScaling(
         term.weapon ?? weapon,
@@ -572,10 +609,39 @@ export function getAttackScaling(options: OptimizeOptions): Partial<Record<Attri
         term.damageType,
         attribute,
       );
-      if (value > (scaling[attribute] ?? 0)) scaling[attribute] = value;
+      if (!value) continue;
+      const list = (sources[attribute] ??= []);
+      if (
+        !list.some(
+          (source) =>
+            source.value === value && source.damageType === term.damageType && source.kind === kind,
+        )
+      ) {
+        list.push({ value, damageType: term.damageType, ...(kind && { kind }) });
+      }
     }
   }
-  return scaling;
+  return sources;
+}
+
+/**
+ * @returns each attribute's scaling values and what they apply to, only for attributes the attack
+ * scales by more than one amount (as shown, in whole percent), e.g. a skill's flat attack that scales
+ * with less Faith than the weapon's own holy
+ */
+export function getMixedScaling(
+  options: OptimizeOptions,
+): Partial<Record<Attribute, ScalingSource[]>> | undefined {
+  const sources = getScalingSources(options);
+  if (!sources) return undefined;
+  const mixed: Partial<Record<Attribute, ScalingSource[]>> = {};
+  for (const attribute of allAttributes) {
+    const list = sources[attribute] ?? [];
+    if (new Set(list.map(({ value }) => Math.round(value * 100))).size > 1) {
+      mixed[attribute] = list;
+    }
+  }
+  return Object.keys(mixed).length ? mixed : undefined;
 }
 
 /**

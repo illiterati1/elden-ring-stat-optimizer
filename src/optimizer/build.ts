@@ -19,6 +19,7 @@ import {
   evaluateObjective,
   getAttackScaling,
   getAttributeScaling,
+  getMixedScaling,
   getBreakdown,
   getDamage,
   getHitDamage,
@@ -28,6 +29,7 @@ import {
   type OptimizeOptions,
   type BreakdownRow,
   type Objective,
+  type ScalingSource,
 } from "./optimizer.ts";
 
 /** Finds the best attributes at every level, e.g. optimizeAttributes or a cached version of it */
@@ -760,6 +762,11 @@ export interface BuildResult {
   statusAtMaxArcane?: Partial<Record<AttackPowerType, number>>;
   /** The weapon's scaling for each attribute at its upgrade level (1 = 100) */
   scaling: Partial<Record<Attribute, number>>;
+  /**
+   * For attributes the attack scales by more than one amount (scaling shows the highest), each
+   * amount and what it applies to
+   */
+  mixedScaling?: Partial<Record<Attribute, ScalingSource[]>>;
 }
 
 /**
@@ -1785,6 +1792,7 @@ export function optimizeBuild(
     effectiveAttributes,
     ineffectiveAttributes,
     scaling: getAttackScaling(options),
+    mixedScaling: getMixedScaling(options),
     requirements: weapon.requirements,
     breakdown: addBuffAttack(getBreakdown(options, finalAttributes), buffAttackPower),
     // Only staves and seals: the Carian Sorcery Sword is a catalyst too, but its melee hits use its
