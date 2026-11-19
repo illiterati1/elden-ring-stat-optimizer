@@ -833,6 +833,8 @@ export default function App() {
             limits: enabledLimits,
             meetRequirements,
             fast: fastMode,
+            // Only worked out with DPS shown, since it takes a while for every level
+            ...(showDps && !fastMode && { dpsCurve: true }),
             ...(variant && { skillVariant: variant }),
           };
         });
@@ -885,6 +887,7 @@ export default function App() {
     enemyDefenses,
     limits,
     fastMode,
+    showDps,
     meetRequirements,
     planLevel,
     planAttributes,
@@ -986,14 +989,17 @@ export default function App() {
   }, [results, effectiveSortBy, effectiveReverse, sortHidden, showDps, topN]);
 
   // The chart shows the weapons checked in the table, each version of a fixed skill (e.g. Moonveil's
-  // R1 and R2) as its own line
+  // R1 and R2) as its own line. With DPS shown it plots damage per second like the table, leaving
+  // out weapons whose attack's timing isn't known.
   const chartResults = sortedResults
     .filter((result) => result.applicable && chartWeapons.includes(result.weaponName))
-    .map((result) =>
-      result.skillVariant
-        ? { ...result, weaponName: `${result.weaponName} (${result.skillVariant.short})` }
-        : result,
-    );
+    .map((result) => ({
+      ...result,
+      ...(result.skillVariant && {
+        weaponName: `${result.weaponName} (${result.skillVariant.short})`,
+      }),
+      ...(showDps && { curve: { ...result.curve, values: result.curve.dps ?? [] } }),
+    }));
 
   // Attacks other than the base one have hits to show. They don't apply to spell scaling.
   const attackMode = attackActive;
@@ -1012,6 +1018,11 @@ export default function App() {
   );
   const valueLabel = objectiveLabel + (attackMode && attack !== ashAttack ? ` (${attack})` : "");
   const pointLabel = objective === "spellScaling" ? "scaling" : "damage";
+  // Per second, e.g. "DPS (R1)", as the table labels it
+  const chartValueLabel = showDps
+    ? (pointLabel === "damage" ? "DPS" : "AR/s") +
+      (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "")
+    : valueLabel;
   const notApplicableLabel =
     objective === "spellScaling"
       ? "Not a catalyst"
@@ -1204,7 +1215,7 @@ export default function App() {
                         <ValueChart
                           results={chartResults}
                           startLevel={planLevel}
-                          valueLabel={valueLabel}
+                          valueLabel={chartValueLabel}
                           range={chartRange}
                           onChange={updateAppState}
                         />

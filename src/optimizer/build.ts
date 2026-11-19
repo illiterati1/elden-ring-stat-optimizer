@@ -159,6 +159,8 @@ export interface BuildRequest {
    * there's no curve, and the minimum gain and target value limits don't apply)
    */
   fast?: boolean;
+  /** Also give the chosen attack's damage per second at every level (ValueCurve dps), for the chart */
+  dpsCurve?: boolean;
   /** If set, the weapon isn't calculated, and this is shown instead (e.g. a bow with no arrows) */
   unavailableReason?: string;
   /** A note about the buffs applied, shown with the result */
@@ -195,6 +197,11 @@ export interface ValueCurve {
   values: number[];
   /** allocations[n] is the leveled attributes (not including bonuses) that achieve values[n] */
   allocations?: Attributes[];
+  /**
+   * dps[n] is the chosen attack's damage per second with allocations[n] (like
+   * BuildResult.attackDps), if its timing is known
+   */
+  dps?: number[];
 }
 
 /** The stamina of a movement an attack starts with (a jump, roll, or backstep) */
@@ -1287,6 +1294,7 @@ export function optimizeBuild(
     limits,
     meetRequirements = false,
     fast = false,
+    dpsCurve = false,
     unavailableReason,
     buffNote,
     skillVariant,
@@ -1756,8 +1764,49 @@ export function optimizeBuild(
           stanceDamageRate,
         )
       : undefined;
+  /**
+   * The chosen attack's damage per second with the leveled attributes (see getAttackDps): its buff's
+   * cast time depends on Dex, and a skill whose weapon's requirements aren't met does none
+   */
+  const getDpsAt = (leveled: Attributes) => {
+    if (!resultAttack || !options.hits) return undefined;
+    if (
+      attack?.needsRequirements &&
+      objective !== "spellScaling" &&
+      getWeaponAttack({
+        weapon,
+        attributes: getEffectiveAttributes(leveled, bonusAttributes),
+        twoHanding,
+        upgradeLevel: options.upgradeLevel,
+      }).ineffectiveAttributes.length > 0
+    ) {
+      return 0;
+    }
+    const timedAttack =
+      attack?.buffUpkeep?.fastCast != null
+        ? {
+            ...resultAttack,
+            buffUpkeep: getUpkeepAtDex(
+              attack.buffUpkeep,
+              getEffectiveAttributes(leveled, bonusAttributes).dex,
+            ),
+          }
+        : resultAttack;
+    const repeated = getRepeatedSteps(timedAttack);
+    if (!repeated) return undefined;
+    const damage = timedAttack.steps
+      .slice(repeated.from)
+      .flat()
+      .reduce((sum, hit) => sum + (hit.notCounted ? 0 : hitDamage(hit, leveled)), 0);
+    return damage / repeated.time;
+  };
   const notedHitDamage =
     attack?.notedHit && options.hits ? hitDamage(attack.notedHit, finalAttributes) : undefined;
+
+  const curveAllocations = curve.allocations.slice(
+    0,
+    Math.max(1, maxCharacterLevel - startLevel - requiredLevels + 1),
+  );
 
   return {
     weaponName: weapon.name,
@@ -1779,10 +1828,11 @@ export function optimizeBuild(
       values: curve.values
         .slice(0, Math.max(1, maxCharacterLevel - startLevel - requiredLevels + 1))
         .map((value) => Math.round((value + hpDamage) * 100) / 100),
-      allocations: curve.allocations.slice(
-        0,
-        Math.max(1, maxCharacterLevel - startLevel - requiredLevels + 1),
-      ),
+      allocations: curveAllocations,
+      ...(dpsCurve &&
+        getDpsAt(finalAttributes) != null && {
+          dps: curveAllocations.map((leveled) => Math.round(getDpsAt(leveled)! * 100) / 100),
+        }),
     },
     levels: startLevel + requiredLevels + levels - currentLevel,
     finalLevel: startLevel + requiredLevels + levels,

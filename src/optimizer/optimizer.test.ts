@@ -1990,6 +1990,42 @@ describe("attacks", () => {
     expect(running.dps).toBeCloseTo(running.damage / (0.996 + 1 / 30), 0);
   });
 
+  it("gives the damage per second at each level of the curve, for the chart", () => {
+    // Each level's DPS is the one a build stopping at that level gets, including a buff spell cast
+    // again whenever it runs out, faster with more Dex (Black Flame Blade's, from 10 to 70 Dex)
+    const weapon = getWeapon("Longsword");
+    const attack = {
+      ...getAttackData(movesets, weapon, "R1", false, 0.5)!,
+      buffUpkeep: {
+        cast: 1.533,
+        duration: 7,
+        fastCast: 1.2,
+        castDex: [10, 70] as [number, number],
+      },
+    };
+    const build = (maxLevels: number) =>
+      optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 12, dex: 10, int: 10, fai: 10, arc: 10 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        limits: { ...noLimits, maxLevels },
+        attack,
+        dpsCurve: true,
+      });
+    const { curve } = build(0);
+    expect(curve.dps).toHaveLength(curve.values.length);
+    for (const levels of [0, 20, 60, 150]) {
+      expect(curve.dps![levels]).toBeCloseTo(build(levels).attackDps!, 1);
+    }
+    // More damage per second as the Dex goes up, not just the damage
+    expect(curve.dps![150] / curve.values[150]).toBeGreaterThan(curve.dps![0] / curve.values[0]);
+  });
+
   it("gives attacks' stamina costs", () => {
     // BehaviorParam_PC stamina times the weapon's staminaConsumptionRate, from the animations: the
     // Longsword's R1s cost 12 and two handed charged R2s 36; a chain's is weighted like its damage
