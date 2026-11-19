@@ -25,6 +25,21 @@ export interface WorkerResponse {
   results: BuildResult[];
 }
 
+/**
+ * Damage per second at every level (ValueCurve dps) for the requests charted, asked for apart from
+ * the results since it's only needed for a few weapons and takes a while for each
+ */
+export interface DpsCurveRequest {
+  dpsId: number;
+  requests: BuildRequest[];
+}
+
+export interface DpsCurveResponse {
+  dpsId: number;
+  /** Each request's, in order, if its attack's timing is known */
+  curves: (number[] | undefined)[];
+}
+
 /** How many curves to keep. Each is a few hundred allocations, so this bounds memory use. */
 const maxCachedCurves = 4000;
 
@@ -140,7 +155,23 @@ async function handleRequest({ id, requests, topN }: WorkerRequest) {
   self.postMessage(response);
 }
 
-self.onmessage = (evt: MessageEvent<WorkerRequest>) => {
+/**
+ * Works out the DPS curves between the results' batches, finding each curve in the cache when the
+ * results have already used it
+ */
+function handleDpsRequest({ dpsId, requests }: DpsCurveRequest) {
+  const curves = requests.map(
+    (request) => optimizeBuild({ ...request, fast: false, dpsCurve: true }, findCurve).curve.dps,
+  );
+  const response: DpsCurveResponse = { dpsId, curves };
+  self.postMessage(response);
+}
+
+self.onmessage = (evt: MessageEvent<WorkerRequest | DpsCurveRequest>) => {
+  if ("dpsId" in evt.data) {
+    handleDpsRequest(evt.data);
+    return;
+  }
   latestId = evt.data.id;
   void handleRequest(evt.data);
 };

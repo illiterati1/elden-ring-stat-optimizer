@@ -22,7 +22,12 @@ import {
   type Attribute,
   type Attributes,
 } from "../calculator/calculator.ts";
-import { scadutreeBlessingRates, type BuffEffect, type BuildRequest } from "../optimizer/build.ts";
+import {
+  scadutreeBlessingRates,
+  type BuffEffect,
+  type BuildRequest,
+  type BuildResult,
+} from "../optimizer/build.ts";
 import type { Limits } from "../optimizer/limits.ts";
 import {
   getCharacterLevel,
@@ -70,7 +75,7 @@ import useMovesets, {
   type ChainLimit,
 } from "./useMovesets.ts";
 import useAmmo, { getAmmoKey, weaponTypeAmmoClasses, withAmmo } from "./useAmmo.ts";
-import useBuildResults from "./useBuildResults.ts";
+import useBuildResults, { useDpsCurves } from "./useBuildResults.ts";
 import CharacterSettings from "./CharacterSettings.tsx";
 import BuildSettings from "./BuildSettings.tsx";
 import TimingSettings from "./TimingSettings.tsx";
@@ -103,6 +108,12 @@ const skillDebuffs: Partial<Record<string, string>> = { "Shriek of Milos": "Shri
  * (tested with a Rapier), and the Pickaxe, a Great Hammer with greataxes' animations
  * (wepmotionCategory 32), with greataxes (tested with the Rusted Anchor)
  */
+/** Identifies a request's result: the weapon, and which version of its fixed skill */
+const getRequestKey = (request: BuildRequest) =>
+  `${request.weapon.name}\n${request.skillVariant?.short ?? ""}`;
+const getResultKey = (result: BuildResult) =>
+  `${result.weaponName}\n${result.skillVariant?.short ?? ""}`;
+
 const powerstanceExceptions: { weapon: string; weaponType: WeaponType; leftHandOnly?: true }[] = [
   { weapon: "Wakizashi", weaponType: WeaponType.KATANA, leftHandOnly: true },
   { weapon: "Main-gauche", weaponType: WeaponType.THRUSTING_SWORD, leftHandOnly: true },
@@ -833,8 +844,6 @@ export default function App() {
             limits: enabledLimits,
             meetRequirements,
             fast: fastMode,
-            // Only worked out with DPS shown, since it takes a while for every level
-            ...(showDps && !fastMode && { dpsCurve: true }),
             ...(variant && { skillVariant: variant }),
           };
         });
@@ -887,7 +896,6 @@ export default function App() {
     enemyDefenses,
     limits,
     fastMode,
-    showDps,
     meetRequirements,
     planLevel,
     planAttributes,
@@ -957,7 +965,7 @@ export default function App() {
         : undefined,
     [topN, workerSortHidden, sortBy, reverse, showDps],
   );
-  const { results, pending } = useBuildResults(requests, workerTopN);
+  const { results, pending, workerRef } = useBuildResults(requests, workerTopN);
 
   // A column for each status effect that any weapon in the table builds up
   const statusTypesShown = useMemo(
@@ -989,17 +997,44 @@ export default function App() {
   }, [results, effectiveSortBy, effectiveReverse, sortHidden, showDps, topN]);
 
   // The chart shows the weapons checked in the table, each version of a fixed skill (e.g. Moonveil's
-  // R1 and R2) as its own line. With DPS shown it plots damage per second like the table, leaving
-  // out weapons whose attack's timing isn't known.
-  const chartResults = sortedResults
-    .filter((result) => result.applicable && chartWeapons.includes(result.weaponName))
-    .map((result) => ({
-      ...result,
-      ...(result.skillVariant && {
-        weaponName: `${result.weaponName} (${result.skillVariant.short})`,
-      }),
-      ...(showDps && { curve: { ...result.curve, values: result.curve.dps ?? [] } }),
-    }));
+  // R1 and R2) as its own line
+  const chartedResults = useMemo(
+    () =>
+      sortedResults.filter(
+        (result) => result.applicable && chartWeapons.includes(result.weaponName),
+      ),
+    [sortedResults, chartWeapons],
+  );
+  // With DPS shown it plots damage per second like the table, worked out only for the weapons
+  // charted, and leaves out weapons whose attack's timing isn't known
+  const dpsRequests = useMemo(
+    () =>
+      showDps && !fastMode
+        ? requests.filter((request) =>
+            chartedResults.some((result) => getResultKey(result) === getRequestKey(request)),
+          )
+        : [],
+    [showDps, fastMode, requests, chartedResults],
+  );
+  const dpsCurves = useDpsCurves(workerRef, dpsRequests);
+  const chartResults = chartedResults.map((result) => ({
+    ...result,
+    ...(result.skillVariant && {
+      weaponName: `${result.weaponName} (${result.skillVariant.short})`,
+    }),
+    // (until they're worked out, the last ones for the weapon)
+    ...(showDps && {
+      curve: {
+        ...result.curve,
+        values:
+          dpsCurves.curves[
+            dpsCurves.requests.findIndex(
+              (request) => getRequestKey(request) === getResultKey(result),
+            )
+          ] ?? [],
+      },
+    }),
+  }));
 
   // Attacks other than the base one have hits to show. They don't apply to spell scaling.
   const attackMode = attackActive;
