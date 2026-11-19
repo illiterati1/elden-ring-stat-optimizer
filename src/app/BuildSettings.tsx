@@ -1,4 +1,4 @@
-import { memo, useState, type ReactNode } from "react";
+import { memo, useState, type Key, type ReactNode } from "react";
 import {
   Alert,
   Box,
@@ -139,8 +139,14 @@ function FilterSettings({
   const update = (update: Partial<WeaponFilters>) =>
     onChange({ weaponFilters: { ...weaponFilters, ...update } });
   const active = countActiveFilters(weaponFilters, onlyBuffable);
-  const checkbox = (label: ReactNode, checked: boolean, onToggle: (checked: boolean) => void) => (
+  const checkbox = (
+    label: ReactNode,
+    checked: boolean,
+    onToggle: (checked: boolean) => void,
+    key?: Key,
+  ) => (
     <FormControlLabel
+      key={key}
       label={label}
       sx={{ mr: 0 }}
       control={
@@ -217,6 +223,7 @@ function FilterSettings({
             </>,
             damageTypes.includes(type),
             (checked) => update({ damageTypes: toggle(damageTypes, type, checked) }),
+            type,
           ),
         )}
       </Box>
@@ -233,6 +240,7 @@ function FilterSettings({
             </>,
             filterStatusTypes.includes(type),
             (checked) => update({ statusTypes: toggle(filterStatusTypes, type, checked) }),
+            type,
           ),
         )}
       </Box>
