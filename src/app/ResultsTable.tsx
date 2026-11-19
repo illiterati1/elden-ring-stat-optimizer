@@ -16,7 +16,11 @@ import {
 } from "@mui/material";
 import { allAttributes, type AttackPowerType, type Attributes } from "../calculator/calculator.ts";
 import type { AttackResultHit, BuildResult, StepTimes } from "../optimizer/build.ts";
-import { getStatLabel } from "../optimizer/startingClasses.ts";
+import {
+  getOptimalStartingClasses,
+  getStatLabel,
+  type Stats,
+} from "../optimizer/startingClasses.ts";
 import type { ScalingSource } from "../optimizer/optimizer.ts";
 import { damageTypeLabels, limitReasonLabels, physicalTypeLabels, statusTypes } from "./uiUtils.ts";
 import { getDamagePerStamina, getStancePerStamina, getResultStatus } from "./results.ts";
@@ -33,12 +37,16 @@ interface Props {
   /** True if there's no chart (fast mode), so weapons can't be added to it */
   chartDisabled?: boolean;
   startAttributes: Attributes;
+  /** The planned stats the optimizer starts from, for Vigor, Mind, and Endurance's final values */
+  planStats: Stats;
   valueLabel: string;
   /** What one point of the objective is called: "damage" or "scaling" */
   pointLabel: string;
   notApplicableLabel: string;
   showScaling: boolean;
   showRequirements: boolean;
+  /** Show the starting classes that reach each build's final stats in the fewest runes */
+  showBestClass: boolean;
   /** A column for each of these status effects */
   statusTypes: AttackPowerType[];
   /** Show each hit of the chosen attack */
@@ -67,6 +75,23 @@ interface Props {
   sortBy: AppState["sortBy"];
   reverse: AppState["reverse"];
   onChange: UpdateAppState;
+}
+
+/**
+ * The starting classes that reach the final stats in the fewest runes, with how many runes that is
+ */
+function optimalClassCell(finalStats: Stats) {
+  const { classes, runes, levels } = getOptimalStartingClasses(finalStats);
+  const details = classes.map((name, i) => `${name}: level ${levels[i].start} to ${levels[i].end}`);
+  return (
+    <TableCell>
+      <Tooltip title={[`${runes.toLocaleString()} runes`, ...details].join(" · ")}>
+        <Box component="span" sx={tooltipCueSx}>
+          {classes.join(", ")}
+        </Box>
+      </Tooltip>
+    </TableCell>
+  );
 }
 
 function formatValue(value: number) {
@@ -501,11 +526,13 @@ function ResultsTable({
   chartWeapons,
   chartDisabled = false,
   startAttributes,
+  planStats,
   valueLabel,
   pointLabel,
   notApplicableLabel,
   showScaling,
   showRequirements,
+  showBestClass,
   statusTypes: statusColumns,
   showHits,
   showStance,
@@ -775,6 +802,7 @@ function ResultsTable({
             <TableCell rowSpan={headerRows} align="right">
               {sortLabel("level", "Level", "asc")}
             </TableCell>
+            {showBestClass && <TableCell rowSpan={headerRows}>Best class</TableCell>}
             {headerRows > 1
               ? groups.map(([group, label]) => (
                   <TableCell
@@ -1003,6 +1031,7 @@ function ResultsTable({
                         </Box>
                       </Tooltip>
                     </TableCell>
+                    {showBestClass && optimalClassCell({ ...planStats, ...result.attributes })}
                     {allAttributes.map((attribute, i) => {
                       const leveled = result.attributes[attribute];
                       const effective = result.effectiveAttributes[attribute];
@@ -1085,6 +1114,7 @@ function ResultsTable({
                   <TableCell
                     colSpan={
                       3 +
+                      +showBestClass +
                       statusColumns.length +
                       +showHits +
                       +showStance +

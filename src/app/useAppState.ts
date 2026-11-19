@@ -123,6 +123,8 @@ export interface AppState {
   /** Chains cut short: to a number of steps, or the steps that fit a time budget */
   readonly chainLimit: ChainLimitSetting;
   readonly showRequirements: boolean;
+  /** Show the starting classes that reach each build's final stats in the fewest runes */
+  readonly showBestClass: boolean;
   /**
    * Only optimize the level the level limit stops at (faster, but no chart, and the minimum gain
    * and target value limits don't apply)
@@ -268,6 +270,7 @@ const defaultAppState: AppState = {
   },
   chainLimit: { mode: "none", steps: 3, seconds: 2 },
   showRequirements: false,
+  showBestClass: false,
   closedAlerts: [],
   fastMode: false,
   meetRequirements: true,

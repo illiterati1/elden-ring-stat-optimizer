@@ -13,7 +13,12 @@ import { getTypedBuffs, groupBuffsByKind } from "../app/buffListing.tsx";
 import { allPhysicalTypes, getDamageAfterDefense, getDefenseMultiplier } from "./defense.ts";
 import { applyLimits, type Limits } from "./limits.ts";
 import { getCumulativeLevelUpCosts, getLevelUpCost } from "./runes.ts";
-import { getCharacterLevel, startingClasses } from "./startingClasses.ts";
+import {
+  getCharacterLevel,
+  getOptimalStartingClasses,
+  startingClasses,
+  type Stats,
+} from "./startingClasses.ts";
 import { getAmmoLabel, withAmmo, type AmmoGroup } from "../app/useAmmo.ts";
 import {
   attackTimingNotes,
@@ -529,6 +534,27 @@ describe("startingClasses", () => {
     for (const [name, level] of Object.entries(levels)) {
       expect(getCharacterLevel(startingClasses[name as keyof typeof startingClasses])).toBe(level);
     }
+  });
+
+  it("find the classes that reach some stats in the fewest runes", () => {
+    const optimal = (stats: Stats) => getOptimalStartingClasses(stats).classes;
+    const stats = { vig: 40, min: 20, end: 15, str: 20, dex: 40, int: 9, fai: 9, arc: 9 };
+    // 74 levels from Vagabond or Samurai at 9; Heavy Knight's extra Endurance wastes 2 levels, so
+    // starting at 10 it ends 1 level higher
+    expect(optimal(stats)).toEqual(["Vagabond", "Samurai"]);
+    // A class still counts when it starts above a stat: here every class does
+    expect(optimal({ ...stats, int: 7, fai: 7, arc: 7 })).toEqual(["Vagabond", "Samurai"]);
+    expect(optimal({ ...stats, end: 20, int: 99, fai: 99, arc: 99 })).toEqual([
+      "Confessor",
+      "Heavy Knight",
+    ]);
+    expect(optimal(startingClasses.Wretch)).toEqual(["Wretch"]);
+    const result = getOptimalStartingClasses(stats);
+    expect(result.levels).toEqual([
+      { start: 9, end: 83 },
+      { start: 9, end: 83 },
+    ]);
+    expect(result.runes).toBe(getCumulativeLevelUpCosts(9, 74)[74]);
   });
 });
 

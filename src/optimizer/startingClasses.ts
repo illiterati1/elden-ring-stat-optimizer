@@ -1,4 +1,5 @@
 import type { Attribute } from "../calculator/calculator.ts";
+import { getCumulativeLevelUpCosts } from "./runes.ts";
 
 export const allStats = ["vig", "min", "end", "str", "dex", "int", "fai", "arc"] as const;
 
@@ -77,3 +78,33 @@ export const startingClasses: Record<StartingClassName, Stats> = {
   "Idus Knight": { vig: 10, min: 12, end: 11, str: 13, dex: 15, int: 8, fai: 11, arc: 6 },
   "Heavy Knight": { vig: 14, min: 8, end: 17, str: 15, dex: 11, int: 7, fai: 8, arc: 9 },
 };
+
+export interface OptimalStartingClasses {
+  /** The classes, in the game's order */
+  classes: StartingClassName[];
+  /** The runes each of them needs */
+  runes: number;
+  /** Each class's starting and final levels; a class may end higher if it starts above a stat */
+  levels: { start: number; end: number }[];
+}
+
+/**
+ * @returns the starting classes that reach the given stats in the fewest runes. A class levels up
+ * each stat below the given value and keeps any stat it starts above it.
+ */
+export function getOptimalStartingClasses(stats: Stats): OptimalStartingClasses {
+  let best: OptimalStartingClasses = { classes: [], runes: Infinity, levels: [] };
+  for (const [name, base] of Object.entries(startingClasses) as [StartingClassName, Stats][]) {
+    const start = getCharacterLevel(base);
+    const levels = allStats.reduce((sum, stat) => sum + Math.max(0, stats[stat] - base[stat]), 0);
+    const runes = getCumulativeLevelUpCosts(start, levels)[levels];
+    const level = { start, end: start + levels };
+    if (runes < best.runes) {
+      best = { classes: [name], runes, levels: [level] };
+    } else if (runes === best.runes) {
+      best.classes.push(name);
+      best.levels.push(level);
+    }
+  }
+  return best;
+}

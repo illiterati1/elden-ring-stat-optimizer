@@ -164,6 +164,7 @@ export default function App() {
     tooltipTimings,
     chainLimit,
     showRequirements,
+    showBestClass,
     closedAlerts,
     meetRequirements,
     onlyBuffable,
@@ -1093,6 +1094,7 @@ export default function App() {
         showDamagePerStamina={savedShowDamagePerStamina}
         showStancePerStamina={savedShowStancePerStamina}
         showRequirements={showRequirements}
+        showBestClass={showBestClass}
         closedAlerts={closedAlerts}
         onlyBuffable={onlyBuffable}
         weaponFilters={weaponFilters}
@@ -1260,6 +1262,7 @@ export default function App() {
                         chartWeapons={chartWeapons}
                         chartDisabled={fastMode}
                         startAttributes={startAttributes}
+                        planStats={plan}
                         valueLabel={valueLabel}
                         pointLabel={pointLabel}
                         notApplicableLabel={notApplicableLabel}
@@ -1276,6 +1279,7 @@ export default function App() {
                         skill={attack === ashAttack}
                         hitsNote={attackTimingNotes[attack]}
                         showRequirements={showRequirements}
+                        showBestClass={showBestClass}
                         sortBy={sortBy}
                         reverse={reverse}
                         onChange={updateAppState}
