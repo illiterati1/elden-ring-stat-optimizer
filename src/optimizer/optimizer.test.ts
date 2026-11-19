@@ -17,7 +17,7 @@ import {
   getCharacterLevel,
   getOptimalStartingClasses,
   getPlannedStats,
-  getUnneededStats,
+  minimumStats,
   startingClasses,
   type Stats,
 } from "./startingClasses.ts";
@@ -416,10 +416,6 @@ describe("optimizeBuild", () => {
     const result = optimizeBuild({ ...request, meetRequirements: false });
     expect(result.attributes.fai).toBe(9);
     expect(result.ineffectiveAttributes).toContain("fai");
-    // The lowest stats that meet the requirements, only for those that are met
-    expect(result.minimumAttributes!.fai).toBeUndefined();
-    const met = optimizeBuild({ ...request, meetRequirements: true });
-    expect(met.minimumAttributes!.fai).toBe(24);
   });
 
   it("counts two handing Strength when meeting requirements", () => {
@@ -439,8 +435,6 @@ describe("optimizeBuild", () => {
     expect(result.levels).toBe(30);
     expect(result.attributes).toEqual({ str: 10, dex: 12, int: 24, fai: 24, arc: 10 });
     expect(result.effectiveAttributes.str).toBe(15);
-    // Two handed, 8 Str is enough for 12
-    expect(result.minimumAttributes).toEqual({ str: 8, dex: 12, int: 24, fai: 24 });
     // The curve starts after the levels spent meeting requirements
     expect(result.curve.startLevel).toBe(31);
     expect(result.curve.values[0]).toBeCloseTo(result.finalValue);
@@ -565,22 +559,32 @@ describe("startingClasses", () => {
     expect(result.runes).toBe(getCumulativeLevelUpCosts(9, 74)[74]);
   });
 
-  it("plans stats that don't matter at the class's base", () => {
+  it("plans stats that don't matter at the lowest any class has", () => {
+    expect(minimumStats).toEqual({
+      vig: 9,
+      min: 8,
+      end: 8,
+      str: 8,
+      dex: 9,
+      int: 7,
+      fai: 6,
+      arc: 6,
+    });
     const base = startingClasses.Vagabond;
-    const stats = { ...base, vig: 40, dex: 20 };
-    const planned = { vig: null, min: 20, dex: null };
-    expect(getPlannedStats(stats, planned, base)).toEqual({ ...base, min: 20 });
-    // Unplanned stats at the base don't matter either; those above it are the current ones
-    expect(getUnneededStats(stats, planned, base)).toEqual([
-      "vig",
-      "end",
-      "str",
-      "dex",
-      "int",
-      "fai",
-      "arc",
+    // Unplanned stats at the class's base don't matter; those above it are the current ones
+    const stats = { ...base, vig: 40 };
+    expect(getPlannedStats(stats, {}, base)).toEqual({ ...minimumStats, vig: 40 });
+    // Planned stats are kept between the lowest any class has and 99
+    expect(getPlannedStats(stats, { vig: 1, str: 15, dex: 120 }, base)).toEqual({
+      ...minimumStats,
+      str: 15,
+      dex: 99,
+    });
+    // Stats that don't matter don't need levels from any class
+    expect(getOptimalStartingClasses(minimumStats).classes).toHaveLength(12);
+    expect(getOptimalStartingClasses({ ...minimumStats, dex: 15, str: 13 }).classes).toEqual([
+      "Idus Knight",
     ]);
-    expect(getUnneededStats(stats, {}, base)).toEqual(["min", "end", "str", "int", "fai", "arc"]);
   });
 });
 

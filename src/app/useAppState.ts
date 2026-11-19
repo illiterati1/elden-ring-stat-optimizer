@@ -121,8 +121,6 @@ export interface AppState {
   /** Chains cut short: to a number of steps, or the steps that fit a time budget */
   readonly chainLimit: ChainLimitSetting;
   readonly showRequirements: boolean;
-  /** Show the starting classes that reach each build's final stats in the fewest runes */
-  readonly showBestClass: boolean;
   /**
    * Only optimize the level the level limit stops at (faster, but no chart, and the minimum gain
    * and target value limits don't apply)
@@ -273,7 +271,6 @@ export const defaultAppState: AppState = {
   },
   chainLimit: { mode: "none", steps: 3, seconds: 2 },
   showRequirements: false,
-  showBestClass: false,
   closedAlerts: [],
   fastMode: false,
   meetRequirements: true,
@@ -383,9 +380,7 @@ function getInitialAppState(): AppState {
       },
       // Earlier versions saved 0 for stats that weren't planned
       plannedStats: Object.fromEntries(
-        Object.entries(stored.plannedStats ?? {}).filter(
-          ([, value]) => value === null || value > 0,
-        ),
+        Object.entries(stored.plannedStats ?? {}).filter(([, value]) => value > 0),
       ),
       defenses: { ...defaultAppState.defenses, ...stored.defenses },
       tooltipTimings: { ...defaultAppState.tooltipTimings, ...stored.tooltipTimings },

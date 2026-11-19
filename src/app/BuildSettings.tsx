@@ -48,7 +48,6 @@ interface Props {
   showDamagePerStamina: AppState["showDamagePerStamina"];
   showStancePerStamina: AppState["showStancePerStamina"];
   showRequirements: AppState["showRequirements"];
-  showBestClass: AppState["showBestClass"];
   closedAlerts: AppState["closedAlerts"];
   onlyBuffable: AppState["onlyBuffable"];
   weaponFilters: AppState["weaponFilters"];
@@ -263,7 +262,6 @@ function BuildSettings({
   showDamagePerStamina,
   showStancePerStamina,
   showRequirements,
-  showBestClass,
   closedAlerts,
   onlyBuffable,
   weaponFilters,
@@ -566,17 +564,6 @@ function BuildSettings({
                 size="small"
                 checked={showRequirements}
                 onChange={(evt) => onChange({ showRequirements: evt.currentTarget.checked })}
-              />
-            }
-          />
-          <FormControlLabel
-            label="Best class"
-            sx={{ mr: 0 }}
-            control={
-              <Checkbox
-                size="small"
-                checked={showBestClass}
-                onChange={(evt) => onChange({ showBestClass: evt.currentTarget.checked })}
               />
             }
           />

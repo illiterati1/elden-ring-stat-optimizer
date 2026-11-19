@@ -36,36 +36,6 @@ export function getCharacterLevel(stats: Stats) {
   return allStats.reduce((sum, stat) => sum + stats[stat], 0) - levelOffset;
 }
 
-/**
- * Planned stats to respec into or level towards before optimizing damage. Stats that aren't
- * planned are the same as the current ones. null plans a stat that doesn't matter ("-"): the
- * optimizer starts it at the class's base, and the best class column doesn't count it.
- */
-export type PlannedStats = Partial<Record<Stat, number | null>>;
-
-/**
- * @returns the stats to optimize from: planned stats where set (at least the class's base, at
- * most 99, and the base for one that doesn't matter), and the current stats otherwise
- */
-export function getPlannedStats(stats: Stats, planned: PlannedStats, baseStats: Stats): Stats {
-  const plan = { ...stats };
-  for (const stat of allStats) {
-    const value = planned[stat];
-    if (value !== undefined) plan[stat] = Math.min(99, Math.max(baseStats[stat], value ?? 0));
-  }
-  return plan;
-}
-
-/**
- * @returns the planned stats that don't matter: those planned as "-", and unplanned ones whose
- * current value is the class's base
- */
-export function getUnneededStats(stats: Stats, planned: PlannedStats, baseStats: Stats): Stat[] {
-  return allStats.filter((stat) =>
-    planned[stat] === undefined ? stats[stat] <= baseStats[stat] : planned[stat] === null,
-  );
-}
-
 export type StartingClassName =
   | "Vagabond"
   | "Warrior"
@@ -95,6 +65,45 @@ export const startingClasses: Record<StartingClassName, Stats> = {
   "Idus Knight": { vig: 10, min: 12, end: 11, str: 13, dex: 15, int: 8, fai: 11, arc: 6 },
   "Heavy Knight": { vig: 14, min: 8, end: 17, str: 15, dex: 11, int: 7, fai: 8, arc: 9 },
 };
+
+/** The lowest of each stat across the starting classes */
+export const minimumStats = Object.fromEntries(
+  allStats.map((stat) => [
+    stat,
+    Math.min(...Object.values(startingClasses).map((base) => base[stat])),
+  ]),
+) as Stats;
+
+/**
+ * Planned stats to respec into or level towards before optimizing damage. A stat at the lowest any
+ * class has ("-") doesn't matter: no class needs levels for it, so it doesn't change the best
+ * class. Stats that aren't planned are the current ones, or "-" while those are the class's base.
+ */
+export type PlannedStats = Partial<Stats>;
+
+/** @returns true if the current stats are the starting class's, so the class can still be picked */
+export function isAtBaseStats(stats: Stats, baseStats: Stats) {
+  return allStats.every((stat) => stats[stat] === baseStats[stat]);
+}
+
+/**
+ * @returns the stats to optimize from: planned stats where set (between the lowest any class has
+ * and 99), and otherwise the current stats, or the lowest any class has for those at the class's
+ * base
+ */
+export function getPlannedStats(stats: Stats, planned: PlannedStats, baseStats: Stats): Stats {
+  const plan = { ...stats };
+  for (const stat of allStats) {
+    const value = planned[stat];
+    plan[stat] =
+      value != null
+        ? Math.min(99, Math.max(minimumStats[stat], value))
+        : stats[stat] <= baseStats[stat]
+        ? minimumStats[stat]
+        : stats[stat];
+  }
+  return plan;
+}
 
 export interface OptimalStartingClasses {
   /** The classes, in the game's order */

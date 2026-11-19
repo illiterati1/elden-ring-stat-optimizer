@@ -1,15 +1,27 @@
 import { memo } from "react";
-import { Box, Button, FormControl, InputLabel, MenuItem, Select, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { allAttributes } from "../calculator/calculator.ts";
 import {
   allStats,
   getCharacterLevel,
+  getOptimalStartingClasses,
   getPlannedStats,
   getStatLabel,
-  getUnneededStats,
+  isAtBaseStats,
+  minimumStats,
   startingClasses,
   type StartingClassName,
 } from "../optimizer/startingClasses.ts";
+import { tooltipCueSx } from "./Details.tsx";
 import NumberTextField from "./NumberTextField.tsx";
 import Section from "./Section.tsx";
 import type { AppState, UpdateAppState } from "./useAppState.ts";
@@ -29,7 +41,8 @@ interface Props {
 function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onChange }: Props) {
   const baseStats = startingClasses[startingClass];
   const plan = getPlannedStats(stats, plannedStats, baseStats);
-  const unneeded = getUnneededStats(stats, plannedStats, baseStats);
+  // The class only matters before leveling up, so that's the only time the best one is shown
+  const bestClass = isAtBaseStats(stats, baseStats) && getOptimalStartingClasses(plan);
 
   return (
     <Section id="character" title={`Character — Level ${getCharacterLevel(stats)}`}>
@@ -95,9 +108,29 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
         )}
       </Box>
       <Typography variant="body2" color="text.secondary" gutterBottom>
-        Stats to respec into or level towards before damage stats are optimized. A stat below the
-        class's minimum ("-") doesn't matter: it's the minimum, and the best class doesn't need it.
+        Stats to respec into or level towards before damage stats are optimized. A stat at or below
+        the lowest any class starts with ("-") doesn't matter.
       </Typography>
+      {bestClass && (
+        <Typography variant="body2" gutterBottom>
+          Best class:{" "}
+          <Tooltip
+            title={[
+              `${bestClass.runes.toLocaleString()} runes`,
+              ...bestClass.classes.map(
+                (name, i) =>
+                  `${name}: level ${bestClass.levels[i].start} to ${bestClass.levels[i].end}`,
+              ),
+            ].join(" · ")}
+          >
+            <Box component="span" sx={tooltipCueSx}>
+              {bestClass.classes.length === Object.keys(startingClasses).length
+                ? "Any"
+                : bestClass.classes.join(", ")}
+            </Box>
+          </Tooltip>
+        </Typography>
+      )}
       <Box display="grid" gridTemplateColumns="repeat(4, 1fr)" gap={1}>
         {allStats.map((stat) => (
           <NumberTextField
@@ -106,21 +139,18 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
             title={`Planned ${getStatLabel(stat)}`}
             size="small"
             spinButtons
-            value={unneeded.includes(stat) ? baseStats[stat] - 1 : plan[stat]}
-            min={baseStats[stat] - 1}
+            value={plan[stat]}
+            min={minimumStats[stat]}
             minLabel="-"
             max={99}
             onChange={(value) => {
-              // Below the minimum doesn't matter, which is what an unplanned stat at the minimum
-              // means already
+              // "-" is what an unplanned stat at the class's base is already
               const { [stat]: _, ...others } = plannedStats;
               onChange({
                 plannedStats:
-                  value >= baseStats[stat]
-                    ? { ...plannedStats, [stat]: value }
-                    : stats[stat] <= baseStats[stat]
+                  value === minimumStats[stat] && stats[stat] <= baseStats[stat]
                     ? others
-                    : { ...plannedStats, [stat]: null },
+                    : { ...plannedStats, [stat]: value },
               });
             }}
           />

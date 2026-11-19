@@ -33,9 +33,7 @@ import {
   allStats,
   getCharacterLevel,
   getPlannedStats,
-  getUnneededStats,
   startingClasses,
-  type Stat,
   type Stats,
 } from "../optimizer/startingClasses.ts";
 import theme from "./theme.ts";
@@ -198,7 +196,6 @@ export default function App() {
     tooltipTimings,
     chainLimit,
     showRequirements,
-    showBestClass,
     closedAlerts,
     meetRequirements,
     onlyBuffable,
@@ -465,10 +462,6 @@ export default function App() {
     [stats, plannedStats, startingClass],
   );
   const planLevel = getCharacterLevel(plan);
-  const unneededStats = useMemo(
-    () => getUnneededStats(stats, plannedStats, startingClasses[startingClass]),
-    [stats, plannedStats, startingClass],
-  );
   const planAttributes = useMemo(() => {
     const attributes = {} as Attributes;
     for (const attribute of allAttributes) attributes[attribute] = plan[attribute];
@@ -1162,11 +1155,6 @@ export default function App() {
           settings.plannedStats,
           startingClasses[settings.startingClass],
         ),
-        unneededStats: getUnneededStats(
-          settings.stats,
-          settings.plannedStats,
-          startingClasses[settings.startingClass],
-        ),
         settingLines:
           pin.frozen &&
           describePinSettings(
@@ -1303,21 +1291,15 @@ export default function App() {
   // offered while the plan is still the one the row set: changing it in any other way drops it.
   const [planUndo, setPlanUndo] = useState<{ previous: PlannedStats; applied: PlannedStats }>();
 
-  // Plans a row's final stats, leaving stats that are the same as the current ones unplanned. A
-  // current stat at the class's base doesn't matter when unplanned, so that's left unplanned only
-  // for a stat that still doesn't matter.
-  const [planFinalStats] = useState(() => (finalStats: Stats, unneeded: Stat[]) => {
+  // Plans a row's final stats, leaving stats that are the same as the unplanned ones unplanned
+  const [planFinalStats] = useState(() => (finalStats: Stats) => {
     const { stats, plannedStats: previous, startingClass } = latest.current.appState;
-    const baseStats = startingClasses[startingClass];
-    const applied: PlannedStats = {};
-    for (const stat of allStats) {
-      const atBase = stats[stat] <= baseStats[stat];
-      if (unneeded.includes(stat)) {
-        if (!atBase) applied[stat] = null;
-      } else if (finalStats[stat] !== stats[stat] || atBase) {
-        applied[stat] = finalStats[stat];
-      }
-    }
+    const unplanned = getPlannedStats(stats, {}, startingClasses[startingClass]);
+    const applied: PlannedStats = Object.fromEntries(
+      allStats
+        .filter((stat) => finalStats[stat] !== unplanned[stat])
+        .map((stat) => [stat, finalStats[stat]]),
+    );
     setPlanUndo({ previous, applied });
     updateAppState({ plannedStats: applied });
   });
@@ -1467,7 +1449,6 @@ export default function App() {
         showDamagePerStamina={savedShowDamagePerStamina}
         showStancePerStamina={savedShowStancePerStamina}
         showRequirements={showRequirements}
-        showBestClass={showBestClass}
         closedAlerts={closedAlerts}
         onlyBuffable={onlyBuffable}
         weaponFilters={weaponFilters}
@@ -1639,7 +1620,6 @@ export default function App() {
                         chartDisabled={fastMode}
                         startAttributes={startAttributes}
                         planStats={plan}
-                        unneededStats={unneededStats}
                         valueLabel={valueLabel}
                         pointLabel={pointLabel}
                         notApplicableLabel={notApplicableLabel}
@@ -1656,7 +1636,6 @@ export default function App() {
                         skill={attack === ashAttack}
                         hitsNote={attackTimingNotes[attack]}
                         showRequirements={showRequirements}
-                        showBestClass={showBestClass}
                         sortBy={sortBy}
                         reverse={reverse}
                         onPlanStats={planFinalStats}
