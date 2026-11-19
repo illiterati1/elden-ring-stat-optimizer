@@ -549,12 +549,15 @@ export default function App() {
     const { maxLevels, minGain, targetValue } = limits;
     const levelLimit = maxLevels.enabled ? maxLevels.values[maxLevels.mode] : null;
     const enabledLimits: Limits = {
-      // Level limits are relative to the current level, but the optimizer counts from the plan
+      // Additional levels count from the current or planned level, whichever is higher, but the
+      // optimizer counts from the plan
       maxLevels:
         levelLimit != null && maxLevels.mode !== "runes"
           ? Math.max(
               0,
-              (maxLevels.mode === "absolute" ? levelLimit : startLevel + levelLimit) - planLevel,
+              (maxLevels.mode === "absolute"
+                ? levelLimit
+                : Math.max(startLevel, planLevel) + levelLimit) - planLevel,
             )
           : null,
       // Fast mode only calculates where the level limit stops, so these don't apply

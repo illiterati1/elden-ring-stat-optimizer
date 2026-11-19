@@ -71,8 +71,9 @@ function Switch<T extends string>({
   );
 }
 
+// The additional levels field's label is "Level <start> +", set where it's rendered
 const levelLimitFields: Record<LevelLimitMode, { label: string; max: number; step: number }> = {
-  additional: { label: "Levels to gain", max: 713, step: 1 },
+  additional: { label: "", max: 713, step: 1 },
   absolute: { label: "Reaching level", max: 713, step: 1 },
   runes: { label: "Rune budget", max: 1e10, step: 100000 },
 };
@@ -111,11 +112,9 @@ function LimitSettings({
   const { maxLevels, minGain, targetValue } = limits;
   const levelField = levelLimitFields[maxLevels.mode];
   // Leveling starts from the planned level, so a level limit below it means no levels: when it's
-  // above the current level, that's the least the limit can be
-  const levelMin =
-    planLevel > currentLevel
-      ? { additional: planLevel - currentLevel, absolute: planLevel, runes: 0 }[maxLevels.mode]
-      : 0;
+  // above the current level, that's the least the limit can be. Additional levels count from
+  // whichever is higher, so they can't go below it.
+  const levelMin = maxLevels.mode === "absolute" && planLevel > currentLevel ? planLevel : 0;
 
   return (
     <Section id="limits" title="Stop leveling when">
@@ -130,7 +129,11 @@ function LimitSettings({
         <NumberTextField
           // Remount when the mode changes so the field shows that mode's value
           key={maxLevels.mode}
-          label={levelField.label}
+          label={
+            maxLevels.mode === "additional"
+              ? `Level ${Math.max(currentLevel, planLevel)} +`
+              : levelField.label
+          }
           size="small"
           spinButtons
           disabled={!maxLevels.enabled}
@@ -219,8 +222,9 @@ function LimitSettings({
         onChange={onChange}
         sx={{ mt: 1.5 }}
       >
-        Levels and runes are counted from your current level, including any needed to reach your
-        planned stats. Gains are averaged over stretches where a requirement takes several levels to
+        Additional levels are counted from your current or planned level, whichever is higher.
+        Runes are counted from your current level, including any needed to reach your planned
+        stats. Gains are averaged over stretches where a requirement takes several levels to
         reach.
       </DismissableNote>
     </Section>
