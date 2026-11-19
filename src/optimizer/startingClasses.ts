@@ -1,5 +1,4 @@
 import type { Attribute } from "../calculator/calculator.ts";
-import { getCumulativeLevelUpCosts } from "./runes.ts";
 
 export const allStats = ["vig", "min", "end", "str", "dex", "int", "fai", "arc"] as const;
 
@@ -36,6 +35,19 @@ export function getCharacterLevel(stats: Stats) {
   return allStats.reduce((sum, stat) => sum + stats[stat], 0) - levelOffset;
 }
 
+/**
+ * @returns the stats to optimize from: planned stats where set (at least the class's base, at
+ * most 99), and the current stats otherwise
+ */
+export function getPlannedStats(stats: Stats, planned: Partial<Stats>, baseStats: Stats): Stats {
+  const plan = { ...stats };
+  for (const stat of allStats) {
+    const value = planned[stat];
+    if (value != null) plan[stat] = Math.min(99, Math.max(baseStats[stat], value));
+  }
+  return plan;
+}
+
 export type StartingClassName =
   | "Vagabond"
   | "Warrior"
@@ -65,121 +77,3 @@ export const startingClasses: Record<StartingClassName, Stats> = {
   "Idus Knight": { vig: 10, min: 12, end: 11, str: 13, dex: 15, int: 8, fai: 11, arc: 6 },
   "Heavy Knight": { vig: 14, min: 8, end: 17, str: 15, dex: 11, int: 7, fai: 8, arc: 9 },
 };
-
-/** The lowest of each stat across the starting classes */
-export const minimumStats = Object.fromEntries(
-  allStats.map((stat) => [
-    stat,
-    Math.min(...Object.values(startingClasses).map((base) => base[stat])),
-  ]),
-) as Stats;
-
-/**
- * Planned stats to respec into or level towards before optimizing damage. Stats that aren't planned
- * are the current ones. Until a current stat is changed, the class can still be picked, so planned
- * stats go down to the lowest any class has ("-"), which doesn't matter for the best class: no
- * class needs levels for it. Unplanned stats at the class's base are "-" too.
- */
-export type PlannedStats = Partial<Stats>;
-
-/**
- * @returns the stats to optimize from: planned stats where set (at least the class's base, since a
- * respec can't go lower, and at most 99), and the current stats otherwise
- */
-export function getPlannedStats(stats: Stats, planned: PlannedStats, baseStats: Stats): Stats {
-  const plan = { ...stats };
-  for (const stat of allStats) {
-    const value = planned[stat];
-    if (value != null) plan[stat] = Math.min(99, Math.max(baseStats[stat], value));
-  }
-  return plan;
-}
-
-/**
- * @param statsEdited true once a current stat has been changed, so the class can't be picked any
- * more
- * @returns the lowest planned stats ("-"): the lowest any class has, or the class's base
- */
-export function getPlanMinimums(statsEdited: boolean, baseStats: Stats) {
-  return statsEdited ? baseStats : minimumStats;
-}
-
-/**
- * @param minimums the lowest planned stats ("-"): the lowest any class has, or the class's base
- * once a current stat has been changed
- * @returns the planned stats as their fields show them and the best class counts them: planned
- * stats where set (at least the minimums), and otherwise the current stats, or the minimums for
- * those at the class's base
- */
-export function getShownPlannedStats(
-  stats: Stats,
-  planned: PlannedStats,
-  baseStats: Stats,
-  minimums: Stats,
-): Stats {
-  const plan = { ...stats };
-  for (const stat of allStats) {
-    const value = planned[stat];
-    plan[stat] =
-      value != null
-        ? Math.min(99, Math.max(minimums[stat], value))
-        : stats[stat] <= baseStats[stat]
-        ? minimums[stat]
-        : stats[stat];
-  }
-  return plan;
-}
-
-/**
- * @param requiredStats the lowest stats that meet the weapon's requirements
- * @returns planned stats for a row's final stats: those that are the same as the current ones stay
- * unplanned, except a stat at the class's base (shown as "-") that the weapon's requirements need,
- * which is planned at what they need
- */
-export function getRowPlan(
-  stats: Stats,
-  baseStats: Stats,
-  finalStats: Stats,
-  requiredStats: Partial<Stats>,
-): PlannedStats {
-  const plan: PlannedStats = {};
-  for (const stat of allStats) {
-    const required = requiredStats[stat] ?? 0;
-    if (finalStats[stat] !== stats[stat]) {
-      plan[stat] = finalStats[stat];
-    } else if (stats[stat] <= baseStats[stat] && required > minimumStats[stat]) {
-      plan[stat] = required;
-    }
-  }
-  return plan;
-}
-
-export interface OptimalStartingClasses {
-  /** The classes, in the game's order */
-  classes: StartingClassName[];
-  /** The runes each of them needs */
-  runes: number;
-  /** Each class's starting and final levels; a class may end higher if it starts above a stat */
-  levels: { start: number; end: number }[];
-}
-
-/**
- * @returns the starting classes that reach the given stats in the fewest runes. A class levels up
- * each stat below the given value and keeps any stat it starts above it.
- */
-export function getOptimalStartingClasses(stats: Stats): OptimalStartingClasses {
-  let best: OptimalStartingClasses = { classes: [], runes: Infinity, levels: [] };
-  for (const [name, base] of Object.entries(startingClasses) as [StartingClassName, Stats][]) {
-    const start = getCharacterLevel(base);
-    const levels = allStats.reduce((sum, stat) => sum + Math.max(0, stats[stat] - base[stat]), 0);
-    const runes = getCumulativeLevelUpCosts(start, levels)[levels];
-    const level = { start, end: start + levels };
-    if (runes < best.runes) {
-      best = { classes: [name], runes, levels: [level] };
-    } else if (runes === best.runes) {
-      best.classes.push(name);
-      best.levels.push(level);
-    }
-  }
-  return best;
-}

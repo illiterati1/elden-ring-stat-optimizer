@@ -715,11 +715,6 @@ export interface BuildResult {
   ineffectiveAttributes: Attribute[];
   /** The weapon's attribute requirements */
   requirements: Partial<Record<Attribute, number>>;
-  /**
-   * The lowest leveled attributes that meet the weapon's requirements, taking bonuses and two
-   * handing into account, for the requirements the final allocation meets
-   */
-  minimumAttributes?: Partial<Attributes>;
   /** Where the final value comes from, by damage type and attribute */
   breakdown: BreakdownRow[];
   /** Status effect buildup with the final attributes, for statuses the weapon has */
@@ -1277,27 +1272,6 @@ function getRequiredAttributes(
     }
   }
   return required;
-}
-
-/**
- * @returns the lowest leveled attributes that meet the weapon's requirements, for those that aren't
- * ineffective
- */
-function getMinimumAttributes(
-  weapon: Weapon,
-  twoHanding: boolean,
-  bonusAttributes: Attributes,
-  ineffectiveAttributes: Attribute[],
-): Partial<Attributes> {
-  const none = Object.fromEntries(allAttributes.map((attribute) => [attribute, 0])) as Attributes;
-  const required = getRequiredAttributes(weapon, twoHanding, none, bonusAttributes);
-  return Object.fromEntries(
-    allAttributes
-      .filter(
-        (attribute) => weapon.requirements[attribute] && !ineffectiveAttributes.includes(attribute),
-      )
-      .map((attribute) => [attribute, required[attribute]]),
-  );
 }
 
 /**
@@ -1867,12 +1841,6 @@ export function optimizeBuild(
     attributes: finalAttributes,
     effectiveAttributes,
     ineffectiveAttributes,
-    minimumAttributes: getMinimumAttributes(
-      weapon,
-      twoHanding,
-      bonusAttributes,
-      ineffectiveAttributes,
-    ),
     scaling: getAttackScaling(options),
     mixedScaling: getMixedScaling(options),
     requirements: weapon.requirements,

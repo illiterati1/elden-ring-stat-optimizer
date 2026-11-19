@@ -4,7 +4,6 @@ import {
   allStats,
   getCharacterLevel,
   getStatLabel,
-  minimumStats,
   type Stats,
 } from "../optimizer/startingClasses.ts";
 import { AttackPowerType } from "../calculator/calculator.ts";
@@ -245,12 +244,7 @@ export function describePinSettings(
       value: (s) =>
         allStats
           .filter((stat) => s.plannedStats[stat] != null)
-          .map(
-            (stat) =>
-              `${shortStatLabel(stat)} ${
-                s.plannedStats[stat]! <= minimumStats[stat] ? "-" : s.plannedStats[stat]
-              }`,
-          )
+          .map((stat) => `${shortStatLabel(stat)} ${s.plannedStats[stat]}`)
           .join(", ") || "None",
     },
     {
