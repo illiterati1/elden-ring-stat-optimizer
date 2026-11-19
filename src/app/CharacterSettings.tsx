@@ -17,8 +17,7 @@ import {
   getPlannedStats,
   getShownPlannedStats,
   getStatLabel,
-  isAtBaseStats,
-  minimumStats,
+  getPlanMinimums,
   startingClasses,
   type StartingClassName,
 } from "../optimizer/startingClasses.ts";
@@ -31,6 +30,7 @@ interface Props {
   startingClass: AppState["startingClass"];
   stats: AppState["stats"];
   plannedStats: AppState["plannedStats"];
+  statsEdited: AppState["statsEdited"];
   /** Restores the planned stats from before a row's final stats were planned, if that can be undone */
   onUndoPlan?: () => void;
   onChange: UpdateAppState;
@@ -39,12 +39,21 @@ interface Props {
 /**
  * Form controls for the starting class and current stats
  */
-function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onChange }: Props) {
+function CharacterSettings({
+  startingClass,
+  stats,
+  plannedStats,
+  statsEdited,
+  onUndoPlan,
+  onChange,
+}: Props) {
   const baseStats = startingClasses[startingClass];
   const plan = getPlannedStats(stats, plannedStats, baseStats);
-  const shownPlan = getShownPlannedStats(stats, plannedStats, baseStats);
-  // The class only matters before leveling up, so that's the only time the best one is shown
-  const bestClass = isAtBaseStats(stats, baseStats) && getOptimalStartingClasses(shownPlan);
+  // The class can only be picked until a current stat is changed, so that's the only time the
+  // planned stats go below its base and the best class is shown
+  const minimums = getPlanMinimums(statsEdited, baseStats);
+  const shownPlan = getShownPlannedStats(stats, plannedStats, baseStats, minimums);
+  const bestClass = !statsEdited && getOptimalStartingClasses(shownPlan);
 
   return (
     <Section id="character" title={`Character — Level ${getCharacterLevel(stats)}`}>
@@ -60,6 +69,7 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
               startingClass: newClass,
               stats: startingClasses[newClass],
               plannedStats: {},
+              statsEdited: false,
             });
           }}
         >
@@ -86,7 +96,9 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
             value={stats[stat]}
             min={baseStats[stat]}
             max={99}
-            onChange={(value) => onChange({ stats: { ...stats, [stat]: value } })}
+            onChange={(value) =>
+              onChange({ stats: { ...stats, [stat]: value }, statsEdited: true })
+            }
           />
         ))}
       </Box>
@@ -102,16 +114,17 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
         ) : (
           <Button
             size="small"
-            disabled={Object.keys(plannedStats).length === 0}
-            onClick={() => onChange({ plannedStats: {} })}
+            disabled={Object.keys(plannedStats).length === 0 && !statsEdited}
+            onClick={() => onChange({ plannedStats: {}, statsEdited: false })}
           >
             Reset
           </Button>
         )}
       </Box>
       <Typography variant="body2" color="text.secondary" gutterBottom>
-        Stats to respec into or level towards before damage stats are optimized. A stat at or below
-        the lowest any class starts with ("-") doesn't count towards the best class.
+        Stats to respec into or level towards before damage stats are optimized. A stat at its
+        lowest ("-") doesn't matter. Until a current stat is changed, that's the lowest any class
+        starts with, and the best class for the plan is shown.
       </Typography>
       <Box display="grid" gridTemplateColumns="repeat(4, 1fr)" gap={1}>
         {allStats.map((stat) => (
@@ -122,7 +135,7 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
             size="small"
             spinButtons
             value={shownPlan[stat]}
-            min={minimumStats[stat]}
+            min={minimums[stat]}
             minLabel="-"
             max={99}
             onChange={(value) => {
@@ -130,7 +143,7 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
               const { [stat]: _, ...others } = plannedStats;
               onChange({
                 plannedStats:
-                  value === minimumStats[stat] && stats[stat] <= baseStats[stat]
+                  value === minimums[stat] && stats[stat] <= baseStats[stat]
                     ? others
                     : { ...plannedStats, [stat]: value },
               });

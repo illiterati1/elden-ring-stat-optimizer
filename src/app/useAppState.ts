@@ -148,6 +148,12 @@ export interface AppState {
   readonly objective: Objective;
   readonly limits: LimitSettings;
   readonly plannedStats: PlannedStats;
+  /**
+   * True once a current stat has been changed since the class was picked or the planned stats were
+   * reset: the class can't be picked any more, so planned stats only go down to its base, and the
+   * best class isn't shown
+   */
+  readonly statsEdited: boolean;
   /** Physical defense is in `defenses`, but negation depends on the attack's physical type */
   readonly defenses: DamageTypeDefenses;
   readonly physicalNegation: Record<PhysicalType, number>;
@@ -292,6 +298,7 @@ export const defaultAppState: AppState = {
     targetValue: { enabled: false, value: 600 },
   },
   plannedStats: {},
+  statsEdited: false,
   defenses: {
     [AttackPowerType.PHYSICAL]: { defense: 125, negation: 0 },
     [AttackPowerType.MAGIC]: { defense: 125, negation: 0 },

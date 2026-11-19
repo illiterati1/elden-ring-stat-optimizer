@@ -76,15 +76,11 @@ export const minimumStats = Object.fromEntries(
 
 /**
  * Planned stats to respec into or level towards before optimizing damage. Stats that aren't planned
- * are the current ones. A stat at the lowest any class has ("-") doesn't matter for the best class:
- * no class needs levels for it. Unplanned stats at the class's base are "-" for it too.
+ * are the current ones. Until a current stat is changed, the class can still be picked, so planned
+ * stats go down to the lowest any class has ("-"), which doesn't matter for the best class: no
+ * class needs levels for it. Unplanned stats at the class's base are "-" too.
  */
 export type PlannedStats = Partial<Stats>;
-
-/** @returns true if the current stats are the starting class's, so the class can still be picked */
-export function isAtBaseStats(stats: Stats, baseStats: Stats) {
-  return allStats.every((stat) => stats[stat] === baseStats[stat]);
-}
 
 /**
  * @returns the stats to optimize from: planned stats where set (at least the class's base, since a
@@ -100,20 +96,60 @@ export function getPlannedStats(stats: Stats, planned: PlannedStats, baseStats: 
 }
 
 /**
- * @returns the planned stats as their fields show them and the best class counts them: planned
- * stats where set (at least the lowest any class has, "-"), and otherwise the current stats, or "-"
- * for those at the class's base
+ * @param statsEdited true once a current stat has been changed, so the class can't be picked any
+ * more
+ * @returns the lowest planned stats ("-"): the lowest any class has, or the class's base
  */
-export function getShownPlannedStats(stats: Stats, planned: PlannedStats, baseStats: Stats): Stats {
+export function getPlanMinimums(statsEdited: boolean, baseStats: Stats) {
+  return statsEdited ? baseStats : minimumStats;
+}
+
+/**
+ * @param minimums the lowest planned stats ("-"): the lowest any class has, or the class's base
+ * once a current stat has been changed
+ * @returns the planned stats as their fields show them and the best class counts them: planned
+ * stats where set (at least the minimums), and otherwise the current stats, or the minimums for
+ * those at the class's base
+ */
+export function getShownPlannedStats(
+  stats: Stats,
+  planned: PlannedStats,
+  baseStats: Stats,
+  minimums: Stats,
+): Stats {
   const plan = { ...stats };
   for (const stat of allStats) {
     const value = planned[stat];
     plan[stat] =
       value != null
-        ? Math.min(99, Math.max(minimumStats[stat], value))
+        ? Math.min(99, Math.max(minimums[stat], value))
         : stats[stat] <= baseStats[stat]
-        ? minimumStats[stat]
+        ? minimums[stat]
         : stats[stat];
+  }
+  return plan;
+}
+
+/**
+ * @param requiredStats the lowest stats that meet the weapon's requirements
+ * @returns planned stats for a row's final stats: those that are the same as the current ones stay
+ * unplanned, except a stat at the class's base (shown as "-") that the weapon's requirements need,
+ * which is planned at what they need
+ */
+export function getRowPlan(
+  stats: Stats,
+  baseStats: Stats,
+  finalStats: Stats,
+  requiredStats: Partial<Stats>,
+): PlannedStats {
+  const plan: PlannedStats = {};
+  for (const stat of allStats) {
+    const required = requiredStats[stat] ?? 0;
+    if (finalStats[stat] !== stats[stat]) {
+      plan[stat] = finalStats[stat];
+    } else if (stats[stat] <= baseStats[stat] && required > minimumStats[stat]) {
+      plan[stat] = required;
+    }
   }
   return plan;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Button,
@@ -32,7 +32,10 @@ import type { Limits } from "../optimizer/limits.ts";
 import {
   allStats,
   getCharacterLevel,
+  getPlanMinimums,
   getPlannedStats,
+  getRowPlan,
+  getShownPlannedStats,
   startingClasses,
   type Stats,
 } from "../optimizer/startingClasses.ts";
@@ -209,6 +212,7 @@ export default function App() {
     objective,
     limits,
     plannedStats,
+    statsEdited,
     defenses,
     physicalNegation,
     enemyArea,
@@ -1292,16 +1296,28 @@ export default function App() {
   const [planUndo, setPlanUndo] = useState<{ previous: PlannedStats; applied: PlannedStats }>();
 
   // Plans a row's final stats, leaving stats that are the same as the current ones unplanned
-  const [planFinalStats] = useState(() => (finalStats: Stats) => {
-    const { stats, plannedStats: previous } = latest.current.appState;
-    const applied: PlannedStats = Object.fromEntries(
-      allStats
-        .filter((stat) => finalStats[stat] !== stats[stat])
-        .map((stat) => [stat, finalStats[stat]]),
-    );
+  const [planFinalStats] = useState(() => (finalStats: Stats, requiredStats: Partial<Stats>) => {
+    const { stats, plannedStats: previous, startingClass } = latest.current.appState;
+    const applied = getRowPlan(stats, startingClasses[startingClass], finalStats, requiredStats);
     setPlanUndo({ previous, applied });
     updateAppState({ plannedStats: applied });
   });
+  // A row's stats are planned already if planning them gives the same stats, as the optimizer and
+  // the planned stats' fields see them
+  const isRowPlanned = useCallback(
+    (finalStats: Stats, requiredStats: Partial<Stats>) => {
+      const baseStats = startingClasses[startingClass];
+      const minimums = getPlanMinimums(statsEdited, baseStats);
+      const rowPlan = getRowPlan(stats, baseStats, finalStats, requiredStats);
+      const shown = getShownPlannedStats(stats, plannedStats, baseStats, minimums);
+      const rowShown = getShownPlannedStats(stats, rowPlan, baseStats, minimums);
+      const rowOptimized = getPlannedStats(stats, rowPlan, baseStats);
+      return allStats.every(
+        (stat) => rowShown[stat] === shown[stat] && rowOptimized[stat] === plan[stat],
+      );
+    },
+    [stats, plannedStats, startingClass, statsEdited, plan],
+  );
   const undoPlan = useMemo(
     () =>
       planUndo &&
@@ -1425,6 +1441,7 @@ export default function App() {
         startingClass={startingClass}
         stats={stats}
         plannedStats={plannedStats}
+        statsEdited={statsEdited}
         onUndoPlan={planUndo?.applied === plannedStats ? undoPlan : undefined}
         onChange={updateAppState}
       />
@@ -1638,6 +1655,7 @@ export default function App() {
                         sortBy={sortBy}
                         reverse={reverse}
                         onPlanStats={planFinalStats}
+                        isPlanned={isRowPlanned}
                         onChange={updateAppState}
                       />
                     </Stack>

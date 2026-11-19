@@ -186,8 +186,10 @@ interface Props {
   hitsNote?: string;
   sortBy: AppState["sortBy"];
   reverse: AppState["reverse"];
-  /** Plans a row's final stats */
-  onPlanStats: (finalStats: Stats) => void;
+  /** Plans a row's final stats, with the lowest stats that meet its weapon's requirements */
+  onPlanStats: (finalStats: Stats, requiredStats: Partial<Stats>) => void;
+  /** True if planning a row's final stats wouldn't change the plan */
+  isPlanned: (finalStats: Stats, requiredStats: Partial<Stats>) => boolean;
   onChange: UpdateAppState;
 }
 
@@ -646,6 +648,7 @@ function ResultsTable({
   sortBy,
   reverse,
   onPlanStats,
+  isPlanned,
   onChange,
 }: Props) {
   /**
@@ -852,7 +855,8 @@ function ResultsTable({
   /** Copies a row's final stats into the planned stats, unless they're the plan already */
   const planStatsButton = (result: BuildResult, row: RowOptions) => {
     const finalStats = { ...row.planStats, ...result.attributes };
-    const planned = allStats.every((stat) => finalStats[stat] === planStats[stat]);
+    const requiredStats = result.minimumAttributes ?? {};
+    const planned = isPlanned(finalStats, requiredStats);
     return (
       <Tooltip title={planned ? "These are the planned stats" : "Plan these stats"}>
         <span>
@@ -862,7 +866,7 @@ function ResultsTable({
             sx={pinButtonSx}
             disabled={planned}
             aria-label={`Plan ${row.name}'s final stats`}
-            onClick={() => onPlanStats(finalStats)}
+            onClick={() => onPlanStats(finalStats, requiredStats)}
           >
             <PlanIcon fontSize="small" />
           </IconButton>

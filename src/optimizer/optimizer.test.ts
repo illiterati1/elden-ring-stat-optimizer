@@ -17,6 +17,7 @@ import {
   getCharacterLevel,
   getOptimalStartingClasses,
   getPlannedStats,
+  getRowPlan,
   getShownPlannedStats,
   minimumStats,
   startingClasses,
@@ -417,6 +418,8 @@ describe("optimizeBuild", () => {
     const result = optimizeBuild({ ...request, meetRequirements: false });
     expect(result.attributes.fai).toBe(9);
     expect(result.ineffectiveAttributes).toContain("fai");
+    // Requirements that aren't met have no lowest stats to meet them
+    expect(result.minimumAttributes!.fai).toBeUndefined();
   });
 
   it("counts two handing Strength when meeting requirements", () => {
@@ -436,6 +439,8 @@ describe("optimizeBuild", () => {
     expect(result.levels).toBe(30);
     expect(result.attributes).toEqual({ str: 10, dex: 12, int: 24, fai: 24, arc: 10 });
     expect(result.effectiveAttributes.str).toBe(15);
+    // The lowest stats that meet the requirements: two handed, 8 Str is enough for 12
+    expect(result.minimumAttributes).toEqual({ str: 8, dex: 12, int: 24, fai: 24 });
     // The curve starts after the levels spent meeting requirements
     expect(result.curve.startLevel).toBe(31);
     expect(result.curve.values[0]).toBeCloseTo(result.finalValue);
@@ -579,12 +584,22 @@ describe("startingClasses", () => {
     expect(getPlannedStats(stats, planned, base)).toEqual({ ...base, str: 15, dex: 99 });
     // Shown, unplanned stats at the class's base don't matter, and planned ones go down to the
     // lowest any class has
-    expect(getShownPlannedStats(stats, {}, base)).toEqual({ ...minimumStats, vig: 40 });
-    expect(getShownPlannedStats(stats, planned, base)).toEqual({
+    expect(getShownPlannedStats(stats, {}, base, minimumStats)).toEqual({
+      ...minimumStats,
+      vig: 40,
+    });
+    // Once a current stat is changed, they go down to the class's base
+    expect(getShownPlannedStats(stats, planned, base, base)).toEqual({ ...base, str: 15, dex: 99 });
+    expect(getShownPlannedStats(stats, planned, base, minimumStats)).toEqual({
       ...minimumStats,
       str: 15,
       dex: 99,
     });
+    // A row's final stats leave the current ones unplanned, except where the weapon needs a stat
+    // that's shown as "-"
+    expect(
+      getRowPlan(base, base, { ...base, dex: 40, int: 9 }, { str: 11, dex: 15, int: 7 }),
+    ).toEqual({ str: 11, dex: 40 });
     // Stats that don't matter don't need levels from any class
     expect(getOptimalStartingClasses(minimumStats).classes).toHaveLength(12);
     expect(getOptimalStartingClasses({ ...minimumStats, dex: 15, str: 13 }).classes).toEqual([
