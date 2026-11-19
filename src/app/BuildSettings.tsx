@@ -488,18 +488,6 @@ function BuildSettings({
         {/* Spell scaling has no attack to show stance, stamina, or status for */}
         <Box display="flex" flexWrap="wrap" columnGap={3}>
           <FormControlLabel
-            label="Damage/stamina"
-            sx={{ mr: 0 }}
-            disabled={spellScaling}
-            control={
-              <Checkbox
-                size="small"
-                checked={showDamagePerStamina}
-                onChange={(evt) => onChange({ showDamagePerStamina: evt.currentTarget.checked })}
-              />
-            }
-          />
-          <FormControlLabel
             label="Stance"
             sx={{ mr: 0 }}
             disabled={spellScaling}
@@ -512,18 +500,6 @@ function BuildSettings({
             }
           />
           <FormControlLabel
-            label="Stance/stamina"
-            sx={{ mr: 0 }}
-            disabled={spellScaling}
-            control={
-              <Checkbox
-                size="small"
-                checked={showStancePerStamina}
-                onChange={(evt) => onChange({ showStancePerStamina: evt.currentTarget.checked })}
-              />
-            }
-          />
-          <FormControlLabel
             label="Stamina cost"
             sx={{ mr: 0 }}
             disabled={spellScaling}
@@ -532,6 +508,30 @@ function BuildSettings({
                 size="small"
                 checked={showStamina}
                 onChange={(evt) => onChange({ showStamina: evt.currentTarget.checked })}
+              />
+            }
+          />
+          <FormControlLabel
+            label="Damage/stamina"
+            sx={{ mr: 0 }}
+            disabled={spellScaling}
+            control={
+              <Checkbox
+                size="small"
+                checked={showDamagePerStamina}
+                onChange={(evt) => onChange({ showDamagePerStamina: evt.currentTarget.checked })}
+              />
+            }
+          />
+          <FormControlLabel
+            label="Stance/stamina"
+            sx={{ mr: 0 }}
+            disabled={spellScaling}
+            control={
+              <Checkbox
+                size="small"
+                checked={showStancePerStamina}
+                onChange={(evt) => onChange({ showStancePerStamina: evt.currentTarget.checked })}
               />
             }
           />
