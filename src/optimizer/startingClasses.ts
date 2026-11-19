@@ -75,9 +75,9 @@ export const minimumStats = Object.fromEntries(
 ) as Stats;
 
 /**
- * Planned stats to respec into or level towards before optimizing damage. A stat at the lowest any
- * class has ("-") doesn't matter: no class needs levels for it, so it doesn't change the best
- * class. Stats that aren't planned are the current ones, or "-" while those are the class's base.
+ * Planned stats to respec into or level towards before optimizing damage. Stats that aren't planned
+ * are the current ones. A stat at the lowest any class has ("-") doesn't matter for the best class:
+ * no class needs levels for it. Unplanned stats at the class's base are "-" for it too.
  */
 export type PlannedStats = Partial<Stats>;
 
@@ -87,11 +87,24 @@ export function isAtBaseStats(stats: Stats, baseStats: Stats) {
 }
 
 /**
- * @returns the stats to optimize from: planned stats where set (between the lowest any class has
- * and 99), and otherwise the current stats, or the lowest any class has for those at the class's
- * base
+ * @returns the stats to optimize from: planned stats where set (at least the class's base, since a
+ * respec can't go lower, and at most 99), and the current stats otherwise
  */
 export function getPlannedStats(stats: Stats, planned: PlannedStats, baseStats: Stats): Stats {
+  const plan = { ...stats };
+  for (const stat of allStats) {
+    const value = planned[stat];
+    if (value != null) plan[stat] = Math.min(99, Math.max(baseStats[stat], value));
+  }
+  return plan;
+}
+
+/**
+ * @returns the planned stats as their fields show them and the best class counts them: planned
+ * stats where set (at least the lowest any class has, "-"), and otherwise the current stats, or "-"
+ * for those at the class's base
+ */
+export function getShownPlannedStats(stats: Stats, planned: PlannedStats, baseStats: Stats): Stats {
   const plan = { ...stats };
   for (const stat of allStats) {
     const value = planned[stat];

@@ -15,6 +15,7 @@ import {
   getCharacterLevel,
   getOptimalStartingClasses,
   getPlannedStats,
+  getShownPlannedStats,
   getStatLabel,
   isAtBaseStats,
   minimumStats,
@@ -41,8 +42,9 @@ interface Props {
 function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onChange }: Props) {
   const baseStats = startingClasses[startingClass];
   const plan = getPlannedStats(stats, plannedStats, baseStats);
+  const shownPlan = getShownPlannedStats(stats, plannedStats, baseStats);
   // The class only matters before leveling up, so that's the only time the best one is shown
-  const bestClass = isAtBaseStats(stats, baseStats) && getOptimalStartingClasses(plan);
+  const bestClass = isAtBaseStats(stats, baseStats) && getOptimalStartingClasses(shownPlan);
 
   return (
     <Section id="character" title={`Character — Level ${getCharacterLevel(stats)}`}>
@@ -109,7 +111,7 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
       </Box>
       <Typography variant="body2" color="text.secondary" gutterBottom>
         Stats to respec into or level towards before damage stats are optimized. A stat at or below
-        the lowest any class starts with ("-") doesn't matter.
+        the lowest any class starts with ("-") doesn't count towards the best class.
       </Typography>
       <Box display="grid" gridTemplateColumns="repeat(4, 1fr)" gap={1}>
         {allStats.map((stat) => (
@@ -119,7 +121,7 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
             title={`Planned ${getStatLabel(stat)}`}
             size="small"
             spinButtons
-            value={plan[stat]}
+            value={shownPlan[stat]}
             min={minimumStats[stat]}
             minLabel="-"
             max={99}

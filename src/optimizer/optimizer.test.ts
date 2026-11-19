@@ -17,6 +17,7 @@ import {
   getCharacterLevel,
   getOptimalStartingClasses,
   getPlannedStats,
+  getShownPlannedStats,
   minimumStats,
   startingClasses,
   type Stats,
@@ -571,11 +572,15 @@ describe("startingClasses", () => {
       arc: 6,
     });
     const base = startingClasses.Vagabond;
-    // Unplanned stats at the class's base don't matter; those above it are the current ones
     const stats = { ...base, vig: 40 };
-    expect(getPlannedStats(stats, {}, base)).toEqual({ ...minimumStats, vig: 40 });
-    // Planned stats are kept between the lowest any class has and 99
-    expect(getPlannedStats(stats, { vig: 1, str: 15, dex: 120 }, base)).toEqual({
+    const planned = { vig: 1, str: 15, dex: 120 };
+    // The optimizer starts from the current stats, and planned ones from at least the class's base
+    expect(getPlannedStats(stats, {}, base)).toEqual(stats);
+    expect(getPlannedStats(stats, planned, base)).toEqual({ ...base, str: 15, dex: 99 });
+    // Shown, unplanned stats at the class's base don't matter, and planned ones go down to the
+    // lowest any class has
+    expect(getShownPlannedStats(stats, {}, base)).toEqual({ ...minimumStats, vig: 40 });
+    expect(getShownPlannedStats(stats, planned, base)).toEqual({
       ...minimumStats,
       str: 15,
       dex: 99,

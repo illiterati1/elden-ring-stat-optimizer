@@ -1291,13 +1291,12 @@ export default function App() {
   // offered while the plan is still the one the row set: changing it in any other way drops it.
   const [planUndo, setPlanUndo] = useState<{ previous: PlannedStats; applied: PlannedStats }>();
 
-  // Plans a row's final stats, leaving stats that are the same as the unplanned ones unplanned
+  // Plans a row's final stats, leaving stats that are the same as the current ones unplanned
   const [planFinalStats] = useState(() => (finalStats: Stats) => {
-    const { stats, plannedStats: previous, startingClass } = latest.current.appState;
-    const unplanned = getPlannedStats(stats, {}, startingClasses[startingClass]);
+    const { stats, plannedStats: previous } = latest.current.appState;
     const applied: PlannedStats = Object.fromEntries(
       allStats
-        .filter((stat) => finalStats[stat] !== unplanned[stat])
+        .filter((stat) => finalStats[stat] !== stats[stat])
         .map((stat) => [stat, finalStats[stat]]),
     );
     setPlanUndo({ previous, applied });
