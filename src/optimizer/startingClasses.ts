@@ -37,16 +37,33 @@ export function getCharacterLevel(stats: Stats) {
 }
 
 /**
- * @returns the stats to optimize from: planned stats where set (at least the class's base, at
- * most 99), and the current stats otherwise
+ * Planned stats to respec into or level towards before optimizing damage. Stats that aren't
+ * planned are the same as the current ones. null plans a stat that doesn't matter ("-"): the
+ * optimizer starts it at the class's base, and the best class column doesn't count it.
  */
-export function getPlannedStats(stats: Stats, planned: Partial<Stats>, baseStats: Stats): Stats {
+export type PlannedStats = Partial<Record<Stat, number | null>>;
+
+/**
+ * @returns the stats to optimize from: planned stats where set (at least the class's base, at
+ * most 99, and the base for one that doesn't matter), and the current stats otherwise
+ */
+export function getPlannedStats(stats: Stats, planned: PlannedStats, baseStats: Stats): Stats {
   const plan = { ...stats };
   for (const stat of allStats) {
     const value = planned[stat];
-    if (value != null) plan[stat] = Math.min(99, Math.max(baseStats[stat], value));
+    if (value !== undefined) plan[stat] = Math.min(99, Math.max(baseStats[stat], value ?? 0));
   }
   return plan;
+}
+
+/**
+ * @returns the planned stats that don't matter: those planned as "-", and unplanned ones whose
+ * current value is the class's base
+ */
+export function getUnneededStats(stats: Stats, planned: PlannedStats, baseStats: Stats): Stat[] {
+  return allStats.filter((stat) =>
+    planned[stat] === undefined ? stats[stat] <= baseStats[stat] : planned[stat] === null,
+  );
 }
 
 export type StartingClassName =

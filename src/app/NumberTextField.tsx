@@ -51,6 +51,9 @@ interface Props extends Omit<TextFieldProps, "value" | "inputMode" | "onKeyDown"
    * percentages where buffs start or stop applying
    */
   stops?: readonly number[];
+
+  /** Shown instead of the minimum value, which can also be typed, e.g. "-" for a stat that isn't needed */
+  minLabel?: string;
 }
 
 /** @returns the next of the stops above (steps > 0) or below the value, moving that many stops */
@@ -100,10 +103,12 @@ export default function NumberTextField({
   spinButtons = false,
   allowDecimals = false,
   stops,
+  minLabel,
   InputProps,
   ...props
 }: Props) {
-  const [valueStr, setValueStr] = useState(value.toString());
+  const format = (x: number) => (minLabel != null && x === min ? minLabel : x.toString());
+  const [valueStr, setValueStr] = useState(format(value));
   const moveBy = (current: number, steps: number) =>
     stops ? stepToStop(current, stops, steps) : stepValue(current, step, steps);
 
@@ -115,7 +120,7 @@ export default function NumberTextField({
   if (value !== prevValue) {
     setPrevValue(value);
     if (+valueStr !== value) {
-      setValueStr(value.toString());
+      setValueStr(format(value));
     }
   }
 
@@ -130,7 +135,7 @@ export default function NumberTextField({
         evt.key.match(/^F[0-9]{1,2}$/) ||
         ["ArrowLeft", "ArrowRight", "Backspace", "Enter", "Tab"].includes(evt.key) ||
         (evt.key === "." && allowsDecimals) ||
-        (evt.key === "-" && min < 0)
+        (evt.key === "-" && (min < 0 || minLabel === "-"))
       ) {
         return;
       }
@@ -157,15 +162,21 @@ export default function NumberTextField({
 
       if (newValue !== value) {
         onChange(newValue, evt);
-        setValueStr(newValue.toString());
+        setValueStr(format(newValue));
       }
     },
-    [value, min, max, step, stops, allowsDecimals, onChange],
+    [value, min, max, step, stops, allowsDecimals, minLabel, onChange],
   );
 
   const handleChange = useCallback(
     (evt: ChangeEvent<HTMLInputElement>) => {
       const newValueStr = evt.currentTarget.value;
+
+      if (minLabel != null && newValueStr === minLabel) {
+        setValueStr(newValueStr);
+        onChange?.(min, evt);
+        return;
+      }
 
       // Allow clearing the field, or typing a minus sign or decimal point before the rest of the
       // number. These aren't committed until a number is entered.
@@ -192,10 +203,10 @@ export default function NumberTextField({
       }
 
       const clamped = clampValue(newValue, min, max);
-      setValueStr(newValue === clamped ? newValueStr : clamped.toString());
+      setValueStr(newValue === clamped ? newValueStr : format(clamped));
       onChange?.(clamped, evt);
     },
-    [min, max, step, onChange],
+    [min, max, step, minLabel, onChange],
   );
 
   const handleBlur = useCallback(
@@ -203,12 +214,12 @@ export default function NumberTextField({
       const newValue = +valueStr;
       if (valueStr !== "" && !isNaN(newValue) && newValue < min) {
         onChange(min, evt);
-        setValueStr(min.toString());
+        setValueStr(format(min));
       } else {
-        setValueStr(value.toString());
+        setValueStr(format(value));
       }
     },
-    [value, valueStr, min, onChange],
+    [value, valueStr, min, minLabel, onChange],
   );
 
   // Spinning repeats while a button is held, so it reads the latest value and onChange from refs
@@ -240,7 +251,7 @@ export default function NumberTextField({
       }
       valueRef.current = newValue;
       onChangeRef.current(newValue, evt);
-      setValueStr(newValue.toString());
+      setValueStr(format(newValue));
     };
 
     spin();

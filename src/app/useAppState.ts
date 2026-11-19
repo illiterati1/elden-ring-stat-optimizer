@@ -14,6 +14,7 @@ import type { StackTier } from "./useBuffs.ts";
 import { defaultWeaponFilters, type WeaponFilters } from "./filters.ts";
 import { isPin, type Pin } from "./pins.ts";
 import {
+  type PlannedStats,
   startingClasses,
   type StartingClassName,
   type Stats,
@@ -44,11 +45,7 @@ export interface LimitSettings {
   targetValue: LimitSetting;
 }
 
-/**
- * Planned stats to respec into or level towards before optimizing damage. Stats that aren't
- * planned are the same as the current ones.
- */
-export type PlannedStats = Partial<Stats>;
+export type { PlannedStats };
 
 export type DamageTypeDefenses = Record<
   | typeof AttackPowerType.PHYSICAL
@@ -386,7 +383,9 @@ function getInitialAppState(): AppState {
       },
       // Earlier versions saved 0 for stats that weren't planned
       plannedStats: Object.fromEntries(
-        Object.entries(stored.plannedStats ?? {}).filter(([, value]) => value > 0),
+        Object.entries(stored.plannedStats ?? {}).filter(
+          ([, value]) => value === null || value > 0,
+        ),
       ),
       defenses: { ...defaultAppState.defenses, ...stored.defenses },
       tooltipTimings: { ...defaultAppState.tooltipTimings, ...stored.tooltipTimings },

@@ -243,8 +243,8 @@ export function describePinSettings(
       label: "Planned stats",
       value: (s) =>
         allStats
-          .filter((stat) => s.plannedStats[stat] != null)
-          .map((stat) => `${shortStatLabel(stat)} ${s.plannedStats[stat]}`)
+          .filter((stat) => s.plannedStats[stat] !== undefined)
+          .map((stat) => `${shortStatLabel(stat)} ${s.plannedStats[stat] ?? "-"}`)
           .join(", ") || "None",
     },
     {

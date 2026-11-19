@@ -6,6 +6,7 @@ import {
   getCharacterLevel,
   getPlannedStats,
   getStatLabel,
+  getUnneededStats,
   startingClasses,
   type StartingClassName,
 } from "../optimizer/startingClasses.ts";
@@ -28,6 +29,7 @@ interface Props {
 function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onChange }: Props) {
   const baseStats = startingClasses[startingClass];
   const plan = getPlannedStats(stats, plannedStats, baseStats);
+  const unneeded = getUnneededStats(stats, plannedStats, baseStats);
 
   return (
     <Section id="character" title={`Character — Level ${getCharacterLevel(stats)}`}>
@@ -93,7 +95,8 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
         )}
       </Box>
       <Typography variant="body2" color="text.secondary" gutterBottom>
-        Stats to respec into or level towards before damage stats are optimized
+        Stats to respec into or level towards before damage stats are optimized. A stat below the
+        class's minimum ("-") doesn't matter: it's the minimum, and the best class doesn't need it.
       </Typography>
       <Box display="grid" gridTemplateColumns="repeat(4, 1fr)" gap={1}>
         {allStats.map((stat) => (
@@ -103,10 +106,23 @@ function CharacterSettings({ startingClass, stats, plannedStats, onUndoPlan, onC
             title={`Planned ${getStatLabel(stat)}`}
             size="small"
             spinButtons
-            value={plan[stat]}
-            min={baseStats[stat]}
+            value={unneeded.includes(stat) ? baseStats[stat] - 1 : plan[stat]}
+            min={baseStats[stat] - 1}
+            minLabel="-"
             max={99}
-            onChange={(value) => onChange({ plannedStats: { ...plannedStats, [stat]: value } })}
+            onChange={(value) => {
+              // Below the minimum doesn't matter, which is what an unplanned stat at the minimum
+              // means already
+              const { [stat]: _, ...others } = plannedStats;
+              onChange({
+                plannedStats:
+                  value >= baseStats[stat]
+                    ? { ...plannedStats, [stat]: value }
+                    : stats[stat] <= baseStats[stat]
+                    ? others
+                    : { ...plannedStats, [stat]: null },
+              });
+            }}
           />
         ))}
       </Box>

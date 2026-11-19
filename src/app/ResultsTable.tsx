@@ -26,6 +26,7 @@ import {
   allStats,
   getOptimalStartingClasses,
   getStatLabel,
+  type Stat,
   type Stats,
 } from "../optimizer/startingClasses.ts";
 import type { ScalingSource } from "../optimizer/optimizer.ts";
@@ -57,6 +58,8 @@ export interface PinnedRow {
   tooltipTimings: TooltipTimings;
   startAttributes: Attributes;
   planStats: Stats;
+  /** Planned stats that don't matter ("-") */
+  unneededStats: readonly Stat[];
   /** A frozen pin's settings, for its tooltip */
   settingLines?: PinSettingLine[];
 }
@@ -74,6 +77,7 @@ interface RowOptions {
   tooltipTimings: TooltipTimings;
   startAttributes: Attributes;
   planStats: Stats;
+  unneededStats: readonly Stat[];
 }
 
 /** The actions on pinned rows, from App */
@@ -158,6 +162,8 @@ interface Props {
   startAttributes: Attributes;
   /** The planned stats the optimizer starts from, for Vigor, Mind, and Endurance's final values */
   planStats: Stats;
+  /** Planned stats that don't matter ("-") */
+  unneededStats: readonly Stat[];
   valueLabel: string;
   /** What one point of the objective is called: "damage" or "scaling" */
   pointLabel: string;
@@ -193,16 +199,30 @@ interface Props {
   hitsNote?: string;
   sortBy: AppState["sortBy"];
   reverse: AppState["reverse"];
-  /** Plans a row's final stats */
-  onPlanStats: (finalStats: Stats) => void;
+  /** Plans a row's final stats, with those that still don't matter planned as "-" */
+  onPlanStats: (finalStats: Stats, unneededStats: Stat[]) => void;
   onChange: UpdateAppState;
 }
 
 /**
- * The starting classes that reach the final stats in the fewest runes, with how many runes that is
+ * @returns the planned stats that still don't matter in a row's final stats: those the optimizer
+ * didn't raise
  */
-function optimalClassCell(finalStats: Stats) {
-  const { classes, runes, levels } = getOptimalStartingClasses(finalStats);
+function getFinalUnneededStats(result: BuildResult, row: RowOptions) {
+  const finalStats: Stats = { ...row.planStats, ...result.attributes };
+  return row.unneededStats.filter((stat) => finalStats[stat] <= row.planStats[stat]);
+}
+
+/**
+ * The starting classes that reach a row's final stats in the fewest runes, with how many runes that
+ * is. Stats that don't matter only count as far as the weapon's requirements need them.
+ */
+function optimalClassCell(result: BuildResult, row: RowOptions) {
+  const neededStats: Stats = { ...row.planStats, ...result.attributes };
+  for (const stat of getFinalUnneededStats(result, row)) {
+    neededStats[stat] = (result.minimumAttributes as Partial<Stats> | undefined)?.[stat] ?? 0;
+  }
+  const { classes, runes, levels } = getOptimalStartingClasses(neededStats);
   const details = classes.map((name, i) => `${name}: level ${levels[i].start} to ${levels[i].end}`);
   return (
     <TableCell>
@@ -651,6 +671,7 @@ function ResultsTable({
   chartDisabled = false,
   startAttributes,
   planStats,
+  unneededStats,
   valueLabel,
   pointLabel,
   notApplicableLabel,
@@ -877,7 +898,12 @@ function ResultsTable({
   /** Copies a row's final stats into the planned stats, unless they're the plan already */
   const planStatsButton = (result: BuildResult, row: RowOptions) => {
     const finalStats = { ...row.planStats, ...result.attributes };
-    const planned = allStats.every((stat) => finalStats[stat] === planStats[stat]);
+    const finalUnneeded = getFinalUnneededStats(result, row);
+    const planned = allStats.every((stat) =>
+      finalUnneeded.includes(stat)
+        ? unneededStats.includes(stat)
+        : !unneededStats.includes(stat) && finalStats[stat] === planStats[stat],
+    );
     return (
       <Tooltip title={planned ? "These are the planned stats" : "Plan these stats"}>
         <span>
@@ -887,7 +913,7 @@ function ResultsTable({
             sx={pinButtonSx}
             disabled={planned}
             aria-label={`Plan ${row.name}'s final stats`}
-            onClick={() => onPlanStats(finalStats)}
+            onClick={() => onPlanStats(finalStats, finalUnneeded)}
           >
             <PlanIcon fontSize="small" />
           </IconButton>
@@ -1085,7 +1111,7 @@ function ResultsTable({
                 </Box>
               </Tooltip>
             </TableCell>
-            {showBestClass && optimalClassCell({ ...row.planStats, ...result.attributes })}
+            {showBestClass && optimalClassCell(result, row)}
             <TableCell padding="none" sx={leftBorderSx}>
               {planStatsButton(result, row)}
             </TableCell>
@@ -1390,6 +1416,7 @@ function ResultsTable({
               tooltipTimings,
               startAttributes,
               planStats,
+              unneededStats,
             });
           })}
         </TableBody>
