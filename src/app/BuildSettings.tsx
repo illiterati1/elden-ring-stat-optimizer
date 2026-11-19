@@ -20,7 +20,14 @@ import {
 import type { Objective } from "../optimizer/optimizer.ts";
 import Section from "./Section.tsx";
 import type { AppState, UpdateAppState } from "./useAppState.ts";
-import { debug, objectiveOptions } from "./uiUtils.ts";
+import {
+  damageTypeIcons,
+  damageTypeLabels,
+  debug,
+  objectiveOptions,
+  statusTypes,
+} from "./uiUtils.ts";
+import { countActiveFilters, type WeaponFilters } from "./filters.ts";
 import WeaponTypePicker from "./WeaponTypePicker.tsx";
 import NumberTextField from "./NumberTextField.tsx";
 import { chainAttacks, type AttackName } from "./useMovesets.ts";
@@ -43,6 +50,7 @@ interface Props {
   showRequirements: AppState["showRequirements"];
   closedAlerts: AppState["closedAlerts"];
   onlyBuffable: AppState["onlyBuffable"];
+  weaponFilters: AppState["weaponFilters"];
   objective: AppState["objective"];
   weaponTypes: AppState["weaponTypes"];
   attack: AppState["attack"];
@@ -109,6 +117,129 @@ function CollapsibleGroup({ title, children }: { title: ReactNode; children: Rea
   );
 }
 
+/** Toggles a value in a list, e.g. a checked damage type */
+function toggle<T>(values: readonly T[], value: T, checked: boolean) {
+  return checked ? [...values, value] : values.filter((other) => other !== value);
+}
+
+/**
+ * Filters on the weapons calculated: all but Top N leave weapons out before optimizing, so they
+ * also make calculation faster
+ */
+function FilterSettings({
+  onlyBuffable,
+  weaponFilters,
+  onChange,
+}: {
+  onlyBuffable: AppState["onlyBuffable"];
+  weaponFilters: AppState["weaponFilters"];
+  onChange: UpdateAppState;
+}) {
+  const { damageTypes, statusTypes: filterStatusTypes, maxWeight, topN } = weaponFilters;
+  const update = (update: Partial<WeaponFilters>) =>
+    onChange({ weaponFilters: { ...weaponFilters, ...update } });
+  const active = countActiveFilters(weaponFilters, onlyBuffable);
+  const checkbox = (label: ReactNode, checked: boolean, onToggle: (checked: boolean) => void) => (
+    <FormControlLabel
+      label={label}
+      sx={{ mr: 0 }}
+      control={
+        <Checkbox
+          size="small"
+          checked={checked}
+          onChange={(evt) => onToggle(evt.currentTarget.checked)}
+        />
+      }
+    />
+  );
+  const icon = (src: string) => (
+    <img
+      src={src}
+      alt=""
+      width={20}
+      height={20}
+      style={{ verticalAlign: "middle", marginRight: 4 }}
+    />
+  );
+  return (
+    <CollapsibleGroup title={`Filters${active > 0 ? ` (${active} active)` : ""}`}>
+      <Box display="flex" flexWrap="wrap" columnGap={3}>
+        {checkbox("Buffable", onlyBuffable, (checked) => onChange({ onlyBuffable: checked }))}
+        {checkbox("Base game only", weaponFilters.baseGameOnly, (baseGameOnly) =>
+          update({ baseGameOnly }),
+        )}
+      </Box>
+
+      <Box
+        display="grid"
+        gridTemplateColumns="auto 1fr"
+        alignItems="center"
+        columnGap={2}
+        rowGap={1}
+        mt={1}
+      >
+        {checkbox("Top", topN.enabled, (enabled) => update({ topN: { ...topN, enabled } }))}
+        <NumberTextField
+          label="Weapons"
+          size="small"
+          spinButtons
+          disabled={!topN.enabled}
+          value={topN.value}
+          min={1}
+          step={1}
+          onChange={(value) => update({ topN: { ...topN, value } })}
+        />
+        {checkbox("Max weapon weight", maxWeight.enabled, (enabled) =>
+          update({ maxWeight: { ...maxWeight, enabled } }),
+        )}
+        <NumberTextField
+          label="Max weight"
+          size="small"
+          spinButtons
+          allowDecimals
+          disabled={!maxWeight.enabled}
+          value={maxWeight.value}
+          min={0}
+          step={0.5}
+          onChange={(value) => update({ maxWeight: { ...maxWeight, value } })}
+        />
+      </Box>
+
+      <Typography variant="body2" color="text.secondary" mt={1}>
+        Deals any of (with buffs and the attack&apos;s own hits)
+      </Typography>
+      <Box display="flex" flexWrap="wrap" columnGap={3}>
+        {[...damageTypeLabels].map(([type, label]) =>
+          checkbox(
+            <>
+              {icon(damageTypeIcons.get(type)!)}
+              {label}
+            </>,
+            damageTypes.includes(type),
+            (checked) => update({ damageTypes: toggle(damageTypes, type, checked) }),
+          ),
+        )}
+      </Box>
+
+      <Typography variant="body2" color="text.secondary" mt={1}>
+        Builds up any of
+      </Typography>
+      <Box display="flex" flexWrap="wrap" columnGap={3}>
+        {[...statusTypes].map(([type, { label, icon: src }]) =>
+          checkbox(
+            <>
+              {icon(src)}
+              {label}
+            </>,
+            filterStatusTypes.includes(type),
+            (checked) => update({ statusTypes: toggle(filterStatusTypes, type, checked) }),
+          ),
+        )}
+      </Box>
+    </CollapsibleGroup>
+  );
+}
+
 /**
  * Form controls for weapon upgrade level, two handing, what to maximize, weapon types, and
  * affinities
@@ -125,6 +256,7 @@ function BuildSettings({
   showRequirements,
   closedAlerts,
   onlyBuffable,
+  weaponFilters,
   objective,
   weaponTypes,
   attack,
@@ -341,17 +473,6 @@ function BuildSettings({
             />
           }
         />
-        <FormControlLabel
-          label="Only buffable"
-          sx={{ mr: 0 }}
-          control={
-            <Checkbox
-              size="small"
-              checked={onlyBuffable}
-              onChange={(evt) => onChange({ onlyBuffable: evt.currentTarget.checked })}
-            />
-          }
-        />
       </Box>
       <CollapsibleGroup title="Columns">
         {/* Spell scaling has no attack to show stance, stamina, or status for */}
@@ -461,6 +582,11 @@ function BuildSettings({
       <CollapsibleGroup title={`Affinities (${affinityIds.length} selected)`}>
         <AffinityPicker affinityIds={affinityIds} onChange={onChange} />
       </CollapsibleGroup>
+      <FilterSettings
+        onlyBuffable={onlyBuffable}
+        weaponFilters={weaponFilters}
+        onChange={onChange}
+      />
       <CollapsibleGroup
         title={`Ammunition${selectedAmmo.length > 0 ? ` (${selectedAmmo.length} selected)` : ""}`}
       >

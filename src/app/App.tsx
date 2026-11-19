@@ -80,6 +80,7 @@ import WeaponPicker from "./WeaponPicker.tsx";
 import ResultsTable from "./ResultsTable.tsx";
 import ValueChart from "./ValueChart.tsx";
 import { getResultStatus, sortResults } from "./results.ts";
+import { defaultWeaponFilters, passesFilters } from "./filters.ts";
 import { maxCharacterLevel } from "../optimizer/runes.ts";
 import {
   compareWeaponTypes,
@@ -155,6 +156,7 @@ export default function App() {
     closedAlerts,
     meetRequirements,
     onlyBuffable,
+    weaponFilters,
     sortBy,
     reverse,
     chartWeapons,
@@ -494,7 +496,7 @@ export default function App() {
     [chainLimit],
   );
 
-  const requests = useMemo<BuildRequest[]>(() => {
+  const unfilteredRequests = useMemo<BuildRequest[]>(() => {
     const selected = new Set(validSelectedWeapons);
     const selectedWeaponTypes = new Set(weaponTypes);
     const selectedAffinityIds = new Set(affinityIds);
@@ -888,11 +890,39 @@ export default function App() {
     planAttributes,
     startLevel,
   ]);
+  // Filtered before optimizing, so weapons filtered out aren't calculated at all. (Top N needs the
+  // results, so it's applied after sorting.)
+  const {
+    baseGameOnly,
+    damageTypes: filterDamageTypes,
+    statusTypes: filterStatusTypes,
+    maxWeight,
+  } = weaponFilters;
+  const requests = useMemo(() => {
+    const filters = {
+      ...defaultWeaponFilters,
+      baseGameOnly,
+      damageTypes: filterDamageTypes,
+      statusTypes: filterStatusTypes,
+      maxWeight,
+    };
+    return unfilteredRequests.filter((request) => passesFilters(request, filters));
+  }, [unfilteredRequests, baseGameOnly, filterDamageTypes, filterStatusTypes, maxWeight]);
 
   // Weapons that are no longer picked come off the chart, rather than coming back if they're picked
   // again (or taking up its slots). Only after the selection changes, since on page load the data
   // the weapons are picked from is still loading.
-  const selection = [selectedWeapons, weaponTypes, affinityIds, selectedAmmo, onlyBuffable];
+  const selection = [
+    selectedWeapons,
+    weaponTypes,
+    affinityIds,
+    selectedAmmo,
+    onlyBuffable,
+    baseGameOnly,
+    filterDamageTypes,
+    filterStatusTypes,
+    maxWeight,
+  ];
   const lastSelection = useRef(selection);
   useEffect(() => {
     if (selection.every((value, i) => value === lastSelection.current[i])) return;
@@ -902,7 +932,29 @@ export default function App() {
     if (kept.length < chartWeapons.length) updateAppState({ chartWeapons: kept });
   });
 
-  const { results, pending } = useBuildResults(requests);
+  // With Top N, the worker only fully calculates the first weapons by the sort column, sorted as
+  // below. A status column it can't know is hidden yet (no weapon builds that status up) sorts
+  // every weapon the same, so they fall back to the total like the table.
+  const { topN } = weaponFilters;
+  const workerSortHidden =
+    (sortBy === "stance" && !showStance) ||
+    (sortBy === "stamina" && !showStamina) ||
+    (sortBy === "damagePerStamina" && !showDamagePerStamina) ||
+    (sortBy === "stancePerStamina" && !showStancePerStamina) ||
+    (sortBy.startsWith("status:") && !showStatus);
+  const workerTopN = useMemo(
+    () =>
+      topN.enabled
+        ? {
+            count: Math.max(topN.value, 1),
+            sortBy: workerSortHidden ? ("total" as const) : sortBy,
+            reverse: !workerSortHidden && reverse,
+            perSecond: !workerSortHidden && showDps,
+          }
+        : undefined,
+    [topN, workerSortHidden, sortBy, reverse, showDps],
+  );
+  const { results, pending } = useBuildResults(requests, workerTopN);
 
   // A column for each status effect that any weapon in the table builds up
   const statusTypesShown = useMemo(
@@ -915,29 +967,23 @@ export default function App() {
     [showStatus, results],
   );
 
+  // Sorting by a hidden column falls back to the highest total first
+  const sortHidden =
+    (sortBy === "stance" && !showStance) ||
+    (sortBy === "stamina" && !showStamina) ||
+    (sortBy === "damagePerStamina" && !showDamagePerStamina) ||
+    (sortBy === "stancePerStamina" && !showStancePerStamina) ||
+    (sortBy.startsWith("status:") &&
+      !statusTypesShown.some((statusType) => statusSortBy(statusType) === sortBy));
+  const effectiveSortBy = sortHidden ? "total" : sortBy;
+  const effectiveReverse = sortHidden ? false : reverse;
   const sortedResults = useMemo(() => {
-    // Sorting by a hidden column falls back to the highest total first
-    const hidden =
-      (sortBy === "stance" && !showStance) ||
-      (sortBy === "stamina" && !showStamina) ||
-      (sortBy === "damagePerStamina" && !showDamagePerStamina) ||
-      (sortBy === "stancePerStamina" && !showStancePerStamina) ||
-      (sortBy.startsWith("status:") &&
-        !statusTypesShown.some((statusType) => statusSortBy(statusType) === sortBy));
-    return hidden
-      ? sortResults(results, "total", false)
-      : sortResults(results, sortBy, reverse, showDps);
-  }, [
-    results,
-    sortBy,
-    reverse,
-    showStance,
-    showStamina,
-    showDamagePerStamina,
-    showStancePerStamina,
-    showDps,
-    statusTypesShown,
-  ]);
+    const sorted = sortResults(results, effectiveSortBy, effectiveReverse, !sortHidden && showDps);
+    // Top N keeps the first weapons in the table's order, leaving out ones that aren't applicable
+    return topN.enabled
+      ? sorted.filter((result) => result.applicable).slice(0, Math.max(topN.value, 1))
+      : sorted;
+  }, [results, effectiveSortBy, effectiveReverse, sortHidden, showDps, topN]);
 
   // The chart shows the weapons checked in the table, each version of a fixed skill (e.g. Moonveil's
   // R1 and R2) as its own line
@@ -1003,6 +1049,7 @@ export default function App() {
         showRequirements={showRequirements}
         closedAlerts={closedAlerts}
         onlyBuffable={onlyBuffable}
+        weaponFilters={weaponFilters}
         weaponTypes={weaponTypes}
         attack={attack}
         chainWeight={chainWeight}

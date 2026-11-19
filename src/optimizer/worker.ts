@@ -1,10 +1,23 @@
 import type { Weapon } from "../calculator/weapon.ts";
 import { optimizeBuild, type BuildRequest, type BuildResult } from "./build.ts";
 import { optimizeAttributes, type OptimizeOptions } from "./optimizer.ts";
+import { sortResults } from "../app/results.ts";
+import type { SortBy } from "../app/useAppState.ts";
+
+/** Only the first results by a sort column are wanted, as the table sorts them */
+export interface TopN {
+  count: number;
+  sortBy: SortBy;
+  reverse: boolean;
+  /** Sort by per second values (see sortResults) */
+  perSecond: boolean;
+}
 
 export interface WorkerRequest {
   id: number;
   requests: BuildRequest[];
+  /** If set, only the first applicable results by the sort column are returned */
+  topN?: TopN;
 }
 
 export interface WorkerResponse {
@@ -59,10 +72,10 @@ function yieldToMessages() {
 let latestId = -1;
 
 /**
- * Runs the optimizer off the main thread, since exhaustive searches can take a moment. A request
- * is abandoned as soon as a newer one arrives, since its results would be out of date.
+ * Optimizes each request, yielding to incoming messages now and then
+ * @returns the results, or null if a newer request arrived meanwhile
  */
-async function handleRequest({ id, requests }: WorkerRequest) {
+async function optimizeAll(id: number, requests: readonly BuildRequest[]) {
   const results: BuildResult[] = [];
   let lastYield = performance.now();
   for (const request of requests) {
@@ -70,9 +83,59 @@ async function handleRequest({ id, requests }: WorkerRequest) {
       await yieldToMessages();
       lastYield = performance.now();
     }
-    if (id !== latestId) return;
+    if (id !== latestId) return null;
     results.push(optimizeBuild(request, findCurve));
   }
+  return results;
+}
+
+/** @returns the indexes of the first applicable results by the sort column */
+function getTopIndexes(results: BuildResult[], { count, sortBy, reverse, perSecond }: TopN) {
+  const indexes = new Map(results.map((result, i) => [result, i]));
+  return sortResults(results, sortBy, reverse, perSecond)
+    .filter((result) => result.applicable)
+    .slice(0, count)
+    .map((result) => indexes.get(result)!);
+}
+
+/**
+ * True if fast mode finds the same final allocation as optimizing every level, so it ranks
+ * results the same way: fast mode only applies the level and rune limits
+ */
+function fastModeRanksExactly(request: BuildRequest) {
+  const { minGainPerLevel, minRelativeGainPerLevel, targetValue } = request.limits;
+  return minGainPerLevel == null && minRelativeGainPerLevel == null && targetValue == null;
+}
+
+/**
+ * The results for a request with top N: fast mode finds the top N, then only those are optimized
+ * at every level (for the chart). If fast mode wouldn't rank them the same way, or they're all in
+ * fast mode already, every request is optimized and the top N taken from those.
+ */
+async function optimizeTopN(id: number, requests: readonly BuildRequest[], topN: TopN) {
+  const twoPass = requests.some((request) => !request.fast) && requests.every(fastModeRanksExactly);
+  if (!twoPass) {
+    const results = await optimizeAll(id, requests);
+    return results && getTopIndexes(results, topN).map((i) => results[i]);
+  }
+  const fastResults = await optimizeAll(
+    id,
+    requests.map((request) => ({ ...request, fast: true })),
+  );
+  if (!fastResults) return null;
+  return optimizeAll(
+    id,
+    getTopIndexes(fastResults, topN).map((i) => requests[i]),
+  );
+}
+
+/**
+ * Runs the optimizer off the main thread, since exhaustive searches can take a moment. A request
+ * is abandoned as soon as a newer one arrives, since its results would be out of date.
+ */
+async function handleRequest({ id, requests, topN }: WorkerRequest) {
+  const results = topN ? await optimizeTopN(id, requests, topN) : await optimizeAll(id, requests);
+  if (!results) return;
   const response: WorkerResponse = { id, results };
   self.postMessage(response);
 }

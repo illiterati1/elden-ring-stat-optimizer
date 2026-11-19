@@ -11,6 +11,7 @@ import type { Objective } from "../optimizer/optimizer.ts";
 import type { AttackChoice } from "./useMovesets.ts";
 import type { ashAttack } from "./useAshes.ts";
 import type { StackTier } from "./useBuffs.ts";
+import { defaultWeaponFilters, type WeaponFilters } from "./filters.ts";
 import {
   startingClasses,
   type StartingClassName,
@@ -132,6 +133,8 @@ export interface AppState {
   readonly meetRequirements: boolean;
   /** Only include weapons that can be buffed, e.g. with greases */
   readonly onlyBuffable: boolean;
+  /** The weapon settings' other filters: damage types, statuses, weight, and top N */
+  readonly weaponFilters: WeaponFilters;
   readonly sortBy: SortBy;
   /** Weapons (full names, including affinity) checked to be shown on the chart */
   readonly chartWeapons: string[];
@@ -269,6 +272,7 @@ const defaultAppState: AppState = {
   fastMode: false,
   meetRequirements: true,
   onlyBuffable: false,
+  weaponFilters: defaultWeaponFilters,
   sortBy: "total",
   chartWeapons: [],
   chartRange: { min: null, max: null },
@@ -376,6 +380,7 @@ function getInitialAppState(): AppState {
       ),
       defenses: { ...defaultAppState.defenses, ...stored.defenses },
       tooltipTimings: { ...defaultAppState.tooltipTimings, ...stored.tooltipTimings },
+      weaponFilters: { ...defaultAppState.weaponFilters, ...stored.weaponFilters },
       chainLimit: { ...defaultAppState.chainLimit, ...stored.chainLimit },
       physicalNegation: { ...defaultAppState.physicalNegation, ...stored.physicalNegation },
       // Earlier versions had a custom motion value instead of the base attack
