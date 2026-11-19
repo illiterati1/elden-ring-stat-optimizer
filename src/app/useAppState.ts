@@ -12,6 +12,7 @@ import type { AttackChoice } from "./useMovesets.ts";
 import type { ashAttack } from "./useAshes.ts";
 import type { StackTier } from "./useBuffs.ts";
 import { defaultWeaponFilters, type WeaponFilters } from "./filters.ts";
+import { isPin, type Pin } from "./pins.ts";
 import {
   startingClasses,
   type StartingClassName,
@@ -138,8 +139,13 @@ export interface AppState {
   /** The weapon settings' other filters: damage types, statuses, weight, and top N */
   readonly weaponFilters: WeaponFilters;
   readonly sortBy: SortBy;
-  /** Weapons (full names, including affinity) checked to be shown on the chart */
+  /**
+   * Weapons (full names, including affinity) checked to be shown on the chart, and pinned rows (by
+   * getPinChartKey)
+   */
   readonly chartWeapons: string[];
+  /** Rows kept at the top of the table until they're unpinned, in the order they were pinned */
+  readonly pins: readonly Pin[];
   /** Character levels shown at the left and right of the chart, or null for automatic */
   readonly chartRange: { min: number | null; max: number | null };
   /** Reverse the default order for sortBy (highest total, lowest level, highest value per level) */
@@ -242,7 +248,7 @@ function isSortBy(value: unknown): value is SortBy {
 
 export type UpdateAppState = (update: Partial<AppState>) => void;
 
-const defaultAppState: AppState = {
+export const defaultAppState: AppState = {
   startingClass: "Vagabond",
   stats: startingClasses.Vagabond,
   buffs: [],
@@ -278,6 +284,7 @@ const defaultAppState: AppState = {
   weaponFilters: defaultWeaponFilters,
   sortBy: "total",
   chartWeapons: [],
+  pins: [],
   chartRange: { min: null, max: null },
   reverse: false,
   objective: "totalAttack",
@@ -401,6 +408,7 @@ function getInitialAppState(): AppState {
           ? ["greatarrow:Great Arrow", "greatarrow:Radahn's Spear"]
           : [key],
       ),
+      pins: Array.isArray(stored.pins) ? stored.pins.filter(isPin) : [],
       // Sort columns can be removed between versions
       sortBy: isSortBy(stored.sortBy) ? stored.sortBy : defaultAppState.sortBy,
     };

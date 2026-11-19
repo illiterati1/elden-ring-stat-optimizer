@@ -14,11 +14,18 @@ const debounceMs = 150;
 /**
  * Runs the optimizer in a web worker whenever the requests change. The worker caches the
  * expensive part of each calculation, and abandons a request as soon as a newer one arrives.
+ * @returns the results, and the requests they're for (without top N, in the same order), which
+ * are behind the latest requests until they're worked out
  */
 export default function useBuildResults(requests: BuildRequest[], topN?: TopN) {
   const workerRef = useRef<Worker>();
   const latestIdRef = useRef(0);
-  const [results, setResults] = useState<BuildResult[]>([]);
+  // The requests sent with the latest ID, which the results are for
+  const latestRequestsRef = useRef<BuildRequest[]>([]);
+  const [{ results, resultRequests }, setResults] = useState<{
+    results: BuildResult[];
+    resultRequests: BuildRequest[];
+  }>({ results: [], resultRequests: [] });
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
@@ -27,7 +34,7 @@ export default function useBuildResults(requests: BuildRequest[], topN?: TopN) {
     });
     worker.onmessage = (evt: MessageEvent<WorkerResponse | DpsCurveResponse>) => {
       if ("id" in evt.data && evt.data.id === latestIdRef.current) {
-        setResults(evt.data.results);
+        setResults({ results: evt.data.results, resultRequests: latestRequestsRef.current });
         setPending(false);
       }
     };
@@ -37,6 +44,7 @@ export default function useBuildResults(requests: BuildRequest[], topN?: TopN) {
 
   useEffect(() => {
     const id = ++latestIdRef.current;
+    latestRequestsRef.current = requests;
     setPending(true);
     const timeout = setTimeout(() => {
       const message: WorkerRequest = { id, requests, ...(topN && { topN }) };
@@ -45,7 +53,7 @@ export default function useBuildResults(requests: BuildRequest[], topN?: TopN) {
     return () => clearTimeout(timeout);
   }, [requests, topN]);
 
-  return { results, pending, workerRef };
+  return { results, resultRequests, pending, workerRef };
 }
 
 /**

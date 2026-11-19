@@ -36,7 +36,12 @@ import {
 } from "../optimizer/startingClasses.ts";
 import theme from "./theme.ts";
 import { CloseIcon, useBackClosable, useTouch } from "./Details.tsx";
-import useAppState, { minEquipWeight, statusSortBy } from "./useAppState.ts";
+import useAppState, {
+  defaultAppState,
+  minEquipWeight,
+  statusSortBy,
+  type AppState,
+} from "./useAppState.ts";
 import useWeapons from "./useWeapons.ts";
 import type { Weapon } from "../calculator/weapon.ts";
 import useBuffable, { isBuffable } from "./useBuffable.ts";
@@ -74,7 +79,7 @@ import useMovesets, {
   withOffhandRows,
   type ChainLimit,
 } from "./useMovesets.ts";
-import useAmmo, { getAmmoKey, weaponTypeAmmoClasses, withAmmo } from "./useAmmo.ts";
+import useAmmo, { getAmmoKey, getAmmoLabel, weaponTypeAmmoClasses, withAmmo } from "./useAmmo.ts";
 import useBuildResults, { useDpsCurves } from "./useBuildResults.ts";
 import CharacterSettings from "./CharacterSettings.tsx";
 import BuildSettings from "./BuildSettings.tsx";
@@ -82,7 +87,17 @@ import TimingSettings from "./TimingSettings.tsx";
 import LimitSettings from "./LimitSettings.tsx";
 import DefenseSettings from "./DefenseSettings.tsx";
 import WeaponPicker from "./WeaponPicker.tsx";
-import ResultsTable from "./ResultsTable.tsx";
+import ResultsTable, { type PinnedRow } from "./ResultsTable.tsx";
+import {
+  describePinSettings,
+  getKeyOfPin,
+  getPinChartKey,
+  getPinKey,
+  getPinSettings,
+  restoreRequest,
+  storeRequest,
+  type Pin,
+} from "./pins.ts";
 import ValueChart from "./ValueChart.tsx";
 import { getResultStatus, sortResults } from "./results.ts";
 import { defaultWeaponFilters, passesFilters } from "./filters.ts";
@@ -172,6 +187,7 @@ export default function App() {
     sortBy,
     reverse,
     chartWeapons,
+    pins,
     fastMode,
     chartRange,
     objective,
@@ -508,10 +524,12 @@ export default function App() {
     [chainLimit],
   );
 
-  const unfilteredRequests = useMemo<BuildRequest[]>(() => {
-    const selected = new Set(validSelectedWeapons);
-    const selectedWeaponTypes = new Set(weaponTypes);
-    const selectedAffinityIds = new Set(affinityIds);
+  /**
+   * The requests for one weapon with an attack (each version of a fixed skill that has several is its
+   * own), with the other settings: for the table's weapons with the chosen attack, and for each
+   * pinned row with its own
+   */
+  const getWeaponRequests = useMemo(() => {
     const { maxLevels, minGain, targetValue } = limits;
     const levelLimit = maxLevels.enabled ? maxLevels.values[maxLevels.mode] : null;
     const enabledLimits: Limits = {
@@ -530,6 +548,286 @@ export default function App() {
       runeBudget: levelLimit != null && maxLevels.mode === "runes" ? levelLimit : null,
       targetValue: targetValue.enabled && !fastMode ? targetValue.value : null,
     };
+
+    return (
+      weapon: Weapon,
+      unavailableReason: string | undefined,
+      attack: AppState["attack"],
+      ashOfWar: string,
+    ): BuildRequest[] => {
+      // The two handing setting doesn't apply to weapons that can't be two handed
+      const weaponTwoHanding =
+        twoHanding &&
+        !oneHandedBuffs.some((buff) => buff.skillOf !== weapon.weaponName) &&
+        canTwoHand(movesets, weapon, attack);
+      const uniqueSkillEffects = uniqueSkills?.weapons?.[weapon.weaponName];
+      const ashInfo =
+        weaponBuff?.kind === "skill" && ashes.ashes.find((ash) => ash.name === weaponBuff.name);
+      const weaponBuffApplies =
+        weaponBuff?.kind === "skill"
+          ? !!ashes.weapons[weapon.weaponName]?.canChange &&
+            !!ashInfo &&
+            ashInfo.mounts.includes(weapon.weaponType) &&
+            ashInfo.affinities.includes(weapon.affinityId)
+          : !!weaponBuff && isBuffable(buffable, weapon);
+      // The weapon's own motion values for the chosen attack, or its skill: each version of a
+      // fixed skill that has several (e.g. Moonveil's R1 and R2) is its own result
+      const skillAttacks: { ash?: AshAttack; variant?: SkillVariant }[] = !attackActive
+        ? [{ ash: undefined }]
+        : attack === ashAttack && !unavailableReason
+        ? getAshAttacks(ashes, movesets, weapon, ashOfWar, weaponTwoHanding, chainWeight, sumChains)
+        : attack === ashAttack
+        ? [
+            {
+              ash: getAshAttack(
+                ashes,
+                movesets,
+                weapon,
+                ashOfWar,
+                weaponTwoHanding,
+                chainWeight,
+                sumChains,
+              ),
+            },
+          ]
+        : [{ ash: undefined }];
+      // With a skill's buff picked that changes the weapon's R2s while it lasts (e.g. War Cry, or the
+      // Dark Moon Greatsword's own Moonlight Greatsword), its R2s are the skill's chains, which have
+      // the buff: its own skill's on a weapon with a fixed skill, or a picked Ash of War's the weapon
+      // can take
+      const fixedSkill = ashes.weapons[weapon.weaponName]?.skill;
+      const r2Skill =
+        uniqueSkillEffects && fixedSkill
+          ? fixedSkill
+          : weaponBuff?.kind === "skill" && weaponBuffApplies && buffedR2Skills.has(weaponBuff.name)
+          ? weaponBuff.name
+          : undefined;
+      // (or for a skill that changes the weapon's own attacks, e.g. Flare, O Serpent's R2s, that
+      // attack with the skill's hits added)
+      const skillChain =
+        attackActive && r2Skill && attack !== ashAttack && attack !== "Standard Shot"
+          ? getAshAttack(
+              ashes,
+              movesets,
+              weapon,
+              withFollowUp(r2Skill, `${attack} chain`),
+              weaponTwoHanding,
+              chainWeight,
+              sumChains,
+              limit,
+            )
+          : undefined;
+      const uniqueSkillChain =
+        skillChain &&
+        "attack" in skillChain &&
+        (skillChain.attack.chain || weaponAttackSkills.has(r2Skill!))
+          ? skillChain.attack
+          : undefined;
+      // A weapon's own skill's buff that has to be cast again when it runs out (e.g. Flare, O
+      // Serpent's), picked: all its attacks spend some time casting it
+      const upkeep =
+        uniqueSkillEffects && fixedSkill
+          ? getSkillUpkeep(ashes, weapon.weaponName, fixedSkill)
+          : undefined;
+      return skillAttacks.map(({ ash, variant }): BuildRequest => {
+        const chosenAttackData = !attackActive
+          ? undefined
+          : ash && "attack" in ash
+          ? ash.attack
+          : attack === ashAttack
+          ? undefined
+          : uniqueSkillChain ??
+            getAttackData(
+              movesets,
+              weapon,
+              attack,
+              weaponTwoHanding,
+              chainWeight,
+              sumChains,
+              limit,
+            );
+        // A skill's enemy debuff is picked separately, so it's noted when it isn't
+        const debuffName =
+          chosenAttackData?.fixedSkill && skillDebuffs[chosenAttackData.fixedSkill];
+        // (not the attacks it changes, which already cast it each time)
+        const withUpkeep =
+          chosenAttackData &&
+          upkeep &&
+          !chosenAttackData.upkeep &&
+          !(chosenAttackData === uniqueSkillChain && weaponAttackSkills.has(r2Skill!))
+            ? { ...chosenAttackData, upkeep }
+            : chosenAttackData;
+        const attackData =
+          withUpkeep &&
+          debuffName &&
+          !selectedBuffs.some((buff) => buff.kind === "debuff" && buff.name === debuffName)
+            ? {
+                ...withUpkeep,
+                note: [
+                  withUpkeep.note,
+                  `Doesn't count the ${debuffName} enemy debuff the skill applies: pick it in the enemy debuffs`,
+                ]
+                  .filter(Boolean)
+                  .join(". "),
+              }
+            : withUpkeep;
+        // The skill the attack is, if any: the chosen skill, or the one whose R2s these are
+        const attackSkill =
+          ash && "attack" in ash
+            ? ash.skill
+            : chosenAttackData && chosenAttackData === uniqueSkillChain
+            ? r2Skill
+            : undefined;
+        // A powerstance attack with an off hand weapon it powerstances with (not a paired weapon,
+        // which is both)
+        const offhand =
+          attack.startsWith("Powerstance") && offhandWeaponData ? offhandWeaponData : undefined;
+        const offhandMismatch = !!offhand && !powerstancesWith(weapon, offhand);
+        const usesOffhand = !!offhand && !offhandMismatch;
+        // Weapon buffs on the main weapon only apply to its own hits then
+        const mainHand = (effects: BuffEffect[]) =>
+          usesOffhand ? effects.map((effect) => ({ ...effect, hand: "main" as const })) : effects;
+        // A weapon's own skill's buff (picked by the skill's name), or a chosen skill that puts its
+        // own weapon buff on the weapon (e.g. Sacred Blade), replaces the chosen weapon buff
+        const ownWeaponBuff = !!uniqueSkillEffects || !!attackData?.ownWeaponBuff;
+        // A short weapon buff spell (e.g. Black Flame Blade) is cast again whenever it runs out
+        const buffUpkeep = weaponBuffApplies && !ownWeaponBuff ? weaponBuff?.upkeep : undefined;
+        const upkeptAttackData =
+          attackData && buffUpkeep ? { ...attackData, buffUpkeep } : attackData;
+        return {
+          unavailableReason:
+            unavailableReason ??
+            (offhandMismatch ? `Doesn't powerstance with ${offhand.name}` : undefined) ??
+            (ash && "unavailableReason" in ash ? ash.unavailableReason : undefined) ??
+            (!attackActive || attackData
+              ? undefined
+              : attack === "R1" && catalystTypes.includes(weapon.weaponType)
+              ? "A catalyst's R1 casts spells: its melee strikes are its R2"
+              : attack === "Mounted R1/L1" && catalystTypes.includes(weapon.weaponType)
+              ? "A catalyst's mounted R1 casts spells: its mounted melee strikes are its mounted R2"
+              : `No ${attack} for this weapon`),
+          // The left hand weapon's hits use its own attack rows
+          attack:
+            usesOffhand && upkeptAttackData
+              ? withOffhandRows(upkeptAttackData, movesets, weapon.weaponName, offhand.weaponName)
+              : upkeptAttackData,
+          physicalNegation,
+          enemyHp: countedEnemyHp,
+          criticalDamageRate,
+          stanceDamageRate,
+          enemyTypes,
+          scadutreeBlessingRate,
+          // A weapon with a unique skill that can also be buffed (the Bonny Butchering Knife) only
+          // gets the skill's buff, since they replace each other in game
+          buffs: [
+            ...buffEffects,
+            ...getBuffEffects(
+              [
+                ...new Set(
+                  [passives.get(weapon.weaponName), offhandBuff].filter((buff) => buff != null),
+                ),
+              ],
+              stackTier,
+              health,
+            ),
+            ...mainHand(weaponBuffApplies && !ownWeaponBuff ? weaponBuffEffects : []),
+            // A skill attack that carries its own buff (the Moonlight Greatsword's swings) already
+            // has it
+            ...mainHand(
+              uniqueSkillEffects && !attackData?.ownWeaponBuff
+                ? getBuffEffects(
+                    [{ ...uniqueSkills!, effects: uniqueSkillEffects }],
+                    stackTier,
+                    health,
+                  )
+                : [],
+            ),
+            ...(usesOffhand ? offhandBuffEffects : []),
+          ],
+          ...(usesOffhand && {
+            offhand: {
+              weapon: offhand,
+              regularUpgradeLevel: offhandUpgradeLevel,
+              stanceBase: movesets[offhand.weaponName]?.stance ?? 0,
+            },
+          }),
+          // Unless the skill's buff is the one picked, e.g. War Cry's R2s with War Cry
+          ...(ownWeaponBuff &&
+            weaponBuffApplies &&
+            attackSkill !== weaponBuff?.name && {
+              buffNote:
+                "Only its skill's weapon buff applies, since it replaces other weapon buffs",
+            }),
+          // A weapon buff spell needs its catalyst's and its own requirements to cast
+          ...(weaponBuffApplies &&
+            !ownWeaponBuff &&
+            castingRequirements && { catalyst, catalystUpgradeLevel, castingRequirements }),
+          // Saved settings from before the minimum may be lower
+          equipWeight: Math.max(equipWeight, minEquipWeight),
+          weapon,
+          regularUpgradeLevel: upgradeLevel,
+          twoHanding: weaponTwoHanding,
+          startLevel: planLevel,
+          currentLevel: startLevel,
+          attributes: planAttributes,
+          bonusAttributes,
+          objective,
+          defenses: enemyDefenses,
+          limits: enabledLimits,
+          meetRequirements,
+          fast: fastMode,
+          ...(variant && { skillVariant: variant }),
+        };
+      });
+    };
+  }, [
+    movesets,
+    buffable,
+    ashes,
+    chainWeight,
+    sumChains,
+    limit,
+    physicalNegation,
+    countedEnemyHp,
+    criticalDamageRate,
+    stanceDamageRate,
+    enemyTypes,
+    scadutreeBlessingRate,
+    offhandWeaponData,
+    offhandUpgradeLevel,
+    offhandBuffEffects,
+    upgradeLevel,
+    twoHanding,
+    bonusAttributes,
+    buffEffects,
+    selectedBuffs,
+    weaponBuff,
+    weaponBuffEffects,
+    uniqueSkills,
+    oneHandedBuffs,
+    passives,
+    offhandBuff,
+    catalyst,
+    catalystUpgradeLevel,
+    castingRequirements,
+    equipWeight,
+    stackTier,
+    health,
+    objective,
+    attackActive,
+    enemyDefenses,
+    limits,
+    fastMode,
+    meetRequirements,
+    planLevel,
+    planAttributes,
+    startLevel,
+  ]);
+
+  const unfilteredRequests = useMemo<BuildRequest[]>(() => {
+    const selected = new Set(validSelectedWeapons);
+    const selectedWeaponTypes = new Set(weaponTypes);
+    const selectedAffinityIds = new Set(affinityIds);
 
     const weaponsInSelection = weapons.filter(
       ({ weaponName, weaponType, affinityId, sorceryTool, incantationTool }) => {
@@ -613,242 +911,8 @@ export default function App() {
     });
 
     return [...weaponsWithAmmo, ...noAffinityWeapons, ...unbuffableWeapons].flatMap(
-      ({ weapon, unavailableReason }) => {
-        // The two handing setting doesn't apply to weapons that can't be two handed
-        const weaponTwoHanding =
-          twoHanding &&
-          !oneHandedBuffs.some((buff) => buff.skillOf !== weapon.weaponName) &&
-          canTwoHand(movesets, weapon, attack);
-        const uniqueSkillEffects = uniqueSkills?.weapons?.[weapon.weaponName];
-        const ashInfo =
-          weaponBuff?.kind === "skill" && ashes.ashes.find((ash) => ash.name === weaponBuff.name);
-        const weaponBuffApplies =
-          weaponBuff?.kind === "skill"
-            ? !!ashes.weapons[weapon.weaponName]?.canChange &&
-              !!ashInfo &&
-              ashInfo.mounts.includes(weapon.weaponType) &&
-              ashInfo.affinities.includes(weapon.affinityId)
-            : !!weaponBuff && isBuffable(buffable, weapon);
-        // The weapon's own motion values for the chosen attack, or its skill: each version of a
-        // fixed skill that has several (e.g. Moonveil's R1 and R2) is its own result
-        const skillAttacks: { ash?: AshAttack; variant?: SkillVariant }[] = !attackActive
-          ? [{ ash: undefined }]
-          : attack === ashAttack && !unavailableReason
-          ? getAshAttacks(
-              ashes,
-              movesets,
-              weapon,
-              ashOfWar,
-              weaponTwoHanding,
-              chainWeight,
-              sumChains,
-            )
-          : attack === ashAttack
-          ? [
-              {
-                ash: getAshAttack(
-                  ashes,
-                  movesets,
-                  weapon,
-                  ashOfWar,
-                  weaponTwoHanding,
-                  chainWeight,
-                  sumChains,
-                ),
-              },
-            ]
-          : [{ ash: undefined }];
-        // With a skill's buff picked that changes the weapon's R2s while it lasts (e.g. War Cry, or the
-        // Dark Moon Greatsword's own Moonlight Greatsword), its R2s are the skill's chains, which have
-        // the buff: its own skill's on a weapon with a fixed skill, or a picked Ash of War's the weapon
-        // can take
-        const fixedSkill = ashes.weapons[weapon.weaponName]?.skill;
-        const r2Skill =
-          uniqueSkillEffects && fixedSkill
-            ? fixedSkill
-            : weaponBuff?.kind === "skill" &&
-              weaponBuffApplies &&
-              buffedR2Skills.has(weaponBuff.name)
-            ? weaponBuff.name
-            : undefined;
-        // (or for a skill that changes the weapon's own attacks, e.g. Flare, O Serpent's R2s, that
-        // attack with the skill's hits added)
-        const skillChain =
-          attackActive && r2Skill && attack !== ashAttack && attack !== "Standard Shot"
-            ? getAshAttack(
-                ashes,
-                movesets,
-                weapon,
-                withFollowUp(r2Skill, `${attack} chain`),
-                weaponTwoHanding,
-                chainWeight,
-                sumChains,
-                limit,
-              )
-            : undefined;
-        const uniqueSkillChain =
-          skillChain &&
-          "attack" in skillChain &&
-          (skillChain.attack.chain || weaponAttackSkills.has(r2Skill!))
-            ? skillChain.attack
-            : undefined;
-        // A weapon's own skill's buff that has to be cast again when it runs out (e.g. Flare, O
-        // Serpent's), picked: all its attacks spend some time casting it
-        const upkeep =
-          uniqueSkillEffects && fixedSkill
-            ? getSkillUpkeep(ashes, weapon.weaponName, fixedSkill)
-            : undefined;
-        return skillAttacks.map(({ ash, variant }): BuildRequest => {
-          const chosenAttackData = !attackActive
-            ? undefined
-            : ash && "attack" in ash
-            ? ash.attack
-            : attack === ashAttack
-            ? undefined
-            : uniqueSkillChain ??
-              getAttackData(
-                movesets,
-                weapon,
-                attack,
-                weaponTwoHanding,
-                chainWeight,
-                sumChains,
-                limit,
-              );
-          // A skill's enemy debuff is picked separately, so it's noted when it isn't
-          const debuffName =
-            chosenAttackData?.fixedSkill && skillDebuffs[chosenAttackData.fixedSkill];
-          // (not the attacks it changes, which already cast it each time)
-          const withUpkeep =
-            chosenAttackData &&
-            upkeep &&
-            !chosenAttackData.upkeep &&
-            !(chosenAttackData === uniqueSkillChain && weaponAttackSkills.has(r2Skill!))
-              ? { ...chosenAttackData, upkeep }
-              : chosenAttackData;
-          const attackData =
-            withUpkeep &&
-            debuffName &&
-            !selectedBuffs.some((buff) => buff.kind === "debuff" && buff.name === debuffName)
-              ? {
-                  ...withUpkeep,
-                  note: [
-                    withUpkeep.note,
-                    `Doesn't count the ${debuffName} enemy debuff the skill applies: pick it in the enemy debuffs`,
-                  ]
-                    .filter(Boolean)
-                    .join(". "),
-                }
-              : withUpkeep;
-          // The skill the attack is, if any: the chosen skill, or the one whose R2s these are
-          const attackSkill =
-            ash && "attack" in ash
-              ? ash.skill
-              : chosenAttackData && chosenAttackData === uniqueSkillChain
-              ? r2Skill
-              : undefined;
-          // A powerstance attack with an off hand weapon it powerstances with (not a paired weapon,
-          // which is both)
-          const offhand =
-            attack.startsWith("Powerstance") && offhandWeaponData ? offhandWeaponData : undefined;
-          const offhandMismatch = !!offhand && !powerstancesWith(weapon, offhand);
-          const usesOffhand = !!offhand && !offhandMismatch;
-          // Weapon buffs on the main weapon only apply to its own hits then
-          const mainHand = (effects: BuffEffect[]) =>
-            usesOffhand ? effects.map((effect) => ({ ...effect, hand: "main" as const })) : effects;
-          // A weapon's own skill's buff (picked by the skill's name), or a chosen skill that puts its
-          // own weapon buff on the weapon (e.g. Sacred Blade), replaces the chosen weapon buff
-          const ownWeaponBuff = !!uniqueSkillEffects || !!attackData?.ownWeaponBuff;
-          // A short weapon buff spell (e.g. Black Flame Blade) is cast again whenever it runs out
-          const buffUpkeep = weaponBuffApplies && !ownWeaponBuff ? weaponBuff?.upkeep : undefined;
-          const upkeptAttackData =
-            attackData && buffUpkeep ? { ...attackData, buffUpkeep } : attackData;
-          return {
-            unavailableReason:
-              unavailableReason ??
-              (offhandMismatch ? `Doesn't powerstance with ${offhand.name}` : undefined) ??
-              (ash && "unavailableReason" in ash ? ash.unavailableReason : undefined) ??
-              (!attackActive || attackData
-                ? undefined
-                : attack === "R1" && catalystTypes.includes(weapon.weaponType)
-                ? "A catalyst's R1 casts spells: its melee strikes are its R2"
-                : attack === "Mounted R1/L1" && catalystTypes.includes(weapon.weaponType)
-                ? "A catalyst's mounted R1 casts spells: its mounted melee strikes are its mounted R2"
-                : `No ${attack} for this weapon`),
-            // The left hand weapon's hits use its own attack rows
-            attack:
-              usesOffhand && upkeptAttackData
-                ? withOffhandRows(upkeptAttackData, movesets, weapon.weaponName, offhand.weaponName)
-                : upkeptAttackData,
-            physicalNegation,
-            enemyHp: countedEnemyHp,
-            criticalDamageRate,
-            stanceDamageRate,
-            enemyTypes,
-            scadutreeBlessingRate,
-            // A weapon with a unique skill that can also be buffed (the Bonny Butchering Knife) only
-            // gets the skill's buff, since they replace each other in game
-            buffs: [
-              ...buffEffects,
-              ...getBuffEffects(
-                [
-                  ...new Set(
-                    [passives.get(weapon.weaponName), offhandBuff].filter((buff) => buff != null),
-                  ),
-                ],
-                stackTier,
-                health,
-              ),
-              ...mainHand(weaponBuffApplies && !ownWeaponBuff ? weaponBuffEffects : []),
-              // A skill attack that carries its own buff (the Moonlight Greatsword's swings) already
-              // has it
-              ...mainHand(
-                uniqueSkillEffects && !attackData?.ownWeaponBuff
-                  ? getBuffEffects(
-                      [{ ...uniqueSkills!, effects: uniqueSkillEffects }],
-                      stackTier,
-                      health,
-                    )
-                  : [],
-              ),
-              ...(usesOffhand ? offhandBuffEffects : []),
-            ],
-            ...(usesOffhand && {
-              offhand: {
-                weapon: offhand,
-                regularUpgradeLevel: offhandUpgradeLevel,
-                stanceBase: movesets[offhand.weaponName]?.stance ?? 0,
-              },
-            }),
-            // Unless the skill's buff is the one picked, e.g. War Cry's R2s with War Cry
-            ...(ownWeaponBuff &&
-              weaponBuffApplies &&
-              attackSkill !== weaponBuff?.name && {
-                buffNote:
-                  "Only its skill's weapon buff applies, since it replaces other weapon buffs",
-              }),
-            // A weapon buff spell needs its catalyst's and its own requirements to cast
-            ...(weaponBuffApplies &&
-              !ownWeaponBuff &&
-              castingRequirements && { catalyst, catalystUpgradeLevel, castingRequirements }),
-            // Saved settings from before the minimum may be lower
-            equipWeight: Math.max(equipWeight, minEquipWeight),
-            weapon,
-            regularUpgradeLevel: upgradeLevel,
-            twoHanding: weaponTwoHanding,
-            startLevel: planLevel,
-            currentLevel: startLevel,
-            attributes: planAttributes,
-            bonusAttributes,
-            objective,
-            defenses: enemyDefenses,
-            limits: enabledLimits,
-            meetRequirements,
-            fast: fastMode,
-            ...(variant && { skillVariant: variant }),
-          };
-        });
-      },
+      ({ weapon, unavailableReason }) =>
+        getWeaponRequests(weapon, unavailableReason, attack, ashOfWar),
     );
   }, [
     weapons,
@@ -856,51 +920,13 @@ export default function App() {
     affinityIds,
     ammo,
     selectedAmmo,
-    movesets,
     buffable,
     ashes,
-    ashOfWar,
     onlyBuffable,
-    attack,
-    chainWeight,
-    sumChains,
-    limit,
-    physicalNegation,
-    countedEnemyHp,
-    criticalDamageRate,
-    stanceDamageRate,
-    enemyTypes,
-    scadutreeBlessingRate,
-    offhandWeaponData,
-    offhandUpgradeLevel,
-    offhandBuffEffects,
     weaponTypes,
-    upgradeLevel,
-    twoHanding,
-    bonusAttributes,
-    buffEffects,
-    selectedBuffs,
-    weaponBuff,
-    weaponBuffEffects,
-    uniqueSkills,
-    oneHandedBuffs,
-    passives,
-    offhandBuff,
-    catalyst,
-    catalystUpgradeLevel,
-    castingRequirements,
-    equipWeight,
-    stackTier,
-    health,
-    objective,
-    attackActive,
-    enemyDefenses,
-    limits,
-    fastMode,
-    meetRequirements,
-    planLevel,
-    planAttributes,
-    startLevel,
+    getWeaponRequests,
+    attack,
+    ashOfWar,
   ]);
   // Filtered before optimizing, so weapons filtered out aren't calculated at all. (Top N needs the
   // results, so it's applied after sorting.)
@@ -940,7 +966,7 @@ export default function App() {
     if (selection.every((value, i) => value === lastSelection.current[i])) return;
     lastSelection.current = selection;
     const requested = new Set(requests.map((request) => request.weapon.name));
-    const kept = chartWeapons.filter((name) => requested.has(name));
+    const kept = chartWeapons.filter((name) => requested.has(name) || name.startsWith("pin:"));
     if (kept.length < chartWeapons.length) updateAppState({ chartWeapons: kept });
   });
 
@@ -966,17 +992,90 @@ export default function App() {
         : undefined,
     [topN, workerSortHidden, sortBy, reverse, showDps],
   );
-  const { results, pending, workerRef } = useBuildResults(requests, workerTopN);
+  const { results, pending: mainPending, workerRef } = useBuildResults(requests, workerTopN);
+
+  // Pinned rows, whether their weapons are picked or not: a live pin's values use the current
+  // settings with its own weapon and attack, and a frozen pin's the request it was frozen with.
+  // They're worked out by a worker of their own, so they don't wait for the table or count towards
+  // top N.
+  const weaponsByName = useMemo(
+    () => new Map(weapons.map((weapon) => [weapon.name, weapon])),
+    [weapons],
+  );
+  // (a ranged weapon's name includes its ammunition, e.g. "Longbow (Arrow)")
+  const findPinWeapon = (name: string) => {
+    const weapon = weaponsByName.get(name);
+    if (weapon) return weapon;
+    for (const group of ammo) {
+      const suffix = ` (${getAmmoLabel(group)})`;
+      const base = name.endsWith(suffix) && weaponsByName.get(name.slice(0, -suffix.length));
+      if (base && weaponTypeAmmoClasses.get(base.weaponType) === group.class) {
+        return withAmmo(base, group);
+      }
+    }
+    return undefined;
+  };
+  // Which pin each request sent to the pins' worker is for, so results are matched to pins even
+  // when they're for earlier requests
+  const [pinRequestIds] = useState(() => new WeakMap<BuildRequest, string>());
+  // (frozen pins' only when the pins or the weapon data change, so they aren't sent to the worker
+  // again whenever the settings change)
+  const frozenRequests = useMemo(
+    () =>
+      new Map(
+        pins.flatMap((pin): [string, BuildRequest][] => {
+          const request = pin.frozen && restoreRequest(pin.frozen.request, findPinWeapon);
+          return request ? [[pin.id, request]] : [];
+        }),
+      ),
+    [pins, weaponsByName, ammo],
+  );
+  const pinRequests = useMemo(
+    () =>
+      new Map(
+        pins.flatMap((pin): [string, BuildRequest][] => {
+          const request = pin.frozen
+            ? frozenRequests.get(pin.id)
+            : (() => {
+                const weapon = findPinWeapon(pin.weaponName);
+                return weapon
+                  ? getWeaponRequests(weapon, undefined, pin.attack, pin.ashOfWar).find(
+                      (candidate) => candidate.skillVariant?.short === pin.skillVariant,
+                    )
+                  : undefined;
+              })();
+          if (!request) return [];
+          pinRequestIds.set(request, pin.id);
+          return [[pin.id, request]];
+        }),
+      ),
+    [pins, frozenRequests, weaponsByName, ammo, getWeaponRequests],
+  );
+  const pinRequestList = useMemo(() => [...pinRequests.values()], [pinRequests]);
+  const {
+    results: pinResults,
+    resultRequests: pinResultRequests,
+    pending: pinsPending,
+    workerRef: pinWorkerRef,
+  } = useBuildResults(pinRequestList);
+  const pending = mainPending || (pins.length > 0 && pinsPending);
+  const pinResultsById = useMemo(
+    () =>
+      new Map(pinResultRequests.map((request, i) => [pinRequestIds.get(request), pinResults[i]])),
+    [pinResultRequests, pinResults, pinRequestIds],
+  );
 
   // A column for each status effect that any weapon in the table builds up
   const statusTypesShown = useMemo(
     () =>
       showStatus
         ? [...statusTypes.keys()].filter((statusType) =>
-            results.some((result) => result.applicable && getResultStatus(result)[statusType]),
+            [...results, ...pinResults].some(
+              (result) => result.applicable && getResultStatus(result)[statusType],
+            ),
           )
         : [],
-    [showStatus, results],
+    [showStatus, results, pinResults],
   );
 
   // Sorting by a hidden column falls back to the highest total first
@@ -997,14 +1096,192 @@ export default function App() {
       : sorted;
   }, [results, effectiveSortBy, effectiveReverse, sortHidden, showDps, topN]);
 
+  // Each pinned row with what it's shown with: its own attack's, and a frozen one's settings.
+  // They're sorted like the table, after any that aren't worked out yet.
+  const currentPinSettings = useMemo(() => getPinSettings(appState), [appState]);
+  const pinnedRows = useMemo(() => {
+    const defaultPinSettings = getPinSettings(defaultAppState);
+    const rows = pins.map((pin): PinnedRow => {
+      const settings = pin.frozen?.settings ?? currentPinSettings;
+      const oneOffAttack = oneOffAttacks.has(pin.attack);
+      const result =
+        pinResultsById.get(pin.id) ??
+        // (only what the table shows for a row that isn't applicable)
+        ({
+          weaponName: pin.weaponName,
+          url: null,
+          applicable: false,
+          unavailableReason: pinRequests.has(pin.id)
+            ? "Calculating…"
+            : pin.frozen
+            ? "Not available: a weapon it was frozen with wasn't found"
+            : "Not available: the weapon or its attack wasn't found",
+        } as BuildResult);
+      return {
+        pin,
+        result,
+        // (kept together with the weapon's last word, so it doesn't wrap onto a line alone)
+        name: pin.label ? `${pin.weaponName}\u00a0·\u00a0${pin.label}` : pin.weaponName,
+        chartKey: getPinChartKey(pin),
+        canFreeze: !!pin.frozen || pinRequests.has(pin.id),
+        skill: pin.attack === ashAttack,
+        oneOffAttack,
+        hitsNote: attackTimingNotes[pin.attack],
+        tooltipTimings: oneOffAttack ? { ...tooltipTimings, nextChain: false } : tooltipTimings,
+        startAttributes: Object.fromEntries(
+          allAttributes.map((attribute) => [attribute, settings.stats[attribute]]),
+        ) as Attributes,
+        planStats: getPlannedStats(
+          settings.stats,
+          settings.plannedStats,
+          startingClasses[settings.startingClass],
+        ),
+        settingLines:
+          pin.frozen &&
+          describePinSettings(
+            pin.frozen.settings,
+            currentPinSettings,
+            defaultPinSettings,
+            pin.attack,
+            !!pin.frozen.request.attack?.chain,
+            allBuffs,
+          ),
+      };
+    });
+    const worked = rows.filter((row) => row.result.curve);
+    const byResult = new Map(worked.map((row) => [row.result, row]));
+    return [
+      ...sortResults(
+        worked.map((row) => row.result),
+        effectiveSortBy,
+        effectiveReverse,
+        !sortHidden && showDps,
+      ).map((result) => byResult.get(result)!),
+      ...rows.filter((row) => !row.result.curve),
+    ];
+  }, [
+    pins,
+    pinResultsById,
+    pinRequests,
+    currentPinSettings,
+    allBuffs,
+    tooltipTimings,
+    effectiveSortBy,
+    effectiveReverse,
+    sortHidden,
+    showDps,
+  ]);
+  // The table's rows that are pinned too: with the chosen attack, a live pin's are the same row. (A
+  // frozen pin isn't, so the row can be pinned again to compare it with the current settings.)
+  const rowPins = useMemo(() => {
+    const pinsByKey = new Map(
+      pins.filter((pin) => !pin.frozen).map((pin) => [getKeyOfPin(pin), pin]),
+    );
+    return new Map(
+      sortedResults.flatMap((result): [BuildResult, Pin][] => {
+        const pin = pinsByKey.get(
+          getPinKey(result.weaponName, result.skillVariant?.short, attack, ashOfWar),
+        );
+        return pin ? [[result, pin]] : [];
+      }),
+    );
+  }, [pins, sortedResults, attack, ashOfWar]);
+
+  // Pinning, freezing, and restoring a frozen pin's settings, with the latest state (so the table
+  // gets the same functions every time)
+  const latest = useRef({
+    pins,
+    chartWeapons,
+    pinRequests,
+    appState,
+    attack,
+    ashOfWar,
+    ashChoices,
+  });
+  latest.current = { pins, chartWeapons, pinRequests, appState, attack, ashOfWar, ashChoices };
+  const [pinActions] = useState(() => ({
+    pin: (result: BuildResult) => {
+      const { pins, attack, ashOfWar, ashChoices, appState } = latest.current;
+      const label =
+        appState.objective === "spellScaling"
+          ? ""
+          : attack === ashAttack
+          ? result.skillVariant?.label ??
+            result.fixedSkill ??
+            ashChoices.find(({ value }) => value === ashOfWar)?.label ??
+            "Skill"
+          : attack;
+      const pin: Pin = {
+        id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+        weaponName: result.weaponName,
+        attack,
+        ashOfWar,
+        ...(result.skillVariant && { skillVariant: result.skillVariant.short }),
+        label,
+      };
+      updateAppState({ pins: [...pins, pin] });
+    },
+    unpin: (id: string) => {
+      const { pins, chartWeapons } = latest.current;
+      const chartKey = `pin:${id}`;
+      updateAppState({
+        pins: pins.filter((pin) => pin.id !== id),
+        ...(chartWeapons.includes(chartKey) && {
+          chartWeapons: chartWeapons.filter((key) => key !== chartKey),
+        }),
+      });
+    },
+    unpinAll: () => {
+      const { chartWeapons } = latest.current;
+      updateAppState({
+        pins: [],
+        chartWeapons: chartWeapons.filter((key) => !key.startsWith("pin:")),
+      });
+    },
+    toggleFreeze: (id: string) => {
+      const { pins, pinRequests, appState } = latest.current;
+      updateAppState({
+        // Unfreezing a pin that's also pinned live just leaves the live one, which is the same
+        pins: pins.flatMap((pin): Pin[] => {
+          if (pin.id !== id) return [pin];
+          if (pin.frozen) {
+            const { frozen: _, ...live } = pin;
+            const key = getKeyOfPin(pin);
+            return pins.some((other) => !other.frozen && getKeyOfPin(other) === key) ? [] : [live];
+          }
+          const request = pinRequests.get(id);
+          return [
+            request
+              ? {
+                  ...pin,
+                  frozen: { request: storeRequest(request), settings: getPinSettings(appState) },
+                }
+              : pin,
+          ];
+        }),
+      });
+    },
+    restore: (id: string) => {
+      const settings = latest.current.pins.find((pin) => pin.id === id)?.frozen?.settings;
+      if (settings) updateAppState(settings);
+    },
+  }));
+
   // The chart shows the weapons checked in the table, each version of a fixed skill (e.g. Moonveil's
-  // R1 and R2) as its own line
+  // R1 and R2) as its own line, and pinned rows checked, named with their attacks
   const chartedResults = useMemo(
     () =>
       sortedResults.filter(
         (result) => result.applicable && chartWeapons.includes(result.weaponName),
       ),
     [sortedResults, chartWeapons],
+  );
+  const chartedPins = useMemo(
+    () =>
+      fastMode
+        ? []
+        : pinnedRows.filter((row) => row.result.applicable && chartWeapons.includes(row.chartKey)),
+    [fastMode, pinnedRows, chartWeapons],
   );
   // With DPS shown it plots damage per second like the table, worked out only for the weapons
   // charted, and leaves out weapons whose attack's timing isn't known
@@ -1018,6 +1295,17 @@ export default function App() {
     [showDps, fastMode, requests, chartedResults],
   );
   const dpsCurves = useDpsCurves(workerRef, dpsRequests);
+  const pinDpsRequests = useMemo(
+    () =>
+      showDps
+        ? chartedPins.flatMap(({ pin }) => {
+            const request = pinRequests.get(pin.id);
+            return request ? [request] : [];
+          })
+        : [],
+    [showDps, chartedPins, pinRequests],
+  );
+  const pinDpsCurves = useDpsCurves(pinWorkerRef, pinDpsRequests);
   const chartResults = chartedResults.map((result) => ({
     ...result,
     ...(result.skillVariant && {
@@ -1036,6 +1324,26 @@ export default function App() {
       },
     }),
   }));
+  // A frozen pin's line says so (numbered if the same row is frozen more than once), since the row
+  // can be pinned live too
+  const frozenCounts = new Map<string, number>();
+  for (const { pin, result, name } of chartedPins) {
+    const frozenCount = pin.frozen ? (frozenCounts.get(name) ?? 0) + 1 : 0;
+    if (pin.frozen) frozenCounts.set(name, frozenCount);
+    chartResults.push({
+      ...result,
+      weaponName: pin.frozen ? `${name} (frozen${frozenCount > 1 ? ` ${frozenCount}` : ""})` : name,
+      ...(showDps && {
+        curve: {
+          ...result.curve,
+          values:
+            pinDpsCurves.curves[
+              pinDpsCurves.requests.findIndex((request) => pinRequestIds.get(request) === pin.id)
+            ] ?? [],
+        },
+      }),
+    });
+  }
 
   // Attacks other than the base one have hits to show. They don't apply to spell scaling.
   const attackMode = attackActive;
@@ -1246,7 +1554,7 @@ export default function App() {
                 />
                 <Box>
                   <LinearProgress sx={{ visibility: pending ? "visible" : "hidden" }} />
-                  {requests.length > 0 ? (
+                  {requests.length > 0 || pins.length > 0 ? (
                     <Stack spacing={2}>
                       {chartResults.length > 0 && !fastMode && (
                         <ValueChart
@@ -1259,6 +1567,9 @@ export default function App() {
                       )}
                       <ResultsTable
                         results={sortedResults}
+                        pinnedRows={pinnedRows}
+                        rowPins={rowPins}
+                        pinActions={pinActions}
                         chartWeapons={chartWeapons}
                         chartDisabled={fastMode}
                         startAttributes={startAttributes}
