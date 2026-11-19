@@ -93,6 +93,7 @@ import {
   getKeyOfPin,
   getPinChartKey,
   getPinKey,
+  getFrozenKey,
   getPinSettings,
   restoreRequest,
   storeRequest,
@@ -149,6 +150,19 @@ function powerstancesWith(main: Weapon, offhand: Weapon) {
         (!leftHandOnly && main.weaponName === weapon && offhand.weaponType === weaponType),
     )
   );
+}
+
+/** The frozen pins' keys (getFrozenKey), to not freeze the same row with the same settings twice */
+const getFrozenKeys = (pins: readonly Pin[]) =>
+  new Set(pins.flatMap((pin) => (pin.frozen ? [getFrozenKey(pin.frozen.request)] : [])));
+
+/** @returns why a live pin with this request can't be frozen, if it can't */
+function getFreezeBlocked(request: BuildRequest | undefined, frozenKeys: ReadonlySet<string>) {
+  if (!request) return "Can't be frozen: the weapon or its attack wasn't found";
+  if (frozenKeys.has(getFrozenKey(storeRequest(request)))) {
+    return "Already frozen with these settings";
+  }
+  return undefined;
 }
 
 export default function App() {
@@ -1101,6 +1115,7 @@ export default function App() {
   const currentPinSettings = useMemo(() => getPinSettings(appState), [appState]);
   const pinnedRows = useMemo(() => {
     const defaultPinSettings = getPinSettings(defaultAppState);
+    const frozenKeys = getFrozenKeys(pins);
     const rows = pins.map((pin): PinnedRow => {
       const settings = pin.frozen?.settings ?? currentPinSettings;
       const oneOffAttack = oneOffAttacks.has(pin.attack);
@@ -1123,7 +1138,9 @@ export default function App() {
         // (kept together with the weapon's last word, so it doesn't wrap onto a line alone)
         name: pin.label ? `${pin.weaponName}\u00a0·\u00a0${pin.label}` : pin.weaponName,
         chartKey: getPinChartKey(pin),
-        canFreeze: !!pin.frozen || pinRequests.has(pin.id),
+        ...(!pin.frozen && {
+          freezeBlocked: getFreezeBlocked(pinRequests.get(pin.id), frozenKeys),
+        }),
         skill: pin.attack === ashAttack,
         oneOffAttack,
         hitsNote: attackTimingNotes[pin.attack],
@@ -1250,6 +1267,7 @@ export default function App() {
             return pins.some((other) => !other.frozen && getKeyOfPin(other) === key) ? [] : [live];
           }
           const request = pinRequests.get(id);
+          if (getFreezeBlocked(request, getFrozenKeys(pins))) return [pin];
           return [
             request
               ? {

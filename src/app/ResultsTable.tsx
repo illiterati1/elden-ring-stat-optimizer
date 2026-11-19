@@ -45,8 +45,11 @@ export interface PinnedRow {
   name: string;
   /** Its key in chartWeapons */
   chartKey: string;
-  /** False for a live pin whose weapon or attack isn't found, so there's nothing to freeze */
-  canFreeze: boolean;
+  /**
+   * Why a live pin can't be frozen, if it can't: its weapon or attack isn't found, or it's already
+   * frozen with the same settings
+   */
+  freezeBlocked?: string;
   skill: boolean;
   oneOffAttack: boolean;
   hitsNote?: string;
@@ -753,7 +756,7 @@ function ResultsTable({
     );
 
   /** A pinned row's buttons: unpin, freeze or unfreeze, and restore a frozen one's settings */
-  const pinnedCell = ({ pin, name, canFreeze, settingLines }: PinnedRow) => (
+  const pinnedCell = ({ pin, name, freezeBlocked, settingLines }: PinnedRow) => (
     <>
       <Tooltip title="Unpin">
         <IconButton
@@ -769,9 +772,7 @@ function ResultsTable({
         title={
           settingLines
             ? frozenTooltip(settingLines)
-            : canFreeze
-            ? "Freeze: keep these values when the settings change"
-            : "Can't be frozen"
+            : freezeBlocked ?? "Freeze: keep these values when the settings change"
         }
       >
         <span>
@@ -780,7 +781,7 @@ function ResultsTable({
             className={pin.frozen ? undefined : "pin-hover"}
             sx={pinButtonSx}
             color={pin.frozen ? "info" : "default"}
-            disabled={!canFreeze}
+            disabled={!pin.frozen && !!freezeBlocked}
             aria-label={`${pin.frozen ? "Unfreeze" : "Freeze"} ${name}`}
             aria-pressed={!!pin.frozen}
             onClick={() => pinActions.toggleFreeze(pin.id)}

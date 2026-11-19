@@ -109,6 +109,22 @@ export function storeRequest(request: BuildRequest): StoredRequest {
 }
 
 /**
+ * Identifies what a frozen pin's values come from, so the same row isn't frozen twice with the same
+ * settings: its stored request as JSON, with object keys in order (requests built at different times
+ * can list them differently). Equip weight only counts with a buff that depends on it (the Blue
+ * Dancer Charm), though every request has it.
+ */
+export function getFrozenKey(request: StoredRequest) {
+  const { equipWeight, ...rest } = request;
+  const used = request.buffs?.some((effect) => effect.byEquipWeight) ? { equipWeight } : {};
+  return JSON.stringify({ ...rest, ...used }, (_, value: unknown) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : value,
+  );
+}
+
+/**
  * @param findWeapon a weapon by its full name (including ammunition, for a ranged weapon)
  * @returns the request with its weapons' current data, or undefined if one isn't found (e.g. it's
  * been renamed)
