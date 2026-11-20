@@ -1011,7 +1011,7 @@ export default function App() {
         : undefined,
     [topN, workerSortHidden, sortBy, reverse, showDps],
   );
-  const { results, pending: mainPending, workerRef } = useBuildResults(requests, workerTopN);
+  const { results, pending: mainPending, poolRef } = useBuildResults(requests, workerTopN);
 
   // Pinned rows, whether their weapons are picked or not: a live pin's values use the current
   // settings with its own weapon and attack, and a frozen pin's the request it was frozen with.
@@ -1075,8 +1075,8 @@ export default function App() {
     results: pinResults,
     resultRequests: pinResultRequests,
     pending: pinsPending,
-    workerRef: pinWorkerRef,
-  } = useBuildResults(pinRequestList);
+    poolRef: pinPoolRef,
+  } = useBuildResults(pinRequestList, undefined, 1);
   const pending = mainPending || (pins.length > 0 && pinsPending);
   const pinResultsById = useMemo(
     () =>
@@ -1342,7 +1342,7 @@ export default function App() {
         : [],
     [showDps, fastMode, requests, chartedResults],
   );
-  const dpsCurves = useDpsCurves(workerRef, dpsRequests);
+  const dpsCurves = useDpsCurves(poolRef, dpsRequests);
   const pinDpsRequests = useMemo(
     () =>
       showDps
@@ -1353,7 +1353,7 @@ export default function App() {
         : [],
     [showDps, chartedPins, pinRequests],
   );
-  const pinDpsCurves = useDpsCurves(pinWorkerRef, pinDpsRequests);
+  const pinDpsCurves = useDpsCurves(pinPoolRef, pinDpsRequests);
   const chartResults = chartedResults.map((result) => ({
     ...result,
     ...(result.skillVariant && {
