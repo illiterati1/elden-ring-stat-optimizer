@@ -1672,7 +1672,8 @@ export function optimizeAttributes(options: OptimizeOptions): OptimizationCurve 
     return allocations.map((values) => {
       const attributes = { ...options.attributes };
       model.attributes.forEach((attribute, i) => (attributes[attribute] = values[i]));
-      return attributes;
+      // The model's value is the regular calculator's (the tests check that), only much quicker
+      return { attributes, value: evaluateModel(model, values) };
     });
   });
 
@@ -1682,8 +1683,7 @@ export function optimizeAttributes(options: OptimizeOptions): OptimizationCurve 
     let bestAllocation = options.attributes;
     let levels = 0;
     for (const curve of curves) {
-      const allocation = curve.at(-1)!;
-      const value = evaluateObjective(options, allocation)!;
+      const { attributes: allocation, value } = curve.at(-1)!;
       if (value > bestValue + epsilon) {
         bestValue = value;
         bestAllocation = allocation;
@@ -1697,8 +1697,7 @@ export function optimizeAttributes(options: OptimizeOptions): OptimizationCurve 
     return { values: [bestValue], allocations: packAllocations([bestAllocation]), exact, levels };
   }
 
-  // Combine the groups by taking the best at each number of levels, and verify every value with
-  // the regular damage calculator
+  // Combine the groups by taking the best at each number of levels
   const length = Math.max(...curves.map((curve) => curve.length));
   const values: number[] = [];
   const allocations: Attributes[] = [];
@@ -1706,8 +1705,7 @@ export function optimizeAttributes(options: OptimizeOptions): OptimizationCurve 
     let bestValue = n > 0 ? values[n - 1] : -Infinity;
     let bestAllocation = n > 0 ? allocations[n - 1] : options.attributes;
     for (const curve of curves) {
-      const allocation = curve[Math.min(n, curve.length - 1)];
-      const value = evaluateObjective(options, allocation)!;
+      const { attributes: allocation, value } = curve[Math.min(n, curve.length - 1)];
       if (value > bestValue + epsilon) {
         bestValue = value;
         bestAllocation = allocation;

@@ -264,6 +264,65 @@ describe("optimizeAttributes", () => {
     });
   }
 
+  // The optimizer reports its model's values, which must be the regular calculator's
+  it("reports the regular damage calculator's value at every level", () => {
+    const movesets: Movesets = JSON.parse(
+      readFileSync(new URL("../../public/movesets.json", import.meta.url), "utf8"),
+    );
+    const physicalNegation = { standard: 0, slash: 20, strike: -15, pierce: 35 };
+    const requests: BuildRequest[] = [];
+    const add = (weapon: Weapon, overrides: Partial<BuildRequest>) =>
+      requests.push({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        attributes: { str: 14, dex: 13, int: 9, fai: 9, arc: 7 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        limits: noLimits,
+        ...overrides,
+      });
+    weapons.forEach((weapon, i) => {
+      if (i % 25 === 0) {
+        add(weapon, { defenses, physicalNegation });
+        add(weapon, { objective: AttackPowerType.FIRE });
+        add(weapon, {
+          defenses,
+          physicalNegation,
+          fast: true,
+          limits: { ...noLimits, maxLevels: 30 },
+        });
+      }
+      if (weapon.sorceryTool || weapon.incantationTool) add(weapon, { objective: "spellScaling" });
+    });
+    for (const [name, attackName, twoHanding] of [
+      ["Rellana's Twin Blades", "Charged R2", true],
+      ["Bloodfiend's Arm", "R2", false],
+      ["Madding Hand", "R1", false],
+      ["Lizard Greatsword", "R2", true],
+      ["Bloodfiend's Sacred Arm", "Jumping R2", false],
+    ] as const) {
+      const weapon = getWeapon(name);
+      const attack = getAttackData(movesets, weapon, attackName, twoHanding, 0.5)!;
+      add(weapon, { twoHanding, attack, defenses, physicalNegation });
+    }
+
+    let checked = 0;
+    for (const request of requests) {
+      optimizeBuild(request, (options) => {
+        const curve = optimizeAttributes(options);
+        curve?.values.forEach((value, n) => {
+          const expected = evaluateObjective(options, getAllocation(curve.allocations, n))!;
+          expect(value).toBeCloseTo(expected, 6);
+          checked++;
+        });
+        return curve;
+      });
+    }
+    expect(checked).toBeGreaterThan(10000);
+  });
+
   it("doesn't apply spell scaling to non-catalysts", () => {
     expect(
       optimizeAttributes({
