@@ -306,7 +306,7 @@ export const defaultAppState: AppState = {
     minGain: { enabled: false, value: 2, relative: false },
     targetValue: { enabled: false, value: 600 },
     targetPotential: { enabled: false, value: 80 },
-    minPotentialPerRemainingLevel: { enabled: false, value: 0.5 },
+    minPotentialPerRemainingLevel: { enabled: false, value: 0.7 },
   },
   plannedStats: {},
   defenses: {

@@ -3,7 +3,7 @@ import type { BuildRequest, BuildResult } from "../optimizer/build.ts";
 import WorkerPool, { getDefaultPoolSize, type TopN } from "./workerPool.ts";
 
 /** Wait for the user to stop typing before starting a calculation */
-const debounceMs = 150;
+const debounceMs = 300;
 
 /**
  * Runs the optimizer in a pool of web workers whenever the requests change. The workers cache the

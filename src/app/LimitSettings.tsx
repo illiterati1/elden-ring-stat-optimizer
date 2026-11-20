@@ -5,6 +5,7 @@ import {
   FormControlLabel,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import NumberTextField from "./NumberTextField.tsx";
@@ -161,6 +162,7 @@ function LimitSettings({
         <NumberTextField
           label="Min gain per level"
           size="small"
+          spinButtons
           disabled={!minGain.enabled || fastMode}
           value={minGain.value}
           min={0}
@@ -205,15 +207,20 @@ function LimitSettings({
         <Unit>%</Unit>
 
         {enabledCheckbox("minPotentialPerRemainingLevel", "Minimum potential left per level")}
-        <NumberTextField
-          label="Min left per level"
-          size="small"
-          disabled={!minPotentialPerRemainingLevel.enabled || fastMode}
-          value={minPotentialPerRemainingLevel.value}
-          min={0}
-          step={0.1}
-          onChange={(value) => update("minPotentialPerRemainingLevel", { value })}
-        />
+        <Tooltip title="Stop when (100% − potential) / levels to 100% falls below this">
+          <Box>
+            <NumberTextField
+              label="Min left per level"
+              size="small"
+              spinButtons
+              disabled={!minPotentialPerRemainingLevel.enabled || fastMode}
+              value={minPotentialPerRemainingLevel.value}
+              min={0}
+              step={0.1}
+              onChange={(value) => update("minPotentialPerRemainingLevel", { value })}
+            />
+          </Box>
+        </Tooltip>
         <Unit>% potential</Unit>
       </Box>
       <FormControlLabel
