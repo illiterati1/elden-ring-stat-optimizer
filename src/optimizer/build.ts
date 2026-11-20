@@ -1522,7 +1522,14 @@ export function optimizeBuild(
           (_, n) => n,
         ),
         startLevel + requiredLevels,
-        { ...levelLimits, minGainPerLevel: null, minRelativeGainPerLevel: null, targetValue: null },
+        {
+          ...levelLimits,
+          minGainPerLevel: null,
+          minRelativeGainPerLevel: null,
+          targetValue: null,
+          targetPotential: null,
+          minPotentialPerRemainingLevel: null,
+        },
         currentLevel,
       )
     : null;
@@ -1607,6 +1614,27 @@ export function optimizeBuild(
     };
   }
 
+  // The stats at 0% potential (each damage stat at the higher of the weapon's requirement and the
+  // class's base) and at 100% (99 in each)
+  const minPotentialAttributes = Object.fromEntries(
+    allAttributes.map((attribute) => [
+      attribute,
+      Math.max(weapon.requirements[attribute] ?? 0, classAttributes?.[attribute] ?? 1),
+    ]),
+  ) as Attributes;
+  const maxPotentialAttributes = Object.fromEntries(
+    allAttributes.map((attribute) => [attribute, 99]),
+  ) as Attributes;
+  // Unrounded like the curve, for the potential limits
+  const potentialRange =
+    !fastLimit &&
+    (levelLimits.targetPotential != null || levelLimits.minPotentialPerRemainingLevel != null)
+      ? {
+          min: evaluateObjective(options, minPotentialAttributes)!,
+          max: evaluateObjective(options, maxPotentialAttributes)!,
+        }
+      : undefined;
+
   // In fast mode the curve is just the final level (fewer levels if every stat is maxed)
   const { levels, runes, reason } =
     fastLimit && curve.levels != null
@@ -1617,7 +1645,13 @@ export function optimizeBuild(
           ],
           reason: curve.levels < fastLimit.levels ? ("maxedOut" as const) : fastLimit.reason,
         }
-      : applyLimits(curve.values, startLevel + requiredLevels, levelLimits, currentLevel);
+      : applyLimits(
+          curve.values,
+          startLevel + requiredLevels,
+          levelLimits,
+          currentLevel,
+          potentialRange,
+        );
   const curveIndex = curve.levels != null ? 0 : levels;
   const finalAttributes = getAllocation(curve.allocations, curveIndex);
   const hpDamage = getAttackHpDamage(attack, enemyHp);
@@ -1825,17 +1859,8 @@ export function optimizeBuild(
 
   const getValueAt = (leveled: Attributes) =>
     roundHits ? getRoundedValue(leveled) : evaluateObjective(options, leveled)!;
-  const requiredValue = getValueAt(
-    Object.fromEntries(
-      allAttributes.map((attribute) => [
-        attribute,
-        Math.max(weapon.requirements[attribute] ?? 0, classAttributes?.[attribute] ?? 1),
-      ]),
-    ) as Attributes,
-  );
-  const maxValue = getValueAt(
-    Object.fromEntries(allAttributes.map((attribute) => [attribute, 99])) as Attributes,
-  );
+  const requiredValue = getValueAt(minPotentialAttributes);
+  const maxValue = getValueAt(maxPotentialAttributes);
   const finalValue =
     (roundHits ? getRoundedValue(finalAttributes) : curve.values[curveIndex]) + hpDamage;
   const potential =

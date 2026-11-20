@@ -95,6 +95,8 @@ const noLimits: Limits = {
   minRelativeGainPerLevel: null,
   runeBudget: null,
   targetValue: null,
+  targetPotential: null,
+  minPotentialPerRemainingLevel: null,
 };
 const defenses = Object.fromEntries(
   [0, 1, 2, 3, 4].map((damageType) => [damageType, { defense: 120, negation: 10 }]),
@@ -307,6 +309,36 @@ describe("applyLimits", () => {
       levels: 11,
       reason: "maxedOut",
     });
+  });
+});
+
+describe("applyLimits potential", () => {
+  // A requirement jump at level 5, then diminishing returns, maxing out at level 11
+  const values = [100, 100, 100, 100, 100, 160, 170, 178, 184, 188, 190, 191, 191, 191];
+  // 1% potential is 1 point
+  const range = { min: 91, max: 191 };
+
+  it("stops once the target potential is reached", () => {
+    // 79% is 170, at level 6
+    expect(applyLimits(values, 50, { ...noLimits, targetPotential: 79 }, 50, range)).toMatchObject({
+      levels: 6,
+      reason: "targetPotential",
+    });
+    // Without a range it doesn't apply
+    expect(applyLimits(values, 50, { ...noLimits, targetPotential: 79 })).toMatchObject({
+      levels: 11,
+    });
+  });
+
+  it("stops when the potential left per level falls below the minimum", () => {
+    // Left per level: 91/11 = 8.3 at 0 (a hull point, past the dip before the jump), 31/6 = 5.2
+    // at 5, 21/5 = 4.2 at 6, 13/4 = 3.25 at 7, 7/3 = 2.3 at 8
+    const stop = (min: number) =>
+      applyLimits(values, 50, { ...noLimits, minPotentialPerRemainingLevel: min }, 50, range);
+    expect(stop(9)).toMatchObject({ levels: 0, reason: "minPotentialPerRemainingLevel" });
+    expect(stop(5)).toMatchObject({ levels: 6, reason: "minPotentialPerRemainingLevel" });
+    expect(stop(3)).toMatchObject({ levels: 8, reason: "minPotentialPerRemainingLevel" });
+    expect(stop(0.1)).toMatchObject({ levels: 11, reason: "maxedOut" });
   });
 });
 

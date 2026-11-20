@@ -42,6 +42,10 @@ export interface LimitSettings {
   /** Minimum gain per level, in points or percent of the current value if relative */
   minGain: LimitSetting & { relative: boolean };
   targetValue: LimitSetting;
+  /** Stop once the potential reaches this percentage */
+  targetPotential: LimitSetting;
+  /** Stop once the potential left, per level it takes to gain, falls below this percentage */
+  minPotentialPerRemainingLevel: LimitSetting;
 }
 
 /**
@@ -301,6 +305,8 @@ export const defaultAppState: AppState = {
     },
     minGain: { enabled: false, value: 2, relative: false },
     targetValue: { enabled: false, value: 600 },
+    targetPotential: { enabled: false, value: 80 },
+    minPotentialPerRemainingLevel: { enabled: false, value: 0.5 },
   },
   plannedStats: {},
   defenses: {
@@ -388,6 +394,14 @@ function getInitialAppState(): AppState {
         maxLevels: getStoredLevelLimit(stored.limits),
         minGain: { ...defaultAppState.limits.minGain, ...stored.limits?.minGain },
         targetValue: { ...defaultAppState.limits.targetValue, ...stored.limits?.targetValue },
+        targetPotential: {
+          ...defaultAppState.limits.targetPotential,
+          ...stored.limits?.targetPotential,
+        },
+        minPotentialPerRemainingLevel: {
+          ...defaultAppState.limits.minPotentialPerRemainingLevel,
+          ...stored.limits?.minPotentialPerRemainingLevel,
+        },
       },
       // Earlier versions saved 0 for stats that weren't planned
       plannedStats: Object.fromEntries(

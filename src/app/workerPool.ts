@@ -41,8 +41,20 @@ function hash(text: string) {
  * results the same way: fast mode only applies the level and rune limits
  */
 function fastModeRanksExactly(request: BuildRequest) {
-  const { minGainPerLevel, minRelativeGainPerLevel, targetValue } = request.limits;
-  return minGainPerLevel == null && minRelativeGainPerLevel == null && targetValue == null;
+  const {
+    minGainPerLevel,
+    minRelativeGainPerLevel,
+    targetValue,
+    targetPotential,
+    minPotentialPerRemainingLevel,
+  } = request.limits;
+  return (
+    minGainPerLevel == null &&
+    minRelativeGainPerLevel == null &&
+    targetValue == null &&
+    targetPotential == null &&
+    minPotentialPerRemainingLevel == null
+  );
 }
 
 /** One list of requests being optimized */

@@ -251,6 +251,8 @@ export const limitReasonLabels: Record<LimitReason, string> = {
   minRelativeGainPerLevel: "Min % / level",
   runeBudget: "Rune budget",
   targetValue: "Target reached",
+  targetPotential: "Target potential",
+  minPotentialPerRemainingLevel: "Min potential left / level",
   maxedOut: "No further gain",
 };
 

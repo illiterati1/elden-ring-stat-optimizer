@@ -556,7 +556,8 @@ export default function App() {
    * pinned row with its own
    */
   const getWeaponRequests = useMemo(() => {
-    const { maxLevels, minGain, targetValue } = limits;
+    const { maxLevels, minGain, targetValue, targetPotential, minPotentialPerRemainingLevel } =
+      limits;
     const levelLimit = maxLevels.enabled ? maxLevels.values[maxLevels.mode] : null;
     const enabledLimits: Limits = {
       // Additional levels count from the current or planned level, whichever is higher, but the
@@ -576,6 +577,11 @@ export default function App() {
         minGain.enabled && minGain.relative && !fastMode ? minGain.value : null,
       runeBudget: levelLimit != null && maxLevels.mode === "runes" ? levelLimit : null,
       targetValue: targetValue.enabled && !fastMode ? targetValue.value : null,
+      targetPotential: targetPotential.enabled && !fastMode ? targetPotential.value : null,
+      minPotentialPerRemainingLevel:
+        minPotentialPerRemainingLevel.enabled && !fastMode
+          ? minPotentialPerRemainingLevel.value
+          : null,
     };
 
     return (
@@ -1300,7 +1306,10 @@ export default function App() {
     },
     restore: (id: string) => {
       const settings = latest.current.pins.find((pin) => pin.id === id)?.frozen?.settings;
-      if (settings) updateAppState(settings);
+      // Pins frozen before a limit was added don't have it
+      if (settings) {
+        updateAppState({ ...settings, limits: { ...defaultAppState.limits, ...settings.limits } });
+      }
     },
   }));
 

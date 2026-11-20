@@ -19,6 +19,24 @@ export interface Limits {
 
   /** Stop once the objective reaches this value */
   targetValue: number | null;
+
+  /**
+   * Stop once the potential reaches this percentage: 0% is the value at the weapon's requirements
+   * (or the class's base), 100% the value with 99 in each damage stat
+   */
+  targetPotential: number | null;
+
+  /**
+   * Stop once the potential left to gain, divided by the levels it takes to gain it, falls below
+   * this percentage per level
+   */
+  minPotentialPerRemainingLevel: number | null;
+}
+
+/** The objective's values at 0% and 100% potential */
+export interface PotentialRange {
+  min: number;
+  max: number;
 }
 
 export type LimitReason = keyof Limits | "maxedOut";
@@ -76,12 +94,15 @@ function findStop(
  *
  * @param values best objective value achievable with at most n levels, for each n (non-decreasing)
  * @param ownedLevel levels below this are already owned, so cost no runes
+ * @param potentialRange the values at 0% and 100% potential, for the potential limits (which
+ * don't apply without it)
  */
 export function applyLimits(
   values: number[],
   startLevel: number,
   limits: Limits,
   ownedLevel = startLevel,
+  potentialRange?: PotentialRange,
 ): { levels: number; runes: number; reason: LimitReason } {
   const last = values.length - 1;
 
@@ -95,6 +116,14 @@ export function applyLimits(
   const runes = getCumulativeLevelUpCosts(startLevel, last, ownedLevel);
 
   const { minGainPerLevel, minRelativeGainPerLevel, runeBudget, targetValue } = limits;
+  // The value of 1% potential, if the potential limits apply
+  const potentialPercent =
+    potentialRange && potentialRange.max - potentialRange.min > epsilon
+      ? (potentialRange.max - potentialRange.min) / 100
+      : null;
+  const targetPotential = potentialPercent != null ? limits.targetPotential : null;
+  const minPotentialPerRemainingLevel =
+    potentialPercent != null ? limits.minPotentialPerRemainingLevel : null;
 
   if (runeBudget != null) {
     let affordable = stop;
@@ -113,9 +142,36 @@ export function applyLimits(
     }
   }
 
+  if (targetPotential != null) {
+    const target = potentialRange!.min + targetPotential * potentialPercent!;
+    const reached = values.findIndex((value) => value >= target - epsilon);
+    if (reached >= 0 && reached < stop) {
+      stop = reached;
+      reason = "targetPotential";
+    }
+  }
+
   const count = stop + 1;
   const levels = values.map((_, n) => n);
   const candidates = [];
+
+  if (minPotentialPerRemainingLevel != null) {
+    // The remaining potential per level is the slope from a point to where the value maxes out.
+    // Along the upper hull that only falls, so the first hull point where it's below the minimum
+    // is where to stop (between hull points, the raw curve's dips and jumps would make it go up
+    // and down).
+    const maxedOut = values.findIndex((value) => value >= values[last] - epsilon);
+    const hull = getUpperHull(levels, values, values.length);
+    const stopAt = hull.find(
+      (n) =>
+        n < count &&
+        n < maxedOut &&
+        (values[last] - values[n]) / (maxedOut - n) / potentialPercent! <
+          minPotentialPerRemainingLevel,
+    );
+    if (stopAt != null)
+      candidates.push({ stop: stopAt, reason: "minPotentialPerRemainingLevel" as const });
+  }
 
   if (minGainPerLevel != null || minRelativeGainPerLevel != null) {
     candidates.push(

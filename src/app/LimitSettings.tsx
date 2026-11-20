@@ -109,7 +109,8 @@ function LimitSettings({
     />
   );
 
-  const { maxLevels, minGain, targetValue } = limits;
+  const { maxLevels, minGain, targetValue, targetPotential, minPotentialPerRemainingLevel } =
+    limits;
   const levelField = levelLimitFields[maxLevels.mode];
   // Leveling starts from the planned level, so a level limit below it means no levels: when it's
   // above the current level, that's the least the limit can be. Additional levels count from
@@ -188,6 +189,32 @@ function LimitSettings({
           onChange={(value) => update("targetValue", { value })}
         />
         <Unit>{pointLabel}</Unit>
+
+        {enabledCheckbox("targetPotential", "Target potential")}
+        <NumberTextField
+          label="Target potential"
+          size="small"
+          spinButtons
+          disabled={!targetPotential.enabled || fastMode}
+          value={targetPotential.value}
+          min={0}
+          max={100}
+          step={5}
+          onChange={(value) => update("targetPotential", { value })}
+        />
+        <Unit>%</Unit>
+
+        {enabledCheckbox("minPotentialPerRemainingLevel", "Minimum potential left per level")}
+        <NumberTextField
+          label="Min left per level"
+          size="small"
+          disabled={!minPotentialPerRemainingLevel.enabled || fastMode}
+          value={minPotentialPerRemainingLevel.value}
+          min={0}
+          step={0.1}
+          onChange={(value) => update("minPotentialPerRemainingLevel", { value })}
+        />
+        <Unit>% potential</Unit>
       </Box>
       <FormControlLabel
         label="Always meet requirements"
@@ -213,7 +240,7 @@ function LimitSettings({
       {fastMode && (
         <Typography variant="body2" color="text.secondary">
           Much faster with many weapons, e.g. for a respec at a fixed level, but there&apos;s no
-          chart, and the minimum gain and target value don&apos;t apply.
+          chart, and the minimum gain, target, and potential limits don&apos;t apply.
         </Typography>
       )}
       <DismissableNote
@@ -222,10 +249,12 @@ function LimitSettings({
         onChange={onChange}
         sx={{ mt: 1.5 }}
       >
-        Additional levels are counted from your current or planned level, whichever is higher.
-        Runes are counted from your current level, including any needed to reach your planned
-        stats. Gains are averaged over stretches where a requirement takes several levels to
-        reach.
+        Additional levels are counted from your current or planned level, whichever is higher. Runes
+        are counted from your current level, including any needed to reach your planned stats. Gains
+        are averaged over stretches where a requirement takes several levels to reach. Potential is
+        0% with each damage stat at the higher of the weapon&apos;s requirement and the class&apos;s
+        base, and 100% with 99 in each. Potential left per level is the potential still to gain
+        divided by the levels it takes to gain it.
       </DismissableNote>
     </Section>
   );

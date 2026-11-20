@@ -270,6 +270,16 @@ export function describePinSettings(
       value: ({ limits: { targetValue } }) =>
         targetValue.enabled ? `${targetValue.value}` : "Off",
     },
+    {
+      label: "Target potential",
+      value: ({ limits: { targetPotential } }) =>
+        targetPotential?.enabled ? `${targetPotential.value}%` : "Off",
+    },
+    {
+      label: "Min potential left per level",
+      value: ({ limits: { minPotentialPerRemainingLevel } }) =>
+        minPotentialPerRemainingLevel?.enabled ? `${minPotentialPerRemainingLevel.value}%` : "Off",
+    },
     { label: "Meet requirements first", value: (s) => yesNo(s.meetRequirements) },
     { label: "Fast mode", value: (s) => (s.fastMode ? "On" : "Off") },
     {
