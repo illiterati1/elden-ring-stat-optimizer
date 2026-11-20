@@ -84,6 +84,7 @@ import useMovesets, {
 } from "./useMovesets.ts";
 import useAmmo, { getAmmoKey, getAmmoLabel, weaponTypeAmmoClasses, withAmmo } from "./useAmmo.ts";
 import useBuildResults, { useDpsCurves } from "./useBuildResults.ts";
+import useStableArray from "./useStableArray.ts";
 import CharacterSettings from "./CharacterSettings.tsx";
 import BuildSettings from "./BuildSettings.tsx";
 import TimingSettings from "./TimingSettings.tsx";
@@ -98,9 +99,11 @@ import {
   getPinKey,
   getFrozenKey,
   getPinSettings,
+  pinSettingKeys,
   restoreRequest,
   storeRequest,
   type Pin,
+  type PinSettings,
 } from "./pins.ts";
 import ValueChart from "./ValueChart.tsx";
 import { getResultStatus, sortResults } from "./results.ts";
@@ -1030,7 +1033,15 @@ export default function App() {
         : undefined,
     [topN, workerSortHidden, sortBy, reverse, showDps],
   );
-  const { results, pending: mainPending, poolRef } = useBuildResults(requests, workerTopN);
+  // The table shows the stats its results were worked out from, so it doesn't render again with
+  // the old results whenever they change
+  const tableContext = useMemo(() => ({ startAttributes, plan }), [startAttributes, plan]);
+  const {
+    results,
+    resultContext: resultTableContext = tableContext,
+    pending: mainPending,
+    poolRef,
+  } = useBuildResults(requests, workerTopN, undefined, tableContext);
 
   // Pinned rows, whether their weapons are picked or not: a live pin's values use the current
   // settings with its own weapon and attack, and a frozen pin's the request it was frozen with.
@@ -1090,30 +1101,48 @@ export default function App() {
     [pins, frozenRequests, weaponsByName, ammo, getWeaponRequests],
   );
   const pinRequestList = useMemo(() => [...pinRequests.values()], [pinRequests]);
+  // The settings the pinned rows are shown with: other settings, like the chart's range, don't
+  // change them, and they're kept with the pins' results like the table's
+  const pinSettingsRef = useRef<PinSettings>();
+  const currentPinSettings = useMemo(() => {
+    const settings = getPinSettings(appState);
+    const previous = pinSettingsRef.current;
+    if (previous && pinSettingKeys.every((key) => previous[key] === settings[key])) return previous;
+    return (pinSettingsRef.current = settings);
+  }, [appState]);
   const {
     results: pinResults,
     resultRequests: pinResultRequests,
+    resultContext: pinResultSettings = currentPinSettings,
     pending: pinsPending,
     poolRef: pinPoolRef,
-  } = useBuildResults(pinRequestList, undefined, 1);
+  } = useBuildResults(pinRequestList, undefined, 1, currentPinSettings);
   const pending = mainPending || (pins.length > 0 && pinsPending);
   const pinResultsById = useMemo(
     () =>
       new Map(pinResultRequests.map((request, i) => [pinRequestIds.get(request), pinResults[i]])),
     [pinResultRequests, pinResults, pinRequestIds],
   );
+  const pinResultRequestsById = useMemo(
+    () => new Map(pinResultRequests.map((request) => [pinRequestIds.get(request), request])),
+    [pinResultRequests, pinRequestIds],
+  );
+  // (the same array until a pin gains or loses its request, rather than whenever settings change)
+  const pinIdsWithRequests = useStableArray(useMemo(() => [...pinRequests.keys()], [pinRequests]));
 
   // A column for each status effect that any weapon in the table builds up
-  const statusTypesShown = useMemo(
-    () =>
-      showStatus
-        ? [...statusTypes.keys()].filter((statusType) =>
-            [...results, ...pinResults].some(
-              (result) => result.applicable && getResultStatus(result)[statusType],
-            ),
-          )
-        : [],
-    [showStatus, results, pinResults],
+  const statusTypesShown = useStableArray(
+    useMemo(
+      () =>
+        showStatus
+          ? [...statusTypes.keys()].filter((statusType) =>
+              [...results, ...pinResults].some(
+                (result) => result.applicable && getResultStatus(result)[statusType],
+              ),
+            )
+          : [],
+      [showStatus, results, pinResults],
+    ),
   );
 
   // Sorting by a hidden column falls back to the highest total first
@@ -1137,12 +1166,11 @@ export default function App() {
 
   // Each pinned row with what it's shown with: its own attack's, and a frozen one's settings.
   // They're sorted like the table, after any that aren't worked out yet.
-  const currentPinSettings = useMemo(() => getPinSettings(appState), [appState]);
-  const pinnedRows = useMemo(() => {
+  const unstablePinnedRows = useMemo(() => {
     const defaultPinSettings = getPinSettings(defaultAppState);
     const frozenKeys = getFrozenKeys(pins);
     const rows = pins.map((pin): PinnedRow => {
-      const settings = pin.frozen?.settings ?? currentPinSettings;
+      const settings = pin.frozen?.settings ?? pinResultSettings;
       const oneOffAttack = oneOffAttacks.has(pin.attack);
       const result =
         pinResultsById.get(pin.id) ??
@@ -1151,7 +1179,7 @@ export default function App() {
           weaponName: pin.weaponName,
           url: null,
           applicable: false,
-          unavailableReason: pinRequests.has(pin.id)
+          unavailableReason: pinIdsWithRequests.includes(pin.id)
             ? "Calculating…"
             : pin.frozen
             ? "Not available: a weapon it was frozen with wasn't found"
@@ -1164,7 +1192,7 @@ export default function App() {
         name: pin.label ? `${pin.weaponName}\u00a0·\u00a0${pin.label}` : pin.weaponName,
         chartKey: getPinChartKey(pin),
         ...(!pin.frozen && {
-          freezeBlocked: getFreezeBlocked(pinRequests.get(pin.id), frozenKeys),
+          freezeBlocked: getFreezeBlocked(pinResultRequestsById.get(pin.id), frozenKeys),
         }),
         skill: pin.attack === ashAttack,
         oneOffAttack,
@@ -1182,7 +1210,7 @@ export default function App() {
           pin.frozen &&
           describePinSettings(
             pin.frozen.settings,
-            currentPinSettings,
+            pinResultSettings,
             defaultPinSettings,
             pin.attack,
             !!pin.frozen.request.attack?.chain,
@@ -1204,8 +1232,9 @@ export default function App() {
   }, [
     pins,
     pinResultsById,
-    pinRequests,
-    currentPinSettings,
+    pinResultRequestsById,
+    pinIdsWithRequests,
+    pinResultSettings,
     allBuffs,
     tooltipTimings,
     effectiveSortBy,
@@ -1213,6 +1242,8 @@ export default function App() {
     sortHidden,
     showDps,
   ]);
+  // (the same empty array while there are no pins)
+  const pinnedRows = useStableArray(unstablePinnedRows);
   // The table's rows that are pinned too: with the chosen attack, a live pin's are the same row. (A
   // frozen pin isn't, so the row can be pinned again to compare it with the current settings.)
   const rowPins = useMemo(() => {
@@ -1644,8 +1675,8 @@ export default function App() {
                         pinActions={pinActions}
                         chartWeapons={chartWeapons}
                         chartDisabled={fastMode}
-                        startAttributes={startAttributes}
-                        planStats={plan}
+                        startAttributes={resultTableContext.startAttributes}
+                        planStats={resultTableContext.plan}
                         valueLabel={valueLabel}
                         pointLabel={pointLabel}
                         notApplicableLabel={notApplicableLabel}

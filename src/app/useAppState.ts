@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { noteSettingsChange } from "./pickerChange.ts";
 import {
   AttackPowerType,
   type Attribute,
@@ -306,7 +307,7 @@ export const defaultAppState: AppState = {
     minGain: { enabled: false, value: 2, relative: false },
     targetValue: { enabled: false, value: 600 },
     targetPotential: { enabled: false, value: 80 },
-    minPotentialPerRemainingLevel: { enabled: false, value: 0.7 },
+    minPotentialPerRemainingLevel: { enabled: false, value: 0.3 },
   },
   plannedStats: {},
   defenses: {
@@ -450,10 +451,10 @@ export default function useAppState(): [AppState, UpdateAppState] {
     }
   }, [appState]);
 
-  const [updateAppState] = useState<UpdateAppState>(
-    () => (update: Partial<AppState>) =>
-      setAppState((prevAppState) => ({ ...prevAppState, ...update })),
-  );
+  const [updateAppState] = useState<UpdateAppState>(() => (update: Partial<AppState>) => {
+    noteSettingsChange();
+    setAppState((prevAppState) => ({ ...prevAppState, ...update }));
+  });
 
   return [appState, updateAppState];
 }

@@ -1,28 +1,43 @@
 import { useEffect, useRef, useState } from "react";
 import type { BuildRequest, BuildResult } from "../optimizer/build.ts";
+import { afterPickersClose, isLatestChangeFromPicker } from "./pickerChange.ts";
 import WorkerPool, { getDefaultPoolSize, type TopN } from "./workerPool.ts";
 
-/** Wait for the user to stop typing before starting a calculation */
+/**
+ * Wait for the user to stop typing, spinning or ticking boxes before starting a calculation (after
+ * picking from a picker, only until it's closed)
+ */
 const debounceMs = 300;
+/**
+ * The longest to wait for a picker to close, for one that stays open while several options are
+ * picked (rather than holding up the page while they're picked)
+ */
+const pickerTimeoutMs = 1000;
 
 /**
  * Runs the optimizer in a pool of web workers whenever the requests change. The workers cache the
  * expensive part of each calculation, and abandon a request as soon as a newer one arrives.
  * @param poolSize how many workers to split the requests between
- * @returns the results, and the requests they're for (without top N, in the same order), which
- * are behind the latest requests until they're worked out
+ * @param context anything the results are shown with that comes from the same settings as the
+ * requests (e.g. the starting stats), returned with the results so it changes when they do
+ * @returns the results, the requests they're for (without top N, in the same order), and the
+ * context to show them with, which are behind the latest ones until they're worked out
  */
-export default function useBuildResults(
+export default function useBuildResults<Context = undefined>(
   requests: BuildRequest[],
   topN?: TopN,
   poolSize = getDefaultPoolSize(),
+  context?: Context,
 ) {
   const poolRef = useRef<WorkerPool>();
   const latestIdRef = useRef(0);
-  const [{ results, resultRequests }, setResults] = useState<{
+  const [{ results, resultRequests, resultContext }, setResults] = useState<{
     results: BuildResult[];
     resultRequests: BuildRequest[];
+    resultContext?: Context;
   }>({ results: [], resultRequests: [] });
+  const contextRef = useRef(context);
+  contextRef.current = context;
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
@@ -34,17 +49,33 @@ export default function useBuildResults(
   useEffect(() => {
     const id = ++latestIdRef.current;
     setPending(true);
-    const timeout = setTimeout(() => {
+    const start = () => {
       void poolRef.current?.optimize(id, requests, topN).then((newResults) => {
         if (id !== latestIdRef.current) return;
-        setResults({ results: newResults, resultRequests: requests });
+        // (the latest context: the requests are still the latest, so it's for the same settings)
+        setResults({
+          results: newResults,
+          resultRequests: requests,
+          resultContext: contextRef.current,
+        });
         setPending(false);
       });
-    }, debounceMs);
+    };
+    if (isLatestChangeFromPicker()) return afterPickersClose(start, pickerTimeoutMs);
+    const timeout = setTimeout(start, debounceMs);
     return () => clearTimeout(timeout);
   }, [requests, topN, poolSize]);
 
-  return { results, resultRequests, pending, poolRef };
+  // A context that changes without the requests changing applies to the results straight away
+  useEffect(() => {
+    setResults((previous) =>
+      previous.resultRequests === requests && previous.resultContext !== context
+        ? { ...previous, resultContext: context }
+        : previous,
+    );
+  }, [context]); // (not the requests: new ones get the context with their results)
+
+  return { results, resultRequests, resultContext, pending, poolRef };
 }
 
 /**
