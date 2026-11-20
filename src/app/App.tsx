@@ -192,6 +192,7 @@ export default function App() {
     showStamina: savedShowStamina,
     showDamagePerStamina: savedShowDamagePerStamina,
     showStancePerStamina: savedShowStancePerStamina,
+    showPotential,
     showDps: savedShowDps,
     tooltipTimings,
     chainLimit,
@@ -353,6 +354,15 @@ export default function App() {
     () => new Map(Object.keys(movesets).map((weaponName, index) => [weaponName, index])),
     [movesets],
   );
+
+  // The class's base damage stats, the lowest they can go
+  const classAttributes = useMemo(() => {
+    const attributes = {} as Attributes;
+    for (const attribute of allAttributes) {
+      attributes[attribute] = startingClasses[startingClass][attribute];
+    }
+    return attributes;
+  }, [startingClass]);
 
   const startAttributes = useMemo(() => {
     const attributes = {} as Attributes;
@@ -789,6 +799,7 @@ export default function App() {
           startLevel: planLevel,
           currentLevel: startLevel,
           attributes: planAttributes,
+          classAttributes,
           bonusAttributes,
           objective,
           defenses: enemyDefenses,
@@ -818,6 +829,7 @@ export default function App() {
     upgradeLevel,
     twoHanding,
     bonusAttributes,
+    classAttributes,
     buffEffects,
     selectedBuffs,
     weaponBuff,
@@ -998,6 +1010,7 @@ export default function App() {
     (sortBy === "stamina" && !showStamina) ||
     (sortBy === "damagePerStamina" && !showDamagePerStamina) ||
     (sortBy === "stancePerStamina" && !showStancePerStamina) ||
+    (sortBy === "potential" && !showPotential) ||
     (sortBy.startsWith("status:") && !showStatus);
   const workerTopN = useMemo(
     () =>
@@ -1103,6 +1116,7 @@ export default function App() {
     (sortBy === "stamina" && !showStamina) ||
     (sortBy === "damagePerStamina" && !showDamagePerStamina) ||
     (sortBy === "stancePerStamina" && !showStancePerStamina) ||
+    (sortBy === "potential" && !showPotential) ||
     (sortBy.startsWith("status:") &&
       !statusTypesShown.some((statusType) => statusSortBy(statusType) === sortBy));
   const effectiveSortBy = sortHidden ? "total" : sortBy;
@@ -1450,6 +1464,7 @@ export default function App() {
         showStamina={savedShowStamina}
         showDamagePerStamina={savedShowDamagePerStamina}
         showStancePerStamina={savedShowStancePerStamina}
+        showPotential={showPotential}
         showRequirements={showRequirements}
         closedAlerts={closedAlerts}
         onlyBuffable={onlyBuffable}
@@ -1632,6 +1647,7 @@ export default function App() {
                         showStamina={showStamina}
                         showDamagePerStamina={showDamagePerStamina}
                         showStancePerStamina={showStancePerStamina}
+                        showPotential={showPotential}
                         showDps={showDps}
                         oneOffAttack={oneOffAttacks.has(attack)}
                         tooltipTimings={tooltipTimingsShown}

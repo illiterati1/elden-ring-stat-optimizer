@@ -115,6 +115,11 @@ export interface AppState {
   /** Show the chosen attack's stance damage per point of stamina */
   readonly showStancePerStamina: boolean;
   /**
+   * Show where each weapon's value sits between its value with each damage stat at the higher of
+   * the weapon's requirement and the class's base, and with 99 in each
+   */
+  readonly showPotential: boolean;
+  /**
    * Show the chosen attack's damage, stance, stamina, and status per second, repeated as fast as
    * possible, instead of per attack
    */
@@ -224,6 +229,7 @@ export type SortBy =
   | "stamina"
   | "damagePerStamina"
   | "stancePerStamina"
+  | "potential"
   | `status:${AttackPowerType}`
   | `scaling:${Attribute}`
   | `requirement:${Attribute}`;
@@ -239,6 +245,7 @@ function isSortBy(value: unknown): value is SortBy {
     value === "stamina" ||
     value === "damagePerStamina" ||
     value === "stancePerStamina" ||
+    value === "potential" ||
     (typeof value === "string" &&
       (/^status:\d+$/.test(value) || /^(scaling|requirement):(str|dex|int|fai|arc)$/.test(value)))
   );
@@ -263,6 +270,7 @@ export const defaultAppState: AppState = {
   showStamina: false,
   showDamagePerStamina: false,
   showStancePerStamina: false,
+  showPotential: false,
   showDps: false,
   tooltipTimings: {
     hits: true,

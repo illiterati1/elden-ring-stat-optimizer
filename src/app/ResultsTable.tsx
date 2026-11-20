@@ -171,6 +171,11 @@ interface Props {
   showDamagePerStamina: boolean;
   /** Show the chosen attack's stance damage per point of stamina */
   showStancePerStamina: boolean;
+  /**
+   * Show where each weapon's value sits between its value with each damage stat at the higher of
+   * the weapon's requirement and the class's base, and with 99 in each
+   */
+  showPotential: boolean;
   /** Show the chosen attack's damage per second */
   showDps: boolean;
   /**
@@ -208,6 +213,11 @@ function formatDamagePerStamina(value: number) {
 /** Stance damage per point of stamina is mostly below a few points, so it keeps two */
 function formatStancePerStamina(value: number) {
   return (Math.round(value * 100) / 100).toFixed(2);
+}
+
+/** A fraction as a whole percentage */
+function formatPercent(fraction: number) {
+  return `${Math.round(fraction * 100)}%`;
 }
 
 /** A value per point of stamina, blank if the attack's stamina cost isn't known */
@@ -638,6 +648,7 @@ function ResultsTable({
   showStamina,
   showDamagePerStamina,
   showStancePerStamina,
+  showPotential,
   showDps,
   oneOffAttack,
   tooltipTimings,
@@ -971,6 +982,11 @@ function ResultsTable({
                 {perStaminaCell(getDamagePerStamina(result, showDps), formatDamagePerStamina)}
               </TableCell>
             )}
+            {showPotential && (
+              <TableCell align="right">
+                {result.potential != null ? formatPercent(result.potential) : ""}
+              </TableCell>
+            )}
             {showHits && (
               <TableCell>
                 {result.fixedSkill && (
@@ -1145,6 +1161,7 @@ function ResultsTable({
               +showStamina +
               +showDamagePerStamina +
               +showStancePerStamina +
+              +showPotential +
               allAttributes.length * groups.length
             }
           >
@@ -1242,6 +1259,13 @@ function ResultsTable({
                     showDps ? "Damage/stamina/s" : "Damage/stamina",
                     "desc",
                   )}
+                </Tooltip>
+              </TableCell>
+            )}
+            {showPotential && (
+              <TableCell rowSpan={headerRows} align="right">
+                <Tooltip title="How much of the weapon's potential the stats reach: 0% with each damage stat at the higher of the weapon's requirement and the class's base, 100% with 99 in each">
+                  {sortLabel("potential", "Potential", "desc")}
                 </Tooltip>
               </TableCell>
             )}

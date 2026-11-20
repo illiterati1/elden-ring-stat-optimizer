@@ -47,6 +47,7 @@ interface Props {
   showStamina: AppState["showStamina"];
   showDamagePerStamina: AppState["showDamagePerStamina"];
   showStancePerStamina: AppState["showStancePerStamina"];
+  showPotential: AppState["showPotential"];
   showRequirements: AppState["showRequirements"];
   closedAlerts: AppState["closedAlerts"];
   onlyBuffable: AppState["onlyBuffable"];
@@ -261,6 +262,7 @@ function BuildSettings({
   showStamina,
   showDamagePerStamina,
   showStancePerStamina,
+  showPotential,
   showRequirements,
   closedAlerts,
   onlyBuffable,
@@ -530,6 +532,17 @@ function BuildSettings({
                 size="small"
                 checked={showStancePerStamina}
                 onChange={(evt) => onChange({ showStancePerStamina: evt.currentTarget.checked })}
+              />
+            }
+          />
+          <FormControlLabel
+            label="Potential"
+            sx={{ mr: 0 }}
+            control={
+              <Checkbox
+                size="small"
+                checked={showPotential}
+                onChange={(evt) => onChange({ showPotential: evt.currentTarget.checked })}
               />
             }
           />

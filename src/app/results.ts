@@ -82,6 +82,8 @@ function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
       return getDamagePerStamina(result, perSecond) ?? -Infinity;
     case "stancePerStamina":
       return getStancePerStamina(result, perSecond) ?? -Infinity;
+    case "potential":
+      return result.potential ?? -Infinity;
     default:
       if (sortBy.startsWith("scaling:")) {
         return result.scaling[sortBy.slice("scaling:".length) as Attribute] ?? 0;

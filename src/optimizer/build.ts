@@ -127,6 +127,11 @@ export interface BuildRequest {
   currentLevel?: number;
   /** Planned damage attributes to start from */
   attributes: Attributes;
+  /**
+   * The starting class's damage attributes, the lowest they can be, for the value at the weapon's
+   * requirements (BuildResult potential). Defaults to 1 each.
+   */
+  classAttributes?: Attributes;
   bonusAttributes: Attributes;
   objective: Objective;
   defenses?: Defenses;
@@ -776,6 +781,11 @@ export interface BuildResult {
    * (so the optimizer never raises Arcane for it), unless Arcane is already 99
    */
   statusAtMaxArcane?: Partial<Record<AttackPowerType, number>>;
+  /**
+   * Where the final value sits between the value with each damage stat at the higher of the
+   * weapon's requirement and the class's base (0) and with 99 in each (1), if those differ
+   */
+  potential?: number;
   /** The weapon's scaling for each attribute at its upgrade level (1 = 100) */
   scaling: Partial<Record<Attribute, number>>;
   /**
@@ -1296,6 +1306,7 @@ export function optimizeBuild(
     twoHanding,
     startLevel,
     attributes,
+    classAttributes,
     bonusAttributes,
     objective,
     defenses,
@@ -1812,6 +1823,26 @@ export function optimizeBuild(
   const notedHitDamage =
     attack?.notedHit && options.hits ? hitDamage(attack.notedHit, finalAttributes) : undefined;
 
+  const getValueAt = (leveled: Attributes) =>
+    roundHits ? getRoundedValue(leveled) : evaluateObjective(options, leveled)!;
+  const requiredValue = getValueAt(
+    Object.fromEntries(
+      allAttributes.map((attribute) => [
+        attribute,
+        Math.max(weapon.requirements[attribute] ?? 0, classAttributes?.[attribute] ?? 1),
+      ]),
+    ) as Attributes,
+  );
+  const maxValue = getValueAt(
+    Object.fromEntries(allAttributes.map((attribute) => [attribute, 99])) as Attributes,
+  );
+  const finalValue =
+    (roundHits ? getRoundedValue(finalAttributes) : curve.values[curveIndex]) + hpDamage;
+  const potential =
+    maxValue - requiredValue > 1e-9
+      ? (finalValue - hpDamage - requiredValue) / (maxValue - requiredValue)
+      : undefined;
+
   const curveAllocations = sliceAllocations(
     curve.allocations,
     0,
@@ -1831,8 +1862,7 @@ export function optimizeBuild(
     startValue:
       (roundHits ? getRoundedValue(attributes) : evaluateObjective(options, attributes)!) +
       hpDamage,
-    finalValue:
-      (roundHits ? getRoundedValue(finalAttributes) : curve.values[curveIndex]) + hpDamage,
+    finalValue,
     curve: {
       startLevel: startLevel + requiredLevels + (curve.levels ?? 0),
       values: curve.values
@@ -1921,5 +1951,6 @@ export function optimizeBuild(
       buffs,
       getHitStatusOf,
     ),
+    potential,
   };
 }
