@@ -10,6 +10,7 @@ import getWeaponAttack, {
 import { packAllocations, type PackedAllocations } from "./allocations.ts";
 import {
   getDamageAfterDefense,
+  getDefenseMultiplier,
   type Defense,
   type Defenses,
   type PhysicalType,
@@ -679,8 +680,10 @@ interface Model {
   /** Damage options for each term, with only its hits if the attack's hits are split */
   termDamageOptions: DamageOptions[];
   options: OptimizeOptions;
-  /** True if hits' attack must be added up across terms before defenses */
-  combine: boolean;
+  /** The terms' damage, worked out ahead of time for evaluateModel */
+  plan: DamagePlan;
+  /** Scratch space for evaluateModel's attack power of each term */
+  attackPowers: Float64Array;
 
   /** The current leveled value of each attribute, i.e. the lowest value allowed */
   min: number[];
@@ -698,6 +701,135 @@ interface Model {
   penaltyMultiplier: number;
 }
 
+/**
+ * The damage of a group of terms as a list of entries that only need the terms' attack powers,
+ * since everything else (hits, motion values, defenses, negation, multipliers) is the same for
+ * every allocation tried. Entry e deals
+ *
+ *   factor[e] * f(sum of coefficient[j] * attack power of term termIndex[j], defense[e])
+ *
+ * over j from entryStart[e] to entryStart[e + 1] - 1, where f applies the defense multiplier, or
+ * does nothing if defense[e] is negative (no defense). The same as getTermsDamage, without the
+ * lookups and objects it creates on every call.
+ */
+interface DamagePlan {
+  /** Each term's attack power before scaling */
+  base: Float64Array;
+  /** Where each entry's terms start in termIndex and coefficient, plus the end of the last */
+  entryStart: Int32Array;
+  termIndex: Int32Array;
+  /** The term's motion value, divided by 100 */
+  coefficient: Float64Array;
+  defense: Float64Array;
+  /** Hit weight, damage rate, damage type multiplier and negation */
+  factor: Float64Array;
+}
+
+function buildDamagePlan(
+  terms: Term[],
+  damageOptions: DamageOptions,
+  combine: boolean,
+): DamagePlan {
+  const { motionValue, physicalNegation, damageMultipliers } = damageOptions;
+  const entries: {
+    parts: [term: number, coefficient: number][];
+    defense?: Defense;
+    factor: number;
+  }[] = [];
+  const addEntry = (
+    parts: [number, number][],
+    damageType: AttackPowerType,
+    defense: Defense | undefined,
+    factor: number,
+  ) =>
+    entries.push({
+      parts,
+      defense,
+      factor:
+        (damageMultipliers?.[damageType] ?? 1) *
+        factor *
+        (defense ? (100 - defense.negation) / 100 : 1),
+    });
+  // Physical damage uses each hit's own negation for its physical type
+  const getHitDefense = (damageType: AttackPowerType, hit: AttackHit, defense?: Defense) =>
+    defense && physicalNegation && damageType === AttackPowerType.PHYSICAL
+      ? { ...defense, negation: physicalNegation[hit.physicalType] }
+      : defense;
+  const getHitFactor = (damageType: AttackPowerType, hit: AttackHit) =>
+    hit.weight * (hit.damageRates?.[damageType] ?? 1);
+
+  if (combine) {
+    // Like getCombinedDamage: each hit's attack of each damage type, added up across terms
+    const defenses: (Defense | undefined)[] = [];
+    const combined = new Map<AttackHit, [number, number][][]>();
+    terms.forEach((term, t) => {
+      defenses[term.damageType] = term.defense;
+      for (const hit of term.hits ?? damageOptions.hits ?? []) {
+        const hitMotionValue = hit.motionValues?.[term.damageType] ?? hit.motionValue;
+        if (!hitMotionValue) continue;
+        const source = hit.source ?? hit;
+        let byType = combined.get(source);
+        if (!byType) {
+          byType = allDamageTypes.map(() => []);
+          combined.set(source, byType);
+        }
+        byType[term.damageType].push([t, hitMotionValue / 100]);
+      }
+    });
+    for (const [hit, byType] of combined) {
+      byType.forEach((parts, type) => {
+        if (!parts.length) return;
+        const damageType = type as AttackPowerType;
+        addEntry(
+          parts,
+          damageType,
+          getHitDefense(damageType, hit, defenses[damageType]),
+          getHitFactor(damageType, hit),
+        );
+      });
+    }
+  } else {
+    // Like getDamage for each term
+    terms.forEach(({ damageType, defense, hits = damageOptions.hits }, t) => {
+      if (!hits) {
+        addEntry([[t, defense ? (motionValue ?? 100) / 100 : 1]], damageType, defense, 1);
+        return;
+      }
+      for (const hit of hits) {
+        const hitMotionValue = hit.motionValues?.[damageType] ?? hit.motionValue;
+        if (!hitMotionValue) continue;
+        addEntry(
+          [[t, hitMotionValue / 100]],
+          damageType,
+          getHitDefense(damageType, hit, defense),
+          getHitFactor(damageType, hit),
+        );
+      }
+    });
+  }
+
+  const partCount = entries.reduce((sum, { parts }) => sum + parts.length, 0);
+  const plan: DamagePlan = {
+    base: Float64Array.from(terms, ({ base }) => base),
+    entryStart: new Int32Array(entries.length + 1),
+    termIndex: new Int32Array(partCount),
+    coefficient: new Float64Array(partCount),
+    defense: Float64Array.from(entries, ({ defense }) => defense?.defense ?? -1),
+    factor: Float64Array.from(entries, ({ factor }) => factor),
+  };
+  let j = 0;
+  entries.forEach(({ parts }, e) => {
+    plan.entryStart[e] = j;
+    for (const [t, coefficient] of parts) {
+      plan.termIndex[j] = t;
+      plan.coefficient[j] = coefficient;
+      j++;
+    }
+  });
+  plan.entryStart[entries.length] = j;
+  return plan;
+}
+
 function buildModel(options: OptimizeOptions, terms: Term[]): Model {
   const { weapon, upgradeLevel, twoHanding, attributes, bonusAttributes } = options;
 
@@ -712,13 +844,15 @@ function buildModel(options: OptimizeOptions, terms: Term[]): Model {
     }),
   );
 
+  const damageOptions = getDamageOptions(options);
   const model: Model = {
     attributes: attributeSet,
     terms,
-    damageOptions: getDamageOptions(options),
+    damageOptions,
     termDamageOptions: [],
     options,
-    combine: needsCombining(terms, options),
+    plan: buildDamagePlan(terms, damageOptions, needsCombining(terms, options)),
+    attackPowers: new Float64Array(terms.length),
     min: attributeSet.map((attribute) => attributes[attribute]),
     contributions: [],
     unmet: [],
@@ -786,27 +920,47 @@ function getMaxLevels(model: Model) {
 /**
  * Evaluate the objective for one group of terms, including requirement penalties and defenses
  */
-function evaluateModel(model: Model, values: number[]) {
+function evaluateModel(model: Model, values: readonly number[]) {
+  const { unmet, contributions, penaltyMasks, penaltyMultiplier, attackPowers, plan } = model;
+  const { base } = plan;
+  const k = values.length;
+
   let unmetMask = 0;
-  for (let i = 0; i < values.length; i++) {
-    if (model.unmet[i][values[i]]) unmetMask |= 1 << i;
+  for (let i = 0; i < k; i++) {
+    if (unmet[i][values[i]]) unmetMask |= 1 << i;
   }
 
-  const attackPowers = model.terms.map(({ base }, t) => {
-    if (unmetMask & model.penaltyMasks[t]) return base * model.penaltyMultiplier;
-    let attackPower = base;
-    for (let i = 0; i < values.length; i++) {
-      attackPower += model.contributions[i][t][values[i]];
+  for (let t = 0; t < base.length; t++) {
+    if (unmetMask & penaltyMasks[t]) {
+      attackPowers[t] = base[t] * penaltyMultiplier;
+      continue;
     }
-    return attackPower;
-  });
-  if (model.combine) {
-    return getCombinedDamage(model.terms, attackPowers, model.options, model.damageOptions);
+    let attackPower = base[t];
+    for (let i = 0; i < k; i++) {
+      attackPower += contributions[i][t][values[i]];
+    }
+    attackPowers[t] = attackPower;
   }
+  return getPlanDamage(plan, attackPowers);
+}
+
+/**
+ * The damage of a group of terms with the given attack powers, from its damage plan
+ */
+function getPlanDamage(
+  { entryStart, termIndex, coefficient, defense, factor }: DamagePlan,
+  attackPowers: Float64Array,
+) {
   let total = 0;
-  model.terms.forEach(({ damageType, defense }, t) => {
-    total += getDamage(damageType, attackPowers[t], defense, model.termDamageOptions[t]);
-  });
+  for (let e = 0; e < factor.length; e++) {
+    let attack = 0;
+    for (let j = entryStart[e]; j < entryStart[e + 1]; j++) {
+      attack += coefficient[j] * attackPowers[termIndex[j]];
+    }
+    const d = defense[e];
+    total +=
+      factor[e] * (d < 0 ? attack : attack * getDefenseMultiplier(d > 0 ? attack / d : Infinity));
+  }
   return total;
 }
 
@@ -925,18 +1079,47 @@ function getCandidateValues(model: Model): number[][] {
 
 function optimizeBruteForce(model: Model, maxLevels: number): number[][] {
   const k = model.attributes.length;
+  // Nothing to level, e.g. an attack whose damage doesn't scale
+  if (k === 0) return [[]];
   const best = new Float64Array(maxLevels + 1).fill(-Infinity);
   const allocations: number[][] = [];
 
   const candidates = getCandidateValues(model);
   const indices = new Array<number>(k).fill(0);
   const values = candidates.map((values) => values[0]);
-  for (;;) {
-    let cost = 0;
-    for (let i = 0; i < k; i++) cost += values[i] - model.min[i];
 
+  // The first attribute changes fastest, so the others' contributions to each term's attack power
+  // (and their unmet requirements and cost) are only added up again when one of them changes
+  const { unmet, contributions, penaltyMasks, penaltyMultiplier, attackPowers, plan, min } = model;
+  const { base } = plan;
+  const termCount = base.length;
+  const rest = new Float64Array(termCount);
+  let restUnmet = 0;
+  let restCost = 0;
+  const updateRest = () => {
+    restUnmet = 0;
+    restCost = 0;
+    rest.fill(0);
+    for (let i = 1; i < k; i++) {
+      if (unmet[i][values[i]]) restUnmet |= 1 << i;
+      restCost += values[i] - min[i];
+      for (let t = 0; t < termCount; t++) rest[t] += contributions[i][t][values[i]];
+    }
+  };
+  updateRest();
+
+  for (;;) {
+    const first = values[0];
+    const cost = restCost + first - min[0];
     if (cost <= maxLevels) {
-      const value = evaluateModel(model, values);
+      const unmetMask = restUnmet | unmet[0][first];
+      for (let t = 0; t < termCount; t++) {
+        attackPowers[t] =
+          unmetMask & penaltyMasks[t]
+            ? base[t] * penaltyMultiplier
+            : base[t] + contributions[0][t][first] + rest[t];
+      }
+      const value = getPlanDamage(plan, attackPowers);
       if (value > best[cost] + epsilon) {
         best[cost] = value;
         allocations[cost] = [...values];
@@ -952,6 +1135,7 @@ function optimizeBruteForce(model: Model, maxLevels: number): number[][] {
     }
     if (i === k) break;
     values[i] = candidates[i][++indices[i]];
+    if (i > 0) updateRest();
   }
 
   // Allow unspent levels
