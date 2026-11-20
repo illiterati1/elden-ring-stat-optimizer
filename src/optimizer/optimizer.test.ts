@@ -9,6 +9,7 @@ import getWeaponAttack, {
   type Weapon,
 } from "../calculator/calculator.ts";
 import { decodeRegulationData } from "../regulationData.ts";
+import { getAllocation } from "./allocations.ts";
 import { getTypedBuffs, groupBuffsByKind } from "../app/buffListing.tsx";
 import { allPhysicalTypes, getDamageAfterDefense, getDefenseMultiplier } from "./defense.ts";
 import { applyLimits, type Limits } from "./limits.ts";
@@ -189,7 +190,10 @@ describe("optimizeAttributes", () => {
       const expected = bruteForce(options, 10);
       for (let n = 0; n <= 10; n++) {
         expect(curve.values[n]).toBeCloseTo(expected[n], 6);
-        expect(evaluateObjective(options, curve.allocations[n])).toBeCloseTo(curve.values[n], 6);
+        expect(evaluateObjective(options, getAllocation(curve.allocations, n))).toBeCloseTo(
+          curve.values[n],
+          6,
+        );
       }
     });
   }
@@ -1507,7 +1511,7 @@ describe("attacks", () => {
       for (let n = 0; n <= 10; n++) {
         expect(curve.values[n]).toBeCloseTo(expected[n], 6);
       }
-      expect(curve.allocations[10].int).toBe(20);
+      expect(getAllocation(curve.allocations, 10).int).toBe(20);
     }
   });
 

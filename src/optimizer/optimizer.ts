@@ -7,6 +7,7 @@ import getWeaponAttack, {
   type Attributes,
   type Weapon,
 } from "../calculator/calculator.ts";
+import { packAllocations, type PackedAllocations } from "./allocations.ts";
 import {
   getDamageAfterDefense,
   type Defense,
@@ -190,8 +191,8 @@ export interface OptimizationCurve {
    */
   values: number[];
 
-  /** allocations[n] is the leveled attributes that achieve values[n] */
-  allocations: Attributes[];
+  /** Allocation n (see getAllocation) is the leveled attributes that achieve values[n] */
+  allocations: PackedAllocations;
 
   /** False if a heuristic search was used, so the values may be slightly below optimal */
   exact: boolean;
@@ -1083,7 +1084,7 @@ export function optimizeAttributes(options: OptimizeOptions): OptimizationCurve 
         );
       }
     }
-    return { values: [bestValue], allocations: [bestAllocation], exact, levels };
+    return { values: [bestValue], allocations: packAllocations([bestAllocation]), exact, levels };
   }
 
   // Combine the groups by taking the best at each number of levels, and verify every value with
@@ -1106,7 +1107,7 @@ export function optimizeAttributes(options: OptimizeOptions): OptimizationCurve 
     allocations.push(bestAllocation);
   }
 
-  return { values, allocations, exact };
+  return { values, allocations: packAllocations(allocations), exact };
 }
 
 /**

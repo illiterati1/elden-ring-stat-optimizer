@@ -13,6 +13,12 @@ import getWeaponAttack, {
   WeaponType,
 } from "../calculator/calculator.ts";
 import type { Defenses, PhysicalType } from "./defense.ts";
+import {
+  getAllocation,
+  getAllocationCount,
+  sliceAllocations,
+  type PackedAllocations,
+} from "./allocations.ts";
 import { applyLimits, type LimitReason, type Limits } from "./limits.ts";
 import { getCumulativeLevelUpCosts, maxCharacterLevel } from "./runes.ts";
 import {
@@ -195,8 +201,11 @@ export interface ValueCurve {
   /** The character level of values[0], i.e. after any levels spent meeting requirements */
   startLevel: number;
   values: number[];
-  /** allocations[n] is the leveled attributes (not including bonuses) that achieve values[n] */
-  allocations?: Attributes[];
+  /**
+   * Allocation n (see getAllocation) is the leveled attributes (not including bonuses) that achieve
+   * values[n]
+   */
+  allocations?: PackedAllocations;
   /**
    * dps[n] is the chosen attack's damage per second with allocations[n] (like
    * BuildResult.attackDps), if its timing is known
@@ -1599,7 +1608,7 @@ export function optimizeBuild(
         }
       : applyLimits(curve.values, startLevel + requiredLevels, levelLimits, currentLevel);
   const curveIndex = curve.levels != null ? 0 : levels;
-  const finalAttributes = curve.allocations[curveIndex];
+  const finalAttributes = getAllocation(curve.allocations, curveIndex);
   const hpDamage = getAttackHpDamage(attack, enemyHp);
 
   const effectiveAttributes = adjustAttributesForTwoHanding({
@@ -1803,7 +1812,8 @@ export function optimizeBuild(
   const notedHitDamage =
     attack?.notedHit && options.hits ? hitDamage(attack.notedHit, finalAttributes) : undefined;
 
-  const curveAllocations = curve.allocations.slice(
+  const curveAllocations = sliceAllocations(
+    curve.allocations,
     0,
     Math.max(1, maxCharacterLevel - startLevel - requiredLevels + 1),
   );
@@ -1831,7 +1841,10 @@ export function optimizeBuild(
       allocations: curveAllocations,
       ...(dpsCurve &&
         getDpsAt(finalAttributes) != null && {
-          dps: curveAllocations.map((leveled) => Math.round(getDpsAt(leveled)! * 100) / 100),
+          dps: Array.from(
+            { length: getAllocationCount(curveAllocations) },
+            (_, n) => Math.round(getDpsAt(getAllocation(curveAllocations, n))! * 100) / 100,
+          ),
         }),
     },
     levels: startLevel + requiredLevels + levels - currentLevel,

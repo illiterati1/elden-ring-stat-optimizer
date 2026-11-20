@@ -1,5 +1,6 @@
 import type { AttackPowerType } from "../calculator/calculator.ts";
 import type { Attribute } from "../calculator/attributes.ts";
+import { getAllocation, getAllocationCount } from "../optimizer/allocations.ts";
 import type { BuildResult, ValueCurve } from "../optimizer/build.ts";
 import type { SortBy } from "./useAppState.ts";
 
@@ -23,10 +24,11 @@ export function getValueAtLevel({ startLevel, values }: ValueCurve, level: numbe
  */
 export function getAllocationAtLevel({ startLevel, allocations }: ValueCurve, level: number) {
   const index = level - startLevel;
-  if (index < 0 || !allocations?.length) {
+  const count = allocations ? getAllocationCount(allocations) : 0;
+  if (index < 0 || !count) {
     return null;
   }
-  return allocations[Math.min(index, allocations.length - 1)];
+  return getAllocation(allocations!, Math.min(index, count - 1));
 }
 
 /**
