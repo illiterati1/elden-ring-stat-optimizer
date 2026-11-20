@@ -208,6 +208,12 @@ const ineffectivePenaltyMultiplier = 0.6;
 /** Maximum number of attribute combinations to try in an exhaustive search */
 const bruteForceLimit = 2_000_000;
 
+/**
+ * Maximum work (see getSeparableWork) for an exact search when the alternative is an approximate
+ * one: up to about half a second for the few weapons that need it, e.g. Madding Hand
+ */
+const exactWorkLimit = 100_000_000;
+
 const epsilon = 1e-9;
 
 function getEffectiveAttributes(leveled: Attributes, bonusAttributes: Attributes): Attributes {
@@ -947,21 +953,30 @@ function evaluateModel(model: Model, values: readonly number[]) {
 /**
  * The damage of a group of terms with the given attack powers, from its damage plan
  */
-function getPlanDamage(
-  { entryStart, termIndex, coefficient, defense, factor }: DamagePlan,
-  attackPowers: Float64Array,
-) {
+function getPlanDamage(plan: DamagePlan, attackPowers: Float64Array) {
   let total = 0;
-  for (let e = 0; e < factor.length; e++) {
-    let attack = 0;
-    for (let j = entryStart[e]; j < entryStart[e + 1]; j++) {
-      attack += coefficient[j] * attackPowers[termIndex[j]];
-    }
-    const d = defense[e];
-    total +=
-      factor[e] * (d < 0 ? attack : attack * getDefenseMultiplier(d > 0 ? attack / d : Infinity));
+  for (let e = 0; e < plan.factor.length; e++) {
+    total += getEntryDamage(plan, attackPowers, e);
   }
   return total;
+}
+
+/**
+ * The damage of one of a damage plan's entries with the given attack powers
+ */
+function getEntryDamage(
+  { entryStart, termIndex, coefficient, defense, factor }: DamagePlan,
+  attackPowers: Float64Array,
+  e: number,
+) {
+  let attack = 0;
+  for (let j = entryStart[e]; j < entryStart[e + 1]; j++) {
+    attack += coefficient[j] * attackPowers[termIndex[j]];
+  }
+  const d = defense[e];
+  return (
+    factor[e] * (d < 0 ? attack : attack * getDefenseMultiplier(d > 0 ? attack / d : Infinity))
+  );
 }
 
 /**
@@ -1149,6 +1164,407 @@ function optimizeBruteForce(model: Model, maxLevels: number): number[][] {
   return allocations;
 }
 
+function countBits(mask: number) {
+  let count = 0;
+  for (; mask; mask &= mask - 1) count++;
+  return count;
+}
+
+/** @returns a bitmask for each term of the attributes its attack power scales with */
+function getTermDependencies(model: Model) {
+  const k = model.attributes.length;
+  return model.terms.map((_, t) => {
+    let mask = 0;
+    for (let i = 0; i < k; i++) {
+      if (model.contributions[i][t].some(Boolean)) mask |= 1 << i;
+    }
+    return mask;
+  });
+}
+
+/**
+ * A set of terms whose damage depends on its attributes, but not on any other attributes except
+ * the fixed ones (see optimizeSeparable)
+ */
+interface Component {
+  terms: number[];
+  /** The damage plan's entries for the terms */
+  entries: number[];
+  /** Bitmask of the attributes the terms scale with, apart from the fixed ones */
+  attributes: number;
+  /** The terms that scale with those attributes */
+  scaling: number[];
+}
+
+/**
+ * Splits terms into components that don't share attributes (apart from the fixed ones) or damage
+ * plan entries
+ *
+ * @param penalized which terms' attack power is constant, since a requirement is assumed unmet
+ */
+function getComponents(
+  model: Model,
+  dependencies: readonly number[],
+  free: number,
+  penalized?: readonly boolean[],
+): Component[] {
+  const { plan } = model;
+  const termCount = dependencies.length;
+  const parent = Array.from({ length: termCount }, (_, t) => t);
+  const find = (t: number): number => (parent[t] === t ? t : (parent[t] = find(parent[t])));
+  const union = (a: number, b: number) => (parent[find(a)] = find(b));
+  for (let e = 0; e + 1 < plan.entryStart.length; e++) {
+    for (let j = plan.entryStart[e] + 1; j < plan.entryStart[e + 1]; j++) {
+      union(plan.termIndex[j], plan.termIndex[plan.entryStart[e]]);
+    }
+  }
+  const scales = (t: number) => (penalized?.[t] ? 0 : dependencies[t] & free);
+  for (let i = 0; free >> i; i++) {
+    if (!(free & (1 << i))) continue;
+    let first = -1;
+    for (let t = 0; t < termCount; t++) {
+      if (!(scales(t) & (1 << i))) continue;
+      if (first < 0) first = t;
+      else union(t, first);
+    }
+  }
+
+  const components = new Map<number, Component>();
+  const getComponent = (t: number) => {
+    const root = find(t);
+    let component = components.get(root);
+    if (!component) {
+      component = { terms: [], entries: [], attributes: 0, scaling: [] };
+      components.set(root, component);
+    }
+    return component;
+  };
+  for (let t = 0; t < termCount; t++) {
+    const component = getComponent(t);
+    component.terms.push(t);
+    if (scales(t)) {
+      component.attributes |= scales(t);
+      component.scaling.push(t);
+    }
+  }
+  for (let e = 0; e + 1 < plan.entryStart.length; e++) {
+    getComponent(plan.termIndex[plan.entryStart[e]]).entries.push(e);
+  }
+  return [...components.values()];
+}
+
+/**
+ * True if a component's damage only depends on one quantity of its attributes: either it has at
+ * most one attribute, or they add the same multiple of each term's base attack power to every term
+ * (e.g. a hit's flat attack scales like the weapon), so the terms' attack powers all rise together
+ */
+function isSolvable(model: Model, { attributes, scaling }: Component) {
+  if (countBits(attributes) <= 1) return true;
+  const { contributions, plan } = model;
+  const [first, ...rest] = scaling;
+  if (!(plan.base[first] > 0)) return false;
+  for (let i = 0; attributes >> i; i++) {
+    if (!(attributes & (1 << i))) continue;
+    for (const t of rest) {
+      if (!(plan.base[t] > 0)) return false;
+      for (let value = 0; value <= maxAttributeValue; value++) {
+        const scaled = contributions[i][t][value] * plan.base[first];
+        const expected = contributions[i][first][value] * plan.base[t];
+        if (Math.abs(scaled - expected) > 1e-9 * Math.max(1, Math.abs(expected))) return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * @returns the cheapest set of attributes (as a bitmask) that optimizeSeparable can fix, and how
+ * many combinations of their values there are, or null if there's none
+ */
+function chooseFixedAttributes(model: Model, dependencies: readonly number[]) {
+  const k = model.attributes.length;
+  const sizes = getCandidateValues(model).map((values) => values.length);
+  let best: { fixed: number; combinations: number } | null = null;
+  for (let fixed = 0; fixed < 1 << k; fixed++) {
+    let combinations = 1;
+    for (let i = 0; i < k; i++) if (fixed & (1 << i)) combinations *= sizes[i];
+    if (best && combinations >= best.combinations) continue;
+    const free = ((1 << k) - 1) & ~fixed;
+    const components = getComponents(model, dependencies, free);
+    if (components.every((component) => isSolvable(model, component))) {
+      best = { fixed, combinations };
+    }
+  }
+  return best;
+}
+
+function getInitiallyUnmet({ attributes, unmet, min }: Model) {
+  let mask = 0;
+  attributes.forEach((_, i) => {
+    if (unmet[i][min[i]]) mask |= 1 << i;
+  });
+  return mask;
+}
+
+/**
+ * @returns roughly how many evaluations optimizeSeparable takes, comparable to the number of
+ * combinations an exhaustive search tries
+ */
+function getSeparableWork(
+  model: Model,
+  dependencies: readonly number[],
+  { fixed, combinations }: { fixed: number; combinations: number },
+  maxLevels: number,
+) {
+  const k = model.attributes.length;
+  const free = ((1 << k) - 1) & ~fixed;
+  let perValue = 0;
+  // The length of the components' curves combined so far
+  let length = 0;
+  for (const { attributes } of getComponents(model, dependencies, free)) {
+    let levels = 0;
+    for (let i = 0; i < k; i++) {
+      if (attributes & (1 << i)) levels += maxAttributeValue - model.min[i];
+    }
+    levels = Math.min(levels, maxLevels);
+    // Evaluating the component at each number of levels, then combining it with the others
+    perValue += levels + 1;
+    if (length) perValue += length * (levels + 1);
+    length = length ? Math.min(length + levels, maxLevels + 1) : levels + 1;
+  }
+  return (1 << countBits(getInitiallyUnmet(model))) * combinations * perValue;
+}
+
+/**
+ * For each number of a component's extra levels (above each attribute's lower bound), the values
+ * of its attributes that do the most damage
+ */
+interface ComponentChoices {
+  attributes: number[];
+  /** The most extra levels it can use */
+  levels: number;
+  /** values[m * attributes.length + j] is attribute j's value with m extra levels */
+  values: Uint8Array;
+}
+
+/**
+ * The knapsack-style dynamic program of optimizeLinear for one component's attributes, maximizing
+ * the attack power they add (to any of its terms, since they all rise together). With one
+ * attribute, every value is a choice.
+ */
+function getComponentChoices(
+  model: Model,
+  { attributes: mask, scaling }: Component,
+  lower: readonly number[],
+  maxLevels: number,
+): ComponentChoices {
+  const attributes = model.attributes.map((_, i) => i).filter((i) => mask & (1 << i));
+  const levels = Math.min(
+    maxLevels,
+    attributes.reduce((sum, i) => sum + maxAttributeValue - lower[i], 0),
+  );
+  const values = new Uint8Array((levels + 1) * attributes.length);
+  if (attributes.length === 1) {
+    for (let m = 0; m <= levels; m++) values[m] = lower[attributes[0]] + m;
+    return { attributes, levels, values };
+  }
+
+  let dp = new Float64Array(levels + 1); // at most m levels, so unspent levels are allowed
+  const choices: Uint8Array[] = [];
+  for (const i of attributes) {
+    const gain = new Float64Array(maxAttributeValue + 1);
+    for (let value = lower[i]; value <= maxAttributeValue; value++) {
+      for (const t of scaling) gain[value] += model.contributions[i][t][value];
+    }
+    const next = new Float64Array(levels + 1).fill(-Infinity);
+    const choice = new Uint8Array(levels + 1);
+    for (let m = 0; m <= levels; m++) {
+      for (let value = lower[i]; value <= maxAttributeValue; value++) {
+        const cost = value - lower[i];
+        if (cost > m) break;
+        const candidate = dp[m - cost] + gain[value];
+        if (candidate > next[m] + epsilon) {
+          next[m] = candidate;
+          choice[m] = value;
+        }
+      }
+    }
+    dp = next;
+    choices.push(choice);
+  }
+  for (let m = 0; m <= levels; m++) {
+    let remaining = m;
+    for (let j = attributes.length - 1; j >= 0; j--) {
+      const value = choices[j][remaining];
+      values[m * attributes.length + j] = value;
+      remaining -= value - lower[attributes[j]];
+    }
+  }
+  return { attributes, levels, values };
+}
+
+/**
+ * The best of a + b for every total length, with the length of b used for each
+ */
+function combineCurves(a: Float64Array, b: Float64Array, maxLength: number) {
+  const length = Math.min(a.length + b.length - 1, maxLength);
+  const curve = new Float64Array(length).fill(-Infinity);
+  const split = new Int16Array(length);
+  for (let i = 0; i < a.length && i < length; i++) {
+    for (let j = 0; j < b.length && i + j < length; j++) {
+      const value = a[i] + b[j];
+      if (value > curve[i + j]) {
+        curve[i + j] = value;
+        split[i + j] = j;
+      }
+    }
+  }
+  return { curve, split };
+}
+
+/**
+ * Exact optimization for any objective whose attributes can be split into independent groups once
+ * a few of them are fixed. Damage is a sum over the damage plan's entries, and each term's attack
+ * power a sum over attributes, so terms that share no attributes (or entries) can be optimized
+ * separately. Within a group, if every term's attack power rises with the same quantity (e.g. it's
+ * one term), the most damage for each number of levels comes from the most of that quantity, which
+ * optimizeLinear's dynamic program finds. Attributes that would link groups, like Strength for a
+ * Fire weapon's physical and fire damage, are fixed to each of their values in turn.
+ *
+ * Like optimizeLinear, each combination of met/unmet requirements is tried separately, so
+ * requirement penalties don't link attributes.
+ *
+ * @param fixed bitmask of the attributes to fix, from chooseFixedAttributes
+ */
+function optimizeSeparable(model: Model, maxLevels: number, fixed: number): number[][] {
+  const { attributes, min, unmet, contributions, penaltyMasks, penaltyMultiplier } = model;
+  const { attackPowers, plan } = model;
+  const k = attributes.length;
+  if (k === 0) return [[]];
+  const termCount = plan.base.length;
+  const dependencies = getTermDependencies(model);
+  const fixedAttributes = attributes.map((_, i) => i).filter((i) => fixed & (1 << i));
+  const free = ((1 << k) - 1) & ~fixed;
+
+  const best = new Float64Array(maxLevels + 1).fill(-Infinity);
+  const allocations: number[][] = [];
+  const initiallyUnmet = getInitiallyUnmet(model);
+  const fixedAttackPowers = new Float64Array(termCount);
+
+  for (let metMask = 0; metMask < 1 << k; metMask++) {
+    if (metMask & ~initiallyUnmet) continue;
+
+    // Requirements chosen to be met force a minimum value for that attribute
+    const lower = [...min];
+    let feasible = true;
+    for (let i = 0; i < k; i++) {
+      if (metMask & (1 << i)) {
+        while (lower[i] <= maxAttributeValue && unmet[i][lower[i]]) lower[i]++;
+        if (lower[i] > maxAttributeValue) feasible = false;
+      }
+    }
+    const forcedLevels = lower.reduce((sum, value, i) => sum + value - min[i], 0);
+    if (!feasible || forcedLevels > maxLevels) continue;
+
+    // Requirements not chosen are assumed unmet, as in optimizeLinear
+    const assumedUnmet = initiallyUnmet & ~metMask;
+    const penalized = Array.from(plan.base, (_, t) => (penaltyMasks[t] & assumedUnmet) !== 0);
+    const components = getComponents(model, dependencies, free, penalized);
+    const choices = components.map((component) =>
+      getComponentChoices(model, component, lower, maxLevels - forcedLevels),
+    );
+
+    // Try every combination of the fixed attributes' values, starting from their lower bounds.
+    // Attributes in no component only matter for their requirements, so stay at their lower bound.
+    const values = [...lower];
+    for (;;) {
+      const fixedLevels =
+        forcedLevels + fixedAttributes.reduce((sum, i) => sum + values[i] - lower[i], 0);
+      if (fixedLevels <= maxLevels) {
+        for (let t = 0; t < termCount; t++) {
+          let attackPower = plan.base[t];
+          if (penalized[t]) {
+            attackPower *= penaltyMultiplier;
+          } else {
+            for (const i of fixedAttributes) attackPower += contributions[i][t][values[i]];
+          }
+          fixedAttackPowers[t] = attackPower;
+        }
+
+        // Each component's damage for every number of extra levels, added up
+        const budget = maxLevels - fixedLevels;
+        let total: Float64Array | null = null;
+        const splits: Int16Array[] = [];
+        components.forEach(({ terms, entries }, c) => {
+          const { attributes: componentAttributes, values: componentValues } = choices[c];
+          const count = componentAttributes.length;
+          const curve = new Float64Array(Math.min(choices[c].levels, budget) + 1);
+          for (let m = 0; m < curve.length; m++) {
+            for (const t of terms) {
+              let attackPower = fixedAttackPowers[t];
+              if (!penalized[t]) {
+                for (let j = 0; j < count; j++) {
+                  attackPower +=
+                    contributions[componentAttributes[j]][t][componentValues[m * count + j]];
+                }
+              }
+              attackPowers[t] = attackPower;
+            }
+            let damage = 0;
+            for (const e of entries) damage += getEntryDamage(plan, attackPowers, e);
+            curve[m] = damage;
+          }
+          if (!total) {
+            total = curve;
+          } else {
+            const combined = combineCurves(total, curve, budget + 1);
+            total = combined.curve;
+            splits.push(combined.split);
+          }
+        });
+
+        const curve = total ?? new Float64Array(1);
+        for (let r = 0; r < curve.length; r++) {
+          const n = fixedLevels + r;
+          if (!(curve[r] > best[n] + epsilon)) continue;
+          best[n] = curve[r];
+          // Each component's share of the extra levels, from the last combined to the first
+          const allocation = [...values];
+          let remaining = r;
+          for (let c = components.length - 1; c >= 0; c--) {
+            const m = c > 0 ? splits[c - 1][remaining] : remaining;
+            remaining -= m;
+            const { attributes: componentAttributes, values: componentValues } = choices[c];
+            componentAttributes.forEach((i, j) => {
+              allocation[i] = componentValues[m * componentAttributes.length + j];
+            });
+          }
+          allocations[n] = allocation;
+        }
+      }
+
+      // Advance to the next combination of the fixed attributes' values
+      let j = 0;
+      while (j < fixedAttributes.length && values[fixedAttributes[j]] === maxAttributeValue) {
+        values[fixedAttributes[j]] = lower[fixedAttributes[j]];
+        j++;
+      }
+      if (j === fixedAttributes.length) break;
+      values[fixedAttributes[j]]++;
+    }
+  }
+
+  // Allow unspent levels
+  for (let n = 1; n <= maxLevels; n++) {
+    if (best[n - 1] >= best[n]) {
+      best[n] = best[n - 1];
+      allocations[n] = allocations[n - 1];
+    }
+  }
+
+  return allocations;
+}
+
 /**
  * Approximate optimization for objectives that can't be optimized exactly in a reasonable time,
  * starting from the exact attack power optimum and improving it by moving levels between
@@ -1233,14 +1649,24 @@ export function optimizeAttributes(options: OptimizeOptions): OptimizationCurve 
     const linear = terms.length === 1 || terms.every(({ defense }) => !defense);
     if (linear) {
       allocations = optimizeLinear(model, maxLevels);
-    } else if (
-      getCandidateValues(model).reduce((product, values) => product * values.length, 1) <=
-      bruteForceLimit
-    ) {
-      allocations = optimizeBruteForce(model, maxLevels);
     } else {
-      allocations = optimizeLocalSearch(model, maxLevels, onlyLevels != null);
-      exact = false;
+      // Split the attributes into independent groups if that's quicker than trying everything
+      const combinations = getCandidateValues(model).reduce(
+        (product, values) => product * values.length,
+        1,
+      );
+      const dependencies = getTermDependencies(model);
+      const separation = chooseFixedAttributes(model, dependencies);
+      // Exact searches are worth more time when the alternative is an approximate one
+      const workLimit = combinations <= bruteForceLimit ? combinations : exactWorkLimit;
+      if (separation && getSeparableWork(model, dependencies, separation, maxLevels) <= workLimit) {
+        allocations = optimizeSeparable(model, maxLevels, separation.fixed);
+      } else if (combinations <= bruteForceLimit) {
+        allocations = optimizeBruteForce(model, maxLevels);
+      } else {
+        allocations = optimizeLocalSearch(model, maxLevels, onlyLevels != null);
+        exact = false;
+      }
     }
 
     return allocations.map((values) => {

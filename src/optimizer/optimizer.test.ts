@@ -5,6 +5,7 @@ import getWeaponAttack, {
   allAttributes,
   allDamageTypes,
   AttackPowerType,
+  type Attribute,
   type Attributes,
   type Weapon,
 } from "../calculator/calculator.ts";
@@ -51,6 +52,7 @@ import {
 } from "./build.ts";
 import {
   evaluateObjective,
+  getAttributeScaling,
   getBreakdown,
   optimizeAttributes,
   type Objective,
@@ -225,6 +227,42 @@ describe("optimizeAttributes", () => {
     expect(curve.values).toHaveLength(expected.length);
     curve.values.forEach((value, n) => expect(value).toBeCloseTo(expected[n], 6));
   });
+
+  // Stats that scale more than one damage type are fixed to each value in turn, and the rest are
+  // split into independent groups (optimizeSeparable)
+  for (const [name, start] of [
+    ["Flame Art Longsword", 70],
+    ["Fire Longsword", 60],
+    ["Rivers of Blood", 70],
+    ["Bloodfiend's Sacred Arm", 80],
+  ] as const) {
+    it(`finds the exact best allocation at every level for ${name} with defenses`, () => {
+      const weapon = getWeapon(name);
+      const upgradeLevel = weapon.attack.length - 1;
+      const scales = (attribute: Attribute) =>
+        allDamageTypes.some(
+          (damageType) =>
+            weapon.attack[upgradeLevel][damageType] &&
+            getAttributeScaling(weapon, upgradeLevel, damageType, attribute) > 0,
+        );
+      const options: OptimizeOptions = {
+        weapon,
+        upgradeLevel,
+        twoHanding: false,
+        // Stats it doesn't scale with start at 99, so only the others are searched
+        attributes: Object.fromEntries(
+          allAttributes.map((attribute) => [attribute, scales(attribute) ? start : 99]),
+        ) as Attributes,
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses,
+      };
+      const curve = optimizeAttributes(options)!;
+      expect(curve.exact).toBe(true);
+      const expected = bruteForce(options, curve.values.length - 1);
+      curve.values.forEach((value, n) => expect(value).toBeCloseTo(expected[n], 6));
+    });
+  }
 
   it("doesn't apply spell scaling to non-catalysts", () => {
     expect(
