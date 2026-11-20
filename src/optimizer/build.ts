@@ -1614,14 +1614,15 @@ export function optimizeBuild(
     };
   }
 
-  // The stats at 0% potential (each damage stat at the higher of the weapon's requirement and the
-  // class's base) and at 100% (99 in each)
-  const minPotentialAttributes = Object.fromEntries(
-    allAttributes.map((attribute) => [
-      attribute,
-      Math.max(weapon.requirements[attribute] ?? 0, classAttributes?.[attribute] ?? 1),
-    ]),
-  ) as Attributes;
+  // The stats at 0% potential (the class's base, raised just enough to meet the weapon's
+  // requirements, counting two handing and bonus stats) and at 100% (99 in each)
+  const minPotentialAttributes = getRequiredAttributes(
+    weapon,
+    twoHanding,
+    classAttributes ??
+      (Object.fromEntries(allAttributes.map((attribute) => [attribute, 1])) as Attributes),
+    bonusAttributes,
+  );
   const maxPotentialAttributes = Object.fromEntries(
     allAttributes.map((attribute) => [attribute, 99]),
   ) as Attributes;

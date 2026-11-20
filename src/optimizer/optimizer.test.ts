@@ -630,6 +630,27 @@ describe("optimizeBuild", () => {
     );
   });
 
+  it("puts 0% potential at the requirements as two handing and bonus stats meet them", () => {
+    const wretch = { str: 10, dex: 10, int: 10, fai: 10, arc: 10 };
+    const base = {
+      ...request,
+      startLevel: 1,
+      attributes: wretch,
+      classAttributes: wretch,
+      objective: "totalAttack" as const,
+      limits: { ...noLimits, maxLevels: 0 },
+      meetRequirements: true,
+    };
+    // Two handed, 10 Str counts as 15, past the 12 required
+    const twoHanded = optimizeBuild({ ...base, twoHanding: true });
+    expect(twoHanded.attributes.str).toBe(10);
+    expect(twoHanded.potential).toBeCloseTo(0);
+    // +5 Int from a talisman means 19 leveled Int meets the 24 required
+    const bonus = optimizeBuild({ ...base, bonusAttributes: { ...noBonus, int: 5 } });
+    expect(bonus.attributes.int).toBe(19);
+    expect(bonus.potential).toBeCloseTo(0);
+  });
+
   it("takes required levels even past the level limit", () => {
     const result = optimizeBuild({
       ...request,

@@ -259,9 +259,10 @@ function LimitSettings({
         Additional levels are counted from your current or planned level, whichever is higher. Runes
         are counted from your current level, including any needed to reach your planned stats. Gains
         are averaged over stretches where a requirement takes several levels to reach. Potential is
-        0% with each damage stat at the higher of the weapon&apos;s requirement and the class&apos;s
-        base, and 100% with 99 in each. Potential left per level is the potential still to gain
-        divided by the levels it takes to gain it.
+        0% with each damage stat at the class&apos;s base, raised just enough to meet the
+        weapon&apos;s requirements (counting two handing and stat bonuses), and 100% with 99 in
+        each. Potential left per level is the potential still to gain divided by the levels it takes
+        to gain it.
       </DismissableNote>
     </Section>
   );
