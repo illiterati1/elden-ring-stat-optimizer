@@ -374,7 +374,7 @@ function BuildSettings({
 
         <MultiPicker
           label="Weapon Levels"
-          placeholder="Add a level, e.g. +25"
+          placeholder="Add a level"
           options={upgradeLevelChoices}
           value={upgradeLevels}
           getOptionLabel={upgradeLevelLabel}
@@ -386,7 +386,7 @@ function BuildSettings({
           <>
             <MultiPicker
               label="Attacks"
-              placeholder="Add an attack, e.g. R1"
+              placeholder="Add an attack"
               options={attackChoices}
               value={attacks}
               getOptionLabel={(attackName) =>
@@ -410,7 +410,7 @@ function BuildSettings({
               ))}
             <MultiPicker
               label="Ashes of War"
-              placeholder="Add a skill, e.g. Lion's Claw"
+              placeholder="Add a skill"
               options={ashOptions}
               value={ashesOfWar}
               getOptionLabel={(choice) => ashLabels.get(choice) ?? choice}

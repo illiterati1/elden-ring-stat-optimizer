@@ -37,7 +37,7 @@ function WeaponPicker({ weapons, weaponOrder, selectedWeapons, onSelectedWeapons
       onChange={(_, newSelection) => onSelectedWeaponsChanged(newSelection)}
       groupBy={(name) => typeLabels.get(name) ?? ""}
       renderInput={(params) => (
-        <TextField {...params} label="Weapons" placeholder="Add a weapon, e.g. Claymore" />
+        <TextField {...params} label="Weapons" placeholder="Add a weapon" />
       )}
       size="small"
       disableCloseOnSelect
