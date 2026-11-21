@@ -787,7 +787,8 @@ export interface BuildResult {
   statusAtMaxArcane?: Partial<Record<AttackPowerType, number>>;
   /**
    * Where the final value sits between the value with each damage stat at the higher of the
-   * weapon's requirement and the class's base (0) and with 99 in each (1), if those differ
+   * weapon's requirement and the class's base (0) and with 99 in each (1); 1 if those are the
+   * same, since the stats can't do any better
    */
   potential?: number;
   /** The weapon's scaling for each attribute at its upgrade level (1 = 100) */
@@ -1873,7 +1874,7 @@ export function optimizeBuild(
   const potential =
     maxValue - requiredValue > 1e-9
       ? (finalValue - hpDamage - requiredValue) / (maxValue - requiredValue)
-      : undefined;
+      : 1;
 
   const curveAllocations = sliceAllocations(
     curve.allocations,
