@@ -152,7 +152,6 @@ const getResultKey = (result: BuildResult) => result.row?.id ?? result.weaponNam
 interface AssumedStats {
   /** The row's: a table row's result key, or "pin:" and a pinned row's pin ID */
   key: string;
-  name: string;
   stats: Stats;
 }
 
@@ -1294,8 +1293,8 @@ export default function App() {
   // results stay as they are (for the chart, and for assuming another row's stats). Not saved.
   const [assumed, setAssumed] = useState<AssumedStats>();
   const [toggleAssumed] = useState(
-    () => (key: string, name: string, stats: Stats) =>
-      setAssumed((previous) => (previous?.key === key ? undefined : { key, name, stats })),
+    () => (key: string, stats: Stats) =>
+      setAssumed((previous) => (previous?.key === key ? undefined : { key, stats })),
   );
   const assumedTableRequests = useMemo(
     () => (assumed ? requests.map((request) => withAssumedStats(request, assumed.stats)) : []),

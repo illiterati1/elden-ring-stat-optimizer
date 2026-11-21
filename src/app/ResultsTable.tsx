@@ -218,7 +218,7 @@ interface Props {
    * Assumes a row's final stats for every other row, or stops assuming them if they're the row's
    * already (key: a table row's result key, or "pin:" and a pinned row's pin ID)
    */
-  onAssumeStats: (key: string, name: string, finalStats: Stats) => void;
+  onAssumeStats: (key: string, finalStats: Stats) => void;
   onChange: UpdateAppState;
 }
 
@@ -1251,7 +1251,7 @@ const ResultRow = memo(function ResultRow({
               name={name}
               assumed={assumed}
               onAssume={() =>
-                options.onAssumeStats(assumeKey, name, {
+                options.onAssumeStats(assumeKey, {
                   ...(assumePlanStats ?? planStats),
                   ...(assumeResult ?? result).attributes,
                 })
