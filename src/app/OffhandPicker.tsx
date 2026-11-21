@@ -72,21 +72,23 @@ function OffhandPicker({
           />
         )}
       />
-      <FormControl fullWidth size="small" disabled={!offhandWeapon}>
-        <InputLabel id="offhandUpgradeLevelLabel">Left hand level</InputLabel>
-        <Select
-          labelId="offhandUpgradeLevelLabel"
-          label="Left hand level"
-          value={offhandUpgradeLevel}
-          onChange={(evt) => onChange({ offhandUpgradeLevel: +evt.target.value })}
-        >
-          {Array.from({ length: maxRegularUpgradeLevel + 1 }, (_, level) => (
-            <MenuItem key={level} value={level}>
-              +{level} / +{toSpecialUpgradeLevel(level)}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      {offhandWeapon && (
+        <FormControl fullWidth size="small">
+          <InputLabel id="offhandUpgradeLevelLabel">Left hand level</InputLabel>
+          <Select
+            labelId="offhandUpgradeLevelLabel"
+            label="Left hand level"
+            value={offhandUpgradeLevel}
+            onChange={(evt) => onChange({ offhandUpgradeLevel: +evt.target.value })}
+          >
+            {Array.from({ length: maxRegularUpgradeLevel + 1 }, (_, level) => (
+              <MenuItem key={level} value={level}>
+                +{level} / +{toSpecialUpgradeLevel(level)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
       {offhandWeapon && affinityChoices.length > 1 && (
         <FormControl fullWidth size="small">
           <InputLabel id="offhandAffinityLabel">Left hand affinity</InputLabel>
