@@ -49,6 +49,7 @@ import { getDamage } from "./optimizer.ts";
 import { getEnemyStats, type EnemyArea } from "../app/useEnemies.ts";
 import {
   getEquipWeightRate,
+  getErrorResult,
   getUpkeepAtDex,
   optimizeBuild,
   scadutreeBlessingRates,
@@ -564,6 +565,29 @@ describe("optimizeBuild", () => {
     objective: AttackPowerType.MAGIC,
     limits: { ...noLimits, maxLevels: 30 },
   };
+
+  it("gives a not applicable result for a request that throws, without calculating again", () => {
+    // An overwritten Arcane scaling rate with no Arcane scaling to grow from is a data bug
+    const weapon = request.weapon;
+    const broken: Weapon = {
+      ...weapon,
+      attackElementCorrect: {
+        ...weapon.attackElementCorrect,
+        [AttackPowerType.MAGIC]: { ...weapon.attackElementCorrect[AttackPowerType.MAGIC], arc: 1 },
+      },
+      attributeScalingRates: undefined,
+    };
+    const brokenRequest = { ...request, weapon: broken, row: { id: "row", name: "Row" } };
+    expect(() => optimizeBuild(brokenRequest)).toThrow(/no finite arc scaling/);
+    const result = getErrorResult(brokenRequest, new Error("no finite arc scaling"));
+    expect(result).toMatchObject({
+      weaponName: weapon.name,
+      row: brokenRequest.row,
+      applicable: false,
+      unavailableReason: "Calculation error: no finite arc scaling",
+      finalLevel: request.startLevel,
+    });
+  });
 
   it("levels to meet requirements first when asked", () => {
     const result = optimizeBuild({ ...request, meetRequirements: true });

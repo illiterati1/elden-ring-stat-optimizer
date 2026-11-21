@@ -1329,6 +1329,52 @@ function getRequiredAttributes(
  * @param findCurve the expensive part of the calculation, which doesn't depend on the limits, so it
  * can be cached
  */
+/**
+ * A not applicable result for a request whose calculation threw, so one bad weapon doesn't stop the
+ * rest. It calculates nothing that could throw again.
+ */
+export function getErrorResult(
+  {
+    weapon,
+    regularUpgradeLevel,
+    twoHanding,
+    startLevel,
+    attributes,
+    bonusAttributes,
+    skillVariant,
+    row,
+  }: BuildRequest,
+  error: unknown,
+): BuildResult {
+  return {
+    unavailableReason: `Calculation error: ${error instanceof Error ? error.message : error}`,
+    weaponName: weapon.name,
+    ...(skillVariant && { skillVariant }),
+    ...(row && { row }),
+    url: weapon.url,
+    applicable: false,
+    exact: true,
+    startValue: 0,
+    finalValue: 0,
+    curve: { startLevel, values: [] },
+    levels: 0,
+    finalLevel: startLevel,
+    runes: 0,
+    reason: "maxedOut",
+    attributes,
+    effectiveAttributes: adjustAttributesForTwoHanding({
+      twoHanding,
+      weapon,
+      attributes: getEffectiveAttributes(attributes, bonusAttributes),
+    }),
+    ineffectiveAttributes: [],
+    scaling: weapon.attributeScaling[getWeaponUpgradeLevel(weapon, regularUpgradeLevel)] ?? {},
+    requirements: weapon.requirements,
+    breakdown: [],
+    statusBuildup: {},
+  };
+}
+
 export function optimizeBuild(
   {
     weapon: requestedWeapon,

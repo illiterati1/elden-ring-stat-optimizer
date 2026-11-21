@@ -1,5 +1,5 @@
 import type { Weapon } from "../calculator/weapon.ts";
-import { optimizeBuild, type BuildRequest, type BuildResult } from "./build.ts";
+import { getErrorResult, optimizeBuild, type BuildRequest, type BuildResult } from "./build.ts";
 import { optimizeAttributes, type OptimizeOptions } from "./optimizer.ts";
 
 /** A chunk of a list of requests to optimize (see WorkerPool) */
@@ -77,6 +77,19 @@ function yieldToMessages() {
 let latestId = -1;
 
 /**
+ * optimizeBuild, or a not applicable result saying what went wrong if it throws (a bug), so the rest
+ * of the run still finishes
+ */
+function optimizeBuildSafely(request: BuildRequest): BuildResult {
+  try {
+    return optimizeBuild(request, findCurve);
+  } catch (error) {
+    console.error(`Calculating ${request.weapon.name} failed:`, error);
+    return getErrorResult(request, error);
+  }
+}
+
+/**
  * Optimizes each request, yielding to incoming messages now and then
  * @returns the results, or null if a newer request arrived meanwhile
  */
@@ -89,7 +102,7 @@ async function optimizeAll(id: number, requests: readonly BuildRequest[]) {
       lastYield = performance.now();
     }
     if (id !== latestId) return null;
-    results.push(withoutRequestStepTimes(optimizeBuild(request, findCurve), request));
+    results.push(withoutRequestStepTimes(optimizeBuildSafely(request), request));
   }
   return results;
 }
@@ -126,9 +139,15 @@ async function handleRequest({ id, chunk, requests }: WorkerRequest) {
  * results have already used it
  */
 function handleDpsRequest({ dpsId, requests }: DpsCurveRequest) {
-  const curves = requests.map(
-    (request) => optimizeBuild({ ...request, fast: false, dpsCurve: true }, findCurve).curve.dps,
-  );
+  // A request that throws (a bug) gets no curve, like one without a DPS
+  const curves = requests.map((request) => {
+    try {
+      return optimizeBuild({ ...request, fast: false, dpsCurve: true }, findCurve).curve.dps;
+    } catch (error) {
+      console.error(`Calculating ${request.weapon.name}'s DPS curve failed:`, error);
+      return undefined;
+    }
+  });
   const response: DpsCurveResponse = { dpsId, curves };
   self.postMessage(response);
 }
