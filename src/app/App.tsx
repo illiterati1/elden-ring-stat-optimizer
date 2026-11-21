@@ -517,8 +517,8 @@ export default function App() {
     () => new Map(ashChoices.map(({ value, label }) => [value, label])),
     [ashChoices],
   );
-  // With more than one attack or skill, each row's name says which it is
-  const showRowLabels = attackActive && attacks.length + ashesOfWar.length > 1;
+  // Each row's name says which attack or skill it is
+  const showRowLabels = attackActive && attacks.length + ashesOfWar.length > 0;
 
   // Each hit's physical damage type picks which physical negation applies. Standard is only
   // used for a weapon without attack data.
@@ -798,7 +798,7 @@ export default function App() {
         const buffUpkeep = weaponBuffApplies && !ownWeaponBuff ? weaponBuff?.upkeep : undefined;
         const upkeptAttackData =
           attackData && buffUpkeep ? { ...attackData, buffUpkeep } : attackData;
-        // Named with its attack when there are several: the attack, or the skill's name
+        // Named with its attack: the attack, or the skill's name
         const label = !showRowLabels
           ? undefined
           : attack !== ashAttack
@@ -1677,11 +1677,8 @@ export default function App() {
       ),
     [sortedResults, oneOffTimings, tooltipTimings],
   );
-  // The attack is named when there's one, but not an Ash of War, since weapons with a fixed skill use
-  // their own (named by their hits)
-  const valueLabel =
-    objectiveLabel +
-    (attackMode && attacks.length === 1 && !ashesOfWar.length ? ` (${attacks[0]})` : "");
+  // (the attack is in each row's name)
+  const valueLabel = objectiveLabel;
   const pointLabel = objective === "spellScaling" ? "scaling" : "damage";
   // As the table's header labels it, without the attack, e.g. "DPS" or "Total damage"
   const chartValueLabel = showDps ? "DPS" : objectiveLabel;
