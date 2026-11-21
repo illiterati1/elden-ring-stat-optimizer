@@ -17,6 +17,16 @@ export interface TopN {
   perSecond: boolean;
 }
 
+/**
+ * How far the latest run has got: requests answered out of all of them. With top N, every request
+ * is ranked in fast mode first, then only the top ones calculated at every level.
+ */
+export interface RunProgress {
+  phase: "ranking" | "calculating";
+  done: number;
+  total: number;
+}
+
 /** How many workers to use: one per core but one (for the page), within reason */
 export function getDefaultPoolSize() {
   const cores = typeof navigator === "undefined" ? 1 : navigator.hardwareConcurrency ?? 1;
@@ -68,6 +78,7 @@ interface Batch {
   inFlight: number[];
   results: BuildResult[];
   remaining: number;
+  phase: RunProgress["phase"];
   resolve: (results: BuildResult[]) => void;
 }
 
@@ -94,6 +105,8 @@ export default class WorkerPool {
   private nextChunk = 0;
   private readonly pendingDps = new Map<number, PendingDps>();
   private nextDpsId = 0;
+  /** Called whenever the latest run gets further (from the start of each pass) */
+  onProgress: ((progress: RunProgress) => void) | undefined;
 
   constructor(size: number) {
     this.workers = Array.from({ length: size }, (_, shard) => {
@@ -141,6 +154,7 @@ export default class WorkerPool {
     const fastResults = await this.run(
       id,
       requests.map((request) => ({ ...request, fast: true })),
+      "ranking",
     );
     const indexes = new Map(fastResults.map((result, i) => [result, i]));
     return this.run(
@@ -157,7 +171,11 @@ export default class WorkerPool {
   }
 
   /** Optimizes the requests, abandoning any batch still going */
-  private run(id: number, requests: readonly BuildRequest[]) {
+  private run(
+    id: number,
+    requests: readonly BuildRequest[],
+    phase: RunProgress["phase"] = "calculating",
+  ) {
     return new Promise<BuildResult[]>((resolve) => {
       this.chunks.clear();
       if (requests.length === 0) {
@@ -176,9 +194,11 @@ export default class WorkerPool {
         inFlight: this.workers.map(() => 0),
         results: [],
         remaining: requests.length,
+        phase,
         resolve,
       };
       this.batch = batch;
+      this.reportProgress(batch);
       this.workers.forEach((_, shard) => this.sendChunks(batch, shard));
     });
   }
@@ -217,12 +237,17 @@ export default class WorkerPool {
     indexes.forEach((index, i) => (batch.results[index] = results[i]));
     batch.inFlight[shard]--;
     batch.remaining -= indexes.length;
+    this.reportProgress(batch);
     if (batch.remaining === 0) {
       this.batch = undefined;
       batch.resolve(batch.results);
       return;
     }
     this.sendChunks(batch, shard);
+  }
+
+  private reportProgress({ phase, requests, remaining }: Batch) {
+    this.onProgress?.({ phase, done: requests.length - remaining, total: requests.length });
   }
 
   /**

@@ -8,7 +8,6 @@ import {
   Drawer,
   Fab,
   IconButton,
-  LinearProgress,
   Link,
   Stack,
   SvgIcon,
@@ -95,6 +94,7 @@ import LimitSettings from "./LimitSettings.tsx";
 import DefenseSettings from "./DefenseSettings.tsx";
 import WeaponPicker from "./WeaponPicker.tsx";
 import ResultsTable, { type PinnedRow } from "./ResultsTable.tsx";
+import RunProgressBar from "./RunProgressBar.tsx";
 import {
   describePinSettings,
   getKeyOfPin,
@@ -1163,6 +1163,7 @@ export default function App() {
     resultContext: resultTableContext = tableContext,
     pending: mainPending,
     poolRef,
+    progress,
   } = useBuildResults(requests, workerTopN, undefined, tableContext);
 
   // Pinned rows, whether their weapons are picked or not: a live pin's values use the current
@@ -1791,7 +1792,7 @@ export default function App() {
                   }
                 />
                 <Box>
-                  <LinearProgress sx={{ visibility: pending ? "visible" : "hidden" }} />
+                  <RunProgressBar progress={progress} pending={pending} />
                   {requests.length > 0 || pins.length > 0 ? (
                     <Stack spacing={2}>
                       {chartResults.length > 0 && !fastMode && (

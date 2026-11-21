@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { BuildRequest, BuildResult } from "../optimizer/build.ts";
 import { afterPickersClose, isLatestChangeFromPicker } from "./pickerChange.ts";
-import WorkerPool, { getDefaultPoolSize, type TopN } from "./workerPool.ts";
+import WorkerPool, { getDefaultPoolSize, type RunProgress, type TopN } from "./workerPool.ts";
 
 /**
  * Wait for the user to stop typing, spinning or ticking boxes before starting a calculation (after
@@ -14,6 +14,49 @@ const debounceMs = 300;
  */
 const pickerTimeoutMs = 1000;
 
+/** How often the progress shown is updated, at most */
+const progressIntervalMs = 200;
+
+/**
+ * The latest run's progress, for a component of its own to show (so the page doesn't render again
+ * whenever some requests are answered). Updates are throttled, but the first and the last aren't.
+ */
+export class ProgressStore {
+  private progress: RunProgress | undefined;
+  private readonly listeners = new Set<() => void>();
+  private timeout: ReturnType<typeof setTimeout> | undefined;
+  private lastNotified = 0;
+
+  readonly get = () => this.progress;
+
+  readonly subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => void this.listeners.delete(listener);
+  };
+
+  /** @param progress none while waiting to start */
+  readonly set = (progress: RunProgress | undefined) => {
+    this.progress = progress;
+    const now = Date.now();
+    const immediate = !progress || progress.done === 0 || progress.done === progress.total;
+    if (immediate || now - this.lastNotified >= progressIntervalMs) {
+      this.notify();
+    } else {
+      this.timeout ??= setTimeout(
+        () => this.notify(),
+        progressIntervalMs - (now - this.lastNotified),
+      );
+    }
+  };
+
+  private notify() {
+    clearTimeout(this.timeout);
+    this.timeout = undefined;
+    this.lastNotified = Date.now();
+    this.listeners.forEach((listener) => listener());
+  }
+}
+
 /**
  * Runs the optimizer in a pool of web workers whenever the requests change. The workers cache the
  * expensive part of each calculation, and abandon a request as soon as a newer one arrives.
@@ -21,7 +64,8 @@ const pickerTimeoutMs = 1000;
  * @param context anything the results are shown with that comes from the same settings as the
  * requests (e.g. the starting stats), returned with the results so it changes when they do
  * @returns the results, the requests they're for (without top N, in the same order), and the
- * context to show them with, which are behind the latest ones until they're worked out
+ * context to show them with, which are behind the latest ones until they're worked out, and the
+ * latest run's progress
  */
 export default function useBuildResults<Context = undefined>(
   requests: BuildRequest[],
@@ -39,9 +83,11 @@ export default function useBuildResults<Context = undefined>(
   const contextRef = useRef(context);
   contextRef.current = context;
   const [pending, setPending] = useState(false);
+  const [progress] = useState(() => new ProgressStore());
 
   useEffect(() => {
     const pool = new WorkerPool(poolSize);
+    pool.onProgress = progress.set;
     poolRef.current = pool;
     return () => pool.terminate();
   }, [poolSize]);
@@ -49,6 +95,7 @@ export default function useBuildResults<Context = undefined>(
   useEffect(() => {
     const id = ++latestIdRef.current;
     setPending(true);
+    progress.set(undefined);
     const start = () => {
       void poolRef.current?.optimize(id, requests, topN).then((newResults) => {
         if (id !== latestIdRef.current) return;
@@ -64,7 +111,7 @@ export default function useBuildResults<Context = undefined>(
     if (isLatestChangeFromPicker()) return afterPickersClose(start, pickerTimeoutMs);
     const timeout = setTimeout(start, debounceMs);
     return () => clearTimeout(timeout);
-  }, [requests, topN, poolSize]);
+  }, [requests, topN, poolSize, progress]);
 
   // A context that changes without the requests changing applies to the results straight away
   useEffect(() => {
@@ -75,7 +122,7 @@ export default function useBuildResults<Context = undefined>(
     );
   }, [context]); // (not the requests: new ones get the context with their results)
 
-  return { results, resultRequests, resultContext, pending, poolRef };
+  return { results, resultRequests, resultContext, pending, poolRef, progress };
 }
 
 /**
