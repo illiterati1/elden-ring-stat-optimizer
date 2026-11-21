@@ -31,7 +31,7 @@ import BreakdownTable from "./BreakdownTable.tsx";
 import Details, { detailsBackground, tooltipCueSx } from "./Details.tsx";
 import type { AppState, SortBy, TooltipTimings, UpdateAppState } from "./useAppState.ts";
 import { maxSeries } from "./ValueChart.tsx";
-import type { Pin, PinSettingLine } from "./pins.ts";
+import { getPinChartKey, type Pin, type PinSettingLine } from "./pins.ts";
 import { countRender } from "./perfProbe.ts";
 
 /** A pinned row, shown above the rest with its own attack's values */
@@ -1483,7 +1483,8 @@ function ResultsTable({
               return renderRow(result, {
                 key,
                 name: result.row?.name ?? result.weaponName,
-                chartKey: key,
+                // A live pin's row is the pin's line, so it's checked with the pin
+                chartKey: pin && !pin.frozen ? getPinChartKey(pin) : key,
                 pinCell: rowPinCell(result, pin),
                 // A live pin is the same row, so it's dimmed here
                 sx: pin && !pin.frozen ? { opacity: 0.55 } : undefined,

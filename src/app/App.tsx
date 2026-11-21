@@ -110,7 +110,7 @@ import {
   type PinSettings,
   type RowChoice,
 } from "./pins.ts";
-import ValueChart from "./ValueChart.tsx";
+import ValueChart, { maxSeries } from "./ValueChart.tsx";
 import { getResultStatus, sortResults } from "./results.ts";
 import { defaultWeaponFilters, passesFilters } from "./filters.ts";
 import { maxCharacterLevel } from "../optimizer/runes.ts";
@@ -142,6 +142,24 @@ const skillDebuffs: Partial<Record<string, string>> = { "Shriek of Milos": "Shri
  */
 const getRequestKey = (request: BuildRequest) => request.row?.id ?? request.weapon.name;
 const getResultKey = (result: BuildResult) => result.row?.id ?? result.weaponName;
+
+/**
+ * The chart's keys with a row that's pinned live charted by its pin's key, so the row's checkbox and
+ * the pin's are the same (it's one line), and keys of pins that are gone dropped
+ */
+function mergeChartKeys(chartWeapons: readonly string[], pins: readonly Pin[]) {
+  const livePinKeys = new Map(
+    pins.filter((pin) => !pin.frozen).map((pin) => [getKeyOfPin(pin), getPinChartKey(pin)]),
+  );
+  const pinKeys = new Set(pins.map(getPinChartKey));
+  return [
+    ...new Set(
+      chartWeapons.flatMap((key) =>
+        key.startsWith("pin:") ? (pinKeys.has(key) ? [key] : []) : [livePinKeys.get(key) ?? key],
+      ),
+    ),
+  ];
+}
 
 /**
  * A weapon's name with its upgrade level, on its own scale (e.g. +10 for a somber weapon), kept
@@ -1374,10 +1392,34 @@ export default function App() {
     );
   }, [pins, sortedResults]);
 
+  // A row pinned live is charted by its pin's key (when it's pinned, a pin is unfrozen, or from
+  // before they were merged)
+  useEffect(() => {
+    const merged = mergeChartKeys(chartWeapons, pins);
+    if (merged.length !== chartWeapons.length || merged.some((key, i) => key !== chartWeapons[i])) {
+      updateAppState({ chartWeapons: merged });
+    }
+  }, [chartWeapons, pins, updateAppState]);
+  // The keys of the table's rows that are pinned live, by their pins' chart keys
+  const rowKeysByPinChartKey = useMemo(
+    () =>
+      new Map(
+        [...rowPins].map(([result, pin]) => [getPinChartKey(pin), getResultKey(result)] as const),
+      ),
+    [rowPins],
+  );
+
   // Pinning, freezing, and restoring a frozen pin's settings, with the latest state (so the table
   // gets the same functions every time)
-  const latest = useRef({ pins, chartWeapons, pinRequests, appState, ashLabels });
-  latest.current = { pins, chartWeapons, pinRequests, appState, ashLabels };
+  const latest = useRef({
+    pins,
+    chartWeapons,
+    pinRequests,
+    appState,
+    ashLabels,
+    rowKeysByPinChartKey,
+  });
+  latest.current = { pins, chartWeapons, pinRequests, appState, ashLabels, rowKeysByPinChartKey };
   const [pinActions] = useState(() => ({
     pin: (result: BuildResult) => {
       const { pins, ashLabels, appState } = latest.current;
@@ -1399,26 +1441,44 @@ export default function App() {
       };
       updateAppState({ pins: [...pins, pin] });
     },
+    // A live pin's row in the table stays charted by its own key
     unpin: (id: string) => {
-      const { pins, chartWeapons } = latest.current;
+      const { pins, chartWeapons, rowKeysByPinChartKey } = latest.current;
       const chartKey = `pin:${id}`;
+      const rowKey = rowKeysByPinChartKey.get(chartKey);
       updateAppState({
         pins: pins.filter((pin) => pin.id !== id),
         ...(chartWeapons.includes(chartKey) && {
-          chartWeapons: chartWeapons.filter((key) => key !== chartKey),
+          chartWeapons: chartWeapons.flatMap((key) =>
+            key !== chartKey ? [key] : rowKey ? [rowKey] : [],
+          ),
         }),
       });
     },
     unpinAll: () => {
-      const { chartWeapons } = latest.current;
+      const { chartWeapons, rowKeysByPinChartKey } = latest.current;
       updateAppState({
         pins: [],
-        chartWeapons: chartWeapons.filter((key) => !key.startsWith("pin:")),
+        chartWeapons: chartWeapons.flatMap((key) => {
+          if (!key.startsWith("pin:")) return [key];
+          const rowKey = rowKeysByPinChartKey.get(key);
+          return rowKey ? [rowKey] : [];
+        }),
       });
     },
+    // Freezing a charted live pin charts its row in the table too (if there's room), which is no
+    // longer the same
     toggleFreeze: (id: string) => {
-      const { pins, pinRequests, appState } = latest.current;
+      const { pins, pinRequests, appState, chartWeapons, rowKeysByPinChartKey } = latest.current;
+      const chartKey = `pin:${id}`;
+      const rowKey = rowKeysByPinChartKey.get(chartKey);
+      const chartRow =
+        rowKey &&
+        chartWeapons.includes(chartKey) &&
+        chartWeapons.length < maxSeries &&
+        !getFreezeBlocked(pinRequests.get(id), getFrozenKeys(pins));
       updateAppState({
+        ...(chartRow && { chartWeapons: [...chartWeapons, rowKey] }),
         // Unfreezing a pin that's also pinned live just leaves the live one, which is the same
         pins: pins.flatMap((pin): Pin[] => {
           if (pin.id !== id) return [pin];
@@ -1490,9 +1550,10 @@ export default function App() {
   const chartedResults = useMemo(
     () =>
       sortedResults.filter(
-        (result) => result.applicable && chartWeapons.includes(getResultKey(result)),
+        (result) =>
+          result.applicable && !rowPins.has(result) && chartWeapons.includes(getResultKey(result)),
       ),
-    [sortedResults, chartWeapons],
+    [sortedResults, chartWeapons, rowPins],
   );
   const chartedPins = useMemo(
     () =>
