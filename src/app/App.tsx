@@ -745,6 +745,11 @@ export default function App() {
               ? "A catalyst's R1 casts spells: its melee strikes are its R2"
               : attack === "Mounted R1/L1" && catalystTypes.includes(weapon.weaponType)
               ? "A catalyst's mounted R1 casts spells: its mounted melee strikes are its mounted R2"
+              : limit &&
+                "seconds" in limit &&
+                attack !== ashAttack &&
+                getAttackData(movesets, weapon, attack, weaponTwoHanding, chainWeight, sumChains)
+              ? "No attack can be performed quickly enough to roll within the time to dodge"
               : `No ${attack} for this weapon`),
           // The left hand weapon's hits use its own attack rows
           attack:

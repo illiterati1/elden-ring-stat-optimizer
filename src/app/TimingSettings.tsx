@@ -173,7 +173,8 @@ function TimingSettings({
         )}
         {chainLimit.mode === "seconds" && !mounted && (
           <Typography variant="body2" color="text.secondary">
-            For time scaling, a chain cut short lasts until a roll can start (at least one step)
+            For time scaling, a chain cut short lasts until a roll can start (a weapon whose first
+            step is too slow has no result)
           </Typography>
         )}
       </Box>

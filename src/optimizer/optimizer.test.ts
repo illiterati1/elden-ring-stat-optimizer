@@ -13471,10 +13471,10 @@ describe("powerstance off hand weapons", () => {
     expect(
       getAttackData(movesets, longsword, "R1", false, 0.5, false, { seconds: 2.1 })!.steps,
     ).toHaveLength(3);
-    // At least one step
+    // None if it can't roll in time after the first step
     expect(
-      getAttackData(movesets, longsword, "R1", false, 0.5, false, { seconds: 0.1 })!.steps,
-    ).toHaveLength(1);
+      getAttackData(movesets, longsword, "R1", false, 0.5, false, { seconds: 0.1 }),
+    ).toBeUndefined();
     // Mounted chains can't roll, so a time to dodge doesn't limit them
     const mounted = getAttackData(movesets, longsword, "Mounted R1/L1", false, 0.5)!;
     expect(

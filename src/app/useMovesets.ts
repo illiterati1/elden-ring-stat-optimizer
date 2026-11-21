@@ -362,8 +362,8 @@ function getStepTimes(
  * @returns how many of a chain's steps it's limited to, and whether it's cut short (doesn't start
  * again): a number of steps, cut short at the whole chain's length or less (more repeats the whole
  * chain); or the steps that fit a time to dodge, from the first attack until a roll can start after
- * them (at least one), cut short unless the whole chain fits. Mounted chains can't roll, so a time
- * to dodge doesn't limit them.
+ * them (none if a roll can't start in time after the first), cut short unless the whole chain fits.
+ * Mounted chains can't roll, so a time to dodge doesn't limit them.
  */
 function getChainLength(
   attack: AttackName,
@@ -380,6 +380,9 @@ function getChainLength(
   if (mountedAttacks.has(attack)) return whole;
   const times = getStepTimes(attack, timing, stepCount);
   if (!times) return whole;
+  // Not even the first step, if a roll can't start after it in time
+  if (times[0]?.roll != null && times[0].roll > limit.seconds + 1e-9)
+    return { length: 0, cut: true };
   let elapsed = 0;
   let count = 0;
   for (const step of times) {
@@ -789,7 +792,8 @@ function getJumpLandingShotTimes(): StepTimes {
 /**
  * @param chainWeight how much each step of a chain counts relative to the one before it
  * @param sumChains add up a chain's steps rather than taking their weighted average
- * @returns the weapon's data for an attack, or undefined if it doesn't have that attack
+ * @returns the weapon's data for an attack, or undefined if it doesn't have that attack (or, with a
+ * time to dodge, it can't roll in time after its first step)
  */
 export function getAttackData(
   movesets: Movesets,
@@ -890,6 +894,7 @@ export function getAttackData(
   const timing = moveset.timing?.[hands]?.[attack];
   // A chain cut short doesn't go on to its next step or start again
   const chain = getChainLength(attack, timing, allSteps.length, limit);
+  if (!chain.length) return undefined;
   const steps = allSteps.slice(0, chain.length);
   const stepTimes = getStepTimes(
     attack,
