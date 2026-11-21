@@ -70,6 +70,8 @@ export interface PinnedRow {
   assumePlanStats?: Stats;
   /** A frozen pin's settings, for its tooltip */
   settingLines?: PinSettingLine[];
+  /** Restoring a frozen pin's settings would change the current ones */
+  restorable?: boolean;
 }
 
 /** What a row's attack is shown with */
@@ -900,9 +902,12 @@ function RowPinCell({
   );
 }
 
-/** A pinned row's buttons: unpin, freeze or unfreeze, and restore a frozen one's settings */
+/**
+ * A pinned row's buttons: unpin, freeze or unfreeze, and restore a frozen one's settings if they
+ * differ from the current ones
+ */
 function PinnedCell({
-  pinned: { pin, name, freezeBlocked, settingLines },
+  pinned: { pin, name, freezeBlocked, settingLines, restorable },
   pinActions,
 }: {
   pinned: PinnedRow;
@@ -942,7 +947,7 @@ function PinnedCell({
           </IconButton>
         </span>
       </Tooltip>
-      {pin.frozen && (
+      {pin.frozen && restorable && (
         <Tooltip title="Restore the settings it was frozen with">
           <IconButton
             size="small"

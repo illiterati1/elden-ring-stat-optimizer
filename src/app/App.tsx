@@ -111,6 +111,7 @@ import {
   getFreezeBlocked,
   getFrozenKeys,
   getRestoredSettings,
+  restoreChangesSettings,
   mergeChartKeys,
   toggleFreeze,
   unpin,
@@ -1460,6 +1461,9 @@ export default function App() {
             !!pin.frozen.request.attack?.chain,
             allBuffs,
           ),
+        ...(pin.frozen && {
+          restorable: restoreChangesSettings(pin, { ...currentPinSettings, upgradeLevels }),
+        }),
       };
     });
     // With stats assumed, a live pin shows its result with them, and its button assumes its
@@ -1497,6 +1501,8 @@ export default function App() {
     pinResultRequestsById,
     pinIdsWithRequests,
     pinResultSettings,
+    currentPinSettings,
+    upgradeLevels,
     allBuffs,
     tooltipTimings,
     findPinWeapon,

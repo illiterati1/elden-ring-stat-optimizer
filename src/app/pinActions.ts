@@ -3,6 +3,7 @@ import {
   getFrozenKey,
   getKeyOfPin,
   getPinChartKey,
+  stableStringify,
   storeRequest,
   type Pin,
   type PinSettings,
@@ -136,4 +137,19 @@ export function getRestoredSettings(
       upgradeLevels: [...upgradeLevels, pin.upgradeLevel].sort((a, b) => a - b),
     }),
   };
+}
+
+/** @returns whether restoring a frozen pin's settings would change any of the current ones */
+export function restoreChangesSettings(
+  pin: Pin,
+  current: PinSettings & Pick<AppState, "upgradeLevels">,
+): boolean {
+  const restored = getRestoredSettings(pin, current);
+  return (
+    !!restored &&
+    Object.entries(restored).some(
+      ([key, value]) =>
+        stableStringify(value) !== stableStringify(current[key as keyof typeof current]),
+    )
+  );
 }

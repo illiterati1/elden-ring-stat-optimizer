@@ -7,6 +7,7 @@ import {
   getFreezeBlocked,
   getFrozenKeys,
   getRestoredSettings,
+  restoreChangesSettings,
   mergeChartKeys,
   toggleFreeze,
   unpin,
@@ -270,6 +271,19 @@ describe("unpinning", () => {
 
 describe("restoring a frozen pin's settings", () => {
   const changed: PinSettings = { ...settings, twoHanding: true };
+
+  it("is only offered when it would change the settings", () => {
+    const frozenPin = pin("a", {
+      frozen: { request: storeRequest(request("Uchigatana")), settings: changed },
+    });
+    expect(restoreChangesSettings(frozenPin, { ...settings, upgradeLevels: [25] })).toBe(true);
+    expect(restoreChangesSettings(frozenPin, { ...changed, upgradeLevels: [25] })).toBe(false);
+    // (with its keys listed in another order, still the same)
+    const reordered = Object.fromEntries(Object.entries(changed).reverse()) as PinSettings;
+    expect(restoreChangesSettings(frozenPin, { ...reordered, upgradeLevels: [25] })).toBe(false);
+    expect(restoreChangesSettings(frozenPin, { ...changed, upgradeLevels: [10] })).toBe(true);
+    expect(restoreChangesSettings(pin("a"), { ...settings, upgradeLevels: [25] })).toBe(false);
+  });
 
   it("does nothing for a live pin", () => {
     expect(getRestoredSettings(pin("a"), { upgradeLevels: [25] })).toBeUndefined();

@@ -122,12 +122,16 @@ export function storeRequest(request: BuildRequest): StoredRequest {
 export function getFrozenKey(request: StoredRequest) {
   const { equipWeight, ...rest } = request;
   const used = request.buffs?.some((effect) => effect.byEquipWeight) ? { equipWeight } : {};
-  return JSON.stringify({ ...rest, ...used }, (_, value: unknown) =>
+  return stableStringify({ ...rest, ...used });
+}
+
+/** JSON with object keys in order, to compare values whose keys can be listed differently */
+export const stableStringify = (value: unknown) =>
+  JSON.stringify(value, (_, value: unknown) =>
     value && typeof value === "object" && !Array.isArray(value)
       ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
       : value,
   );
-}
 
 /**
  * @param findWeapon a weapon by its full name (including ammunition, for a ranged weapon)
