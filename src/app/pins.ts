@@ -294,7 +294,11 @@ export function describePinSettings(
       value: (s) => s.buffs.map(buffName).join(", ") || "None",
       always: true,
     },
-    { label: "Stack tier", value: (s) => `${s.stackTier}`, when: selected.some(hasStackTiers) },
+    {
+      label: "Stack tier",
+      value: (s) => (s.stackTier ? `${s.stackTier}` : "Inactive"),
+      when: selected.some(hasStackTiers),
+    },
     { label: "HP", value: (s) => `${s.health}%`, when: usesEffect((effect) => effect.hp) },
     {
       label: "Equip weight",

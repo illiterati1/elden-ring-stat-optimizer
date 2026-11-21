@@ -141,8 +141,8 @@ export function getBuffStats(buffs: readonly Buff[]): Attributes {
   return stats;
 }
 
-/** Successive attack stack tiers */
-export const stackTiers = [1, 2, 3] as const;
+/** Successive attack stack tiers (0 for inactive: no successive attack bonus) */
+export const stackTiers = [0, 1, 2, 3] as const;
 export type StackTier = typeof stackTiers[number];
 
 /** @returns true if the buff stacks with successive attacks */
@@ -181,7 +181,7 @@ function mergeArmorEffects(effects: BuffEffect[]): BuffEffect[] {
 }
 
 /**
- * @param stackTier the tier of successive attack stacks
+ * @param stackTier the tier of successive attack stacks (0 leaves out their effects)
  * @param health the character's HP percentage, for effects that only apply at some HP
  * @returns the buffs' effects on damage, without the ones that only add stats, or that only apply
  * to counterattacks unless the Counterattack buff is one of them, or at other HP. Armor's effects
@@ -214,7 +214,12 @@ function getEffects(
   const counterattack = allBuffs.some((buff) => buff.kind === "counter");
   return buffs.flatMap((buff) =>
     buff.effects
-      .filter((effect) => (!effect.counter || counterattack) && inHpRange(effect.hp, health))
+      .filter(
+        (effect) =>
+          (!effect.counter || counterattack) &&
+          inHpRange(effect.hp, health) &&
+          !(effect.tierRates && stackTier === 0),
+      )
       .map((effect) =>
         effect.tierRates
           ? {

@@ -5859,7 +5859,7 @@ describe("Ashes of War", () => {
         twoHanding = false,
         stackTier = 3,
         catalyst,
-      }: { twoHanding?: boolean; stackTier?: 1 | 2 | 3; catalyst?: string } = {},
+      }: { twoHanding?: boolean; stackTier?: 0 | 1 | 2 | 3; catalyst?: string } = {},
     ) =>
       optimizeBuild({
         weapon: getWeapon(weaponName),
@@ -5896,9 +5896,9 @@ describe("Ashes of War", () => {
       expect(firstHit(["Bloodboil Aromatic"])).toBe(637);
       // Rallying Standard stacks with Exalted Flesh
       expect(firstHit(["Exalted Flesh", "Rallying Standard"])).toBe(706);
-      // Millicent's Prosthesis and the Rotten Winged Sword Insignia at each successive attack tier
+      // Millicent's Prosthesis and the Rotten Winged Sword Insignia inactive and at each successive attack tier
       expect(
-        ([1, 2, 3] as const).map(
+        ([0, 1, 2, 3] as const).map(
           (stackTier) =>
             steps(
               "Longsword",
@@ -5907,7 +5907,7 @@ describe("Ashes of War", () => {
               { stackTier },
             )[0][0],
         ),
-      ).toEqual([540, 561, 615]);
+      ).toEqual([490, 540, 561, 615]);
       // Scholar's Armament cast with an Astrologer's Staff +25
       expect(
         steps("Longsword", moveset("Longsword", "R1"), ["Scholar's Armament"], {

@@ -404,17 +404,18 @@ function BuffSettings({
           >
             {stackTiers.map((tier) => (
               <MenuItem key={tier} value={tier}>
-                {/* The buffs multiply each other's */}
-                Tier {tier}: ×
-                {stacking
-                  .reduce(
-                    (product, buff) =>
-                      product *
-                      buff.effects.find((effect) => effect.tierRates)!.tierRates![tier - 1],
-                    1,
-                  )
-                  .toFixed(3)
-                  .replace(/\.?0+$/, "")}
+                {tier === 0
+                  ? "Inactive"
+                  : // The buffs multiply each other's
+                    `Tier ${tier}: ×${stacking
+                      .reduce(
+                        (product, buff) =>
+                          product *
+                          buff.effects.find((effect) => effect.tierRates)!.tierRates![tier - 1],
+                        1,
+                      )
+                      .toFixed(3)
+                      .replace(/\.?0+$/, "")}`}
               </MenuItem>
             ))}
           </TextField>
