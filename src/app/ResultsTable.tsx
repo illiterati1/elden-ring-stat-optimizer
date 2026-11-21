@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from "react";
+import { memo, useCallback, useLayoutEffect, useRef, type ReactNode } from "react";
 import {
   Box,
   Checkbox,
@@ -624,6 +624,74 @@ function formatMixedScaling(sources: readonly ScalingSource[]) {
     .join(" · ");
 }
 
+// Match the row borders to the column group borders
+const tableSx = { "& .MuiTableCell-root": { borderBottomColor: "divider" } };
+
+/**
+ * Keeps a copy of a table's header stuck to the top of the page: copies the table's column widths
+ * to the copy's columns, and scrolls each sideways along with the other.
+ */
+function useStickyHead() {
+  const tableRef = useRef<HTMLTableElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const overlayTableRef = useRef<HTMLTableElement>(null);
+  const overlayScrollRef = useRef<HTMLDivElement>(null);
+  const colgroupRef = useRef<HTMLTableColElement>(null);
+  const observerRef = useRef<ResizeObserver | null>(null);
+
+  // Header cells change size whenever any column does, so watching them is enough. Runs after
+  // every render, since columns come and go.
+  useLayoutEffect(() => {
+    const table = tableRef.current!;
+    observerRef.current ??= new ResizeObserver(() => {
+      const left = table.getBoundingClientRect().left;
+      // Every column edge is the edge of some header cell, since each column has a cell in the
+      // header's last row (or one spanning down to it)
+      const edges = new Set<number>([0]);
+      for (const cell of table.tHead!.rows) {
+        for (const th of cell.cells) {
+          const rect = th.getBoundingClientRect();
+          edges.add(rect.left - left);
+          edges.add(rect.right - left);
+        }
+      }
+      const sorted = [...edges].sort((a, b) => a - b);
+      const colgroup = colgroupRef.current!;
+      colgroup.replaceChildren(
+        ...sorted.slice(1).map((edge, i) => {
+          const col = document.createElement("col");
+          col.style.width = `${edge - sorted[i]}px`;
+          return col;
+        }),
+      );
+      overlayTableRef.current!.style.width = `${sorted[sorted.length - 1]}px`;
+      overlayScrollRef.current!.scrollLeft = scrollRef.current!.scrollLeft;
+    });
+    const observer = observerRef.current;
+    observer.disconnect();
+    observer.observe(table);
+    for (const th of table.tHead!.querySelectorAll("th")) observer.observe(th);
+  });
+  useLayoutEffect(() => () => observerRef.current?.disconnect(), []);
+
+  const onScroll = useCallback(() => {
+    overlayScrollRef.current!.scrollLeft = scrollRef.current!.scrollLeft;
+  }, []);
+  // The copy can be scrolled sideways too (with a trackpad, or shift and the wheel)
+  const onOverlayScroll = useCallback(() => {
+    scrollRef.current!.scrollLeft = overlayScrollRef.current!.scrollLeft;
+  }, []);
+  return {
+    tableRef,
+    scrollRef,
+    overlayTableRef,
+    overlayScrollRef,
+    colgroupRef,
+    onScroll,
+    onOverlayScroll,
+  };
+}
+
 /**
  * Compares the optimized build for each selected weapon
  */
@@ -659,6 +727,7 @@ function ResultsTable({
   onChange,
 }: Props) {
   countRender("ResultsTable");
+  const stickyHead = useStickyHead();
   /**
    * @param compact for narrow columns: the arrow sits in the cell's left padding instead of
    * widening the column
@@ -1171,214 +1240,230 @@ function ResultsTable({
     );
   };
 
+  const head = (
+    <TableHead>
+      <TableRow>
+        <TableCell rowSpan={headerRows} padding="checkbox" align="center">
+          <Tooltip title="Show on chart">
+            <Box component="span" sx={{ display: "inline-flex", verticalAlign: "middle" }}>
+              <ChartIcon fontSize="small" color="action" />
+            </Box>
+          </Tooltip>
+        </TableCell>
+        <TableCell rowSpan={headerRows} padding="none">
+          {pinnedRows.length > 0 ? (
+            <Tooltip title="Unpin all">
+              <IconButton size="small" sx={pinButtonSx} onClick={pinActions.unpinAll}>
+                <PinIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          ) : (
+            <Tooltip title="Pin rows to keep them at the top">
+              <Box
+                component="span"
+                sx={{ display: "inline-flex", verticalAlign: "middle", mx: 0.5 }}
+              >
+                <PinIcon outlined fontSize="small" color="action" />
+              </Box>
+            </Tooltip>
+          )}
+        </TableCell>
+        <TableCell rowSpan={headerRows}>{sortLabel("name", "Weapon", "asc")}</TableCell>
+        <TableCell rowSpan={headerRows} align="right">
+          {showDps ? (
+            <Tooltip
+              title={
+                oneOffAttack
+                  ? `Damage per second${perSecondOver}, from its animations`
+                  : `Damage per second${perSecondOver} (a chain starts again after its last step), from its animations`
+              }
+            >
+              {sortLabel("total", "DPS", "desc")}
+            </Tooltip>
+          ) : (
+            sortLabel("total", headerLabel, "desc")
+          )}
+        </TableCell>
+        {showDamagePerStamina && (
+          <TableCell rowSpan={headerRows} align="right">
+            <Tooltip
+              title={
+                showDps
+                  ? "DPS per point of stamina the attack costs (rewards attacks that are both fast and cheap)"
+                  : `Damage per point of stamina, each weighted across a chain the same way`
+              }
+            >
+              {sortLabel(
+                "damagePerStamina",
+                showDps ? "Damage/stamina/s" : "Damage/stamina",
+                "desc",
+              )}
+            </Tooltip>
+          </TableCell>
+        )}
+        {showPotential && (
+          <TableCell rowSpan={headerRows} align="right">
+            <Tooltip title="How much of the weapon's potential the stats reach: 0% with each damage stat at the higher of the weapon's requirement and the class's base, 100% with 99 in each">
+              {sortLabel("potential", "Potential", "desc")}
+            </Tooltip>
+          </TableCell>
+        )}
+        {showHits && <TableCell rowSpan={headerRows}>Hits</TableCell>}
+        {showStance && (
+          <TableCell rowSpan={headerRows} align="right">
+            <Tooltip
+              title={
+                showDps
+                  ? `Stance damage (often called poise damage) per second${perSecondOver}`
+                  : "Stance damage (often called poise damage), weighted across a chain the same way as damage"
+              }
+            >
+              {sortLabel("stance", showDps ? "Stance/s" : "Stance", "desc")}
+            </Tooltip>
+          </TableCell>
+        )}
+        {showStancePerStamina && (
+          <TableCell rowSpan={headerRows} align="right">
+            <Tooltip
+              title={
+                showDps
+                  ? "Stance damage per second per point of stamina the attack costs (rewards attacks that are both fast and cheap)"
+                  : "Stance damage per point of stamina, each weighted across a chain the same way"
+              }
+            >
+              {sortLabel(
+                "stancePerStamina",
+                showDps ? "Stance/stamina/s" : "Stance/stamina",
+                "desc",
+              )}
+            </Tooltip>
+          </TableCell>
+        )}
+        {showStamina && (
+          <TableCell rowSpan={headerRows} align="right">
+            <Tooltip
+              title={
+                showDps
+                  ? `Stamina spent per second${perSecondOver} (not counting stamina recovery)`
+                  : "Stamina cost, weighted across a chain the same way as damage"
+              }
+            >
+              {sortLabel("stamina", showDps ? "Stamina/s" : "Stamina", "asc")}
+            </Tooltip>
+          </TableCell>
+        )}
+        {statusColumns.map((statusType) => {
+          const { label, icon } = statusTypes.get(statusType)!;
+          return (
+            <TableCell key={statusType} rowSpan={headerRows} align="right" sx={statusCellSx}>
+              {sortLabel(
+                statusSortBy(statusType),
+                // One element, since right-aligned sort labels reverse their children
+                <Box component="span" display="inline-flex" alignItems="center">
+                  <img
+                    src={icon}
+                    alt={showDps ? `${label} per second` : label}
+                    title={
+                      showDps ? `${label} buildup per second${perSecondOver}` : `${label} buildup`
+                    }
+                    width={20}
+                    height={20}
+                  />
+                  {showDps && "/s"}
+                </Box>,
+                "desc",
+              )}
+            </TableCell>
+          );
+        })}
+        <TableCell rowSpan={headerRows} align="right">
+          {sortLabel("level", "Level", "asc")}
+        </TableCell>
+        {headerRows > 1
+          ? groups.map(([group, label]) => (
+              <TableCell
+                key={group}
+                colSpan={allAttributes.length + +(group === "stats")}
+                align="center"
+                sx={group === lastGroup ? bothBordersSx : leftBorderSx}
+              >
+                {label}
+              </TableCell>
+            ))
+          : attributeHeaders("stats", true)}
+        <TableCell rowSpan={headerRows}>Stopped by</TableCell>
+      </TableRow>
+      {headerRows > 1 && (
+        <TableRow>{groups.map(([group]) => attributeHeaders(group, group === lastGroup))}</TableRow>
+      )}
+    </TableHead>
+  );
+
   return (
-    // Scrolls within the viewport's height, since the header can only stick to the top of the
-    // container that scrolls the table sideways
-    <TableContainer component={Paper} sx={{ maxHeight: "100vh" }}>
-      <Table
-        size="small"
-        sx={{
-          // Match the row borders to the column group borders
-          "& .MuiTableCell-root": { borderBottomColor: "divider" },
-          // The whole header sticks, rather than each cell, since its second row (the attribute
-          // groups) sits under the first
-          "& .MuiTableHead-root": {
-            position: "sticky",
-            top: 0,
-            zIndex: 2,
+    <Paper>
+      {/* The header sticks to the top of the page. It can't stick inside the table, since the
+          box that scrolls the table sideways would also have to scroll it down, so a copy of it
+          sits over the table's own (hidden) header, with the same column widths, and scrolls
+          sideways along with the table. Its box has no height, so the table starts under it. */}
+      <Box sx={{ position: "sticky", top: 0, zIndex: 3, height: 0 }}>
+        <Box
+          ref={stickyHead.overlayScrollRef}
+          onScroll={stickyHead.onOverlayScroll}
+          sx={(theme) => ({
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
             backgroundColor: "background.paper",
-          },
-        }}
-      >
-        <TableHead>
-          <TableRow>
-            <TableCell rowSpan={headerRows} padding="checkbox" align="center">
-              <Tooltip title="Show on chart">
-                <Box component="span" sx={{ display: "inline-flex", verticalAlign: "middle" }}>
-                  <ChartIcon fontSize="small" color="action" />
-                </Box>
-              </Tooltip>
-            </TableCell>
-            <TableCell rowSpan={headerRows} padding="none">
-              {pinnedRows.length > 0 ? (
-                <Tooltip title="Unpin all">
-                  <IconButton size="small" sx={pinButtonSx} onClick={pinActions.unpinAll}>
-                    <PinIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              ) : (
-                <Tooltip title="Pin rows to keep them at the top">
-                  <Box
-                    component="span"
-                    sx={{ display: "inline-flex", verticalAlign: "middle", mx: 0.5 }}
-                  >
-                    <PinIcon outlined fontSize="small" color="action" />
-                  </Box>
-                </Tooltip>
-              )}
-            </TableCell>
-            <TableCell rowSpan={headerRows}>{sortLabel("name", "Weapon", "asc")}</TableCell>
-            <TableCell rowSpan={headerRows} align="right">
-              {showDps ? (
-                <Tooltip
-                  title={
-                    oneOffAttack
-                      ? `Damage per second${perSecondOver}, from its animations`
-                      : `Damage per second${perSecondOver} (a chain starts again after its last step), from its animations`
-                  }
-                >
-                  {sortLabel("total", "DPS", "desc")}
-                </Tooltip>
-              ) : (
-                sortLabel("total", headerLabel, "desc")
-              )}
-            </TableCell>
-            {showDamagePerStamina && (
-              <TableCell rowSpan={headerRows} align="right">
-                <Tooltip
-                  title={
-                    showDps
-                      ? "DPS per point of stamina the attack costs (rewards attacks that are both fast and cheap)"
-                      : `Damage per point of stamina, each weighted across a chain the same way`
-                  }
-                >
-                  {sortLabel(
-                    "damagePerStamina",
-                    showDps ? "Damage/stamina/s" : "Damage/stamina",
-                    "desc",
-                  )}
-                </Tooltip>
-              </TableCell>
-            )}
-            {showPotential && (
-              <TableCell rowSpan={headerRows} align="right">
-                <Tooltip title="How much of the weapon's potential the stats reach: 0% with each damage stat at the higher of the weapon's requirement and the class's base, 100% with 99 in each">
-                  {sortLabel("potential", "Potential", "desc")}
-                </Tooltip>
-              </TableCell>
-            )}
-            {showHits && <TableCell rowSpan={headerRows}>Hits</TableCell>}
-            {showStance && (
-              <TableCell rowSpan={headerRows} align="right">
-                <Tooltip
-                  title={
-                    showDps
-                      ? `Stance damage (often called poise damage) per second${perSecondOver}`
-                      : "Stance damage (often called poise damage), weighted across a chain the same way as damage"
-                  }
-                >
-                  {sortLabel("stance", showDps ? "Stance/s" : "Stance", "desc")}
-                </Tooltip>
-              </TableCell>
-            )}
-            {showStancePerStamina && (
-              <TableCell rowSpan={headerRows} align="right">
-                <Tooltip
-                  title={
-                    showDps
-                      ? "Stance damage per second per point of stamina the attack costs (rewards attacks that are both fast and cheap)"
-                      : "Stance damage per point of stamina, each weighted across a chain the same way"
-                  }
-                >
-                  {sortLabel(
-                    "stancePerStamina",
-                    showDps ? "Stance/stamina/s" : "Stance/stamina",
-                    "desc",
-                  )}
-                </Tooltip>
-              </TableCell>
-            )}
-            {showStamina && (
-              <TableCell rowSpan={headerRows} align="right">
-                <Tooltip
-                  title={
-                    showDps
-                      ? `Stamina spent per second${perSecondOver} (not counting stamina recovery)`
-                      : "Stamina cost, weighted across a chain the same way as damage"
-                  }
-                >
-                  {sortLabel("stamina", showDps ? "Stamina/s" : "Stamina", "asc")}
-                </Tooltip>
-              </TableCell>
-            )}
-            {statusColumns.map((statusType) => {
-              const { label, icon } = statusTypes.get(statusType)!;
-              return (
-                <TableCell key={statusType} rowSpan={headerRows} align="right" sx={statusCellSx}>
-                  {sortLabel(
-                    statusSortBy(statusType),
-                    // One element, since right-aligned sort labels reverse their children
-                    <Box component="span" display="inline-flex" alignItems="center">
-                      <img
-                        src={icon}
-                        alt={showDps ? `${label} per second` : label}
-                        title={
-                          showDps
-                            ? `${label} buildup per second${perSecondOver}`
-                            : `${label} buildup`
-                        }
-                        width={20}
-                        height={20}
-                      />
-                      {showDps && "/s"}
-                    </Box>,
-                    "desc",
-                  )}
-                </TableCell>
-              );
-            })}
-            <TableCell rowSpan={headerRows} align="right">
-              {sortLabel("level", "Level", "asc")}
-            </TableCell>
-            {headerRows > 1
-              ? groups.map(([group, label]) => (
-                  <TableCell
-                    key={group}
-                    colSpan={allAttributes.length + +(group === "stats")}
-                    align="center"
-                    sx={group === lastGroup ? bothBordersSx : leftBorderSx}
-                  >
-                    {label}
-                  </TableCell>
-                ))
-              : attributeHeaders("stats", true)}
-            <TableCell rowSpan={headerRows}>Stopped by</TableCell>
-          </TableRow>
-          {headerRows > 1 && (
-            <TableRow>
-              {groups.map(([group]) => attributeHeaders(group, group === lastGroup))}
-            </TableRow>
-          )}
-        </TableHead>
-        <TableBody>
-          {pinnedRows.map((pinned, i) =>
-            renderRow(pinned.result, {
-              ...pinned,
-              key: pinned.pin.id,
-              pinCell: pinnedCell(pinned),
-              sx: pinnedRowSx(pinned, i === pinnedRows.length - 1 && sorted.length > 0),
-            }),
-          )}
-          {sorted.map((result) => {
-            const pin = rowPins.get(result);
-            return renderRow(result, {
-              key: `${result.weaponName} ${result.skillVariant?.label ?? ""}`,
-              name: result.weaponName,
-              chartKey: result.weaponName,
-              pinCell: rowPinCell(result, pin),
-              // A live pin with the chosen attack is the same row, so it's dimmed here
-              sx: pin && !pin.frozen ? { opacity: 0.55 } : undefined,
-              skill,
-              oneOffAttack,
-              hitsNote,
-              tooltipTimings,
-              startAttributes,
-              planStats,
-            });
+            borderRadius: `${theme.shape.borderRadius}px ${theme.shape.borderRadius}px 0 0`,
           })}
-        </TableBody>
-      </Table>
-    </TableContainer>
+        >
+          <Table
+            ref={stickyHead.overlayTableRef}
+            size="small"
+            sx={{ ...tableSx, tableLayout: "fixed" }}
+          >
+            <colgroup ref={stickyHead.colgroupRef} />
+            {head}
+          </Table>
+        </Box>
+      </Box>
+      <TableContainer ref={stickyHead.scrollRef} onScroll={stickyHead.onScroll}>
+        <Table
+          ref={stickyHead.tableRef}
+          size="small"
+          sx={{ ...tableSx, "& .MuiTableHead-root": { visibility: "hidden" } }}
+        >
+          {head}
+          <TableBody>
+            {pinnedRows.map((pinned, i) =>
+              renderRow(pinned.result, {
+                ...pinned,
+                key: pinned.pin.id,
+                pinCell: pinnedCell(pinned),
+                sx: pinnedRowSx(pinned, i === pinnedRows.length - 1 && sorted.length > 0),
+              }),
+            )}
+            {sorted.map((result) => {
+              const pin = rowPins.get(result);
+              return renderRow(result, {
+                key: `${result.weaponName} ${result.skillVariant?.label ?? ""}`,
+                name: result.weaponName,
+                chartKey: result.weaponName,
+                pinCell: rowPinCell(result, pin),
+                // A live pin with the chosen attack is the same row, so it's dimmed here
+                sx: pin && !pin.frozen ? { opacity: 0.55 } : undefined,
+                skill,
+                oneOffAttack,
+                hitsNote,
+                tooltipTimings,
+                startAttributes,
+                planStats,
+              });
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
   );
 }
 
