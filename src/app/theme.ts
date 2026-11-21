@@ -121,6 +121,10 @@ export default createTheme({
           )`,
           backgroundAttachment: "fixed",
         },
+        // Dim gold scrollbars on a dark track (the results table's sideways one, and the page's)
+        "*": {
+          scrollbarColor: `${alpha(colors.gold, 0.4)} ${colors.surface}`,
+        },
         "::selection": {
           backgroundColor: colors.gold,
           color: colors.background,
