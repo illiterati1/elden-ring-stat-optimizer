@@ -18,11 +18,17 @@ const pickerTimeoutMs = 1000;
 const progressIntervalMs = 200;
 
 /**
+ * How far the latest run has got, or that its results are in and about to be shown (rendering a lot
+ * of them takes a while)
+ */
+export type ShownProgress = RunProgress | { phase: "displaying" };
+
+/**
  * The latest run's progress, for a component of its own to show (so the page doesn't render again
  * whenever some requests are answered). Updates are throttled, but the first and the last aren't.
  */
 export class ProgressStore {
-  private progress: RunProgress | undefined;
+  private progress: ShownProgress | undefined;
   private readonly listeners = new Set<() => void>();
   private timeout: ReturnType<typeof setTimeout> | undefined;
   private lastNotified = 0;
@@ -34,11 +40,15 @@ export class ProgressStore {
     return () => void this.listeners.delete(listener);
   };
 
-  /** @param progress none while waiting to start */
-  readonly set = (progress: RunProgress | undefined) => {
+  /** @param progress none while waiting to start, or once the results are shown */
+  readonly set = (progress: ShownProgress | undefined) => {
     this.progress = progress;
     const now = Date.now();
-    const immediate = !progress || progress.done === 0 || progress.done === progress.total;
+    const immediate =
+      !progress ||
+      progress.phase === "displaying" ||
+      progress.done === 0 ||
+      progress.done === progress.total;
     if (immediate || now - this.lastNotified >= progressIntervalMs) {
       this.notify();
     } else {
@@ -55,6 +65,27 @@ export class ProgressStore {
     this.lastNotified = Date.now();
     this.listeners.forEach((listener) => listener());
   }
+}
+
+/**
+ * Calls back once the browser has painted (e.g. "Displaying…" before a long render), or straight
+ * away in a hidden tab, which doesn't paint
+ */
+function afterPaint(callback: () => void) {
+  if (typeof document === "undefined" || document.hidden) {
+    callback();
+    return;
+  }
+  let called = false;
+  const once = () => {
+    if (called) return;
+    called = true;
+    callback();
+  };
+  // (animation frames run just before a paint, so the timeout after one runs after it; the other
+  // timeout is in case the tab's hidden before the frame)
+  requestAnimationFrame(() => setTimeout(once));
+  setTimeout(once, 100);
 }
 
 /**
@@ -117,13 +148,18 @@ export default function useBuildResults<Context = undefined>(
       }
       void poolRef.current.optimize(id, requests, topN).then((newResults) => {
         if (id !== latestIdRef.current) return;
-        // (the latest context: the requests are still the latest, so it's for the same settings)
-        setResults({
-          results: newResults,
-          resultRequests: requests,
-          resultContext: contextRef.current,
+        progress.set({ phase: "displaying" });
+        afterPaint(() => {
+          if (id !== latestIdRef.current) return;
+          // (the latest context: the requests are still the latest, so it's for the same settings)
+          setResults({
+            results: newResults,
+            resultRequests: requests,
+            resultContext: contextRef.current,
+          });
+          setPending(false);
+          progress.set(undefined);
         });
-        setPending(false);
       });
     };
     if (isLatestChangeFromPicker()) return afterPickersClose(start, pickerTimeoutMs);
