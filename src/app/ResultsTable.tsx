@@ -684,12 +684,37 @@ function useStickyHead() {
   });
   useLayoutEffect(() => () => observerRef.current?.disconnect(), []);
 
+  // Each box copies the other's sideways scroll. Setting one fires a scroll event on it a frame
+  // later, by when a smooth (wheel) scroll of the other has moved on, so copying that event back
+  // would drag the other back and restart its animation, slowing it down. Each box remembers the
+  // position it was given and ignores the event that position causes.
+  const syncedRef = useRef<{ table?: number; overlay?: number }>({});
   const onScroll = useCallback(() => {
-    overlayScrollRef.current!.scrollLeft = scrollRef.current!.scrollLeft;
+    const left = scrollRef.current!.scrollLeft;
+    const synced = syncedRef.current;
+    if (synced.table !== undefined && Math.abs(left - synced.table) < 1) {
+      synced.table = undefined;
+      return;
+    }
+    synced.table = undefined;
+    const overlay = overlayScrollRef.current!;
+    if (Math.abs(overlay.scrollLeft - left) < 1) return;
+    overlay.scrollLeft = left;
+    synced.overlay = overlay.scrollLeft;
   }, []);
   // The copy can be scrolled sideways too (with a trackpad, or shift and the wheel)
   const onOverlayScroll = useCallback(() => {
-    scrollRef.current!.scrollLeft = overlayScrollRef.current!.scrollLeft;
+    const left = overlayScrollRef.current!.scrollLeft;
+    const synced = syncedRef.current;
+    if (synced.overlay !== undefined && Math.abs(left - synced.overlay) < 1) {
+      synced.overlay = undefined;
+      return;
+    }
+    synced.overlay = undefined;
+    const table = scrollRef.current!;
+    if (Math.abs(table.scrollLeft - left) < 1) return;
+    table.scrollLeft = left;
+    synced.table = table.scrollLeft;
   }, []);
   return {
     tableRef,
