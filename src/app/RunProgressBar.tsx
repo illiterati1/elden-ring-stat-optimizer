@@ -16,7 +16,9 @@ interface Props {
  */
 function RunProgressBar({ progress: store, pending }: Props) {
   const progress = useSyncExternalStore(store.subscribe, store.get);
-  // (the pins' run has no count: the bar just moves while it's going)
+  // Pinned rows aren't counted: they're worked out by a pool of their own, which starts and finishes
+  // apart from the table's (pinning a row only reruns the pins), and there are usually only a few.
+  // While only they're pending, the bar moves without a count.
   const shown = pending && progress && progress.done < progress.total ? progress : undefined;
   return (
     <Box sx={{ position: "relative" }}>
