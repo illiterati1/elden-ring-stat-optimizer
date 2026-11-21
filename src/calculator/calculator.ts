@@ -13,8 +13,6 @@ interface WeaponAttackOptions {
    */
   noTwoHandingScaling?: boolean;
   upgradeLevel: number;
-  reforgedQuirks?: boolean;
-  ineffectiveAttributePenalty?: number;
 }
 
 export interface WeaponAttackResult {
@@ -65,6 +63,54 @@ export function adjustAttributesForTwoHanding({
   return attributes;
 }
 
+/** Attack power is multiplied by this when a weapon's attribute requirements aren't met */
+export const ineffectivePenaltyMultiplier = 0.6;
+
+/**
+ * The scaling rate of one attribute on one damage type at an upgrade level: the weapon's own
+ * scaling, or an overwritten rate that grows with upgrades like the weapon's own scaling
+ */
+export function getAttributeScaling(
+  weapon: Weapon,
+  upgradeLevel: number,
+  attackPowerType: AttackPowerType,
+  attribute: Attribute,
+) {
+  const attributeCorrect = weapon.attackElementCorrect[attackPowerType]?.[attribute];
+  if (!attributeCorrect) {
+    return 0;
+  }
+  const scaling =
+    attributeCorrect === true
+      ? weapon.attributeScaling[upgradeLevel][attribute] ?? 0
+      : attributeCorrect *
+        (weapon.attributeScalingRates?.[upgradeLevel][attribute] ??
+          (weapon.attributeScaling[upgradeLevel][attribute] ?? 0) /
+            (weapon.attributeScaling[0][attribute] ?? 0));
+  if (!Number.isFinite(scaling)) {
+    throw new Error(
+      `${weapon.name} +${upgradeLevel} has no finite ${attribute} scaling for attack type ${attackPowerType}`,
+    );
+  }
+  return scaling;
+}
+
+/**
+ * The fraction of base attack power one attribute adds to one damage type, e.g. 0.5 adds +50%
+ *
+ * @param value the attribute's value after bonuses and (if it applies) two handing
+ */
+export function getAttributeBonus(
+  weapon: Weapon,
+  upgradeLevel: number,
+  attackPowerType: AttackPowerType,
+  attribute: Attribute,
+  value: number,
+) {
+  const scaling = getAttributeScaling(weapon, upgradeLevel, attackPowerType, attribute);
+  return scaling ? weapon.calcCorrectGraphs[attackPowerType][value] * scaling : 0;
+}
+
 /**
  * Determine the damage for a weapon with the given player stats
  */
@@ -74,8 +120,6 @@ export default function getWeaponAttack({
   twoHanding,
   noTwoHandingScaling = false,
   upgradeLevel,
-  reforgedQuirks,
-  ineffectiveAttributePenalty = 0.4,
 }: WeaponAttackOptions): WeaponAttackResult {
   const requirementAttributes = adjustAttributesForTwoHanding({ twoHanding, weapon, attributes });
   const adjustedAttributes = noTwoHandingScaling ? attributes : requirementAttributes;
@@ -101,37 +145,23 @@ export default function getWeaponAttack({
       let totalScaling = 1;
 
       if (ineffectiveAttributes.some((attribute) => scalingAttributes[attribute])) {
-        // If the requirements for this damage type are not met, a penalty is subtracted instead
-        // of a scaling bonus being added
-        totalScaling = 1 - ineffectiveAttributePenalty;
+        // If the requirements for this damage type are not met, it's penalized instead of getting
+        // a scaling bonus
+        totalScaling = ineffectivePenaltyMultiplier;
         ineffectiveAttackPowerTypes.push(attackPowerType);
       } else {
         // Otherwise, the scaling multiplier is equal to the sum of the corrected attribute values
-        // multiplied by the scaling for that attribute
-        const effectiveAttributes =
-          !reforgedQuirks && isDamageType ? adjustedAttributes : attributes;
+        // multiplied by the scaling for that attribute. Two handing's Strength bonus doesn't
+        // apply to status effects.
+        const effectiveAttributes = isDamageType ? adjustedAttributes : attributes;
         for (const attribute of allAttributes) {
-          const attributeCorrect = scalingAttributes[attribute];
-          if (attributeCorrect) {
-            let scaling: number;
-            if (reforgedQuirks && allStatusTypes.includes(attackPowerType)) {
-              scaling = 1; // Reforged doesn't use weapon ARC scaling for status effects
-            } else if (attributeCorrect === true) {
-              scaling = weapon.attributeScaling[upgradeLevel][attribute] ?? 0;
-            } else {
-              // An overwritten scaling rate grows with upgrades like the weapon's own scaling
-              scaling =
-                attributeCorrect *
-                (weapon.attributeScalingRates?.[upgradeLevel][attribute] ??
-                  (weapon.attributeScaling[upgradeLevel][attribute] ?? 0) /
-                    (weapon.attributeScaling[0][attribute] ?? 0));
-            }
-
-            if (scaling) {
-              totalScaling +=
-                weapon.calcCorrectGraphs[attackPowerType][effectiveAttributes[attribute]] * scaling;
-            }
-          }
+          totalScaling += getAttributeBonus(
+            weapon,
+            upgradeLevel,
+            attackPowerType,
+            attribute,
+            effectiveAttributes[attribute],
+          );
         }
       }
 
@@ -139,11 +169,6 @@ export default function getWeaponAttack({
       // percentage boost, e.g. 0.5 adds +50% of the base attack power
       if (baseAttackPower) {
         attackPower[attackPowerType] = baseAttackPower * totalScaling;
-
-        // The Reforged status effect scaling reimplementation uses rounding instead of truncation
-        if (reforgedQuirks && allStatusTypes.includes(attackPowerType)) {
-          attackPower[attackPowerType] = Math.round(attackPower[attackPowerType]!);
-        }
       }
 
       if (isDamageType && (weapon.sorceryTool || weapon.incantationTool)) {

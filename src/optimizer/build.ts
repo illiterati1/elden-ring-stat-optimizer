@@ -8,6 +8,7 @@ import getWeaponAttack, {
   type Attributes,
   type EnemyType,
   type EnemyTypeRates,
+  getAttributeScaling,
   getEnemyTypeRate,
   type Weapon,
   WeaponType,
@@ -25,7 +26,6 @@ import { getCumulativeLevelUpCosts, maxCharacterLevel } from "./runes.ts";
 import {
   evaluateObjective,
   getAttackScaling,
-  getAttributeScaling,
   getMixedScaling,
   getBreakdown,
   getHitDamage,

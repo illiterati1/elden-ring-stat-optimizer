@@ -4,9 +4,11 @@ import { describe, expect, it } from "vitest";
 import getWeaponAttack, {
   allAttributes,
   allDamageTypes,
+  allStatusTypes,
   AttackPowerType,
   type Attribute,
   type Attributes,
+  getAttributeScaling,
   type Weapon,
 } from "../calculator/calculator.ts";
 import { decodeRegulationData } from "../regulationData.ts";
@@ -54,7 +56,6 @@ import {
 } from "./build.ts";
 import {
   evaluateObjective,
-  getAttributeScaling,
   getBreakdown,
   optimizeAttributes,
   type Objective,
@@ -152,6 +153,39 @@ describe("getDefenseMultiplier", () => {
       300 * getDefenseMultiplier(3) * 0.8,
     );
     expect(getDamageAfterDefense(150, defense)).toBeCloseTo(150 * getDefenseMultiplier(1.5) * 0.8);
+  });
+});
+
+describe("getAttributeScaling", () => {
+  // getAttributeScaling throws on a scaling rate that isn't finite, which would be a data bug: an
+  // overwritten rate (a number in attackElementCorrect, e.g. from a hit's own scaling) on a weapon
+  // with no scaling for that attribute to grow from
+  it("is finite for every weapon, even with any attribute's scaling overwritten", () => {
+    const attackPowerTypes = [...allDamageTypes, ...allStatusTypes];
+    const allOverwritten = Object.fromEntries(
+      attackPowerTypes.map((type) => [
+        type,
+        Object.fromEntries(allAttributes.map((attribute) => [attribute, 1])),
+      ]),
+    );
+    const failures: string[] = [];
+    for (const weapon of weapons) {
+      const overwritten: Weapon = { ...weapon, attackElementCorrect: allOverwritten };
+      for (let upgradeLevel = 0; upgradeLevel < weapon.attack.length; upgradeLevel++) {
+        for (const type of attackPowerTypes) {
+          for (const attribute of allAttributes) {
+            for (const scalingWeapon of [weapon, overwritten]) {
+              try {
+                getAttributeScaling(scalingWeapon, upgradeLevel, type, attribute);
+              } catch (error) {
+                failures.push((error as Error).message);
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(failures).toEqual([]);
   });
 });
 

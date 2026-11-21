@@ -5,6 +5,9 @@ import getWeaponAttack, {
   AttackPowerType,
   type Attribute,
   type Attributes,
+  getAttributeBonus,
+  getAttributeScaling,
+  ineffectivePenaltyMultiplier,
   type Weapon,
 } from "../calculator/calculator.ts";
 import { packAllocations, type PackedAllocations } from "./allocations.ts";
@@ -201,9 +204,6 @@ export interface OptimizationCurve {
   /** With onlyLevels, the number of levels values[0] is for (fewer if every stat is maxed) */
   levels?: number;
 }
-
-/** Attack power is multiplied by this when a weapon's attribute requirements aren't met */
-const ineffectivePenaltyMultiplier = 0.6;
 
 /** Maximum number of attribute combinations to try in an exhaustive search */
 const bruteForceLimit = 2_000_000;
@@ -653,29 +653,6 @@ export function getMixedScaling(
 }
 
 /**
- * The scaling multiplier for one attribute on one damage type, mirroring getWeaponAttack()
- */
-export function getAttributeScaling(
-  weapon: Weapon,
-  upgradeLevel: number,
-  damageType: AttackPowerType,
-  attribute: Attribute,
-) {
-  const attributeCorrect = weapon.attackElementCorrect[damageType]?.[attribute];
-  if (!attributeCorrect) {
-    return 0;
-  }
-  const scaling =
-    attributeCorrect === true
-      ? weapon.attributeScaling[upgradeLevel][attribute] ?? 0
-      : attributeCorrect *
-        (weapon.attributeScalingRates?.[upgradeLevel][attribute] ??
-          (weapon.attributeScaling[upgradeLevel][attribute] ?? 0) /
-            (weapon.attributeScaling[0][attribute] ?? 0));
-  return Number.isFinite(scaling) ? scaling : 0;
-}
-
-/**
  * Precomputed per-attribute data for quickly evaluating one group of terms. Only attributes that
  * can affect the objective are included.
  */
@@ -905,10 +882,13 @@ function buildModel(options: OptimizeOptions, terms: Term[]): Model {
       terms.forEach(({ damageType, base, noTwoHandBonus, weapon: termWeapon = weapon }, t) => {
         contributions[t][value] =
           base *
-          termWeapon.calcCorrectGraphs[damageType][
-            noTwoHandBonus ? effective[attribute] : adjustedValue
-          ] *
-          getAttributeScaling(termWeapon, upgradeLevel, damageType, attribute);
+          getAttributeBonus(
+            termWeapon,
+            upgradeLevel,
+            damageType,
+            attribute,
+            noTwoHandBonus ? effective[attribute] : adjustedValue,
+          );
       });
     }
 
@@ -1827,10 +1807,16 @@ export function getBreakdown(options: OptimizeOptions, leveled: Attributes): Bre
 
     if (!penalized) {
       for (const attribute of allAttributes) {
-        const scaling = getAttributeScaling(scalingWeapon, upgradeLevel, damageType, attribute);
-        if (scaling) {
+        if (getAttributeScaling(scalingWeapon, upgradeLevel, damageType, attribute)) {
           const bonus =
-            base * weapon.calcCorrectGraphs[damageType][adjustedAttributes[attribute]] * scaling;
+            base *
+            getAttributeBonus(
+              scalingWeapon,
+              upgradeLevel,
+              damageType,
+              attribute,
+              adjustedAttributes[attribute],
+            );
           row.attributes[attribute] = bonus;
           row.total += bonus;
         }
