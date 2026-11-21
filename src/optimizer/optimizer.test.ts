@@ -540,6 +540,35 @@ describe("optimizeBuild", () => {
     expect(result.finalLevel).toBe(39);
   });
 
+  it("works out fixed attributes without the optimizer or gaining levels", () => {
+    const optimized = optimizeBuild({ ...request, meetRequirements: true });
+    const fixed = optimizeBuild(
+      {
+        ...request,
+        meetRequirements: true,
+        startLevel: optimized.finalLevel,
+        currentLevel: request.startLevel,
+        attributes: optimized.attributes,
+        fixedAttributes: true,
+      },
+      () => {
+        throw new Error("optimizer called");
+      },
+    );
+    expect(fixed.attributes).toEqual(optimized.attributes);
+    expect(fixed.finalValue).toBeCloseTo(optimized.finalValue, 9);
+    expect(fixed.finalLevel).toBe(optimized.finalLevel);
+    expect(fixed.levels).toBe(optimized.levels);
+    expect(fixed.runes).toBe(optimized.runes);
+    expect(fixed.curve.values).toHaveLength(1);
+
+    // Requirements aren't met for it: Faith stays at 9
+    const unmet = optimizeBuild({ ...request, meetRequirements: true, fixedAttributes: true });
+    expect(unmet.attributes).toEqual(request.attributes);
+    expect(unmet.ineffectiveAttributes).toContain("fai");
+    expect(unmet.levels).toBe(0);
+  });
+
   it("can ignore requirements that don't help the objective", () => {
     const result = optimizeBuild({ ...request, meetRequirements: false });
     expect(result.attributes.fai).toBe(9);

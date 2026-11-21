@@ -85,19 +85,37 @@ export default function useBuildResults<Context = undefined>(
   const [pending, setPending] = useState(false);
   const [progress] = useState(() => new ProgressStore());
 
-  useEffect(() => {
-    const pool = new WorkerPool(poolSize);
-    pool.onProgress = progress.set;
-    poolRef.current = pool;
-    return () => pool.terminate();
-  }, [poolSize, progress]);
+  useEffect(
+    () => () => {
+      poolRef.current?.terminate();
+      poolRef.current = undefined;
+    },
+    [poolSize, progress],
+  );
 
   useEffect(() => {
     const id = ++latestIdRef.current;
+    // No requests have no results straight away, and don't render again if there were none already
+    // (e.g. the assumed stats' while there are none)
+    if (!requests.length) {
+      setPending(false);
+      setResults((previous) =>
+        !previous.results.length && previous.resultContext === contextRef.current
+          ? previous
+          : { results: [], resultRequests: requests, resultContext: contextRef.current },
+      );
+      return;
+    }
     setPending(true);
     progress.set(undefined);
     const start = () => {
-      void poolRef.current?.optimize(id, requests, topN).then((newResults) => {
+      // The workers start with the first requests, so a pool that's only sometimes used (the
+      // assumed stats') costs nothing until then
+      if (!poolRef.current) {
+        poolRef.current = new WorkerPool(poolSize);
+        poolRef.current.onProgress = progress.set;
+      }
+      void poolRef.current.optimize(id, requests, topN).then((newResults) => {
         if (id !== latestIdRef.current) return;
         // (the latest context: the requests are still the latest, so it's for the same settings)
         setResults({

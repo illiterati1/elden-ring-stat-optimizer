@@ -31,7 +31,6 @@ import {
 } from "../optimizer/build.ts";
 import type { Limits } from "../optimizer/limits.ts";
 import {
-  allStats,
   getCharacterLevel,
   getPlannedStats,
   startingClasses,
@@ -44,7 +43,6 @@ import useAppState, {
   minEquipWeight,
   statusSortBy,
   type AppState,
-  type PlannedStats,
 } from "./useAppState.ts";
 import useWeapons from "./useWeapons.ts";
 import type { Weapon } from "../calculator/weapon.ts";
@@ -149,6 +147,26 @@ const skillDebuffs: Partial<Record<string, string>> = { "Shriek of Milos": "Shri
  */
 const getRequestKey = (request: BuildRequest) => request.row?.id ?? request.weapon.name;
 const getResultKey = (result: BuildResult) => result.row?.id ?? result.weaponName;
+
+/** A row's final stats assumed for every other row (see App's assumed) */
+interface AssumedStats {
+  /** The row's: a table row's result key, or "pin:" and a pinned row's pin ID */
+  key: string;
+  name: string;
+  stats: Stats;
+}
+
+/** A request worked out with the assumed stats instead of optimized */
+function withAssumedStats(request: BuildRequest, stats: Stats): BuildRequest {
+  return {
+    ...request,
+    startLevel: getCharacterLevel(stats),
+    attributes: Object.fromEntries(
+      allAttributes.map((attribute) => [attribute, stats[attribute]]),
+    ) as Attributes,
+    fixedAttributes: true,
+  };
+}
 
 /**
  * A weapon's name with its upgrade level, on its own scale (e.g. +10 for a somber weapon), kept
@@ -1175,7 +1193,7 @@ export default function App() {
   // the old results whenever they change
   const tableContext = useMemo(() => ({ startAttributes, plan }), [startAttributes, plan]);
   const {
-    results,
+    results: optimizedResults,
     resultContext: resultTableContext = tableContext,
     pending: mainPending,
     poolRef,
@@ -1259,7 +1277,6 @@ export default function App() {
     pending: pinsPending,
     poolRef: pinPoolRef,
   } = useBuildResults(pinRequestList, undefined, 1, currentPinSettings);
-  const pending = mainPending || (pins.length > 0 && pinsPending);
   const pinResultsById = useMemo(
     () =>
       new Map(pinResultRequests.map((request, i) => [pinRequestIds.get(request), pinResults[i]])),
@@ -1271,6 +1288,71 @@ export default function App() {
   );
   // (the same array until a pin gains or loses its request, rather than whenever settings change)
   const pinIdsWithRequests = useStableArray(useMemo(() => [...pinRequests.keys()], [pinRequests]));
+
+  // A row's final stats can be assumed for every other row (but frozen pins): they're all worked out
+  // with those stats instead, without the optimizer, by workers of their own, so the optimized
+  // results stay as they are (for the chart, and for assuming another row's stats). Not saved.
+  const [assumed, setAssumed] = useState<AssumedStats>();
+  const [toggleAssumed] = useState(
+    () => (key: string, name: string, stats: Stats) =>
+      setAssumed((previous) => (previous?.key === key ? undefined : { key, name, stats })),
+  );
+  const assumedTableRequests = useMemo(
+    () => (assumed ? requests.map((request) => withAssumedStats(request, assumed.stats)) : []),
+    [assumed, requests],
+  );
+  const assumedPinRequests = useMemo(
+    () =>
+      assumed
+        ? pins.flatMap((pin) => {
+            const request = !pin.frozen && pinRequests.get(pin.id);
+            if (!request) return [];
+            const assumedRequest = withAssumedStats(request, assumed.stats);
+            pinRequestIds.set(assumedRequest, pin.id);
+            return [assumedRequest];
+          })
+        : [],
+    [assumed, pins, pinRequests, pinRequestIds],
+  );
+  const assumedRequestList = useMemo(
+    () => [...assumedTableRequests, ...assumedPinRequests],
+    [assumedTableRequests, assumedPinRequests],
+  );
+  const {
+    results: assumedResults,
+    resultRequests: assumedResultRequests,
+    resultContext: assumedResultStats,
+    pending: assumedPending,
+  } = useBuildResults(assumedRequestList, undefined, undefined, assumed);
+  // (shown once they're worked out with the stats assumed now, until then the optimized ones)
+  const assumedShown = assumed && assumedResultStats === assumed ? assumed : undefined;
+  const assumedPinResults = useMemo(
+    () =>
+      new Map(
+        assumedResultRequests.flatMap((request, i): [string, BuildResult][] => {
+          const pinId = pinRequestIds.get(request);
+          return pinId ? [[pinId, assumedResults[i]]] : [];
+        }),
+      ),
+    [assumedResultRequests, assumedResults, pinRequestIds],
+  );
+  const assumedTableResults = useMemo(
+    () => assumedResults.filter((_, i) => !pinRequestIds.has(assumedResultRequests[i])),
+    [assumedResultRequests, assumedResults, pinRequestIds],
+  );
+  // The table's results
+  const results = assumedShown ? assumedTableResults : optimizedResults;
+  // With stats assumed, the optimized result of each table row, whose final stats its button
+  // assumes
+  const assumeSources = useMemo(
+    () =>
+      assumedShown
+        ? new Map(optimizedResults.map((result) => [getResultKey(result), result]))
+        : undefined,
+    [assumedShown, optimizedResults],
+  );
+
+  const pending = mainPending || (pins.length > 0 && pinsPending) || (!!assumed && assumedPending);
 
   // A column for each status effect that any weapon in the table builds up
   const statusTypesShown = useStableArray(
@@ -1298,13 +1380,27 @@ export default function App() {
       !statusTypesShown.some((statusType) => statusSortBy(statusType) === sortBy));
   const effectiveSortBy = sortHidden ? "total" : sortBy;
   const effectiveReverse = sortHidden ? false : reverse;
-  const sortedResults = useMemo(() => {
-    const sorted = sortResults(results, effectiveSortBy, effectiveReverse, !sortHidden && showDps);
-    // Top N keeps the first weapons in the table's order, leaving out ones that aren't applicable
-    return topN.enabled
-      ? sorted.filter((result) => result.applicable).slice(0, Math.max(topN.value, 1))
-      : sorted;
-  }, [results, effectiveSortBy, effectiveReverse, sortHidden, showDps, topN]);
+  const sortForTable = useCallback(
+    (unsorted: BuildResult[]) => {
+      const sorted = sortResults(
+        unsorted,
+        effectiveSortBy,
+        effectiveReverse,
+        !sortHidden && showDps,
+      );
+      // Top N keeps the first weapons in the table's order, leaving out ones that aren't applicable
+      return topN.enabled
+        ? sorted.filter((result) => result.applicable).slice(0, Math.max(topN.value, 1))
+        : sorted;
+    },
+    [effectiveSortBy, effectiveReverse, sortHidden, showDps, topN],
+  );
+  const sortedResults = useMemo(() => sortForTable(results), [sortForTable, results]);
+  // (the chart's, which are the optimized ones with stats assumed too)
+  const sortedOptimizedResults = useMemo(
+    () => (assumedShown ? sortForTable(optimizedResults) : sortedResults),
+    [assumedShown, sortForTable, optimizedResults, sortedResults],
+  );
 
   // Each pinned row with what it's shown with: its own attack's, and a frozen one's settings.
   // They're sorted like the table, after any that aren't worked out yet.
@@ -1367,7 +1463,23 @@ export default function App() {
           ),
       };
     });
-    const worked = rows.filter((row) => row.result.curve);
+    // With stats assumed, a live pin shows its result with them, and its button assumes its
+    // optimized final stats
+    const shownRows = assumedShown
+      ? rows.map((row): PinnedRow => {
+          const assumedResult = !row.pin.frozen && assumedPinResults.get(row.pin.id);
+          return assumedResult
+            ? {
+                ...row,
+                result: assumedResult,
+                planStats: assumedShown.stats,
+                assumeResult: row.result,
+                assumePlanStats: row.planStats,
+              }
+            : row;
+        })
+      : rows;
+    const worked = shownRows.filter((row) => row.result.curve);
     const byResult = new Map(worked.map((row) => [row.result, row]));
     return [
       ...sortResults(
@@ -1376,9 +1488,11 @@ export default function App() {
         effectiveReverse,
         !sortHidden && showDps,
       ).map((result) => byResult.get(result)!),
-      ...rows.filter((row) => !row.result.curve),
+      ...shownRows.filter((row) => !row.result.curve),
     ];
   }, [
+    assumedShown,
+    assumedPinResults,
     pins,
     pinResultsById,
     pinResultRequestsById,
@@ -1479,46 +1593,29 @@ export default function App() {
     },
   }));
 
-  // The planned stats before a row's final stats were planned, to undo it (not saved). Undo is only
-  // offered while the plan is still the one the row set: changing it in any other way drops it.
-  const [planUndo, setPlanUndo] = useState<{ previous: PlannedStats; applied: PlannedStats }>();
-
-  // Plans a row's final stats, leaving stats that are the same as the current ones unplanned
-  const [planFinalStats] = useState(() => (finalStats: Stats) => {
-    const { stats, plannedStats: previous } = latest.current.appState;
-    const applied: PlannedStats = Object.fromEntries(
-      allStats
-        .filter((stat) => finalStats[stat] !== stats[stat])
-        .map((stat) => [stat, finalStats[stat]]),
-    );
-    setPlanUndo({ previous, applied });
-    updateAppState({ plannedStats: applied });
-  });
-  const undoPlan = useMemo(
-    () =>
-      planUndo &&
-      (() => {
-        setPlanUndo(undefined);
-        updateAppState({ plannedStats: planUndo.previous });
-      }),
-    [planUndo, updateAppState],
-  );
-
   // The chart shows the weapons checked in the table, each version of a fixed skill (e.g. Moonveil's
   // R1 and R2) as its own line, and pinned rows checked, named with their attacks
+  const livePinKeys = useMemo(
+    () => new Set(pins.filter((pin) => !pin.frozen).map(getKeyOfPin)),
+    [pins],
+  );
   const chartedResults = useMemo(
     () =>
-      sortedResults.filter(
+      sortedOptimizedResults.filter(
         (result) =>
-          result.applicable && !rowPins.has(result) && chartWeapons.includes(getResultKey(result)),
+          result.applicable &&
+          !(result.row && livePinKeys.has(result.row.id)) &&
+          chartWeapons.includes(getResultKey(result)),
       ),
-    [sortedResults, chartWeapons, rowPins],
+    [sortedOptimizedResults, chartWeapons, livePinKeys],
   );
   const chartedPins = useMemo(
     () =>
       fastMode
         ? []
-        : pinnedRows.filter((row) => row.result.applicable && chartWeapons.includes(row.chartKey)),
+        : pinnedRows
+            .map((row) => (row.assumeResult ? { ...row, result: row.assumeResult } : row))
+            .filter((row) => row.result.applicable && chartWeapons.includes(row.chartKey)),
     [fastMode, pinnedRows, chartWeapons],
   );
   // With DPS shown it plots damage per second like the table, worked out only for the weapons
@@ -1634,7 +1731,6 @@ export default function App() {
         startingClass={startingClass}
         stats={stats}
         plannedStats={plannedStats}
-        onUndoPlan={planUndo?.applied === plannedStats ? undoPlan : undefined}
         onChange={updateAppState}
       />
       <LimitSettings
@@ -1826,6 +1922,23 @@ export default function App() {
                           {movesetsMissingMessage}
                         </Typography>
                       )}
+                      {assumed && (
+                        <Alert
+                          severity="info"
+                          action={
+                            <Button
+                              color="inherit"
+                              size="small"
+                              onClick={() => setAssumed(undefined)}
+                            >
+                              Stop
+                            </Button>
+                          }
+                        >
+                          Every row but frozen pins is worked out with {assumed.name}&apos;s final
+                          stats (level {getCharacterLevel(assumed.stats)}), without optimizing.
+                        </Alert>
+                      )}
                       <ResultsTable
                         results={sortedResults}
                         pinnedRows={pinnedRows}
@@ -1834,7 +1947,10 @@ export default function App() {
                         chartWeapons={chartWeapons}
                         chartDisabled={fastMode}
                         startAttributes={resultTableContext.startAttributes}
-                        planStats={resultTableContext.plan}
+                        planStats={assumedShown?.stats ?? resultTableContext.plan}
+                        assumedKey={assumed?.key}
+                        assumeSources={assumeSources}
+                        assumePlanStats={resultTableContext.plan}
                         valueLabel={valueLabel}
                         pointLabel={pointLabel}
                         notApplicableLabel={notApplicableLabel}
@@ -1856,7 +1972,7 @@ export default function App() {
                         showRequirements={showRequirements}
                         sortBy={sortBy}
                         reverse={reverse}
-                        onPlanStats={planFinalStats}
+                        onAssumeStats={toggleAssumed}
                         onChange={updateAppState}
                       />
                     </Stack>

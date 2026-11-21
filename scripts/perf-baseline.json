@@ -4,34 +4,34 @@
   "scenarios": {
     "Str spin button": {
       "renders": {
-        "App": 4,
+        "App": 3,
         "ResultRow": 170,
         "ResultsTable": 1,
-        "ValueChart": 4
+        "ValueChart": 3
       },
       "paintMs": 15,
       "blockingMs": 499,
-      "longestTaskMs": 415
+      "longestTaskMs": 426
     },
     "Two handing checkbox": {
       "renders": {
-        "App": 4,
+        "App": 3,
         "ResultRow": 170,
         "ResultsTable": 1,
-        "ValueChart": 4
+        "ValueChart": 3
       },
-      "paintMs": 82,
-      "blockingMs": 504,
-      "longestTaskMs": 417
+      "paintMs": 86,
+      "blockingMs": 530,
+      "longestTaskMs": 437
     },
     "Chart from level": {
       "renders": {
         "App": 1,
         "ValueChart": 1
       },
-      "paintMs": 30,
-      "blockingMs": 2,
-      "longestTaskMs": 27
+      "paintMs": 15,
+      "blockingMs": 0,
+      "longestTaskMs": 0
     },
     "Weapon level picker": {
       "renders": {
@@ -40,9 +40,9 @@
         "ResultsTable": 1,
         "ValueChart": 3
       },
-      "paintMs": 95,
-      "blockingMs": 742,
-      "longestTaskMs": 631
+      "paintMs": 86,
+      "blockingMs": 685,
+      "longestTaskMs": 607
     },
     "Sort by column": {
       "renders": {
@@ -50,9 +50,9 @@
         "ResultsTable": 1,
         "ValueChart": 1
       },
-      "paintMs": 222,
-      "blockingMs": 135,
-      "longestTaskMs": 185
+      "paintMs": 201,
+      "blockingMs": 118,
+      "longestTaskMs": 168
     }
   }
 }

@@ -255,6 +255,7 @@ export const limitReasonLabels: Record<LimitReason, string> = {
   targetPotential: "Target potential",
   minPotentialPerRemainingLevel: "Min potential left / level",
   maxedOut: "No further gain",
+  assumed: "Assumed stats",
 };
 
 export const statusTypes = new Map<AttackPowerType, { label: string; icon: string }>([

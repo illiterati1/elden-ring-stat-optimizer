@@ -39,7 +39,8 @@ export interface PotentialRange {
   max: number;
 }
 
-export type LimitReason = keyof Limits | "maxedOut";
+/** Why leveling stopped ("assumed": stats assumed, see BuildRequest fixedAttributes) */
+export type LimitReason = keyof Limits | "maxedOut" | "assumed";
 
 const epsilon = 1e-9;
 

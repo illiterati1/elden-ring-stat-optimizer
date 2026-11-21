@@ -16,6 +16,7 @@ import type { Defenses, PhysicalType } from "./defense.ts";
 import {
   getAllocation,
   getAllocationCount,
+  packAllocations,
   sliceAllocations,
   type PackedAllocations,
 } from "./allocations.ts";
@@ -33,6 +34,7 @@ import {
   type AttackHit,
   type BreakdownRow,
   type Objective,
+  type OptimizeOptions,
   type ScalingSource,
 } from "./optimizer.ts";
 
@@ -168,6 +170,12 @@ export interface BuildRequest {
    * there's no curve, and the minimum gain and target value limits don't apply)
    */
   fast?: boolean;
+  /**
+   * Only work out the value with the given attributes, without the optimizer: no levels are gained
+   * (not even to meet requirements), and the curve is that one value. For a table row's assumed
+   * stats.
+   */
+  fixedAttributes?: boolean;
   /** Also give the chosen attack's damage per second at every level (ValueCurve dps), for the chart */
   dpsCurve?: boolean;
   /** If set, the weapon isn't calculated, and this is shown instead (e.g. a bow with no arrows) */
@@ -196,6 +204,25 @@ export interface BuildRequest {
    * catalyst is held one handed.
    */
   castingRequirements?: Partial<Record<Attribute, number>>;
+}
+
+/** The limits for fixed attributes (BuildRequest fixedAttributes): no levels gained */
+const fixedLimits: Limits = {
+  maxLevels: 0,
+  minGainPerLevel: null,
+  minRelativeGainPerLevel: null,
+  runeBudget: null,
+  targetValue: null,
+  targetPotential: null,
+  minPotentialPerRemainingLevel: null,
+};
+
+/** A curve of just the value with the attributes given, for fixed attributes */
+function evaluateCurve(options: OptimizeOptions): ReturnType<CurveFinder> {
+  const value = evaluateObjective(options, options.attributes);
+  return value === undefined
+    ? null
+    : { values: [value], allocations: packAllocations([options.attributes]), exact: true };
 }
 
 /**
@@ -1314,9 +1341,10 @@ export function optimizeBuild(
     objective,
     defenses,
     motionValue,
-    limits,
-    meetRequirements = false,
-    fast = false,
+    limits: requestedLimits,
+    meetRequirements: requestedMeetRequirements = false,
+    fast: requestedFast = false,
+    fixedAttributes = false,
     dpsCurve = false,
     unavailableReason,
     buffNote,
@@ -1337,8 +1365,13 @@ export function optimizeBuild(
     equipWeight = 0,
     currentLevel = startLevel,
   }: BuildRequest,
-  findCurve: CurveFinder = optimizeAttributes,
+  requestedFindCurve: CurveFinder = optimizeAttributes,
 ): BuildResult {
+  // Fixed attributes are just evaluated, with no levels gained
+  const meetRequirements = requestedMeetRequirements && !fixedAttributes;
+  const fast = requestedFast && !fixedAttributes;
+  const limits: Limits = fixedAttributes ? fixedLimits : requestedLimits;
+  const findCurve: CurveFinder = fixedAttributes ? evaluateCurve : requestedFindCurve;
   const upgradeLevel = getWeaponUpgradeLevel(requestedWeapon, regularUpgradeLevel);
   // The weapons held count towards equip weight
   const totalEquipWeight =
@@ -1912,7 +1945,7 @@ export function optimizeBuild(
     levels: startLevel + requiredLevels + levels - currentLevel,
     finalLevel: startLevel + requiredLevels + levels,
     runes: plannedRunes + requiredRunes + runes,
-    reason,
+    reason: fixedAttributes ? "assumed" : reason,
     attributes: finalAttributes,
     effectiveAttributes,
     ineffectiveAttributes,

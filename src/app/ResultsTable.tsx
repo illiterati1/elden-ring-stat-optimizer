@@ -31,7 +31,7 @@ import {
 } from "@mui/material";
 import { allAttributes, type AttackPowerType, type Attributes } from "../calculator/calculator.ts";
 import type { AttackResultHit, BuildResult, StepTimes } from "../optimizer/build.ts";
-import { allStats, getStatLabel, type Stats } from "../optimizer/startingClasses.ts";
+import { getStatLabel, type Stats } from "../optimizer/startingClasses.ts";
 import type { ScalingSource } from "../optimizer/optimizer.ts";
 import { damageTypeLabels, limitReasonLabels, physicalTypeLabels, statusTypes } from "./uiUtils.ts";
 import { getDamagePerStamina, getStancePerStamina, getResultStatus } from "./results.ts";
@@ -62,6 +62,12 @@ export interface PinnedRow {
   tooltipTimings: TooltipTimings;
   startAttributes: Attributes;
   planStats: Stats;
+  /**
+   * With stats assumed, a live pin's optimized result and the planned stats it started from, whose
+   * final stats its button assumes (its result is worked out with the assumed stats)
+   */
+  assumeResult?: BuildResult;
+  assumePlanStats?: Stats;
   /** A frozen pin's settings, for its tooltip */
   settingLines?: PinSettingLine[];
 }
@@ -120,7 +126,7 @@ const RestoreIcon = (props: SvgIconProps) => (
   </SvgIcon>
 );
 
-const PlanIcon = (props: SvgIconProps) => (
+const AssumeIcon = (props: SvgIconProps) => (
   <SvgIcon {...props}>
     <path d="M21 3.01H3c-1.1 0-2 .9-2 2V9h2V4.99h18v14.03H3V15H1v4.01c0 1.1.9 1.98 2 1.98h18c1.1 0 2-.88 2-1.98v-14c0-1.11-.9-2-2-2zM11 16l4-4-4-4v3H1v2h10v3z" />
   </SvgIcon>
@@ -161,8 +167,19 @@ interface Props {
   /** True if there's no chart (fast mode), so weapons can't be added to it */
   chartDisabled?: boolean;
   startAttributes: Attributes;
-  /** The planned stats the optimizer starts from, for Vigor, Mind, and Endurance's final values */
+  /**
+   * The planned stats the optimizer starts from (or the assumed stats, with stats assumed), for
+   * Vigor, Mind, and Endurance's final values
+   */
   planStats: Stats;
+  /** The key of the row whose final stats are assumed for every other row, if any */
+  assumedKey?: string;
+  /**
+   * With stats assumed, each table row's optimized result (by result key), and the planned stats
+   * they started from: a row's button assumes its final stats
+   */
+  assumeSources?: ReadonlyMap<string, BuildResult>;
+  assumePlanStats?: Stats;
   valueLabel: string;
   /** What one point of the objective is called: "damage" or "scaling" */
   pointLabel: string;
@@ -197,8 +214,11 @@ interface Props {
   rowAttacks: ReadonlyMap<BuildResult, RowAttack>;
   sortBy: AppState["sortBy"];
   reverse: AppState["reverse"];
-  /** Plans a row's final stats */
-  onPlanStats: (finalStats: Stats) => void;
+  /**
+   * Assumes a row's final stats for every other row, or stops assuming them if they're the row's
+   * already (key: a table row's result key, or "pin:" and a pinned row's pin ID)
+   */
+  onAssumeStats: (key: string, name: string, finalStats: Stats) => void;
   onChange: UpdateAppState;
 }
 
@@ -749,7 +769,7 @@ interface RowTableOptions {
   showPotential: boolean;
   showDps: boolean;
   pinActions: PinActions;
-  onPlanStats: (finalStats: Stats) => void;
+  onAssumeStats: Props["onAssumeStats"];
   onToggleChart: (chartKey: string, checked: boolean) => void;
 }
 
@@ -768,11 +788,19 @@ interface ResultRowProps extends RowAttack {
   pinned?: PinnedRow;
   /** The last pinned row, with a thicker border under it */
   lastPinned?: boolean;
-  /** The row's final stats are the planned stats already */
-  planned: boolean;
+  /** Its key for assuming its stats (see Props onAssumeStats) */
+  assumeKey: string;
+  /** Its final stats are the ones assumed for every other row */
+  assumed: boolean;
   startAttributes: Attributes;
-  /** The planned stats the row's result started from */
+  /** The planned stats the row's result started from (the assumed stats, with stats assumed) */
   planStats: Stats;
+  /**
+   * With stats assumed, its optimized result and the planned stats that started from, whose final
+   * stats its button assumes
+   */
+  assumeResult?: BuildResult;
+  assumePlanStats?: Stats;
   options: RowTableOptions;
 }
 
@@ -930,33 +958,41 @@ function PinnedCell({
   );
 }
 
-/** Copies a row's final stats into the planned stats, unless they're the plan already */
-function PlanStatsButton({
+/**
+ * Assumes a row's final stats for every other row, or stops assuming them on the row that's
+ * assumed
+ */
+function AssumeStatsButton({
   name,
-  planned,
-  onPlan,
+  assumed,
+  onAssume,
 }: {
   name: string;
-  planned: boolean;
-  onPlan: () => void;
+  assumed: boolean;
+  onAssume: () => void;
 }) {
   return (
-    <Tooltip title={planned ? "These are the planned stats" : "Plan these stats"}>
-      <span>
-        <IconButton
-          size="small"
-          className="pin-hover"
-          sx={pinButtonSx}
-          disabled={planned}
-          aria-label={`Plan ${name}'s final stats`}
-          onClick={onPlan}
-        >
-          <PlanIcon fontSize="small" />
-        </IconButton>
-      </span>
+    <Tooltip title={assumed ? "Stop assuming these stats" : "Assume these stats"}>
+      <IconButton
+        size="small"
+        className={assumed ? undefined : "pin-hover"}
+        sx={pinButtonSx}
+        color={assumed ? "primary" : "default"}
+        aria-label={`Assume ${name}'s final stats`}
+        aria-pressed={assumed}
+        onClick={onAssume}
+      >
+        <AssumeIcon fontSize="small" />
+      </IconButton>
     </Tooltip>
   );
 }
+
+/** The row whose stats are assumed is highlighted */
+const assumedRowSx: SxProps<Theme> = {
+  opacity: 1,
+  backgroundColor: (theme: Theme) => alpha(theme.palette.primary.main, 0.16),
+};
 
 /** Pinned rows are tinted (blue if frozen), with a thicker border under the last */
 const pinnedRowSx = (pin: Pin, last: boolean): SxProps<Theme> => ({
@@ -981,13 +1017,16 @@ const ResultRow = memo(function ResultRow({
   pin,
   pinned,
   lastPinned = false,
-  planned,
+  assumeKey,
+  assumed,
   skill,
   oneOffAttack,
   hitsNote,
   tooltipTimings,
   startAttributes,
   planStats,
+  assumeResult,
+  assumePlanStats,
   options,
 }: ResultRowProps) {
   countRender("ResultRow");
@@ -1008,11 +1047,12 @@ const ResultRow = memo(function ResultRow({
   } = options;
   const lastGroup = getLastGroup(showScaling, showRequirements);
   const groupCount = 1 + +showScaling + +showRequirements;
-  const rowSx = pinned
+  const baseRowSx = pinned
     ? pinnedRowSx(pinned.pin, lastPinned)
     : pin && !pin.frozen
     ? dimmedRowSx
     : pinHoverSx;
+  const rowSx = assumed ? [baseRowSx, assumedRowSx].flat() : baseRowSx;
   // Notes on the value, shown above its breakdown
   const valueNotes = [result.attackNote, result.buffNote]
     .filter((note): note is string => !!note)
@@ -1207,10 +1247,15 @@ const ResultRow = memo(function ResultRow({
             </Tooltip>
           </TableCell>
           <TableCell padding="none" sx={leftBorderSx}>
-            <PlanStatsButton
+            <AssumeStatsButton
               name={name}
-              planned={planned}
-              onPlan={() => options.onPlanStats({ ...planStats, ...result.attributes })}
+              assumed={assumed}
+              onAssume={() =>
+                options.onAssumeStats(assumeKey, name, {
+                  ...(assumePlanStats ?? planStats),
+                  ...(assumeResult ?? result).attributes,
+                })
+              }
             />
           </TableCell>
           {allAttributes.map((attribute, i) => {
@@ -1327,6 +1372,9 @@ function ResultsTable({
   chartDisabled = false,
   startAttributes,
   planStats,
+  assumedKey,
+  assumeSources,
+  assumePlanStats,
   valueLabel,
   pointLabel,
   notApplicableLabel,
@@ -1344,7 +1392,7 @@ function ResultsTable({
   rowAttacks,
   sortBy,
   reverse,
-  onPlanStats,
+  onAssumeStats,
   onChange,
 }: Props) {
   countRender("ResultsTable");
@@ -1404,11 +1452,6 @@ function ResultsTable({
     [onChange],
   );
   const chartFull = chartWeapons.length >= maxSeries;
-  /** True if a row's final stats are the planned stats already */
-  const isPlanned = (result: BuildResult, rowPlanStats: Stats) => {
-    const finalStats: Stats = { ...rowPlanStats, ...result.attributes };
-    return allStats.every((stat) => finalStats[stat] === planStats[stat]);
-  };
   // The same for every row, so a row only renders again when its own props change
   const rowOptions = useMemo<RowTableOptions>(
     () => ({
@@ -1427,7 +1470,7 @@ function ResultsTable({
       showPotential,
       showDps,
       pinActions,
-      onPlanStats,
+      onAssumeStats,
       onToggleChart,
     }),
     [
@@ -1446,7 +1489,7 @@ function ResultsTable({
       showPotential,
       showDps,
       pinActions,
-      onPlanStats,
+      onAssumeStats,
       onToggleChart,
     ],
   );
@@ -1695,13 +1738,16 @@ function ResultsTable({
                 chartFull={chartFull}
                 pinned={pinned}
                 lastPinned={i === pinnedRows.length - 1 && sorted.length > 0}
-                planned={isPlanned(pinned.result, pinned.planStats)}
+                assumeKey={`pin:${pinned.pin.id}`}
+                assumed={assumedKey === `pin:${pinned.pin.id}`}
                 skill={pinned.skill}
                 oneOffAttack={pinned.oneOffAttack}
                 hitsNote={pinned.hitsNote}
                 tooltipTimings={pinned.tooltipTimings}
                 startAttributes={pinned.startAttributes}
                 planStats={pinned.planStats}
+                assumeResult={pinned.assumeResult}
+                assumePlanStats={pinned.assumePlanStats}
                 options={rowOptions}
               />
             ))}
@@ -1720,13 +1766,16 @@ function ResultsTable({
                   charted={chartWeapons.includes(chartKey)}
                   chartFull={chartFull}
                   pin={pin}
-                  planned={isPlanned(result, planStats)}
+                  assumeKey={key}
+                  assumed={assumedKey === key}
                   skill={skill}
                   oneOffAttack={oneOffAttack}
                   hitsNote={hitsNote}
                   tooltipTimings={tooltipTimings}
                   startAttributes={startAttributes}
                   planStats={planStats}
+                  assumeResult={assumeSources?.get(key)}
+                  assumePlanStats={assumeSources && assumePlanStats}
                   options={rowOptions}
                 />
               );
