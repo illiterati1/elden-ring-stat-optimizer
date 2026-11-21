@@ -13,16 +13,16 @@
       "blockingMs": 499,
       "longestTaskMs": 426
     },
-    "Two handing checkbox": {
+    "2H grip button": {
       "renders": {
         "App": 3,
-        "ResultRow": 170,
+        "ResultRow": 200,
         "ResultsTable": 1,
         "ValueChart": 3
       },
-      "paintMs": 86,
-      "blockingMs": 530,
-      "longestTaskMs": 437
+      "paintMs": 104,
+      "blockingMs": 871,
+      "longestTaskMs": 753
     },
     "Chart from level": {
       "renders": {

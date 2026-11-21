@@ -154,12 +154,10 @@ try {
       act: (i) => spinButton(/^Str$/, i % 2 ? "Decrease" : "Increase").click(),
     },
     {
-      name: "Two handing checkbox",
+      // Adds a two handed row beside each one handed row, then takes them off again
+      name: "2H grip button",
       act: () =>
-        page
-          .getByLabel(/two.?hand/i)
-          .first()
-          .click(),
+        page.getByRole("group", { name: "Grip" }).getByRole("button", { name: "2H" }).click(),
     },
     {
       name: "Chart from level",
