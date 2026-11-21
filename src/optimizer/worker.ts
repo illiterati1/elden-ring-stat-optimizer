@@ -89,9 +89,25 @@ async function optimizeAll(id: number, requests: readonly BuildRequest[]) {
       lastYield = performance.now();
     }
     if (id !== latestId) return null;
-    results.push(optimizeBuild(request, findCurve));
+    results.push(withoutRequestStepTimes(optimizeBuild(request, findCurve), request));
   }
   return results;
+}
+
+/**
+ * Leaves out a result's step times when they're its request's own, since the page has those
+ * already (shared between requests) and copying them into every result took a lot of memory.
+ * WorkerPool puts the page's copy back.
+ */
+function withoutRequestStepTimes(result: BuildResult, request: BuildRequest) {
+  if (
+    result.attackStepTimes === undefined ||
+    result.attackStepTimes !== request.attack?.stepTimes
+  ) {
+    return result;
+  }
+  const { attackStepTimes: _, ...rest } = result;
+  return rest;
 }
 
 /**

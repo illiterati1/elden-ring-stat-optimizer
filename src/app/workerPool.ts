@@ -234,7 +234,15 @@ export default class WorkerPool {
     if (!sent || sent.batch !== this.batch) return;
     this.chunks.delete(chunk);
     const { batch, indexes } = sent;
-    indexes.forEach((index, i) => (batch.results[index] = results[i]));
+    indexes.forEach((index, i) => {
+      const result = results[i];
+      // The worker leaves out step times that are the request's own (see withoutRequestStepTimes)
+      const stepTimes = batch.requests[index].attack?.stepTimes;
+      if (stepTimes && result.applicable && !("attackStepTimes" in result)) {
+        result.attackStepTimes = stepTimes;
+      }
+      batch.results[index] = result;
+    });
     batch.inFlight[shard]--;
     batch.remaining -= indexes.length;
     this.reportProgress(batch);
