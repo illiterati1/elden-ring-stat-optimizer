@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { EnemyType } from "../calculator/weapon.ts";
+import { debug } from "./uiUtils.ts";
 
 export interface Enemy {
   name: string;
@@ -99,6 +100,30 @@ export function getAreaDefense(area: EnemyArea, ngPlus: number) {
   return area.ngPlusDefense.map((defense) => defense * ngPlusRates[ngPlus].defense);
 }
 
+/**
+ * The Boss Arena mod's training dummy (NpcParam 36600015, the only row the mod adds), used for in-game tests:
+ * 9999 HP and 100 defenses × SpEffect 7200's 7.422 and 1.232, no negation. In NG+ its GameClearSpEffectID,
+ * 7400, multiplies them by 7.0 and 1.172 (the mod raises 7400's HP rate from vanilla's 3.434; not tested in
+ * game). It's on the Commoner model, which takes the normal riposte. Only offered with ?debug.
+ */
+const trainingDummyArea: EnemyArea = {
+  name: "Training Dummy",
+  region: "Boss Arena (mod)",
+  defense: [123.2, 123.2, 123.2, 123.2, 123.2],
+  ngPlusDefense: [144.4, 144.4, 144.4, 144.4, 144.4],
+  enemies: [
+    {
+      name: "Training Dummy",
+      npcParamIds: [36600015],
+      hp: 74212,
+      defense: [123.2, 123.2, 123.2, 123.2, 123.2],
+      negation: [0, 0, 0, 0, 0, 0, 0, 0],
+      ngPlus: { hp: 519488.046, defense: [144.4, 144.4, 144.4, 144.4, 144.4] },
+      ripostes: ["Riposte"],
+    },
+  ],
+};
+
 let enemyAreasPromise: Promise<EnemyArea[]> | undefined;
 
 /**
@@ -119,7 +144,9 @@ export default function useEnemies() {
   useEffect(() => {
     enemyAreasPromise ??= fetch("/enemies.json")
       .then((res) => res.json())
-      .then((data: { areas: EnemyArea[] }) => data.areas);
+      .then((data: { areas: EnemyArea[] }) =>
+        debug ? [...data.areas, trainingDummyArea] : data.areas,
+      );
     enemyAreasPromise.then(setAreas).catch(setError);
   }, []);
 
