@@ -1,8 +1,10 @@
 {
   "compilerOptions": {
     "composite": true,
+    "emitDeclarationOnly": true,
+    "outDir": "node_modules/.tmp/tsconfig.node",
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "allowImportingTsExtensions": true
   },
