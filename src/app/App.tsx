@@ -943,7 +943,8 @@ export default function App() {
     startLevel,
   ]);
 
-  const unfilteredRequests = useMemo<BuildRequest[]>(() => {
+  // (and whether a weapon was left out because it has none of the chosen attacks or skills)
+  const { unfilteredRequests, movesetsMissing } = useMemo(() => {
     const selected = new Set(validSelectedWeapons);
     const selectedWeaponTypes = new Set(weaponTypes);
     const selectedAffinityIds = new Set(affinityIds);
@@ -1046,8 +1047,9 @@ export default function App() {
         ...skills.map((ashOfWar): Choice => ({ attack: ashAttack, ashOfWar })),
       ];
     };
-    return [...weaponsWithAmmo, ...noAffinityWeapons, ...unbuffableWeapons].flatMap(
-      ({ weapon, unavailableReason }) => {
+    let movesetsMissing = false;
+    const requests = [...weaponsWithAmmo, ...noAffinityWeapons, ...unbuffableWeapons].flatMap(
+      ({ weapon, unavailableReason }): BuildRequest[] => {
         const choices = getChoices(weapon);
         // Somber weapons' levels are coarser, so several picked levels can be the same one
         const seen = new Set<string>();
@@ -1068,12 +1070,17 @@ export default function App() {
             ),
           ),
         );
-        // Only the attacks and skills the weapon has, unless it has none of them, so the reason
-        // is shown
+        // A weapon left out for itself (e.g. no ammunition) is shown with the reason, but only
+        // the attacks and skills a weapon has are
+        if (unavailableReason) return weaponRequests.slice(0, 1);
         const available = weaponRequests.filter((request) => !request.unavailableReason);
-        return available.length ? available : weaponRequests.slice(0, 1);
+        if (!available.length && (attacks.length > 0 || ashesOfWar.length > 0)) {
+          movesetsMissing = true;
+        }
+        return available;
       },
     );
+    return { unfilteredRequests: requests, movesetsMissing: movesetsMissing && !requests.length };
   }, [
     weapons,
     validSelectedWeapons,
@@ -1664,6 +1671,7 @@ export default function App() {
   const pointLabel = objective === "spellScaling" ? "scaling" : "damage";
   // As the table's header labels it, without the attack, e.g. "DPS" or "Total damage"
   const chartValueLabel = showDps ? "DPS" : objectiveLabel;
+  const movesetsMissingMessage = "No selected weapon has the chosen moveset(s).";
   const notApplicableLabel =
     objective === "spellScaling"
       ? "Not a catalyst"
@@ -1865,6 +1873,11 @@ export default function App() {
                           onChange={updateAppState}
                         />
                       )}
+                      {movesetsMissing && (
+                        <Typography color="text.secondary" px={2}>
+                          {movesetsMissingMessage}
+                        </Typography>
+                      )}
                       <ResultsTable
                         results={sortedResults}
                         pinnedRows={pinnedRows}
@@ -1907,6 +1920,8 @@ export default function App() {
                         ? "Pick at least one weapon level."
                         : attackActive && attacks.length === 0 && ashesOfWar.length === 0
                         ? "Pick at least one attack or Ash of War."
+                        : movesetsMissing
+                        ? movesetsMissingMessage
                         : "Pick at least one affinity, or a weapon that can't be infused."}
                     </Typography>
                   )}
