@@ -2654,6 +2654,33 @@ describe("Ashes of War", () => {
     expect(build.scaling.str).toBeCloseTo(0.45);
   });
 
+  it("gives an attack that doesn't scale negative potential when its requirements aren't met", () => {
+    // The Heavy Nagakiba's Beast's Roar doesn't scale, so its value at the requirements (18 Str,
+    // 22 Dex) is also its value at 99s; 14 levels can't reach them, so the skill does nothing
+    const weapon = getWeapon("Heavy Nagakiba");
+    const result = getAshAttack(ashes, movesets, weapon, "Beast's Roar", false);
+    if (!("attack" in result)) throw new Error(result.unavailableReason);
+    const build = (maxLevels: number) =>
+      optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 10, dex: 10, int: 10, fai: 10, arc: 10 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        limits: { ...noLimits, maxLevels },
+        attack: result.attack,
+      });
+    const short = build(14);
+    expect(short.finalValue).toBe(0);
+    expect(short.potential).toBeCloseTo(-1);
+    const met = build(20);
+    expect(met.finalValue).toBeGreaterThan(0);
+    expect(met.potential).toBe(1);
+  });
+
   it("meets a skill's requirements even when its hits don't scale with them", () => {
     // Beast's Roar's bullet only scales with Dex, but a Giant-Crusher (60 Strength) can't use it
     // without its Strength: 30 levels two handed reach it (40 × 1.5), one handed they can't
