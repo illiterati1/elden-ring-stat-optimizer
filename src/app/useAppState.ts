@@ -429,11 +429,17 @@ function getStoredChoices(stored: {
   };
 }
 
-function getInitialAppState(): AppState {
+/**
+ * @param json the settings saved in localStorage, by this or an earlier version
+ * @returns the settings, with ones saved differently by earlier versions converted, and the defaults
+ * for ones that weren't saved (all the defaults if they can't be read)
+ */
+export function parseStoredAppState(json: string | null): AppState {
   try {
-    const { attack, ashOfWar, upgradeLevel, ...stored } = JSON.parse(
-      localStorage.getItem(storageKey) ?? "{}",
-    ) as Omit<Partial<AppState>, "limits"> & {
+    const { attack, ashOfWar, upgradeLevel, ...stored } = JSON.parse(json ?? "{}") as Omit<
+      Partial<AppState>,
+      "limits"
+    > & {
       limits?: Record<string, unknown> & Partial<LimitSettings>;
       attack?: string;
       ashOfWar?: string;
@@ -494,6 +500,15 @@ function getInitialAppState(): AppState {
       sortBy: isSortBy(stored.sortBy) ? stored.sortBy : defaultAppState.sortBy,
     };
   } catch {
+    return defaultAppState;
+  }
+}
+
+function getInitialAppState(): AppState {
+  try {
+    return parseStoredAppState(localStorage.getItem(storageKey));
+  } catch {
+    // Storage may be unavailable (e.g. private browsing)
     return defaultAppState;
   }
 }
