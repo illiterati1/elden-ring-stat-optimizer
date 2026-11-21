@@ -644,27 +644,37 @@ function useStickyHead() {
   useLayoutEffect(() => {
     const table = tableRef.current!;
     observerRef.current ??= new ResizeObserver(() => {
-      const left = table.getBoundingClientRect().left;
-      // Every column edge is the edge of some header cell, since each column has a cell in the
-      // header's last row (or one spanning down to it)
-      const edges = new Set<number>([0]);
-      for (const cell of table.tHead!.rows) {
-        for (const th of cell.cells) {
-          const rect = th.getBoundingClientRect();
-          edges.add(rect.left - left);
-          edges.add(rect.right - left);
+      // Read the table again, since a hot reload can swap it for a new one
+      const head = tableRef.current?.tHead;
+      if (!head) return;
+      // Lays the header's cells out on a grid of columns, like the browser does, and takes each
+      // column's width from a cell that spans just it. (Comparing cell edges instead adds columns
+      // at zoom levels where neighbouring edges differ by a fraction of a pixel.)
+      const widths: number[] = [];
+      const filledUntilRow: number[] = []; // per column, the row a cell spanning down ends at
+      [...head.rows].forEach((row, r) => {
+        let column = 0;
+        for (const cell of row.cells) {
+          while ((filledUntilRow[column] ?? 0) > r) column++;
+          if (cell.colSpan === 1) widths[column] = cell.getBoundingClientRect().width;
+          for (let c = column; c < column + cell.colSpan; c++) {
+            filledUntilRow[c] = r + cell.rowSpan;
+          }
+          column += cell.colSpan;
         }
-      }
-      const sorted = [...edges].sort((a, b) => a - b);
+      });
       const colgroup = colgroupRef.current!;
       colgroup.replaceChildren(
-        ...sorted.slice(1).map((edge, i) => {
+        ...Array.from(widths, (width) => {
           const col = document.createElement("col");
-          col.style.width = `${edge - sorted[i]}px`;
+          col.style.width = `${width ?? 0}px`;
           return col;
         }),
       );
-      overlayTableRef.current!.style.width = `${sorted[sorted.length - 1]}px`;
+      overlayTableRef.current!.style.width = `${widths.reduce(
+        (sum, width) => sum + (width ?? 0),
+        0,
+      )}px`;
       overlayScrollRef.current!.scrollLeft = scrollRef.current!.scrollLeft;
     });
     const observer = observerRef.current;
