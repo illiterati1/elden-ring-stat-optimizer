@@ -90,7 +90,7 @@ export default function useBuildResults<Context = undefined>(
     pool.onProgress = progress.set;
     poolRef.current = pool;
     return () => pool.terminate();
-  }, [poolSize]);
+  }, [poolSize, progress]);
 
   useEffect(() => {
     const id = ++latestIdRef.current;
@@ -120,7 +120,9 @@ export default function useBuildResults<Context = undefined>(
         ? { ...previous, resultContext: context }
         : previous,
     );
-  }, [context]); // (not the requests: new ones get the context with their results)
+    // (not the requests: new ones get the context with their results)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [context]);
 
   return { results, resultRequests, resultContext, pending, poolRef, progress };
 }

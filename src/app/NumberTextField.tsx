@@ -104,8 +104,11 @@ export default function NumberTextField({
   ...props
 }: Props) {
   const [valueStr, setValueStr] = useState(value.toString());
-  const moveBy = (current: number, steps: number) =>
-    stops ? stepToStop(current, stops, steps) : stepValue(current, step, steps);
+  const moveBy = useCallback(
+    (current: number, steps: number) =>
+      stops ? stepToStop(current, stops, steps) : stepValue(current, step, steps),
+    [stops, step],
+  );
 
   // Fields with a whole number step only accept whole numbers, unless they allow decimals
   const allowsDecimals = allowDecimals || !Number.isInteger(step);
@@ -160,7 +163,7 @@ export default function NumberTextField({
         setValueStr(newValue.toString());
       }
     },
-    [value, min, max, step, stops, allowsDecimals, onChange],
+    [value, min, max, moveBy, allowsDecimals, onChange],
   );
 
   const handleChange = useCallback(
@@ -195,7 +198,7 @@ export default function NumberTextField({
       setValueStr(newValue === clamped ? newValueStr : clamped.toString());
       onChange?.(clamped, evt);
     },
-    [min, max, step, onChange],
+    [min, max, allowsDecimals, onChange],
   );
 
   const handleBlur = useCallback(

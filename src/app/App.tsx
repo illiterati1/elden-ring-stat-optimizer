@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Button,
@@ -1191,18 +1191,21 @@ export default function App() {
     [weapons],
   );
   // (a ranged weapon's name includes its ammunition, e.g. "Longbow (Arrow)")
-  const findPinWeapon = (name: string) => {
-    const weapon = weaponsByName.get(name);
-    if (weapon) return weapon;
-    for (const group of ammo) {
-      const suffix = ` (${getAmmoLabel(group)})`;
-      const base = name.endsWith(suffix) && weaponsByName.get(name.slice(0, -suffix.length));
-      if (base && weaponTypeAmmoClasses.get(base.weaponType) === group.class) {
-        return withAmmo(base, group);
+  const findPinWeapon = useCallback(
+    (name: string) => {
+      const weapon = weaponsByName.get(name);
+      if (weapon) return weapon;
+      for (const group of ammo) {
+        const suffix = ` (${getAmmoLabel(group)})`;
+        const base = name.endsWith(suffix) && weaponsByName.get(name.slice(0, -suffix.length));
+        if (base && weaponTypeAmmoClasses.get(base.weaponType) === group.class) {
+          return withAmmo(base, group);
+        }
       }
-    }
-    return undefined;
-  };
+      return undefined;
+    },
+    [weaponsByName, ammo],
+  );
   // Which pin each request sent to the pins' worker is for, so results are matched to pins even
   // when they're for earlier requests
   const [pinRequestIds] = useState(() => new WeakMap<BuildRequest, string>());
@@ -1216,7 +1219,7 @@ export default function App() {
           return request ? [[pin.id, request]] : [];
         }),
       ),
-    [pins, weaponsByName, ammo],
+    [pins, findPinWeapon],
   );
   const pinRequests = useMemo(
     () =>
@@ -1237,7 +1240,7 @@ export default function App() {
           return [[pin.id, request]];
         }),
       ),
-    [pins, frozenRequests, weaponsByName, ammo, getWeaponRequests],
+    [pins, frozenRequests, findPinWeapon, getWeaponRequests, pinRequestIds],
   );
   const pinRequestList = useMemo(() => [...pinRequests.values()], [pinRequests]);
   // The settings the pinned rows are shown with: other settings, like the chart's range, don't
@@ -1383,8 +1386,7 @@ export default function App() {
     pinResultSettings,
     allBuffs,
     tooltipTimings,
-    weaponsByName,
-    ammo,
+    findPinWeapon,
     effectiveSortBy,
     effectiveReverse,
     sortHidden,
