@@ -41,7 +41,7 @@ export function getResultStatus(result: BuildResult, perSecond = false) {
 }
 
 /**
- * Damage (or attack power) per point of stamina the chosen attack costs, or DPS per point of
+ * Damage per point of stamina the chosen attack costs, or DPS per point of
  * stamina (with DPS shown), if its stamina cost is known
  */
 export function getDamagePerStamina(result: BuildResult, perSecond = false) {

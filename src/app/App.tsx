@@ -1471,11 +1471,8 @@ export default function App() {
   );
   const valueLabel = objectiveLabel + (attackMode && attack !== ashAttack ? ` (${attack})` : "");
   const pointLabel = objective === "spellScaling" ? "scaling" : "damage";
-  // Per second, e.g. "DPS (R1)", as the table labels it
-  const chartValueLabel = showDps
-    ? (pointLabel === "damage" ? "DPS" : "AR/s") +
-      (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "")
-    : valueLabel;
+  // As the table's header labels it, without the attack, e.g. "DPS" or "Total damage"
+  const chartValueLabel = showDps ? "DPS" : objectiveLabel;
   const notApplicableLabel =
     objective === "spellScaling"
       ? "Not a catalyst"

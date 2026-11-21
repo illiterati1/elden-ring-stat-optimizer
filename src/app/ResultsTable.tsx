@@ -256,7 +256,6 @@ function AttackHits({
   stepTimes,
   repeatFrom,
   timings,
-  label,
   skill,
   title,
   notes,
@@ -266,7 +265,6 @@ function AttackHits({
   /** The step the chain goes back to, if not the first */
   repeatFrom?: number;
   timings: TooltipTimings;
-  label: string;
   /** The attack is a skill, repeated as the same skill rather than the same attack */
   skill: boolean;
   /** The heading of the details drawer on touch devices */
@@ -427,7 +425,7 @@ function AttackHits({
               {showKind && <TableCell sx={cellSx}>Kind</TableCell>}
               <TableCell sx={cellSx}>Physical</TableCell>
               <TableCell sx={cellSx} align="right">
-                {label}
+                Damage
               </TableCell>
               {hpDamageLabel && (
                 <TableCell sx={cellSx} align="right">
@@ -857,10 +855,8 @@ function ResultsTable({
   const perSecondOver = oneOffAttack
     ? " over the attack itself, until anything can follow it, not counting the time to repeat it"
     : ", repeating the attack as fast as the game allows";
-  // Per second, e.g. "DPS (R1)"
-  const perSecondLabel =
-    (pointLabel === "damage" ? "DPS" : "AR/s") +
-    (valueLabel.includes(" (") ? valueLabel.slice(valueLabel.indexOf(" (")) : "");
+  // The column header leaves out the attack, e.g. "Total damage" rather than "Total damage (R1)"
+  const headerLabel = valueLabel.replace(/ \(.*/, "");
 
   /** Copies a row's final stats into the planned stats, unless they're the plan already */
   const planStatsButton = (result: BuildResult, row: RowOptions) => {
@@ -1008,7 +1004,6 @@ function ResultsTable({
                     repeatFrom={result.attackRepeatFrom}
                     timings={row.tooltipTimings}
                     skill={row.skill}
-                    label={pointLabel === "damage" ? "Damage" : "AR"}
                     title={`${row.name}: hits`}
                     notes={[row.hitsNote, showDps && row.oneOffAttack && oneOffNote].filter(
                       (note): note is string => !!note,
@@ -1228,18 +1223,14 @@ function ResultsTable({
                 <Tooltip
                   title={
                     oneOffAttack
-                      ? `${
-                          pointLabel === "damage" ? "Damage" : "Attack power"
-                        } per second${perSecondOver}, from its animations`
-                      : `${
-                          pointLabel === "damage" ? "Damage" : "Attack power"
-                        } per second${perSecondOver} (a chain starts again after its last step), from its animations`
+                      ? `Damage per second${perSecondOver}, from its animations`
+                      : `Damage per second${perSecondOver} (a chain starts again after its last step), from its animations`
                   }
                 >
-                  {sortLabel("total", perSecondLabel, "desc")}
+                  {sortLabel("total", "DPS", "desc")}
                 </Tooltip>
               ) : (
-                sortLabel("total", valueLabel, "desc")
+                sortLabel("total", headerLabel, "desc")
               )}
             </TableCell>
             {showDamagePerStamina && (
@@ -1247,13 +1238,8 @@ function ResultsTable({
                 <Tooltip
                   title={
                     showDps
-                      ? `${perSecondLabel.replace(
-                          / \(.*/,
-                          "",
-                        )} per point of stamina the attack costs (rewards attacks that are both fast and cheap)`
-                      : `${
-                          pointLabel === "damage" ? "Damage" : "Attack power"
-                        } per point of stamina, each weighted across a chain the same way`
+                      ? "DPS per point of stamina the attack costs (rewards attacks that are both fast and cheap)"
+                      : `Damage per point of stamina, each weighted across a chain the same way`
                   }
                 >
                   {sortLabel(
