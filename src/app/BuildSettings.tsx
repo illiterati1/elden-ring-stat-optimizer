@@ -135,7 +135,9 @@ function MultiPicker<T extends string | number>({
           {getOptionLabel(option)}
         </li>
       )}
-      renderInput={(params) => <TextField {...params} label={label} placeholder={placeholder} />}
+      renderInput={(params) => (
+        <TextField {...params} label={label} placeholder={value.length ? undefined : placeholder} />
+      )}
       size="small"
       disableCloseOnSelect
       // On a row of its own, since it grows with what's picked
