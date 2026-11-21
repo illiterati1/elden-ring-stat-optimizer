@@ -88,6 +88,9 @@ export interface ChainLimitSetting {
   readonly seconds: number;
 }
 
+/** How a weapon is held */
+export type Grip = "1h" | "2h";
+
 export interface AppState {
   readonly startingClass: StartingClassName;
   readonly stats: Stats;
@@ -108,7 +111,8 @@ export interface AppState {
   readonly health: number;
   /** The weapon upgrade levels to compare, on the regular scale (+25), each a row of its own */
   readonly upgradeLevels: readonly number[];
-  readonly twoHanding: boolean;
+  /** One handed, two handed, or both, each a row of its own: at least one */
+  readonly grips: readonly Grip[];
   readonly showScaling: boolean;
   readonly showStatus: boolean;
   /** Show the chosen attack's stance damage */
@@ -271,7 +275,7 @@ export const defaultAppState: AppState = {
   equipWeight: minEquipWeight,
   health: 100,
   upgradeLevels: [25],
-  twoHanding: false,
+  grips: ["1h"],
   showScaling: false,
   showStatus: false,
   showStance: true,
@@ -435,14 +439,14 @@ function getStoredChoices(stored: {
  */
 export function parseStoredAppState(json: string | null): AppState {
   try {
-    const { attack, ashOfWar, upgradeLevel, ...stored } = JSON.parse(json ?? "{}") as Omit<
-      Partial<AppState>,
-      "limits"
-    > & {
+    const { attack, ashOfWar, upgradeLevel, twoHanding, ...stored } = JSON.parse(
+      json ?? "{}",
+    ) as Omit<Partial<AppState>, "limits"> & {
       limits?: Record<string, unknown> & Partial<LimitSettings>;
       attack?: string;
       ashOfWar?: string;
       upgradeLevel?: number;
+      twoHanding?: boolean;
     };
     const choices = getStoredChoices({ ...stored, attack, ashOfWar, upgradeLevel });
     return {
@@ -479,7 +483,8 @@ export function parseStoredAppState(json: string | null): AppState {
           ? ["greatarrow:Great Arrow", "greatarrow:Radahn's Spear"]
           : [key],
       ),
-      // Pins from before several upgrade levels could be compared had the one level
+      // Pins from before several upgrade levels could be compared had the one level, and from
+      // before both grips could be compared, the two handing setting
       pins: Array.isArray(stored.pins)
         ? stored.pins
             .map((pin: Pin) =>
@@ -493,8 +498,20 @@ export function parseStoredAppState(json: string | null): AppState {
                   }
                 : pin,
             )
+            .map((pin: Pin) =>
+              pin && typeof pin.twoHanding !== "boolean"
+                ? { ...pin, twoHanding: pin.frozen?.request.twoHanding ?? twoHanding ?? false }
+                : pin,
+            )
             .filter(isPin)
         : [],
+      // Earlier versions had a two handing checkbox
+      grips:
+        Array.isArray(stored.grips) && stored.grips.length
+          ? stored.grips
+          : twoHanding
+          ? ["2h"]
+          : defaultAppState.grips,
       // Sort columns can be removed between versions
       sortBy: isSortBy(stored.sortBy) ? stored.sortBy : defaultAppState.sortBy,
     };

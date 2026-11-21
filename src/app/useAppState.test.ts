@@ -12,6 +12,7 @@ const pin = (extra: Partial<Pin> = {}) => ({
   attack: "R1",
   ashOfWar: "",
   upgradeLevel: 25,
+  twoHanding: false,
   label: "R1",
   ...extra,
 });
@@ -31,6 +32,7 @@ describe("saved settings", () => {
       attacks: ["R1", "R2"],
       ashesOfWar: [fixedSkillsChoice, "Bloody Slash"],
       upgradeLevels: [10, 25],
+      grips: ["1h", "2h"],
       plannedStats: { dexterity: 50 },
       pins: [pin()],
       chartWeapons: ["pin:a"],
@@ -188,5 +190,28 @@ describe("saved pins", () => {
     const { upgradeLevel: _, ...old } = pin();
     expect(parse({ pins: [old], upgradeLevel: 20 }).pins[0].upgradeLevel).toBe(20);
     expect(parse({ pins: [old] }).pins[0].upgradeLevel).toBe(defaultAppState.upgradeLevels[0]);
+  });
+
+  it("gives pins from before both grips could be compared the grip they had", () => {
+    const { twoHanding: _, ...old } = pin();
+    const frozen = {
+      ...old,
+      frozen: { request: { weapon: "Uchigatana", twoHanding: true }, settings: {} },
+    };
+    expect(parse({ pins: [frozen] }).pins[0].twoHanding).toBe(true);
+    expect(parse({ pins: [old], twoHanding: true }).pins[0].twoHanding).toBe(true);
+    expect(parse({ pins: [old] }).pins[0].twoHanding).toBe(false);
+  });
+});
+
+describe("saved grips", () => {
+  it("reads the two handing setting earlier versions saved", () => {
+    expect(parse({ twoHanding: true }).grips).toEqual(["2h"]);
+    expect(parse({ twoHanding: false }).grips).toEqual(["1h"]);
+    expect(parse({ twoHanding: true })).not.toHaveProperty("twoHanding");
+  });
+
+  it("never has no grip", () => {
+    expect(parse({ grips: [] }).grips).toEqual(defaultAppState.grips);
   });
 });

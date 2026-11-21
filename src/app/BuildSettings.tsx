@@ -12,6 +12,8 @@ import {
   MenuItem,
   Select,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import {
@@ -21,7 +23,7 @@ import {
 } from "../optimizer/build.ts";
 import type { Objective } from "../optimizer/optimizer.ts";
 import Section from "./Section.tsx";
-import type { AppState, UpdateAppState } from "./useAppState.ts";
+import type { AppState, Grip, UpdateAppState } from "./useAppState.ts";
 import {
   damageTypeIcons,
   damageTypeLabels,
@@ -43,7 +45,7 @@ import type { Buff } from "./useBuffs.ts";
 interface Props {
   /** The picked upgrade levels, lowest first */
   upgradeLevels: AppState["upgradeLevels"];
-  twoHanding: AppState["twoHanding"];
+  grips: AppState["grips"];
   showScaling: AppState["showScaling"];
   showStatus: AppState["showStatus"];
   showStance: AppState["showStance"];
@@ -98,6 +100,11 @@ const attackNotes: Partial<Record<AttackName, string>> = {
   "Jump Shot + Landing Shot":
     "Light bows (and the Black Bow and Ansbach's Longbow): a jumping shot, then a shot as soon as it lands",
 };
+
+const gripOptions: [Grip, string][] = [
+  ["1h", "1H"],
+  ["2h", "2H"],
+];
 
 const upgradeLevelChoices = Array.from({ length: maxRegularUpgradeLevel + 1 }, (_, level) => level);
 const upgradeLevelLabel = (level: number) => `+${level} / +${toSpecialUpgradeLevel(level)}`;
@@ -301,7 +308,7 @@ function FilterSettings({
  */
 function BuildSettings({
   upgradeLevels,
-  twoHanding,
+  grips,
   showScaling,
   showStatus,
   showStance,
@@ -517,18 +524,25 @@ function BuildSettings({
         )}
       </Box>
 
-      <Box display="flex" flexWrap="wrap" columnGap={3} mt={1}>
-        <FormControlLabel
-          label="Two handing"
-          sx={{ mr: 0 }}
-          control={
-            <Checkbox
-              size="small"
-              checked={twoHanding}
-              onChange={(evt) => onChange({ twoHanding: evt.currentTarget.checked })}
-            />
+      <Box display="flex" alignItems="center" columnGap={1} mt={1}>
+        <Typography id="gripLabel" variant="body2">
+          Grip
+        </Typography>
+        {/* Either or both, but at least one: unpressing the last one does nothing */}
+        <ToggleButtonGroup
+          size="small"
+          aria-labelledby="gripLabel"
+          value={grips}
+          onChange={(_, newGrips: Grip[]) =>
+            newGrips.length > 0 && onChange({ grips: newGrips.sort() })
           }
-        />
+        >
+          {gripOptions.map(([grip, label]) => (
+            <ToggleButton key={grip} value={grip} sx={{ px: 1.5, py: 0.25 }}>
+              {label}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
       </Box>
       <CollapsibleGroup title="Columns">
         {/* Spell scaling has no attack to show stance, stamina, or status for */}

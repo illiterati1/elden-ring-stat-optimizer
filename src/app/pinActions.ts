@@ -8,7 +8,7 @@ import {
   type Pin,
   type PinSettings,
 } from "./pins.ts";
-import { defaultAppState, type AppState } from "./useAppState.ts";
+import { defaultAppState, type AppState, type Grip } from "./useAppState.ts";
 
 /**
  * How pinning, unpinning, freezing and restoring change the pins and the chart, kept apart from
@@ -122,13 +122,20 @@ export function toggleFreeze(
  */
 export function getRestoredSettings(
   pin: Pin,
-  { upgradeLevels }: Pick<AppState, "upgradeLevels">,
+  { upgradeLevels, grips }: Pick<AppState, "upgradeLevels" | "grips">,
 ): Partial<AppState> | undefined {
   if (!pin.frozen) return undefined;
-  // (pins frozen when there was one upgrade level have it in their settings)
-  const { upgradeLevel: _, ...settings } = pin.frozen.settings as PinSettings & {
+  // (pins frozen when there was one upgrade level, or a two handing setting, have it in their
+  // settings)
+  const {
+    upgradeLevel: _,
+    twoHanding: __,
+    ...settings
+  } = pin.frozen.settings as PinSettings & {
     upgradeLevel?: number;
+    twoHanding?: boolean;
   };
+  const grip: Grip = pin.twoHanding ? "2h" : "1h";
   return {
     ...settings,
     // Pins frozen before a limit was added don't have it
@@ -136,13 +143,14 @@ export function getRestoredSettings(
     ...(!upgradeLevels.includes(pin.upgradeLevel) && {
       upgradeLevels: [...upgradeLevels, pin.upgradeLevel].sort((a, b) => a - b),
     }),
+    ...(!grips.includes(grip) && { grips: [...grips, grip].sort() }),
   };
 }
 
 /** @returns whether restoring a frozen pin's settings would change any of the current ones */
 export function restoreChangesSettings(
   pin: Pin,
-  current: PinSettings & Pick<AppState, "upgradeLevels">,
+  current: PinSettings & Pick<AppState, "upgradeLevels" | "grips">,
 ): boolean {
   const restored = getRestoredSettings(pin, current);
   return (

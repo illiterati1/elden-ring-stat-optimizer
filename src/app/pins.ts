@@ -16,8 +16,8 @@ const settingKeys = <K extends keyof AppState>(...keys: K[]) => keys;
 
 /**
  * The settings a row's values depend on besides its weapon and attack: kept with a frozen pin, shown
- * in its tooltip, and restored from it. (Not the attack or upgrade level, which the pin has, or
- * what's shown.)
+ * in its tooltip, and restored from it. (Not the attack, upgrade level, or grip, which the pin has,
+ * or what's shown.)
  */
 export const pinSettingKeys = settingKeys(
   "startingClass",
@@ -27,7 +27,6 @@ export const pinSettingKeys = settingKeys(
   "meetRequirements",
   "fastMode",
   "objective",
-  "twoHanding",
   "buffs",
   "stackTier",
   "health",
@@ -76,6 +75,8 @@ export interface Pin {
   readonly ashOfWar: string;
   /** On the regular scale (+25), like the upgrade levels picked */
   readonly upgradeLevel: number;
+  /** Its grip: the one picked, which for a weapon that can't be two handed is one handed anyway */
+  readonly twoHanding: boolean;
   /** Which version of the weapon's fixed skill (its short label), if it has several */
   readonly skillVariant?: string;
   /** Shown after the weapon's name, e.g. "R1 chain" or the skill's name */
@@ -160,16 +161,18 @@ export interface RowChoice {
   readonly attack: RowAttack;
   readonly ashOfWar: string;
   readonly upgradeLevel: number;
+  /** The grip picked */
+  readonly twoHanding: boolean;
 }
 
 /**
- * Identifies a row: its weapon (and fixed skill version) with its attack and upgrade level. It's
- * JSON, so the row's choices can be read back from it (parseRowKey).
+ * Identifies a row: its weapon (and fixed skill version) with its attack, upgrade level, and grip.
+ * It's JSON, so the row's choices can be read back from it (parseRowKey).
  */
 export function getPinKey(
   weaponName: string,
   skillVariant: string | undefined,
-  { attack, ashOfWar, upgradeLevel }: RowChoice,
+  { attack, ashOfWar, upgradeLevel, twoHanding }: RowChoice,
 ) {
   return JSON.stringify([
     weaponName,
@@ -177,19 +180,21 @@ export function getPinKey(
     attack,
     attack === ashAttack ? ashOfWar : "",
     upgradeLevel,
+    twoHanding,
   ]);
 }
 
 /** @returns the choices of the row with this key (getPinKey) */
 export function parseRowKey(key: string): RowChoice {
-  const [, , attack, ashOfWar, upgradeLevel] = JSON.parse(key) as [
+  const [, , attack, ashOfWar, upgradeLevel, twoHanding] = JSON.parse(key) as [
     string,
     string,
     RowAttack,
     string,
     number,
+    boolean,
   ];
-  return { attack, ashOfWar, upgradeLevel };
+  return { attack, ashOfWar, upgradeLevel, twoHanding };
 }
 
 export const getKeyOfPin = (pin: Pin) => getPinKey(pin.weaponName, pin.skillVariant, pin);
@@ -207,6 +212,7 @@ export function isPin(value: unknown): value is Pin {
     typeof pin.attack === "string" &&
     typeof pin.ashOfWar === "string" &&
     typeof pin.upgradeLevel === "number" &&
+    typeof pin.twoHanding === "boolean" &&
     typeof pin.label === "string" &&
     (pin.frozen == null ||
       (typeof pin.frozen.request === "object" && typeof pin.frozen.settings === "object"))
@@ -323,7 +329,6 @@ export function describePinSettings(
       value: (s) =>
         objectiveOptions.find(([value]) => value === s.objective)?.[1] ?? String(s.objective),
     },
-    { label: "Two handing", value: (s) => yesNo(s.twoHanding), always: true },
     {
       label: "Buffs",
       value: (s) => s.buffs.map(buffName).join(", ") || "None",

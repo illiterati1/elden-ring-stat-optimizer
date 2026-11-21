@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import {
   allAttributes,
+  allDamageTypes,
   AttackPowerType,
   WeaponType,
   type Attribute,
@@ -43,6 +44,7 @@ import useAppState, {
   minEquipWeight,
   statusSortBy,
   type AppState,
+  type Grip,
 } from "./useAppState.ts";
 import useWeapons from "./useWeapons.ts";
 import type { Weapon } from "../calculator/weapon.ts";
@@ -172,6 +174,84 @@ function withAssumedStats(request: BuildRequest, stats: Stats): BuildRequest {
  * A weapon's name with its upgrade level, on its own scale (e.g. +10 for a somber weapon), kept
  * together so the level doesn't wrap onto a line alone
  */
+/** A row's grip, in its name when it has a row with the other grip */
+const gripLabel = (twoHanding: boolean) => (twoHanding ? "2H" : "1H");
+
+/** Between a row's weapon and its attack in its name */
+const labelSeparator = "\u00a0·\u00a0";
+
+/** An attack's label with its grip before it, e.g. "2H R1" (kept together) */
+const withGrip = (label: string, twoHanding: boolean) =>
+  [gripLabel(twoHanding), label].filter(Boolean).join("\u00a0");
+
+/** A request with its grip in its row's name, before its attack */
+function withGripLabel(request: BuildRequest): BuildRequest {
+  if (!request.row) return request;
+  const [name, ...label] = request.row.name.split(labelSeparator);
+  const labeled = {
+    ...request,
+    row: {
+      ...request.row,
+      name: [name, withGrip(label.join(labelSeparator), request.twoHanding)].join(labelSeparator),
+    },
+  };
+  if (shownReasonRequests.has(request)) shownReasonRequests.add(labeled);
+  return labeled;
+}
+
+const alwaysTwoHandedTypes: readonly WeaponType[] = [
+  WeaponType.LIGHT_BOW,
+  WeaponType.BOW,
+  WeaponType.GREATBOW,
+  WeaponType.BALLISTA,
+];
+
+/** @returns true if any of a weapon's damage types scales with Strength */
+const scalesWithStrength = (weapon: Weapon) =>
+  weapon.attributeScaling.some((scaling) => scaling.str) &&
+  allDamageTypes.some((type) => weapon.attackElementCorrect[type]?.str);
+
+/** The attack subcategory of two handed attacks, which some buffs only apply to */
+const twoHandedCategory = 120;
+
+/**
+ * @returns true if a row works out the same two handed as one handed: it can't be two handed, or
+ * it has the same attack (besides being marked a two handed attack, unless a buff only applies to
+ * those) and two handing's Strength bonus makes no difference: a paired weapon or bow, which never
+ * or always get it, or one whose Strength requirement is already met (the bonus counts towards it
+ * even for hits that don't get it) and whose hits don't scale with Strength or don't get the bonus
+ */
+function sameWithEitherGrip(oneHanded: BuildRequest, twoHanded: BuildRequest) {
+  if (!twoHanded.twoHanding) return true;
+  if (oneHanded.unavailableReason !== twoHanded.unavailableReason) return false;
+  const categoryCounts = twoHanded.buffs?.some((effect) =>
+    effect.categories?.includes(twoHandedCategory),
+  );
+  const attackKey = (attack: BuildRequest["attack"]) =>
+    JSON.stringify(attack, (key, value: unknown) => {
+      if (key !== "categories" || categoryCounts || !Array.isArray(value)) return value;
+      const categories = value.filter((category) => category !== twoHandedCategory);
+      return categories.length ? categories : undefined;
+    });
+  if (attackKey(oneHanded.attack) !== attackKey(twoHanded.attack)) return false;
+  const { weapon, attack, attributes, bonusAttributes } = twoHanded;
+  if (weapon.paired || alwaysTwoHandedTypes.includes(weapon.weaponType)) return true;
+  // (stats only go up from the planned ones)
+  const requirementMet = attributes.str + bonusAttributes.str >= (weapon.requirements.str ?? 0);
+  // (a hit's own scaling is for its flat attack, besides the weapon's for its motion value)
+  const usesBonus = attack
+    ? attack.steps.some((step) =>
+        step.some(
+          (hit) =>
+            !hit.noTwoHandBonus &&
+            (scalesWithStrength(weapon) ||
+              Object.values(hit.attackElementCorrect ?? {}).some((correct) => correct?.str)),
+        ),
+      )
+    : scalesWithStrength(weapon);
+  return requirementMet && !usesBonus;
+}
+
 const withUpgradeLevel = (weapon: Weapon | undefined, name: string, regularUpgradeLevel: number) =>
   `${name}\u00a0+${
     weapon ? getWeaponUpgradeLevel(weapon, regularUpgradeLevel) : regularUpgradeLevel
@@ -221,7 +301,7 @@ export default function App() {
     catalystUpgradeLevel,
     equipWeight,
     upgradeLevels: savedUpgradeLevels,
-    twoHanding,
+    grips,
     showScaling,
     showStatus: savedShowStatus,
     showStance: savedShowStance,
@@ -651,8 +731,8 @@ export default function App() {
       unavailableReason: string | undefined,
       choice: RowChoice,
     ): BuildRequest[] => {
-      const { attack, ashOfWar, upgradeLevel } = choice;
-      // The two handing setting doesn't apply to weapons that can't be two handed
+      const { attack, ashOfWar, upgradeLevel, twoHanding } = choice;
+      // Two handing doesn't apply to weapons that can't be two handed
       const weaponTwoHanding =
         twoHanding &&
         !oneHandedBuffs.some((buff) => buff.skillOf !== weapon.weaponName) &&
@@ -808,7 +888,8 @@ export default function App() {
         const buffUpkeep = weaponBuffApplies && !ownWeaponBuff ? weaponBuff?.upkeep : undefined;
         const upkeptAttackData =
           attackData && buffUpkeep ? { ...attackData, buffUpkeep } : attackData;
-        // Named with its attack: the attack, or the skill's name
+        // Named with its attack: the attack, or the skill's name (and its grip, added by the
+        // table's rows if it has a row with the other grip)
         const label = !showRowLabels
           ? undefined
           : attack !== ashAttack
@@ -907,7 +988,7 @@ export default function App() {
           row: {
             id: getPinKey(weapon.name, variant?.short, choice),
             // (kept together with the weapon's last word, so it doesn't wrap onto a line alone)
-            name: label ? `${name}\u00a0·\u00a0${label}` : name,
+            name: label ? name + labelSeparator + label : name,
           },
         };
         if (
@@ -938,7 +1019,6 @@ export default function App() {
     offhandBuffEffects,
     showRowLabels,
     ashLabels,
-    twoHanding,
     bonusAttributes,
     classAttributes,
     buffEffects,
@@ -1055,7 +1135,7 @@ export default function App() {
 
     // A row for each upgrade level with each attack, and each skill the weapon can use: its own
     // fixed skill, or the Ashes of War picked. Spell scaling doesn't use an attack.
-    type Choice = Omit<RowChoice, "upgradeLevel">;
+    type Choice = Omit<RowChoice, "upgradeLevel" | "twoHanding">;
     const getChoices = (weapon: Weapon): Choice[] => {
       if (!attackActive) return [{ attack: attacks[0] ?? "R1", ashOfWar: "" }];
       const info = ashes.weapons[weapon.weaponName];
@@ -1077,21 +1157,50 @@ export default function App() {
         // Somber weapons' levels are coarser, so several picked levels can be the same one
         const seen = new Set<string>();
         const weaponRequests = upgradeLevels.flatMap((upgradeLevel) =>
-          choices.flatMap((choice) =>
-            getWeaponRequests(weapon, unavailableReason, { ...choice, upgradeLevel }).filter(
-              (request) => {
-                const key = JSON.stringify([
-                  getWeaponUpgradeLevel(weapon, upgradeLevel),
-                  choice.attack,
-                  choice.ashOfWar,
-                  request.skillVariant?.short,
-                ]);
-                if (seen.has(key)) return false;
-                seen.add(key);
-                return true;
-              },
-            ),
-          ),
+          choices.flatMap((choice) => {
+            const withGrip = (grip: Grip) =>
+              getWeaponRequests(weapon, unavailableReason, {
+                ...choice,
+                upgradeLevel,
+                twoHanding: grip === "2h",
+              });
+            const [first, second] = grips.includes("1h")
+              ? [withGrip("1h"), grips.includes("2h") ? withGrip("2h") : undefined]
+              : [withGrip("2h"), undefined];
+            // With both grips, a row for each, unless it's the same either way (e.g. it can't be
+            // two handed), when it's the one handed row unlabeled
+            const gripRequests = !second
+              ? first
+              : [
+                  ...first.map((request) => {
+                    const other = second.find(
+                      (candidate) => candidate.skillVariant?.short === request.skillVariant?.short,
+                    );
+                    return other && !sameWithEitherGrip(request, other)
+                      ? withGripLabel(request)
+                      : request;
+                  }),
+                  ...second.flatMap((request) => {
+                    const other = first.find(
+                      (candidate) => candidate.skillVariant?.short === request.skillVariant?.short,
+                    );
+                    if (other && sameWithEitherGrip(other, request)) return [];
+                    return [other ? withGripLabel(request) : request];
+                  }),
+                ];
+            return gripRequests.filter((request) => {
+              const key = JSON.stringify([
+                getWeaponUpgradeLevel(weapon, upgradeLevel),
+                choice.attack,
+                choice.ashOfWar,
+                request.skillVariant?.short,
+                request.twoHanding,
+              ]);
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+          }),
         );
         // A weapon left out for itself (e.g. no ammunition) is shown with the reason, but only
         // the attacks and skills a weapon has are, unless it has them but they can't be used here
@@ -1120,6 +1229,7 @@ export default function App() {
     attacks,
     ashesOfWar,
     upgradeLevels,
+    grips,
   ]);
   // Filtered before optimizing, so weapons filtered out aren't calculated at all. (Top N needs the
   // results, so it's applied after sorting.)
@@ -1433,7 +1543,7 @@ export default function App() {
             pin.weaponName,
             pin.upgradeLevel,
           );
-          return pin.label ? `${name}\u00a0·\u00a0${pin.label}` : name;
+          return pin.label ? name + labelSeparator + pin.label : name;
         })(),
         chartKey: getPinChartKey(pin),
         ...(!pin.frozen && {
@@ -1462,7 +1572,11 @@ export default function App() {
             allBuffs,
           ),
         ...(pin.frozen && {
-          restorable: restoreChangesSettings(pin, { ...currentPinSettings, upgradeLevels }),
+          restorable: restoreChangesSettings(pin, {
+            ...currentPinSettings,
+            upgradeLevels,
+            grips,
+          }),
         }),
       };
     });
@@ -1503,6 +1617,7 @@ export default function App() {
     pinResultSettings,
     currentPinSettings,
     upgradeLevels,
+    grips,
     allBuffs,
     tooltipTimings,
     findPinWeapon,
@@ -1561,12 +1676,18 @@ export default function App() {
       if (!result.row) return;
       const choice = parseRowKey(result.row.id);
       const { attack, ashOfWar } = choice;
-      const label =
+      const attackLabel =
         appState.objective === "spellScaling"
           ? ""
           : attack === ashAttack
           ? result.skillVariant?.label ?? result.fixedSkill ?? ashLabels.get(ashOfWar) ?? "Skill"
           : attack;
+      // With its grip if the row has it (it has a row with the other grip)
+      const label = result.row.name.includes(
+        labelSeparator + withGrip(attackLabel, choice.twoHanding),
+      )
+        ? withGrip(attackLabel, choice.twoHanding)
+        : attackLabel;
       const pin: Pin = {
         id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
         weaponName: result.weaponName,
@@ -1750,7 +1871,7 @@ export default function App() {
       />
       <BuildSettings
         upgradeLevels={upgradeLevels}
-        twoHanding={twoHanding}
+        grips={grips}
         showScaling={showScaling}
         showStatus={savedShowStatus}
         showStance={savedShowStance}

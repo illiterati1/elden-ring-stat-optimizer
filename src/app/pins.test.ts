@@ -28,7 +28,7 @@ import {
   type PinSettings,
 } from "./pins.ts";
 import { ashAttack } from "./useAshes.ts";
-import { defaultAppState } from "./useAppState.ts";
+import { defaultAppState, type AppState } from "./useAppState.ts";
 
 const weapons = decodeRegulationData(
   JSON.parse(
@@ -50,6 +50,7 @@ function pin(id: string, extra: Partial<Pin> = {}): Pin {
     attack: "R1",
     ashOfWar: "",
     upgradeLevel: 25,
+    twoHanding: false,
     label: "R1",
     ...extra,
   };
@@ -63,7 +64,12 @@ const rowKey = (p: Pin) => getKeyOfPin(p);
 
 describe("row keys", () => {
   it("reads a row's choices back from its key", () => {
-    const choice = { attack: ashAttack, ashOfWar: "Bloody Slash", upgradeLevel: 10 } as const;
+    const choice = {
+      attack: ashAttack,
+      ashOfWar: "Bloody Slash",
+      upgradeLevel: 10,
+      twoHanding: true,
+    } as const;
     expect(parseRowKey(getPinKey("Uchigatana", undefined, choice))).toEqual(choice);
   });
 
@@ -73,15 +79,24 @@ describe("row keys", () => {
         attack: "R1",
         ashOfWar: "Bloody Slash",
         upgradeLevel: 25,
+        twoHanding: false,
       }),
-    ).toBe(getPinKey("Uchigatana", undefined, { attack: "R1", ashOfWar: "", upgradeLevel: 25 }));
+    ).toBe(
+      getPinKey("Uchigatana", undefined, {
+        attack: "R1",
+        ashOfWar: "",
+        upgradeLevel: 25,
+        twoHanding: false,
+      }),
+    );
   });
 
-  it("tells fixed skill versions and upgrade levels apart", () => {
-    const choice = { attack: "R1", ashOfWar: "", upgradeLevel: 25 } as const;
+  it("tells fixed skill versions, upgrade levels, and grips apart", () => {
+    const choice = { attack: "R1", ashOfWar: "", upgradeLevel: 25, twoHanding: false } as const;
     const key = getPinKey("Uchigatana", undefined, choice);
     expect(getPinKey("Uchigatana", "Lv2", choice)).not.toBe(key);
     expect(getPinKey("Uchigatana", undefined, { ...choice, upgradeLevel: 24 })).not.toBe(key);
+    expect(getPinKey("Uchigatana", undefined, { ...choice, twoHanding: true })).not.toBe(key);
   });
 });
 
@@ -270,38 +285,48 @@ describe("unpinning", () => {
 });
 
 describe("restoring a frozen pin's settings", () => {
-  const changed: PinSettings = { ...settings, twoHanding: true };
+  const changed: PinSettings = { ...settings, meetRequirements: !settings.meetRequirements };
+  const current: Pick<AppState, "upgradeLevels" | "grips"> = { upgradeLevels: [25], grips: ["1h"] };
 
   it("is only offered when it would change the settings", () => {
     const frozenPin = pin("a", {
       frozen: { request: storeRequest(request("Uchigatana")), settings: changed },
     });
-    expect(restoreChangesSettings(frozenPin, { ...settings, upgradeLevels: [25] })).toBe(true);
-    expect(restoreChangesSettings(frozenPin, { ...changed, upgradeLevels: [25] })).toBe(false);
+    expect(restoreChangesSettings(frozenPin, { ...settings, ...current })).toBe(true);
+    expect(restoreChangesSettings(frozenPin, { ...changed, ...current })).toBe(false);
     // (with its keys listed in another order, still the same)
     const reordered = Object.fromEntries(Object.entries(changed).reverse()) as PinSettings;
-    expect(restoreChangesSettings(frozenPin, { ...reordered, upgradeLevels: [25] })).toBe(false);
-    expect(restoreChangesSettings(frozenPin, { ...changed, upgradeLevels: [10] })).toBe(true);
-    expect(restoreChangesSettings(pin("a"), { ...settings, upgradeLevels: [25] })).toBe(false);
+    expect(restoreChangesSettings(frozenPin, { ...reordered, ...current })).toBe(false);
+    expect(restoreChangesSettings(frozenPin, { ...changed, ...current, upgradeLevels: [10] })).toBe(
+      true,
+    );
+    expect(restoreChangesSettings(pin("a"), { ...settings, ...current })).toBe(false);
   });
 
   it("does nothing for a live pin", () => {
-    expect(getRestoredSettings(pin("a"), { upgradeLevels: [25] })).toBeUndefined();
+    expect(getRestoredSettings(pin("a"), { ...current })).toBeUndefined();
   });
 
   it("restores the settings it was frozen with", () => {
     const restored = getRestoredSettings(
       pin("a", { frozen: { request: storeRequest(request("Uchigatana")), settings: changed } }),
-      { upgradeLevels: [25] },
+      { ...current },
     );
     expect(restored).toEqual(changed);
   });
 
   it("picks its upgrade level too, in order", () => {
     const restored = getRestoredSettings(frozen("a", { upgradeLevel: 20 }), {
+      ...current,
       upgradeLevels: [10, 25],
     });
     expect(restored?.upgradeLevels).toEqual([10, 20, 25]);
+  });
+
+  it("picks its grip too", () => {
+    const restored = getRestoredSettings(frozen("a", { twoHanding: true }), current);
+    expect(restored?.grips).toEqual(["1h", "2h"]);
+    expect(getRestoredSettings(frozen("a"), current)).not.toHaveProperty("grips");
   });
 
   it("restores pins frozen by earlier versions", () => {
@@ -309,13 +334,15 @@ describe("restoring a frozen pin's settings", () => {
     const old = {
       ...settings,
       upgradeLevel: 25,
+      twoHanding: true,
       limits: oldLimits,
     } as unknown as PinSettings;
     const restored = getRestoredSettings(
       pin("a", { frozen: { request: storeRequest(request("Uchigatana")), settings: old } }),
-      { upgradeLevels: [25] },
+      { ...current },
     );
     expect(restored).not.toHaveProperty("upgradeLevel");
+    expect(restored).not.toHaveProperty("twoHanding");
     expect(restored?.limits).toEqual(defaultAppState.limits);
   });
 });
@@ -332,16 +359,16 @@ describe("frozen pin settings", () => {
   it("shows the main settings, none changed, when they're the defaults", () => {
     const lines = describe_(settings);
     expect(labels(lines)).toEqual(
-      expect.arrayContaining(["Class", "Stats", "Level limit", "Two handing", "Buffs", "Enemy"]),
+      expect.arrayContaining(["Class", "Stats", "Level limit", "Buffs", "Enemy"]),
     );
     expect(lines.every((line) => !line.changed)).toBe(true);
   });
 
   it("marks settings different now", () => {
-    const lines = describe_({ ...settings, twoHanding: true });
-    expect(lines.find((line) => line.label === "Two handing")).toEqual({
-      label: "Two handing",
-      value: "Yes",
+    const lines = describe_({ ...settings, meetRequirements: !settings.meetRequirements });
+    expect(lines.find((line) => line.label === "Meet requirements first")).toEqual({
+      label: "Meet requirements first",
+      value: settings.meetRequirements ? "No" : "Yes",
       changed: true,
     });
   });
