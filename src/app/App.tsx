@@ -205,6 +205,11 @@ function getFreezeBlocked(request: BuildRequest | undefined, frozenKeys: Readonl
   return undefined;
 }
 
+// Reasons a weapon's attack can't be used that are shown in its row rather than leaving it out
+const dodgeLimitReason =
+  "No attack can be performed quickly enough to roll within the time to dodge";
+const powerstanceReason = (offhandName: string) => `Doesn't powerstance with ${offhandName}`;
+
 export default function App() {
   countRender("App");
   const [appState, updateAppState] = useAppState();
@@ -803,7 +808,7 @@ export default function App() {
         return {
           unavailableReason:
             unavailableReason ??
-            (offhandMismatch ? `Doesn't powerstance with ${offhand.name}` : undefined) ??
+            (offhandMismatch ? powerstanceReason(offhand.name) : undefined) ??
             (ash && "unavailableReason" in ash ? ash.unavailableReason : undefined) ??
             (!attackActive || attackData
               ? undefined
@@ -815,7 +820,7 @@ export default function App() {
                 "seconds" in limit &&
                 attack !== ashAttack &&
                 getAttackData(movesets, weapon, attack, weaponTwoHanding, chainWeight, sumChains)
-              ? "No attack can be performed quickly enough to roll within the time to dodge"
+              ? dodgeLimitReason
               : `No ${attack} for this weapon`),
           // The left hand weapon's hits use its own attack rows
           attack:
@@ -1048,6 +1053,10 @@ export default function App() {
       ];
     };
     let movesetsMissing = false;
+    const shownReasons = new Set([
+      dodgeLimitReason,
+      ...(offhandWeaponData ? [powerstanceReason(offhandWeaponData.name)] : []),
+    ]);
     const requests = [...weaponsWithAmmo, ...noAffinityWeapons, ...unbuffableWeapons].flatMap(
       ({ weapon, unavailableReason }): BuildRequest[] => {
         const choices = getChoices(weapon);
@@ -1071,13 +1080,17 @@ export default function App() {
           ),
         );
         // A weapon left out for itself (e.g. no ammunition) is shown with the reason, but only
-        // the attacks and skills a weapon has are
+        // the attacks and skills a weapon has are, unless it has them but they can't be used
+        // here (too slow to roll in time, or not powerstanced with the left hand weapon)
         if (unavailableReason) return weaponRequests.slice(0, 1);
         const available = weaponRequests.filter((request) => !request.unavailableReason);
-        if (!available.length && (attacks.length > 0 || ashesOfWar.length > 0)) {
-          movesetsMissing = true;
-        }
-        return available;
+        if (available.length) return available;
+        const shown = weaponRequests.find(
+          (request) => request.unavailableReason && shownReasons.has(request.unavailableReason),
+        );
+        if (shown) return [shown];
+        if (attacks.length > 0 || ashesOfWar.length > 0) movesetsMissing = true;
+        return [];
       },
     );
     return { unfilteredRequests: requests, movesetsMissing: movesetsMissing && !requests.length };
@@ -1092,6 +1105,7 @@ export default function App() {
     onlyBuffable,
     weaponTypes,
     getWeaponRequests,
+    offhandWeaponData,
     attackActive,
     attacks,
     ashesOfWar,
