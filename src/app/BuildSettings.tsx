@@ -213,7 +213,7 @@ function FilterSettings({
       </Box>
 
       <Typography variant="body2" color="text.secondary" mt={1}>
-        Deals any of (with buffs and the attack&apos;s own hits)
+        Deals any of (includes buffs)
       </Typography>
       <Box display="flex" flexWrap="wrap" columnGap={3}>
         {[...damageTypeLabels].map(([type, label]) =>
