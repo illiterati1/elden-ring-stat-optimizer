@@ -217,7 +217,7 @@ const twoHandedCategory = 120;
 /**
  * @returns true if a row works out the same two handed as one handed: it can't be two handed, or
  * it has the same attack (besides being marked a two handed attack, unless a buff only applies to
- * those) and two handing's Strength bonus makes no difference: a paired weapon or bow, which never
+ * those, or its hits not getting the bonus) and two handing's Strength bonus makes no difference: a paired weapon or bow, which never
  * or always get it, or one whose Strength requirement is already met (the bonus counts towards it
  * even for hits that don't get it) and whose hits don't scale with Strength or don't get the bonus
  */
@@ -229,6 +229,8 @@ function sameWithEitherGrip(oneHanded: BuildRequest, twoHanded: BuildRequest) {
   );
   const attackKey = (attack: BuildRequest["attack"]) =>
     JSON.stringify(attack, (key, value: unknown) => {
+      // (only two handed hits are marked as not getting the bonus, e.g. critical hits; checked below)
+      if (key === "noTwoHandBonus") return undefined;
       if (key !== "categories" || categoryCounts || !Array.isArray(value)) return value;
       const categories = value.filter((category) => category !== twoHandedCategory);
       return categories.length ? categories : undefined;
