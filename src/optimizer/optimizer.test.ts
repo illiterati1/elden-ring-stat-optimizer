@@ -9025,7 +9025,12 @@ describe("Ashes of War", () => {
     // buff picked. Tested in game two handed at +10 with 99 in every stat on the training dummy
     const weapon = getWeapon("Gargoyle's Black Axe");
     expect(getAshAttacks(ashes, movesets, weapon, "Lion's Claw", true)).toEqual([
-      { ash: { unavailableReason: "War Cry does no damage itself: pick its buff for its R2s" } },
+      {
+        ash: {
+          unavailableReason: "War Cry does no damage itself: pick its buff for its R2s",
+          shown: true,
+        },
+      },
     ]);
     const versions = ["R2 chain", "Charged R2 chain"].map((chain) => {
       const ash = getAshAttack(ashes, movesets, weapon, withFollowUp("War Cry", chain), true);
@@ -9275,7 +9280,7 @@ describe("Ashes of War", () => {
     // Steeple's swing, which still has it)
     expect(
       getAshAttack(ashes, movesets, getWeapon("Scepter of the All-Knowing"), "Lion's Claw", false),
-    ).toEqual({ unavailableReason: "Knowledge Above All does no damage" });
+    ).toEqual({ unavailableReason: "Knowledge Above All does no damage", shown: true });
     const steeple = getAshAttack(
       ashes,
       movesets,
@@ -9470,6 +9475,7 @@ describe("Ashes of War", () => {
     expect(own).toEqual({
       unavailableReason:
         "Flare, O Serpent does no damage itself: pick its buff for the attacks it changes",
+      shown: true,
     });
     const changed = (attack: string) => {
       const result = getAshAttack(
