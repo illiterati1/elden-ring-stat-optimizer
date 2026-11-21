@@ -1,0 +1,45 @@
+{
+  "note": "Timings are from one machine; render counts aren't machine-dependent",
+  "runs": 6,
+  "scenarios": {
+    "Str spin button": {
+      "renders": {
+        "App": 4,
+        "ResultsTable": 1,
+        "ValueChart": 4
+      },
+      "paintMs": 19,
+      "blockingMs": 592,
+      "longestTaskMs": 502
+    },
+    "Two handing checkbox": {
+      "renders": {
+        "App": 4,
+        "ResultsTable": 1,
+        "ValueChart": 4
+      },
+      "paintMs": 83,
+      "blockingMs": 601,
+      "longestTaskMs": 503
+    },
+    "Chart from level": {
+      "renders": {
+        "App": 1,
+        "ValueChart": 1
+      },
+      "paintMs": 16,
+      "blockingMs": 0,
+      "longestTaskMs": 0
+    },
+    "Weapon level picker": {
+      "renders": {
+        "App": 4,
+        "ResultsTable": 1,
+        "ValueChart": 4
+      },
+      "paintMs": 96,
+      "blockingMs": 573,
+      "longestTaskMs": 483
+    }
+  }
+}

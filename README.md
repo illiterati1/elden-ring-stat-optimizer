@@ -17,7 +17,11 @@ npm install
 npm start      # dev server
 npm test       # tests
 npm run build  # production build, in build/
+npm run perf   # responsiveness check against scripts/perf-baseline.json (--update to re-record)
 ```
+
+The responsiveness check needs Playwright's Chromium (`npx playwright install chromium`). Its render
+counts are exact; its timings are only comparable on the machine the baseline was recorded on.
 
 The game data is built from the param CSVs in `data/` by the Python scripts in `scripts/`.
 

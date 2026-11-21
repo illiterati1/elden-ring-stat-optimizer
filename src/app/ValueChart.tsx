@@ -8,6 +8,7 @@ import type { BuildResult } from "../optimizer/build.ts";
 import { getAllocationAtLevel, getValueAtLevel } from "./results.ts";
 import { allAttributes } from "../calculator/calculator.ts";
 import { getStatLabel } from "../optimizer/startingClasses.ts";
+import { countRender } from "./perfProbe.ts";
 
 interface Props {
   /** Results to chart, in display order. Only the first few are shown. */
@@ -56,6 +57,7 @@ function niceTicks(min: number, max: number, count: number) {
  * Line chart of the best value at each character level for the top weapons
  */
 function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props) {
+  countRender("ValueChart");
   const [width, setWidth] = useState(600);
   const [hoverLevel, setHoverLevel] = useState<number | null>(null);
 

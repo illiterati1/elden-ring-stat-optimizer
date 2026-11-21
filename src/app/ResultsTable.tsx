@@ -32,6 +32,7 @@ import Details, { detailsBackground, tooltipCueSx } from "./Details.tsx";
 import type { AppState, SortBy, TooltipTimings, UpdateAppState } from "./useAppState.ts";
 import { maxSeries } from "./ValueChart.tsx";
 import type { Pin, PinSettingLine } from "./pins.ts";
+import { countRender } from "./perfProbe.ts";
 
 /** A pinned row, shown above the rest with its own attack's values */
 export interface PinnedRow {
@@ -659,6 +660,7 @@ function ResultsTable({
   onPlanStats,
   onChange,
 }: Props) {
+  countRender("ResultsTable");
   /**
    * @param compact for narrow columns: the arrow sits in the cell's left padding instead of
    * widening the column

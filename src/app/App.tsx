@@ -119,6 +119,7 @@ import {
   catalystTypes,
   debug,
 } from "./uiUtils.ts";
+import { countRender } from "./perfProbe.ts";
 
 /** Skills that apply an enemy debuff, which is picked separately (in the enemy debuffs), by name */
 const skillDebuffs: Partial<Record<string, string>> = { "Shriek of Milos": "Shriek of Milos" };
@@ -172,6 +173,7 @@ function getFreezeBlocked(request: BuildRequest | undefined, frozenKeys: Readonl
 }
 
 export default function App() {
+  countRender("App");
   const [appState, updateAppState] = useAppState();
   const [reportOpen, setReportOpen] = useState(false);
   // On touch devices, the settings are in a drawer opened from a menu button, closed with the back
