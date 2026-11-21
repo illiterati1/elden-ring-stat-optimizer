@@ -1,4 +1,4 @@
-import { memo, useCallback, useLayoutEffect, useRef, type ReactNode } from "react";
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import {
   Box,
   Checkbox,
@@ -55,21 +55,6 @@ export interface PinnedRow {
   planStats: Stats;
   /** A frozen pin's settings, for its tooltip */
   settingLines?: PinSettingLine[];
-}
-
-/** What a row is shown with besides its result: a pinned row's own attack, and its controls */
-interface RowOptions {
-  key: string;
-  name: string;
-  chartKey: string;
-  pinCell: ReactNode;
-  sx?: SxProps<Theme>;
-  skill: boolean;
-  oneOffAttack: boolean;
-  hitsNote?: string;
-  tooltipTimings: TooltipTimings;
-  startAttributes: Attributes;
-  planStats: Stats;
 }
 
 /** What a row's attack is shown with */
@@ -738,6 +723,582 @@ function useStickyHead() {
   };
 }
 
+/** What a row is shown with: the table's columns and actions, the same for every row */
+interface RowTableOptions {
+  chartDisabled: boolean;
+  valueLabel: string;
+  pointLabel: string;
+  notApplicableLabel: string;
+  showScaling: boolean;
+  showRequirements: boolean;
+  statusColumns: AttackPowerType[];
+  showHits: boolean;
+  showStance: boolean;
+  showStamina: boolean;
+  showDamagePerStamina: boolean;
+  showStancePerStamina: boolean;
+  showPotential: boolean;
+  showDps: boolean;
+  pinActions: PinActions;
+  onPlanStats: (finalStats: Stats) => void;
+  onToggleChart: (chartKey: string, checked: boolean) => void;
+}
+
+interface ResultRowProps extends RowAttack {
+  result: BuildResult;
+  /** The weapon's name, with its attack for a pinned row */
+  name: string;
+  chartKey: string;
+  /** Shown on the chart */
+  charted: boolean;
+  /** The chart has as many weapons as it can show */
+  chartFull: boolean;
+  /** A table row's live pin, if it's pinned too */
+  pin?: Pin;
+  /** A pinned row's pin and controls */
+  pinned?: PinnedRow;
+  /** The last pinned row, with a thicker border under it */
+  lastPinned?: boolean;
+  /** The row's final stats are the planned stats already */
+  planned: boolean;
+  startAttributes: Attributes;
+  /** The planned stats the row's result started from */
+  planStats: Stats;
+  options: RowTableOptions;
+}
+
+/** Values per second of a one-off attack, noted briefly in the hits' timings */
+const oneOffNote = "Per second without the time to repeat it";
+
+/**
+ * Each attribute column group gets a border on its left, and the last group also gets one on its
+ * right. The final stats start with the button to plan them, which has the left border instead.
+ */
+function groupBorderSx(i: number, lastGroup: boolean, planCell = false) {
+  if (i === 0) return planCell ? undefined : leftBorderSx;
+  if (lastGroup && i === allAttributes.length - 1) {
+    return { borderRight: 1, borderRightColor: "divider" };
+  }
+  return undefined;
+}
+
+/** The last attribute column group shown: final stats, scaling, or requirements */
+function getLastGroup(showScaling: boolean, showRequirements: boolean) {
+  return showRequirements ? "requirements" : showScaling ? "scaling" : "stats";
+}
+
+const ChartCheckbox = memo(function ChartCheckbox({
+  chartKey,
+  weaponName,
+  checked,
+  full: chartFull,
+  disabled,
+  onToggle,
+}: {
+  chartKey: string;
+  weaponName: string;
+  checked: boolean;
+  full: boolean;
+  disabled: boolean;
+  onToggle: (chartKey: string, checked: boolean) => void;
+}) {
+  const full = !checked && chartFull;
+  return (
+    <Tooltip
+      title={
+        disabled
+          ? "No chart in fast mode"
+          : full
+          ? `The chart shows up to ${maxSeries} weapons`
+          : "Show on chart"
+      }
+    >
+      {/* Wrapped so the tooltip still works when the checkbox is disabled */}
+      <span>
+        <Checkbox
+          size="small"
+          checked={checked && !disabled}
+          disabled={full || disabled}
+          inputProps={{ "aria-label": `Show ${weaponName} on chart` }}
+          onChange={(evt) => onToggle(chartKey, evt.currentTarget.checked)}
+        />
+      </span>
+    </Tooltip>
+  );
+});
+
+/** A table row's pin button: pins it with the chosen attack, or unpins it if it's pinned */
+function RowPinCell({
+  result,
+  pin,
+  pinActions,
+}: {
+  result: BuildResult;
+  pin: Pin | undefined;
+  pinActions: PinActions;
+}) {
+  return pin ? (
+    <Tooltip title="Unpin">
+      <IconButton
+        size="small"
+        sx={pinButtonSx}
+        aria-label={`Unpin ${result.weaponName}`}
+        onClick={() => pinActions.unpin(pin.id)}
+      >
+        <PinIcon fontSize="small" />
+      </IconButton>
+    </Tooltip>
+  ) : (
+    <Tooltip title="Pin to the top, with this attack">
+      <IconButton
+        size="small"
+        className="pin-hover"
+        sx={pinButtonSx}
+        aria-label={`Pin ${result.weaponName}`}
+        onClick={() => pinActions.pin(result)}
+      >
+        <PinIcon outlined fontSize="small" />
+      </IconButton>
+    </Tooltip>
+  );
+}
+
+/** A pinned row's buttons: unpin, freeze or unfreeze, and restore a frozen one's settings */
+function PinnedCell({
+  pinned: { pin, name, freezeBlocked, settingLines },
+  pinActions,
+}: {
+  pinned: PinnedRow;
+  pinActions: PinActions;
+}) {
+  return (
+    <>
+      <Tooltip title="Unpin">
+        <IconButton
+          size="small"
+          sx={pinButtonSx}
+          aria-label={`Unpin ${name}`}
+          onClick={() => pinActions.unpin(pin.id)}
+        >
+          <PinIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip
+        title={
+          settingLines
+            ? frozenTooltip(settingLines)
+            : freezeBlocked ?? "Freeze: keep these values when the settings change"
+        }
+      >
+        <span>
+          <IconButton
+            size="small"
+            className={pin.frozen ? undefined : "pin-hover"}
+            sx={pinButtonSx}
+            color={pin.frozen ? "info" : "default"}
+            disabled={!pin.frozen && !!freezeBlocked}
+            aria-label={`${pin.frozen ? "Unfreeze" : "Freeze"} ${name}`}
+            aria-pressed={!!pin.frozen}
+            onClick={() => pinActions.toggleFreeze(pin.id)}
+          >
+            <SnowflakeIcon fontSize="small" />
+          </IconButton>
+        </span>
+      </Tooltip>
+      {pin.frozen && (
+        <Tooltip title="Restore the settings it was frozen with">
+          <IconButton
+            size="small"
+            sx={pinButtonSx}
+            aria-label={`Restore the settings ${name} was frozen with`}
+            onClick={() => pinActions.restore(pin.id)}
+          >
+            <RestoreIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
+    </>
+  );
+}
+
+/** Copies a row's final stats into the planned stats, unless they're the plan already */
+function PlanStatsButton({
+  name,
+  planned,
+  onPlan,
+}: {
+  name: string;
+  planned: boolean;
+  onPlan: () => void;
+}) {
+  return (
+    <Tooltip title={planned ? "These are the planned stats" : "Plan these stats"}>
+      <span>
+        <IconButton
+          size="small"
+          className="pin-hover"
+          sx={pinButtonSx}
+          disabled={planned}
+          aria-label={`Plan ${name}'s final stats`}
+          onClick={onPlan}
+        >
+          <PlanIcon fontSize="small" />
+        </IconButton>
+      </span>
+    </Tooltip>
+  );
+}
+
+/** Pinned rows are tinted (blue if frozen), with a thicker border under the last */
+const pinnedRowSx = (pin: Pin, last: boolean): SxProps<Theme> => ({
+  ...pinHoverSx,
+  backgroundColor: (theme: Theme) =>
+    pin.frozen ? alpha(theme.palette.info.main, 0.08) : theme.palette.action.hover,
+  ...(last && { "& > td": { borderBottomWidth: 3 } }),
+});
+// A live pin is the same row, so it's dimmed in the table
+const dimmedRowSx = { ...pinHoverSx, opacity: 0.55 };
+
+/**
+ * A row of the table: a weapon's, or a pinned row's with its own attack. Memoized, so a row whose
+ * props are the same (e.g. when the table is only sorted again) doesn't render again.
+ */
+const ResultRow = memo(function ResultRow({
+  result,
+  name,
+  chartKey,
+  charted,
+  chartFull,
+  pin,
+  pinned,
+  lastPinned = false,
+  planned,
+  skill,
+  oneOffAttack,
+  hitsNote,
+  tooltipTimings,
+  startAttributes,
+  planStats,
+  options,
+}: ResultRowProps) {
+  countRender("ResultRow");
+  const {
+    valueLabel,
+    pointLabel,
+    notApplicableLabel,
+    showScaling,
+    showRequirements,
+    statusColumns,
+    showHits,
+    showStance,
+    showStamina,
+    showDamagePerStamina,
+    showStancePerStamina,
+    showPotential,
+    showDps,
+  } = options;
+  const lastGroup = getLastGroup(showScaling, showRequirements);
+  const groupCount = 1 + +showScaling + +showRequirements;
+  const rowSx = pinned
+    ? pinnedRowSx(pinned.pin, lastPinned)
+    : pin && !pin.frozen
+    ? dimmedRowSx
+    : pinHoverSx;
+  // Notes on the value, shown above its breakdown
+  const valueNotes = [result.attackNote, result.buffNote]
+    .filter((note): note is string => !!note)
+    .map((note) => (note.endsWith(".") ? note : `${note}.`));
+  return (
+    <TableRow sx={rowSx}>
+      <TableCell padding="checkbox">
+        {result.applicable && (
+          <ChartCheckbox
+            chartKey={chartKey}
+            weaponName={name}
+            checked={charted}
+            full={chartFull}
+            disabled={options.chartDisabled}
+            onToggle={options.onToggleChart}
+          />
+        )}
+      </TableCell>
+      <TableCell padding="none" sx={{ whiteSpace: "nowrap" }}>
+        {pinned ? (
+          <PinnedCell pinned={pinned} pinActions={options.pinActions} />
+        ) : (
+          <RowPinCell result={result} pin={pin} pinActions={options.pinActions} />
+        )}
+      </TableCell>
+      <TableCell>
+        {result.url ? (
+          <Link href={result.url} target="_blank" rel="noopener noreferrer" color="inherit">
+            {name}
+          </Link>
+        ) : (
+          name
+        )}
+      </TableCell>
+      {result.applicable ? (
+        <>
+          <TableCell
+            align="right"
+            sx={result.ineffectiveAttributes.length > 0 ? { color: "error.main" } : undefined}
+          >
+            {result.skillRequirementsUnmet ? (
+              // A skill can't be used without the weapon's requirements
+              "Skill requirements not met"
+            ) : (
+              <>
+                {!result.exact && (
+                  <Tooltip title="This weapon scales with many stats, so a faster approximate search was used. The result may be slightly below optimal.">
+                    <span>≈</span>
+                  </Tooltip>
+                )}
+                <Details
+                  title={`${name}: ${valueLabel}`}
+                  content={
+                    (result.breakdown.length > 0 || valueNotes.length > 0) && (
+                      <>
+                        {valueNotes.map((note) => (
+                          <Box key={note} sx={{ maxWidth: 360, px: 1, mb: 1 }}>
+                            {note}
+                          </Box>
+                        ))}
+                        {result.hpDamage && (
+                          <Box sx={{ maxWidth: 360, px: 1, mb: 1 }}>
+                            Includes {formatValue(result.hpDamage.damage)}{" "}
+                            {result.hpDamage.label.toLowerCase()} damage, a percentage of the
+                            enemy&apos;s max HP, which stats don&apos;t change.
+                          </Box>
+                        )}
+                        {result.uncountedHpDamage && (
+                          <Box sx={{ maxWidth: 360, px: 1, mb: 1 }}>
+                            {result.uncountedHpDamage.label} isn&apos;t counted: it does{" "}
+                            {result.uncountedHpDamage.rate * 100}% of the enemy&apos;s max HP
+                            {result.uncountedHpDamage.flat
+                              ? ` plus ${result.uncountedHpDamage.flat}`
+                              : ""}{" "}
+                            {result.uncountedHpDamage.ticks} times after each hit. Enter the
+                            enemy&apos;s HP in the enemy defenses, or pick an enemy, to include it.
+                          </Box>
+                        )}
+                        {result.breakdown.length > 0 && (
+                          <BreakdownTable rows={result.breakdown} pointLabel={pointLabel} />
+                        )}
+                        {result.menuAttackPower && (
+                          <Box sx={{ maxWidth: 360, px: 1, mt: 1 }}>
+                            This is the attack power the game&apos;s menu shows, which uses the
+                            catalyst&apos;s own scaling, but its melee attacks scale like regular
+                            weapons (Strength and Dexterity), so it&apos;s misleading. Choose the R1
+                            chain attack to see its actual melee damage.
+                          </Box>
+                        )}
+                      </>
+                    )
+                  }
+                >
+                  {showDps
+                    ? result.attackDps != null
+                      ? formatValue(result.attackDps)
+                      : "–"
+                    : formatValue(result.finalValue)}
+                  {/* Marks a value with notes, which are in its details (the value is
+                    easier to tap than a lone asterisk) */}
+                  {(valueNotes.length > 0 || result.uncountedHpDamage) && "*"}
+                </Details>
+              </>
+            )}
+          </TableCell>
+          {showDamagePerStamina && (
+            <TableCell align="right">
+              {perStaminaCell(getDamagePerStamina(result, showDps), formatDamagePerStamina)}
+            </TableCell>
+          )}
+          {showPotential && (
+            <TableCell align="right">
+              {result.potential != null ? formatPercent(result.potential) : ""}
+            </TableCell>
+          )}
+          {showHits && (
+            <TableCell>
+              {result.attackSteps && (
+                <AttackHits
+                  steps={result.attackSteps}
+                  stepTimes={result.attackStepTimes}
+                  repeatFrom={result.attackRepeatFrom}
+                  timings={tooltipTimings}
+                  skill={skill}
+                  title={`${name}: hits`}
+                  notes={[hitsNote, showDps && oneOffAttack && oneOffNote].filter(
+                    (note): note is string => !!note,
+                  )}
+                />
+              )}
+            </TableCell>
+          )}
+          {showStance && (
+            <TableCell align="right">
+              {showDps
+                ? result.attackStancePerSecond != null
+                  ? formatStance(result.attackStancePerSecond)
+                  : ""
+                : result.attackStance != null
+                ? formatStance(result.attackStance)
+                : ""}
+            </TableCell>
+          )}
+          {showStancePerStamina && (
+            <TableCell align="right">
+              {perStaminaCell(getStancePerStamina(result, showDps), formatStancePerStamina)}
+            </TableCell>
+          )}
+          {showStamina && (
+            <TableCell align="right">
+              {showDps
+                ? result.attackStaminaPerSecond != null
+                  ? formatStamina(result.attackStaminaPerSecond)
+                  : ""
+                : result.attackStamina != null
+                ? formatStamina(result.attackStamina)
+                : ""}
+            </TableCell>
+          )}
+          {statusColumns.map((statusType) => {
+            const buildup = getResultStatus(result, showDps)[statusType];
+            // Status that scales with Arcane when damage doesn't is left to the user (noted
+            // per hit, not per second)
+            const atMaxArcane = showDps ? undefined : result.statusAtMaxArcane?.[statusType];
+            return (
+              <TableCell key={statusType} align="right" sx={statusCellSx}>
+                {buildup && atMaxArcane ? (
+                  <Tooltip
+                    title={`${
+                      statusTypes.get(statusType)!.label
+                    } buildup scales with Arcane, but this weapon's damage doesn't, so Arcane isn't raised for it. At 99 Arcane: ${formatValue(
+                      atMaxArcane,
+                    )}`}
+                  >
+                    <Box component="span" sx={tooltipCueSx}>
+                      {formatValue(buildup)}
+                    </Box>
+                  </Tooltip>
+                ) : buildup ? (
+                  formatValue(buildup)
+                ) : (
+                  "–"
+                )}
+              </TableCell>
+            );
+          })}
+          <TableCell align="right">
+            <Tooltip title={`${result.runes.toLocaleString()} runes`}>
+              <Box component="span" sx={tooltipCueSx}>
+                {result.finalLevel} (+{result.levels})
+              </Box>
+            </Tooltip>
+          </TableCell>
+          <TableCell padding="none" sx={leftBorderSx}>
+            <PlanStatsButton
+              name={name}
+              planned={planned}
+              onPlan={() => options.onPlanStats({ ...planStats, ...result.attributes })}
+            />
+          </TableCell>
+          {allAttributes.map((attribute, i) => {
+            const leveled = result.attributes[attribute];
+            const effective = result.effectiveAttributes[attribute];
+            const added = leveled - startAttributes[attribute];
+            const ineffective = result.ineffectiveAttributes.includes(attribute);
+            const details = [
+              ineffective &&
+                `Requires ${result.requirements[attribute]} ${getStatLabel(attribute)}`,
+              effective !== leveled &&
+                `Counts as ${effective} (bonus stats${
+                  attribute === "str" ? " and two handing" : ""
+                } included)`,
+              added > 0 && `+${added} levels`,
+            ].filter(Boolean);
+            const value = (
+              <Box
+                component="span"
+                color={ineffective ? "error.main" : added > 0 ? "primary.main" : "text.secondary"}
+                // Mark values that count as something else, e.g. two handed Strength
+                sx={
+                  effective !== leveled
+                    ? { textDecoration: "underline dotted", textUnderlineOffset: 3 }
+                    : undefined
+                }
+              >
+                {leveled}
+              </Box>
+            );
+            return (
+              <TableCell
+                key={attribute}
+                align="right"
+                sx={groupBorderSx(i, lastGroup === "stats", true)}
+              >
+                {details.length > 0 ? (
+                  <Tooltip title={details.join(" · ")}>{value}</Tooltip>
+                ) : (
+                  value
+                )}
+              </TableCell>
+            );
+          })}
+          {showScaling &&
+            allAttributes.map((attribute, i) => (
+              <TableCell
+                key={`${attribute}-scaling`}
+                align="right"
+                sx={groupBorderSx(i, lastGroup === "scaling")}
+              >
+                {result.mixedScaling?.[attribute] ? (
+                  <Tooltip title={formatMixedScaling(result.mixedScaling[attribute]!)}>
+                    <Box component="span" sx={tooltipCueSx}>
+                      {formatScaling(result.scaling[attribute])}
+                    </Box>
+                  </Tooltip>
+                ) : (
+                  formatScaling(result.scaling[attribute])
+                )}
+              </TableCell>
+            ))}
+          {showRequirements &&
+            allAttributes.map((attribute, i) => (
+              <TableCell
+                key={`${attribute}-requirement`}
+                align="right"
+                sx={groupBorderSx(i, lastGroup === "requirements")}
+              >
+                {result.requirements[attribute] ?? "–"}
+              </TableCell>
+            ))}
+          <TableCell>{limitReasonLabels[result.reason]}</TableCell>
+        </>
+      ) : (
+        <TableCell
+          colSpan={
+            4 +
+            statusColumns.length +
+            +showHits +
+            +showStance +
+            +showStamina +
+            +showDamagePerStamina +
+            +showStancePerStamina +
+            +showPotential +
+            allAttributes.length * groupCount
+          }
+        >
+          <Typography variant="body2" color="text.secondary">
+            {result.unavailableReason ?? notApplicableLabel}
+          </Typography>
+        </TableCell>
+      )}
+    </TableRow>
+  );
+});
+
 /**
  * Compares the optimized build for each selected weapon
  */
@@ -804,122 +1365,67 @@ function ResultsTable({
     );
   };
 
-  const chartCheckbox = (chartKey: string, weaponName: string) => {
-    const checked = chartWeapons.includes(chartKey);
-    const full = !checked && chartWeapons.length >= maxSeries;
-    return (
-      <Tooltip
-        title={
-          chartDisabled
-            ? "No chart in fast mode"
-            : full
-            ? `The chart shows up to ${maxSeries} weapons`
-            : "Show on chart"
-        }
-      >
-        {/* Wrapped so the tooltip still works when the checkbox is disabled */}
-        <span>
-          <Checkbox
-            size="small"
-            checked={checked && !chartDisabled}
-            disabled={full || chartDisabled}
-            inputProps={{ "aria-label": `Show ${weaponName} on chart` }}
-            onChange={(evt) =>
-              onChange({
-                chartWeapons: evt.currentTarget.checked
-                  ? [...chartWeapons, chartKey]
-                  : chartWeapons.filter((name) => name !== chartKey),
-              })
-            }
-          />
-        </span>
-      </Tooltip>
-    );
-  };
-
-  /** A table row's pin button: pins it with the chosen attack, or unpins it if it's pinned */
-  const rowPinCell = (result: BuildResult, pin: Pin | undefined) =>
-    pin ? (
-      <Tooltip title="Unpin">
-        <IconButton
-          size="small"
-          sx={pinButtonSx}
-          aria-label={`Unpin ${result.weaponName}`}
-          onClick={() => pinActions.unpin(pin.id)}
-        >
-          <PinIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-    ) : (
-      <Tooltip title="Pin to the top, with this attack">
-        <IconButton
-          size="small"
-          className="pin-hover"
-          sx={pinButtonSx}
-          aria-label={`Pin ${result.weaponName}`}
-          onClick={() => pinActions.pin(result)}
-        >
-          <PinIcon outlined fontSize="small" />
-        </IconButton>
-      </Tooltip>
-    );
-
-  /** A pinned row's buttons: unpin, freeze or unfreeze, and restore a frozen one's settings */
-  const pinnedCell = ({ pin, name, freezeBlocked, settingLines }: PinnedRow) => (
-    <>
-      <Tooltip title="Unpin">
-        <IconButton
-          size="small"
-          sx={pinButtonSx}
-          aria-label={`Unpin ${name}`}
-          onClick={() => pinActions.unpin(pin.id)}
-        >
-          <PinIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-      <Tooltip
-        title={
-          settingLines
-            ? frozenTooltip(settingLines)
-            : freezeBlocked ?? "Freeze: keep these values when the settings change"
-        }
-      >
-        <span>
-          <IconButton
-            size="small"
-            className={pin.frozen ? undefined : "pin-hover"}
-            sx={pinButtonSx}
-            color={pin.frozen ? "info" : "default"}
-            disabled={!pin.frozen && !!freezeBlocked}
-            aria-label={`${pin.frozen ? "Unfreeze" : "Freeze"} ${name}`}
-            aria-pressed={!!pin.frozen}
-            onClick={() => pinActions.toggleFreeze(pin.id)}
-          >
-            <SnowflakeIcon fontSize="small" />
-          </IconButton>
-        </span>
-      </Tooltip>
-      {pin.frozen && (
-        <Tooltip title="Restore the settings it was frozen with">
-          <IconButton
-            size="small"
-            sx={pinButtonSx}
-            aria-label={`Restore the settings ${name} was frozen with`}
-            onClick={() => pinActions.restore(pin.id)}
-          >
-            <RestoreIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      )}
-    </>
+  // Toggling a row on the chart reads the latest chart weapons, so every row gets the same function
+  const chartWeaponsRef = useRef(chartWeapons);
+  chartWeaponsRef.current = chartWeapons;
+  const onToggleChart = useCallback(
+    (chartKey: string, checked: boolean) => {
+      const current = chartWeaponsRef.current;
+      onChange({
+        chartWeapons: checked
+          ? [...current, chartKey]
+          : current.filter((name) => name !== chartKey),
+      });
+    },
+    [onChange],
   );
-
-  /** Pinned rows are tinted (blue if frozen), with a thicker border under the last */
-  const pinnedRowSx = ({ pin }: PinnedRow, last: boolean): SxProps<Theme> => ({
-    backgroundColor: (theme: Theme) =>
-      pin.frozen ? alpha(theme.palette.info.main, 0.08) : theme.palette.action.hover,
-    ...(last && { "& > td": { borderBottomWidth: 3 } }),
-  });
+  const chartFull = chartWeapons.length >= maxSeries;
+  /** True if a row's final stats are the planned stats already */
+  const isPlanned = (result: BuildResult, rowPlanStats: Stats) => {
+    const finalStats: Stats = { ...rowPlanStats, ...result.attributes };
+    return allStats.every((stat) => finalStats[stat] === planStats[stat]);
+  };
+  // The same for every row, so a row only renders again when its own props change
+  const rowOptions = useMemo<RowTableOptions>(
+    () => ({
+      chartDisabled,
+      valueLabel,
+      pointLabel,
+      notApplicableLabel,
+      showScaling,
+      showRequirements,
+      statusColumns,
+      showHits,
+      showStance,
+      showStamina,
+      showDamagePerStamina,
+      showStancePerStamina,
+      showPotential,
+      showDps,
+      pinActions,
+      onPlanStats,
+      onToggleChart,
+    }),
+    [
+      chartDisabled,
+      valueLabel,
+      pointLabel,
+      notApplicableLabel,
+      showScaling,
+      showRequirements,
+      statusColumns,
+      showHits,
+      showStance,
+      showStamina,
+      showDamagePerStamina,
+      showStancePerStamina,
+      showPotential,
+      showDps,
+      pinActions,
+      onPlanStats,
+      onToggleChart,
+    ],
+  );
 
   // Columns for each attribute, grouped: final stats, then scaling and requirements if shown
   const groups = [
@@ -929,16 +1435,6 @@ function ResultsTable({
   ] as const;
   const lastGroup = groups[groups.length - 1][0];
   const headerRows = groups.length > 1 ? 2 : 1;
-
-  // Each attribute column group gets a border on its left, and the last group also gets one on its
-  // right. The final stats start with the button to plan them, which has the left border instead.
-  const groupBorderSx = (i: number, lastGroup: boolean, planCell = false) => {
-    if (i === 0) return planCell ? undefined : leftBorderSx;
-    if (lastGroup && i === allAttributes.length - 1) {
-      return { borderRight: 1, borderRightColor: "divider" };
-    }
-    return undefined;
-  };
 
   // Scaling (highest first) and requirement (lowest first) columns can be sorted by
   const attributeHeaders = (group: typeof groups[number][0], lastGroup = false) => [
@@ -964,315 +1460,11 @@ function ResultsTable({
 
   // Values per second: a one-off attack's don't count the time to set it up again, noted briefly in
   // the hits' timings (and at length in the timing settings)
-  const oneOffNote = "Per second without the time to repeat it";
   const perSecondOver = oneOffAttack
     ? " over the attack itself, until anything can follow it, not counting the time to repeat it"
     : ", repeating the attack as fast as the game allows";
   // The column header leaves out the attack, e.g. "Total damage" rather than "Total damage (R1)"
   const headerLabel = valueLabel.replace(/ \(.*/, "");
-
-  /** Copies a row's final stats into the planned stats, unless they're the plan already */
-  const planStatsButton = (result: BuildResult, row: RowOptions) => {
-    const finalStats = { ...row.planStats, ...result.attributes };
-    const planned = allStats.every((stat) => finalStats[stat] === planStats[stat]);
-    return (
-      <Tooltip title={planned ? "These are the planned stats" : "Plan these stats"}>
-        <span>
-          <IconButton
-            size="small"
-            className="pin-hover"
-            sx={pinButtonSx}
-            disabled={planned}
-            aria-label={`Plan ${row.name}'s final stats`}
-            onClick={() => onPlanStats(finalStats)}
-          >
-            <PlanIcon fontSize="small" />
-          </IconButton>
-        </span>
-      </Tooltip>
-    );
-  };
-
-  /** A row of the table: a weapon's, or a pinned row's with its own attack */
-  const renderRow = (result: BuildResult, row: RowOptions) => {
-    // Notes on the value, shown above its breakdown
-    const valueNotes = [result.attackNote, result.buffNote]
-      .filter((note): note is string => !!note)
-      .map((note) => (note.endsWith(".") ? note : `${note}.`));
-    return (
-      <TableRow key={row.key} sx={{ ...pinHoverSx, ...row.sx }}>
-        <TableCell padding="checkbox">
-          {result.applicable && chartCheckbox(row.chartKey, row.name)}
-        </TableCell>
-        <TableCell padding="none" sx={{ whiteSpace: "nowrap" }}>
-          {row.pinCell}
-        </TableCell>
-        <TableCell>
-          {result.url ? (
-            <Link href={result.url} target="_blank" rel="noopener noreferrer" color="inherit">
-              {row.name}
-            </Link>
-          ) : (
-            row.name
-          )}
-        </TableCell>
-        {result.applicable ? (
-          <>
-            <TableCell
-              align="right"
-              sx={result.ineffectiveAttributes.length > 0 ? { color: "error.main" } : undefined}
-            >
-              {result.skillRequirementsUnmet ? (
-                // A skill can't be used without the weapon's requirements
-                "Skill requirements not met"
-              ) : (
-                <>
-                  {!result.exact && (
-                    <Tooltip title="This weapon scales with many stats, so a faster approximate search was used. The result may be slightly below optimal.">
-                      <span>≈</span>
-                    </Tooltip>
-                  )}
-                  <Details
-                    title={`${row.name}: ${valueLabel}`}
-                    content={
-                      (result.breakdown.length > 0 || valueNotes.length > 0) && (
-                        <>
-                          {valueNotes.map((note) => (
-                            <Box key={note} sx={{ maxWidth: 360, px: 1, mb: 1 }}>
-                              {note}
-                            </Box>
-                          ))}
-                          {result.hpDamage && (
-                            <Box sx={{ maxWidth: 360, px: 1, mb: 1 }}>
-                              Includes {formatValue(result.hpDamage.damage)}{" "}
-                              {result.hpDamage.label.toLowerCase()} damage, a percentage of the
-                              enemy&apos;s max HP, which stats don&apos;t change.
-                            </Box>
-                          )}
-                          {result.uncountedHpDamage && (
-                            <Box sx={{ maxWidth: 360, px: 1, mb: 1 }}>
-                              {result.uncountedHpDamage.label} isn&apos;t counted: it does{" "}
-                              {result.uncountedHpDamage.rate * 100}% of the enemy&apos;s max HP
-                              {result.uncountedHpDamage.flat
-                                ? ` plus ${result.uncountedHpDamage.flat}`
-                                : ""}{" "}
-                              {result.uncountedHpDamage.ticks} times after each hit. Enter the
-                              enemy&apos;s HP in the enemy defenses, or pick an enemy, to include
-                              it.
-                            </Box>
-                          )}
-                          {result.breakdown.length > 0 && (
-                            <BreakdownTable rows={result.breakdown} pointLabel={pointLabel} />
-                          )}
-                          {result.menuAttackPower && (
-                            <Box sx={{ maxWidth: 360, px: 1, mt: 1 }}>
-                              This is the attack power the game&apos;s menu shows, which uses the
-                              catalyst&apos;s own scaling, but its melee attacks scale like regular
-                              weapons (Strength and Dexterity), so it&apos;s misleading. Choose the
-                              R1 chain attack to see its actual melee damage.
-                            </Box>
-                          )}
-                        </>
-                      )
-                    }
-                  >
-                    {showDps
-                      ? result.attackDps != null
-                        ? formatValue(result.attackDps)
-                        : "–"
-                      : formatValue(result.finalValue)}
-                    {/* Marks a value with notes, which are in its details (the value is
-                      easier to tap than a lone asterisk) */}
-                    {(valueNotes.length > 0 || result.uncountedHpDamage) && "*"}
-                  </Details>
-                </>
-              )}
-            </TableCell>
-            {showDamagePerStamina && (
-              <TableCell align="right">
-                {perStaminaCell(getDamagePerStamina(result, showDps), formatDamagePerStamina)}
-              </TableCell>
-            )}
-            {showPotential && (
-              <TableCell align="right">
-                {result.potential != null ? formatPercent(result.potential) : ""}
-              </TableCell>
-            )}
-            {showHits && (
-              <TableCell>
-                {result.attackSteps && (
-                  <AttackHits
-                    steps={result.attackSteps}
-                    stepTimes={result.attackStepTimes}
-                    repeatFrom={result.attackRepeatFrom}
-                    timings={row.tooltipTimings}
-                    skill={row.skill}
-                    title={`${row.name}: hits`}
-                    notes={[row.hitsNote, showDps && row.oneOffAttack && oneOffNote].filter(
-                      (note): note is string => !!note,
-                    )}
-                  />
-                )}
-              </TableCell>
-            )}
-            {showStance && (
-              <TableCell align="right">
-                {showDps
-                  ? result.attackStancePerSecond != null
-                    ? formatStance(result.attackStancePerSecond)
-                    : ""
-                  : result.attackStance != null
-                  ? formatStance(result.attackStance)
-                  : ""}
-              </TableCell>
-            )}
-            {showStancePerStamina && (
-              <TableCell align="right">
-                {perStaminaCell(getStancePerStamina(result, showDps), formatStancePerStamina)}
-              </TableCell>
-            )}
-            {showStamina && (
-              <TableCell align="right">
-                {showDps
-                  ? result.attackStaminaPerSecond != null
-                    ? formatStamina(result.attackStaminaPerSecond)
-                    : ""
-                  : result.attackStamina != null
-                  ? formatStamina(result.attackStamina)
-                  : ""}
-              </TableCell>
-            )}
-            {statusColumns.map((statusType) => {
-              const buildup = getResultStatus(result, showDps)[statusType];
-              // Status that scales with Arcane when damage doesn't is left to the user (noted
-              // per hit, not per second)
-              const atMaxArcane = showDps ? undefined : result.statusAtMaxArcane?.[statusType];
-              return (
-                <TableCell key={statusType} align="right" sx={statusCellSx}>
-                  {buildup && atMaxArcane ? (
-                    <Tooltip
-                      title={`${
-                        statusTypes.get(statusType)!.label
-                      } buildup scales with Arcane, but this weapon's damage doesn't, so Arcane isn't raised for it. At 99 Arcane: ${formatValue(
-                        atMaxArcane,
-                      )}`}
-                    >
-                      <Box component="span" sx={tooltipCueSx}>
-                        {formatValue(buildup)}
-                      </Box>
-                    </Tooltip>
-                  ) : buildup ? (
-                    formatValue(buildup)
-                  ) : (
-                    "–"
-                  )}
-                </TableCell>
-              );
-            })}
-            <TableCell align="right">
-              <Tooltip title={`${result.runes.toLocaleString()} runes`}>
-                <Box component="span" sx={tooltipCueSx}>
-                  {result.finalLevel} (+{result.levels})
-                </Box>
-              </Tooltip>
-            </TableCell>
-            <TableCell padding="none" sx={leftBorderSx}>
-              {planStatsButton(result, row)}
-            </TableCell>
-            {allAttributes.map((attribute, i) => {
-              const leveled = result.attributes[attribute];
-              const effective = result.effectiveAttributes[attribute];
-              const added = leveled - row.startAttributes[attribute];
-              const ineffective = result.ineffectiveAttributes.includes(attribute);
-              const details = [
-                ineffective &&
-                  `Requires ${result.requirements[attribute]} ${getStatLabel(attribute)}`,
-                effective !== leveled &&
-                  `Counts as ${effective} (bonus stats${
-                    attribute === "str" ? " and two handing" : ""
-                  } included)`,
-                added > 0 && `+${added} levels`,
-              ].filter(Boolean);
-              const value = (
-                <Box
-                  component="span"
-                  color={ineffective ? "error.main" : added > 0 ? "primary.main" : "text.secondary"}
-                  // Mark values that count as something else, e.g. two handed Strength
-                  sx={
-                    effective !== leveled
-                      ? { textDecoration: "underline dotted", textUnderlineOffset: 3 }
-                      : undefined
-                  }
-                >
-                  {leveled}
-                </Box>
-              );
-              return (
-                <TableCell
-                  key={attribute}
-                  align="right"
-                  sx={groupBorderSx(i, lastGroup === "stats", true)}
-                >
-                  {details.length > 0 ? (
-                    <Tooltip title={details.join(" · ")}>{value}</Tooltip>
-                  ) : (
-                    value
-                  )}
-                </TableCell>
-              );
-            })}
-            {showScaling &&
-              allAttributes.map((attribute, i) => (
-                <TableCell
-                  key={`${attribute}-scaling`}
-                  align="right"
-                  sx={groupBorderSx(i, lastGroup === "scaling")}
-                >
-                  {result.mixedScaling?.[attribute] ? (
-                    <Tooltip title={formatMixedScaling(result.mixedScaling[attribute]!)}>
-                      <Box component="span" sx={tooltipCueSx}>
-                        {formatScaling(result.scaling[attribute])}
-                      </Box>
-                    </Tooltip>
-                  ) : (
-                    formatScaling(result.scaling[attribute])
-                  )}
-                </TableCell>
-              ))}
-            {showRequirements &&
-              allAttributes.map((attribute, i) => (
-                <TableCell
-                  key={`${attribute}-requirement`}
-                  align="right"
-                  sx={groupBorderSx(i, lastGroup === "requirements")}
-                >
-                  {result.requirements[attribute] ?? "–"}
-                </TableCell>
-              ))}
-            <TableCell>{limitReasonLabels[result.reason]}</TableCell>
-          </>
-        ) : (
-          <TableCell
-            colSpan={
-              4 +
-              statusColumns.length +
-              +showHits +
-              +showStance +
-              +showStamina +
-              +showDamagePerStamina +
-              +showStancePerStamina +
-              +showPotential +
-              allAttributes.length * groups.length
-            }
-          >
-            <Typography variant="body2" color="text.secondary">
-              {result.unavailableReason ?? notApplicableLabel}
-            </Typography>
-          </TableCell>
-        )}
-      </TableRow>
-    );
-  };
 
   const head = (
     <TableHead>
@@ -1469,29 +1661,51 @@ function ResultsTable({
         >
           {head}
           <TableBody>
-            {pinnedRows.map((pinned, i) =>
-              renderRow(pinned.result, {
-                ...pinned,
-                key: pinned.pin.id,
-                pinCell: pinnedCell(pinned),
-                sx: pinnedRowSx(pinned, i === pinnedRows.length - 1 && sorted.length > 0),
-              }),
-            )}
+            {pinnedRows.map((pinned, i) => (
+              <ResultRow
+                key={pinned.pin.id}
+                result={pinned.result}
+                name={pinned.name}
+                chartKey={pinned.chartKey}
+                charted={chartWeapons.includes(pinned.chartKey)}
+                chartFull={chartFull}
+                pinned={pinned}
+                lastPinned={i === pinnedRows.length - 1 && sorted.length > 0}
+                planned={isPlanned(pinned.result, pinned.planStats)}
+                skill={pinned.skill}
+                oneOffAttack={pinned.oneOffAttack}
+                hitsNote={pinned.hitsNote}
+                tooltipTimings={pinned.tooltipTimings}
+                startAttributes={pinned.startAttributes}
+                planStats={pinned.planStats}
+                options={rowOptions}
+              />
+            ))}
             {sorted.map((result) => {
               const pin = rowPins.get(result);
               const key = result.row?.id ?? result.weaponName;
-              return renderRow(result, {
-                key,
-                name: result.row?.name ?? result.weaponName,
-                // A live pin's row is the pin's line, so it's checked with the pin
-                chartKey: pin && !pin.frozen ? getPinChartKey(pin) : key,
-                pinCell: rowPinCell(result, pin),
-                // A live pin is the same row, so it's dimmed here
-                sx: pin && !pin.frozen ? { opacity: 0.55 } : undefined,
-                ...rowAttacks.get(result)!,
-                startAttributes,
-                planStats,
-              });
+              // A live pin's row is the pin's line, so it's checked with the pin
+              const chartKey = pin && !pin.frozen ? getPinChartKey(pin) : key;
+              const { skill, oneOffAttack, hitsNote, tooltipTimings } = rowAttacks.get(result)!;
+              return (
+                <ResultRow
+                  key={key}
+                  result={result}
+                  name={result.row?.name ?? result.weaponName}
+                  chartKey={chartKey}
+                  charted={chartWeapons.includes(chartKey)}
+                  chartFull={chartFull}
+                  pin={pin}
+                  planned={isPlanned(result, planStats)}
+                  skill={skill}
+                  oneOffAttack={oneOffAttack}
+                  hitsNote={hitsNote}
+                  tooltipTimings={tooltipTimings}
+                  startAttributes={startAttributes}
+                  planStats={planStats}
+                  options={rowOptions}
+                />
+              );
             })}
           </TableBody>
         </Table>

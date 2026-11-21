@@ -177,6 +177,15 @@ try {
         await page.keyboard.press("Escape");
       },
     },
+    {
+      // Only reorders the rows: their results stay the same
+      name: "Sort by column",
+      act: (i) =>
+        page
+          .locator("thead .MuiTableSortLabel-root", { hasText: i % 2 ? /^Weapon$/ : /^Stance$/ })
+          .first()
+          .click(),
+    },
   ].filter((s) => !args.only || s.name.toLowerCase().includes(args.only.toLowerCase()));
 
   const results = {};
