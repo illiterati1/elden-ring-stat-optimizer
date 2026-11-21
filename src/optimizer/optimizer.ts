@@ -736,15 +736,20 @@ function buildDamagePlan(
 function buildModel(options: OptimizeOptions, terms: Term[]): Model {
   const { weapon, upgradeLevel, twoHanding, attributes, bonusAttributes } = options;
 
-  const attributeSet = allAttributes.filter((attribute) =>
-    terms.some(({ damageType, weapon: termWeapon = weapon }) => {
-      if (!termWeapon.attackElementCorrect[damageType]?.[attribute]) return false;
-      // Attributes with no scaling only matter if they can incur a requirement penalty
-      return (
-        getAttributeScaling(termWeapon, upgradeLevel, damageType, attribute) > 0 ||
-        weapon.requirements[attribute] != null
-      );
-    }),
+  const attributeSet = allAttributes.filter(
+    (attribute) =>
+      // An attack that needs the requirements (a skill) needs every one, even of an attribute its
+      // hits don't scale with (e.g. Beast's Roar's bullet only scales with Dex, but a Giant-Crusher
+      // can't use it without 60 Strength)
+      (options.needsRequirements && weapon.requirements[attribute] != null) ||
+      terms.some(({ damageType, weapon: termWeapon = weapon }) => {
+        if (!termWeapon.attackElementCorrect[damageType]?.[attribute]) return false;
+        // Attributes with no scaling only matter if they can incur a requirement penalty
+        return (
+          getAttributeScaling(termWeapon, upgradeLevel, damageType, attribute) > 0 ||
+          weapon.requirements[attribute] != null
+        );
+      }),
   );
 
   const damageOptions = getDamageOptions(options);

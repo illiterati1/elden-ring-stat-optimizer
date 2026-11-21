@@ -2654,6 +2654,32 @@ describe("Ashes of War", () => {
     expect(build.scaling.str).toBeCloseTo(0.45);
   });
 
+  it("meets a skill's requirements even when its hits don't scale with them", () => {
+    // Beast's Roar's bullet only scales with Dex, but a Giant-Crusher (60 Strength) can't use it
+    // without its Strength: 30 levels two handed reach it (40 × 1.5), one handed they can't
+    const weapon = getWeapon("Giant-Crusher");
+    const build = (twoHanding: boolean) => {
+      const result = getAshAttack(ashes, movesets, weapon, "Beast's Roar", twoHanding);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 10, dex: 10, int: 10, fai: 10, arc: 10 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        limits: { ...noLimits, maxLevels: 30 },
+        attack: result.attack,
+      });
+    };
+    const twoHanded = build(true);
+    expect(twoHanded.attributes.str).toBe(40);
+    expect(twoHanded.finalValue).toBeGreaterThan(0);
+    expect(build(false).finalValue).toBe(0);
+  });
+
   it("picks each weapon's skill", () => {
     // Weapons with a fixed skill always use it
     expect(skillOf("Rivers of Blood", "Lion's Claw")).toBe("Corpse Piler");
