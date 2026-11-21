@@ -660,7 +660,13 @@ export interface Ashes {
 
 const emptyAshes: Ashes = { ashes: [], weapons: {}, skills: {} };
 
-export type AshAttack = { skill: string; attack: AttackData } | { unavailableReason: string };
+/**
+ * A skill's attack, or why there isn't one. A weapon whose skill does no damage is shown with the
+ * reason (shown), rather than left out like one that can't use the skill.
+ */
+export type AshAttack =
+  | { skill: string; attack: AttackData }
+  | { unavailableReason: string; shown?: boolean };
 
 /** Separates an Ash of War from a follow-up that counts with it in the picker's values */
 const followUpSeparator = " + ";
@@ -976,7 +982,7 @@ function getSkillAttack(
   if (!hits || (!hits.main.length && !hits.followUps.length)) {
     // Shields', staves', and seals' default skill (SwordArtsParam 10)
     if (skill === "No Skill") return { unavailableReason: "No skill" };
-    return { unavailableReason: `${skill} does no damage` };
+    return { unavailableReason: `${skill} does no damage`, shown: true };
   }
 
   const physicalType = (type: number): PhysicalType =>
@@ -1041,6 +1047,7 @@ function getSkillAttack(
       unavailableReason: `${skill} does no damage itself: pick its buff for ${
         weaponAttackSkills.has(skill) ? "the attacks it changes" : "its R2s"
       }`,
+      shown: true,
     };
   }
   const stanceBase = weapon.ammoStance ?? movesets[weapon.weaponName]?.stance ?? 0;
