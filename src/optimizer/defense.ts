@@ -38,6 +38,13 @@ export function getDefenseMultiplier(attackRatio: number) {
 }
 
 /**
+ * @returns the attack after the target's flat defense, before damage negation
+ */
+export function applyDefense(attack: number, defense: number) {
+  return attack * getDefenseMultiplier(defense > 0 ? attack / defense : Infinity);
+}
+
+/**
  * Determine the damage dealt by one damage type of an attack after the target's defense and
  * damage negation are applied
  *
@@ -48,7 +55,5 @@ export function getDamageAfterDefense(
   { defense, negation }: Defense,
   motionValue = 100,
 ) {
-  const attack = (attackPower * motionValue) / 100;
-  const attackRatio = defense > 0 ? attack / defense : Infinity;
-  return (attack * getDefenseMultiplier(attackRatio) * (100 - negation)) / 100;
+  return (applyDefense((attackPower * motionValue) / 100, defense) * (100 - negation)) / 100;
 }

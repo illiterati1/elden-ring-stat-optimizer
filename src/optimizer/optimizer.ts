@@ -11,13 +11,7 @@ import getWeaponAttack, {
   type Weapon,
 } from "../calculator/calculator.ts";
 import { packAllocations, type PackedAllocations } from "./allocations.ts";
-import {
-  getDamageAfterDefense,
-  getDefenseMultiplier,
-  type Defense,
-  type Defenses,
-  type PhysicalType,
-} from "./defense.ts";
+import { applyDefense, type Defense, type Defenses, type PhysicalType } from "./defense.ts";
 
 export const maxAttributeValue = 99;
 
@@ -153,39 +147,12 @@ export function getDamage(
   damageType: AttackPowerType,
   attackPower: number,
   defense: Defense | undefined,
-  { motionValue, hits, physicalNegation, damageMultipliers }: DamageOptions,
+  damageOptions: DamageOptions,
 ) {
-  return (
-    (damageMultipliers?.[damageType] ?? 1) *
-    getUnmultipliedDamage(damageType, attackPower, defense, { motionValue, hits, physicalNegation })
+  return getPlanDamage(
+    buildDamagePlan([{ damageType, base: attackPower, defense }], damageOptions, false),
+    Float64Array.of(attackPower),
   );
-}
-
-function getUnmultipliedDamage(
-  damageType: AttackPowerType,
-  attackPower: number,
-  defense: Defense | undefined,
-  { motionValue, hits, physicalNegation }: DamageOptions,
-) {
-  if (!hits) {
-    return defense ? getDamageAfterDefense(attackPower, defense, motionValue) : attackPower;
-  }
-  let total = 0;
-  for (const hit of hits) {
-    const motionValue = hit.motionValues?.[damageType] ?? hit.motionValue;
-    if (!motionValue) continue;
-    const hitDefense =
-      defense && physicalNegation && damageType === AttackPowerType.PHYSICAL
-        ? { ...defense, negation: physicalNegation[hit.physicalType] }
-        : defense;
-    total +=
-      hit.weight *
-      (hit.damageRates?.[damageType] ?? 1) *
-      (hitDefense
-        ? getDamageAfterDefense(attackPower, hitDefense, motionValue)
-        : (attackPower * motionValue) / 100);
-  }
-  return total;
 }
 
 export interface OptimizationCurve {
@@ -266,7 +233,6 @@ export function evaluateObjective(
   return getTermsDamage(
     terms,
     terms.map((term) => getTermAttackPower(options, term, leveled)),
-    options,
     getDamageOptions(options),
     needsCombining(terms, options),
   );
@@ -349,65 +315,20 @@ function needsCombining(terms: Term[], options: OptimizeOptions) {
 }
 
 /**
- * The damage of terms with the given attack powers, adding each hit's attack of each damage type
- * from every term before defenses, like the game
- */
-function getCombinedDamage(
-  terms: Term[],
-  attackPowers: number[],
-  options: OptimizeOptions,
-  damageOptions: DamageOptions,
-) {
-  const attacks = new Map<AttackHit, Float64Array>();
-  const defenses: (Defense | undefined)[] = [];
-  terms.forEach((term, t) => {
-    defenses[term.damageType] = term.defense;
-    for (const hit of term.hits ?? options.hits ?? []) {
-      const motionValue = hit.motionValues?.[term.damageType] ?? hit.motionValue;
-      if (!motionValue) continue;
-      const source = hit.source ?? hit;
-      let attack = attacks.get(source);
-      if (!attack) {
-        attack = new Float64Array(allDamageTypes.length);
-        attacks.set(source, attack);
-      }
-      attack[term.damageType] += (attackPowers[t] * motionValue) / 100;
-    }
-  });
-  let total = 0;
-  for (const [hit, attack] of attacks) {
-    attack.forEach((value, damageType) => {
-      if (!value) return;
-      total += getDamage(damageType as AttackPowerType, value, defenses[damageType], {
-        ...damageOptions,
-        hits: [{ ...hit, motionValue: 100, motionValues: undefined }],
-      });
-    });
-  }
-  return total;
-}
-
-/**
- * The damage of terms with the given attack powers
+ * The damage of terms with the given attack powers, from their damage plan (see buildDamagePlan)
+ *
+ * @param combine whether a hit's attack of the same damage type from several terms is added up
+ * before defenses (see needsCombining)
  */
 function getTermsDamage(
   terms: Term[],
-  attackPowers: number[],
-  options: OptimizeOptions,
+  attackPowers: readonly number[],
   damageOptions: DamageOptions,
   combine: boolean,
 ) {
-  if (combine) return getCombinedDamage(terms, attackPowers, options, damageOptions);
-  return terms.reduce(
-    (total, term, t) =>
-      total +
-      getDamage(
-        term.damageType,
-        attackPowers[t],
-        term.defense,
-        term.hits ? { ...damageOptions, hits: term.hits } : damageOptions,
-      ),
-    0,
+  return getPlanDamage(
+    buildDamagePlan(terms, damageOptions, combine),
+    Float64Array.from(attackPowers),
   );
 }
 
@@ -660,8 +581,6 @@ interface Model {
   attributes: Attribute[];
   terms: Term[];
   damageOptions: DamageOptions;
-  /** Damage options for each term, with only its hits if the attack's hits are split */
-  termDamageOptions: DamageOptions[];
   options: OptimizeOptions;
   /** The terms' damage, worked out ahead of time for evaluateModel */
   plan: DamagePlan;
@@ -692,8 +611,8 @@ interface Model {
  *   factor[e] * f(sum of coefficient[j] * attack power of term termIndex[j], defense[e])
  *
  * over j from entryStart[e] to entryStart[e + 1] - 1, where f applies the defense multiplier, or
- * does nothing if defense[e] is negative (no defense). The same as getTermsDamage, without the
- * lookups and objects it creates on every call.
+ * does nothing if defense[e] is negative (no defense). The optimizer's model builds one plan and
+ * evaluates it for every allocation it tries; the regular calculation builds one each time.
  */
 interface DamagePlan {
   /** Each term's attack power before scaling */
@@ -742,7 +661,7 @@ function buildDamagePlan(
     hit.weight * (hit.damageRates?.[damageType] ?? 1);
 
   if (combine) {
-    // Like getCombinedDamage: each hit's attack of each damage type, added up across terms
+    // Each hit's attack of each damage type, added up across terms like the game
     const defenses: (Defense | undefined)[] = [];
     const combined = new Map<AttackHit, [number, number][][]>();
     terms.forEach((term, t) => {
@@ -772,7 +691,8 @@ function buildDamagePlan(
       });
     }
   } else {
-    // Like getDamage for each term
+    // Each term's damage on its own: attack power (or damage with a motion value) without hits,
+    // otherwise each hit's
     terms.forEach(({ damageType, defense, hits = damageOptions.hits }, t) => {
       if (!hits) {
         addEntry([[t, defense ? (motionValue ?? 100) / 100 : 1]], damageType, defense, 1);
@@ -832,7 +752,6 @@ function buildModel(options: OptimizeOptions, terms: Term[]): Model {
     attributes: attributeSet,
     terms,
     damageOptions,
-    termDamageOptions: [],
     options,
     plan: buildDamagePlan(terms, damageOptions, needsCombining(terms, options)),
     attackPowers: new Float64Array(terms.length),
@@ -856,10 +775,6 @@ function buildModel(options: OptimizeOptions, terms: Term[]): Model {
     ),
     penaltyMultiplier: options.needsRequirements ? 0 : ineffectivePenaltyMultiplier,
   };
-
-  model.termDamageOptions = terms.map(({ hits }) =>
-    hits ? { ...model.damageOptions, hits } : model.damageOptions,
-  );
 
   attributeSet.forEach((attribute, i) => {
     const requirement = weapon.requirements[attribute] ?? 0;
@@ -954,9 +869,24 @@ function getEntryDamage(
     attack += coefficient[j] * attackPowers[termIndex[j]];
   }
   const d = defense[e];
-  return (
-    factor[e] * (d < 0 ? attack : attack * getDefenseMultiplier(d > 0 ? attack / d : Infinity))
+  return factor[e] * (d < 0 ? attack : applyDefense(attack, d));
+}
+
+/**
+ * How much each term's attack power is worth without defenses: e.g. its motion values and damage
+ * multiplier, i.e. its damage with 1 attack power
+ */
+function getSlopes({ terms, damageOptions }: Model) {
+  const plan = buildDamagePlan(
+    terms.map((term) => ({ ...term, defense: undefined })),
+    damageOptions,
+    false,
   );
+  return terms.map((_, t) => {
+    const attackPowers = new Float64Array(terms.length);
+    attackPowers[t] = 1;
+    return getPlanDamage(plan, attackPowers);
+  });
 }
 
 /**
@@ -971,11 +901,8 @@ function getEntryDamage(
 function optimizeLinear(model: Model, maxLevels: number): number[][] {
   const { attributes, terms, min, unmet, contributions, penaltyMasks, penaltyMultiplier } = model;
   const k = attributes.length;
-  // How much each term's attack power is worth without defenses: e.g. its motion values and damage
-  // multiplier. With defenses there's only one term, and any positive weight gives the same result.
-  const slopes = terms.map(({ damageType }, t) =>
-    getDamage(damageType, 1, undefined, model.termDamageOptions[t]),
-  );
+  // With defenses there's only one term, and any positive weight gives the same result
+  const slopes = getSlopes(model);
 
   const best = new Float64Array(maxLevels + 1).fill(-Infinity);
   const allocations: number[][] = [];
@@ -1769,7 +1696,6 @@ export function getBreakdown(options: OptimizeOptions, leveled: Attributes): Bre
         getTermsDamage(
           typeTerms,
           typeTerms.map((term) => getTermAttackPower(options, term, leveled)),
-          options,
           damageOptions,
           combine,
         ),
