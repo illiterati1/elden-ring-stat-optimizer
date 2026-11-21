@@ -1,6 +1,15 @@
-import { memo, useCallback, useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
+import {
+  memo,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Box,
+  Button,
   Checkbox,
   IconButton,
   Link,
@@ -1300,6 +1309,13 @@ const ResultRow = memo(function ResultRow({
 });
 
 /**
+ * How many of the results are shown at first, and how many more each time more are asked for. A
+ * row takes a few milliseconds to render, so thousands of them would hold up the page for many
+ * seconds (long enough for the browser to call it unresponsive) and use gigabytes of memory.
+ */
+const rowLimitStep = 200;
+
+/**
  * Compares the optimized build for each selected weapon
  */
 function ResultsTable({
@@ -1333,6 +1349,16 @@ function ResultsTable({
 }: Props) {
   countRender("ResultsTable");
   const stickyHead = useStickyHead();
+  // Only the first results by the sort column are shown until more are asked for, going back to
+  // the first ones when the number of results changes (e.g. other weapons are picked), but not
+  // when they're only sorted again or recalculated
+  const [rowLimit, setRowLimit] = useState(rowLimitStep);
+  const [rowLimitCount, setRowLimitCount] = useState(sorted.length);
+  if (rowLimitCount !== sorted.length) {
+    setRowLimitCount(sorted.length);
+    setRowLimit(rowLimitStep);
+  }
+  const shownResults = sorted.length > rowLimit ? sorted.slice(0, rowLimit) : sorted;
   /**
    * @param compact for narrow columns: the arrow sits in the cell's left padding instead of
    * widening the column
@@ -1681,7 +1707,7 @@ function ResultsTable({
                 options={rowOptions}
               />
             ))}
-            {sorted.map((result) => {
+            {shownResults.map((result) => {
               const pin = rowPins.get(result);
               const key = result.row?.id ?? result.weaponName;
               // A live pin's row is the pin's line, so it's checked with the pin
@@ -1710,6 +1736,33 @@ function ResultsTable({
           </TableBody>
         </Table>
       </TableContainer>
+      {shownResults.length < sorted.length && (
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 1,
+            px: 2,
+            py: 1,
+            borderTop: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Typography variant="body2" color="text.secondary" sx={{ mr: "auto" }}>
+            Showing the first {shownResults.length.toLocaleString()} of{" "}
+            {sorted.length.toLocaleString()} rows
+          </Typography>
+          <Button size="small" onClick={() => setRowLimit(rowLimit + rowLimitStep)}>
+            Show {Math.min(rowLimitStep, sorted.length - rowLimit).toLocaleString()} more
+          </Button>
+          <Tooltip describeChild title="Many rows can make the page slow or run out of memory">
+            <Button size="small" color="inherit" onClick={() => setRowLimit(sorted.length)}>
+              Show all
+            </Button>
+          </Tooltip>
+        </Box>
+      )}
     </Paper>
   );
 }
