@@ -82,6 +82,7 @@ import useMovesets, {
   oneOffAttacks,
   riposteAttacks,
   withOffhandRows,
+  tooSlowReason,
   type ChainLimit,
 } from "./useMovesets.ts";
 import useAmmo, { getAmmoKey, getAmmoLabel, weaponTypeAmmoClasses, withAmmo } from "./useAmmo.ts";
@@ -183,7 +184,6 @@ function powerstancesWith(main: Weapon, offhand: Weapon) {
 // Requests for an attack a weapon has but that can't be used here (e.g. too slow to roll in time,
 // or a skill that does no damage), shown in its row with the reason rather than left out
 const shownReasonRequests = new WeakSet<BuildRequest>();
-const tooSlowReason = "No attack can be performed quickly enough to roll within the time to dodge";
 
 export default function App() {
   countRender("App");
@@ -708,6 +708,11 @@ export default function App() {
         uniqueSkillEffects && fixedSkill
           ? getSkillUpkeep(ashes, weapon.weaponName, fixedSkill)
           : undefined;
+      // (its buffed chain too slow for the time to dodge, the weapon's own unbuffed ones aren't used)
+      const skillChainTooSlow =
+        !!skillChain &&
+        "unavailableReason" in skillChain &&
+        skillChain.unavailableReason === tooSlowReason;
       return skillAttacks.map(({ ash, variant }): BuildRequest => {
         const chosenAttackData = !attackActive
           ? undefined
@@ -716,15 +721,17 @@ export default function App() {
           : attack === ashAttack
           ? undefined
           : uniqueSkillChain ??
-            getAttackData(
-              movesets,
-              weapon,
-              attack,
-              weaponTwoHanding,
-              chainWeight,
-              sumChains,
-              limit,
-            );
+            (skillChainTooSlow
+              ? undefined
+              : getAttackData(
+                  movesets,
+                  weapon,
+                  attack,
+                  weaponTwoHanding,
+                  chainWeight,
+                  sumChains,
+                  limit,
+                ));
         // A skill's enemy debuff is picked separately, so it's noted when it isn't
         const debuffName =
           chosenAttackData?.fixedSkill && skillDebuffs[chosenAttackData.fixedSkill];

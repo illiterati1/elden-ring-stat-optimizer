@@ -232,6 +232,10 @@ const crouchingAttacks: Partial<Record<AttackName, AttackName>> = {
   "Powerstance Crouching L1": "Powerstance Rolling L1",
 };
 
+/** Why an attack is left out with a time to dodge set: a roll can't start in time after it */
+export const tooSlowReason =
+  "No attack can be performed quickly enough to roll within the time to dodge";
+
 /** Chains cut short: to a number of steps, or the steps that fit a time budget */
 export type ChainLimit = { steps: number } | { seconds: number };
 
@@ -371,14 +375,28 @@ function getChainLength(
   stepCount: number,
   limit: ChainLimit | undefined,
 ): { length: number; cut: boolean } {
+  if (!limit || !chainAttacks.has(attack) || ("seconds" in limit && mountedAttacks.has(attack))) {
+    return { length: stepCount, cut: false };
+  }
+  return limitChainLength(stepCount, limit, () => getStepTimes(attack, timing, stepCount));
+}
+
+/**
+ * @returns how many of a chain's steps it's limited to, and whether it's cut short (see
+ * getChainLength), from the whole chain's step times (needed only for a time to dodge)
+ */
+export function limitChainLength(
+  stepCount: number,
+  limit: ChainLimit | undefined,
+  getTimes: () => StepTimes[] | undefined,
+): { length: number; cut: boolean } {
   const whole = { length: stepCount, cut: false };
-  if (!limit || !chainAttacks.has(attack)) return whole;
+  if (!limit) return whole;
   if ("steps" in limit) {
     const steps = Math.max(1, Math.floor(limit.steps));
     return steps > stepCount ? whole : { length: steps, cut: true };
   }
-  if (mountedAttacks.has(attack)) return whole;
-  const times = getStepTimes(attack, timing, stepCount);
+  const times = getTimes();
   if (!times) return whole;
   // Not even the first step, if a roll can't start after it in time
   if (times[0]?.roll != null && times[0].roll > limit.seconds + 1e-9)

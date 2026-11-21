@@ -14,6 +14,8 @@ import {
   chargedStamina,
   getAttackData,
   jumpAirTime,
+  limitChainLength,
+  tooSlowReason,
   stepStartDelay,
   type AttackName,
   type ChainLimit,
@@ -167,6 +169,12 @@ interface SkillStepPart {
   noRepeat?: boolean;
   /** The last step can't be done again right away: it's over once anything can follow it */
   oneOff?: boolean;
+  /**
+   * The chain is cut short at this, its last step (the limit that cut it), like the weapon's own
+   * chains: cut to a number of steps, it's over once anything but an attack can follow it (a roll,
+   * blocking, or moving); cut to a time to dodge, once a roll can start
+   */
+  cutShort?: ChainLimit;
 }
 
 /**
@@ -200,105 +208,115 @@ function getSkillStepTimes(
 ): StepTimes[] | undefined {
   const timings = parts.map(({ label }) => getPartTiming(hits, skillRange, label, hands));
   if (!timings.length || timings.some((timing) => !timing)) return undefined;
-  return parts.flatMap(({ label, next: button, repeat, noRepeat, oneOff }, i): StepTimes[] => {
-    const timing = timings[i]!;
-    // Each counted hit's own time (see SkillPartTiming hitTimes), if the part's hits are known
-    const partHits = label
-      ? hits.followUps.find((followUp) => followUp.label === label)?.hits
-      : hits.main;
-    const ownTimes =
-      partHits &&
-      (timing.hitTimes ?? (timing.hits.length === partHits.length ? timing.hits : undefined));
-    const counted = partHits?.flatMap((hit, j) => (hit[4]?.uncounted ? [] : [j])) ?? [];
-    if (timing.loop != null) {
-      // A loop with hits before its first pass: the opening, then the pass from when it starts
-      if (timing.openingHits && timing.opening != null) {
-        const lead = stepStartDelay;
+  return parts.flatMap(
+    ({ label, next: button, repeat, noRepeat, oneOff, cutShort }, i): StepTimes[] => {
+      const timing = timings[i]!;
+      // Each counted hit's own time (see SkillPartTiming hitTimes), if the part's hits are known
+      const partHits = label
+        ? hits.followUps.find((followUp) => followUp.label === label)?.hits
+        : hits.main;
+      const ownTimes =
+        partHits &&
+        (timing.hitTimes ?? (timing.hits.length === partHits.length ? timing.hits : undefined));
+      const counted = partHits?.flatMap((hit, j) => (hit[4]?.uncounted ? [] : [j])) ?? [];
+      if (timing.loop != null) {
+        // A loop with hits before its first pass: the opening, then the pass from when it starts
+        if (timing.openingHits && timing.opening != null) {
+          const lead = stepStartDelay;
+          return [
+            {
+              lead,
+              hits: timing.openingHits.map((time) => lead + time),
+              ...(timing.roll != null && { roll: lead + timing.roll }),
+              ...(timing.earlyRolls && {
+                earlyRolls: timing.earlyRolls.map((time) => lead + time),
+              }),
+              ...(timing.earlyRollStaysOpen && { earlyRollStaysOpen: true as const }),
+              cycle: timing.opening,
+            },
+            { lead: 0, hits: timing.hits, cycle: timing.loop, loop: true },
+          ];
+        }
         return [
           {
-            lead,
-            hits: timing.openingHits.map((time) => lead + time),
-            ...(timing.roll != null && { roll: lead + timing.roll }),
-            ...(timing.earlyRolls && {
-              earlyRolls: timing.earlyRolls.map((time) => lead + time),
-            }),
-            ...(timing.earlyRollStaysOpen && { earlyRollStaysOpen: true as const }),
-            cycle: timing.opening,
+            lead: 0,
+            hits: timing.hits,
+            cycle: timing.loop,
+            loop: true,
+            ...(timing.opening != null && { opening: timing.opening }),
           },
-          { lead: 0, hits: timing.hits, cycle: timing.loop, loop: true },
         ];
       }
+      // An uncharged version starts once it's released, or else a step starts a frame after its press
+      const lead = timing.start ?? stepStartDelay;
+      const last = i === parts.length - 1;
+      const nextButton = last ? repeat ?? "L2" : button;
+      const buttonTime = nextButton ? timing[nextButton] : undefined;
+      // A skill again (L2) waits for its own cancel, even if a right hand attack can start sooner (tested in
+      // game: the One-Eyed Shield's Flame Spit, used again 278 frames after its last, at its L2 cancel
+      // rather than its right hand attack cancel 10 frames earlier); an R1 or R2 follow-up can start at
+      // either
+      const next =
+        buttonTime != null &&
+        (nextButton === "L2" ||
+          timing.rightHandAttack == null ||
+          buttonTime <= timing.rightHandAttack)
+          ? { attack: nextButton!, time: lead + buttonTime }
+          : timing.rightHandAttack != null
+          ? { attack: "R1/R2" as const, time: lead + timing.rightHandAttack }
+          : undefined;
+      // (skills' own L2 cancels, flags 103 and 104, aren't counted yet)
+      const earliest = getEarliestAttack(
+        lead,
+        { R1: timing.R1, R2: timing.R2 },
+        timing.rightHandAttack,
+      );
+      // A one-off is over once anything can follow it: an attack (another skill included), a roll,
+      // blocking, or moving
+      const oneOffEnd = [
+        earliest?.time,
+        next?.time,
+        ...[timing.roll, timing.block, timing.move].map((time) =>
+          time != null ? lead + time : undefined,
+        ),
+      ]
+        .filter((time): time is number => time != null)
+        .sort((a, b) => a - b)[0];
+      const cutEnd =
+        cutShort &&
+        ("seconds" in cutShort ? [timing.roll] : [timing.roll, timing.block, timing.move])
+          .filter((time): time is number => time != null)
+          .map((time) => lead + time)
+          .sort((a, b) => a - b)[0];
       return [
         {
-          lead: 0,
-          hits: timing.hits,
-          cycle: timing.loop,
-          loop: true,
-          ...(timing.opening != null && { opening: timing.opening }),
+          lead,
+          hits: timing.hits.map((time) => lead + time),
+          ...(ownTimes && {
+            hitTimes: counted.map((j) => (ownTimes[j] != null ? lead + ownTimes[j]! : undefined)),
+            approximate: counted.map((j) => !!timing.approximate?.includes(j)),
+          }),
+          ...(earliest && { earliest }),
+          ...(timing.rightHandAttack != null && { rightHandAttack: lead + timing.rightHandAttack }),
+          ...(timing.roll != null && { roll: lead + timing.roll }),
+          ...(timing.earlyRolls && { earlyRolls: timing.earlyRolls.map((time) => lead + time) }),
+          ...(timing.earlyRollStaysOpen && { earlyRollStaysOpen: true as const }),
+          ...(timing.block != null && { block: lead + timing.block }),
+          ...(timing.move != null && { move: lead + timing.move }),
+          ...(last && cutShort
+            ? cutEnd != null && { cycle: cutEnd, cutShort: true as const }
+            : last && oneOff
+            ? oneOffEnd != null && { cycle: oneOffEnd, cutShort: true as const }
+            : !(last && noRepeat) &&
+              next &&
+              (last && timing.noStack != null && lead + timing.noStack > next.time
+                ? { cycle: lead + timing.noStack, recast: next.time }
+                : { cycle: next.time })),
+          ...(i === 0 && timing.opening != null && { opening: timing.opening }),
         },
       ];
-    }
-    // An uncharged version starts once it's released, or else a step starts a frame after its press
-    const lead = timing.start ?? stepStartDelay;
-    const last = i === parts.length - 1;
-    const nextButton = last ? repeat ?? "L2" : button;
-    const buttonTime = nextButton ? timing[nextButton] : undefined;
-    // A skill again (L2) waits for its own cancel, even if a right hand attack can start sooner (tested in
-    // game: the One-Eyed Shield's Flame Spit, used again 278 frames after its last, at its L2 cancel
-    // rather than its right hand attack cancel 10 frames earlier); an R1 or R2 follow-up can start at
-    // either
-    const next =
-      buttonTime != null &&
-      (nextButton === "L2" ||
-        timing.rightHandAttack == null ||
-        buttonTime <= timing.rightHandAttack)
-        ? { attack: nextButton!, time: lead + buttonTime }
-        : timing.rightHandAttack != null
-        ? { attack: "R1/R2" as const, time: lead + timing.rightHandAttack }
-        : undefined;
-    // (skills' own L2 cancels, flags 103 and 104, aren't counted yet)
-    const earliest = getEarliestAttack(
-      lead,
-      { R1: timing.R1, R2: timing.R2 },
-      timing.rightHandAttack,
-    );
-    // A one-off is over once anything can follow it: an attack (another skill included), a roll,
-    // blocking, or moving
-    const oneOffEnd = [
-      earliest?.time,
-      next?.time,
-      ...[timing.roll, timing.block, timing.move].map((time) =>
-        time != null ? lead + time : undefined,
-      ),
-    ]
-      .filter((time): time is number => time != null)
-      .sort((a, b) => a - b)[0];
-    return [
-      {
-        lead,
-        hits: timing.hits.map((time) => lead + time),
-        ...(ownTimes && {
-          hitTimes: counted.map((j) => (ownTimes[j] != null ? lead + ownTimes[j]! : undefined)),
-          approximate: counted.map((j) => !!timing.approximate?.includes(j)),
-        }),
-        ...(earliest && { earliest }),
-        ...(timing.rightHandAttack != null && { rightHandAttack: lead + timing.rightHandAttack }),
-        ...(timing.roll != null && { roll: lead + timing.roll }),
-        ...(timing.earlyRolls && { earlyRolls: timing.earlyRolls.map((time) => lead + time) }),
-        ...(timing.earlyRollStaysOpen && { earlyRollStaysOpen: true as const }),
-        ...(timing.block != null && { block: lead + timing.block }),
-        ...(timing.move != null && { move: lead + timing.move }),
-        ...(last && oneOff
-          ? oneOffEnd != null && { cycle: oneOffEnd, cutShort: true as const }
-          : !(last && noRepeat) &&
-            next &&
-            (last && timing.noStack != null && lead + timing.noStack > next.time
-              ? { cycle: lead + timing.noStack, recast: next.time }
-              : { cycle: next.time })),
-        ...(i === 0 && timing.opening != null && { opening: timing.opening }),
-      },
-    ];
-  });
+    },
+  );
 }
 
 /**
@@ -1080,12 +1098,12 @@ function getSkillAttack(
     const chain = counted?.endsWith(chainSuffix)
       ? counted.slice(0, -chainSuffix.length)
       : getChainStep(hits.followUps[0]?.label ?? "")?.[0] ?? "R2";
-    const steps = followUps
+    const wholeChain = followUps
       .map((followUp) => ({ followUp, step: getChainStep(followUp.label) }))
       .filter(({ step }) => step?.[0] === chain)
       .sort((a, b) => a.step![1] - b.step![1])
       .map(({ followUp }) => followUp);
-    if (!steps.length) {
+    if (!wholeChain.length) {
       // e.g. Braggart's Roar only changes two handed R2s
       const otherHands = hits.followUps.find(
         (followUp) => followUp.hands && getChainStep(followUp.label)?.[0] === chain,
@@ -1096,6 +1114,32 @@ function getSkillAttack(
           : `No ${chain} chain for ${skill}`,
       };
     }
+    // Each step goes on to the next with another skill
+    // (a buffed R2 chain's with R2s, like the weapon's own R2s)
+    // (a stance's with its next attack's button, R1 or R2, and the chain again from the stance,
+    // with L2)
+    const partsOf = (chainSteps: typeof wholeChain, cutShort?: ChainLimit): SkillStepPart[] =>
+      chainSteps.map(({ label }, i) => ({
+        ...(buffedR2Skills.has(skill)
+          ? { label, next: "R2" as const, repeat: "R2" as const }
+          : {
+              label,
+              next: stanceR2Skills.has(skill)
+                ? ("R2" as const)
+                : getFollowUpButton(chainSteps[i + 1]?.label ?? ""),
+              // (one that goes back to its first step with its button, after the stance once)
+              ...(getStanceRepeat(skill, chainSteps[0]!.label) && {
+                repeat: getStanceRepeat(skill, chainSteps[0]!.label),
+              }),
+            }),
+        ...(cutShort && i === chainSteps.length - 1 && { cutShort }),
+      }));
+    // Cut short like the weapon's own chains (e.g. War Cry's R2s, in place of the weapon's)
+    const { length, cut } = limitChainLength(wholeChain.length, limit, () =>
+      getSkillStepTimes(hits, skillRange, partsOf(wholeChain), hands),
+    );
+    if (!length) return { unavailableReason: tooSlowReason, shown: true };
+    const steps = wholeChain.slice(0, length);
     // The buff's physical attack power multiplier is the same as multiplying physical motion values
     const buff = chainBuffs[skill];
     const toBuffedHit = (hit: AshHit) => {
@@ -1125,27 +1169,10 @@ function getSkillAttack(
         ...(buff && { ownWeaponBuff: true }),
         ...(buff?.scaling && { scalingBonus: buff.scaling }),
         // Some chains go back to a later step, not the first
-        ...(chainRepeatSteps[skill] != null && { repeatFrom: chainRepeatSteps[skill]! - 1 }),
-        // Each step goes on to the next with another skill
-        // (a buffed R2 chain's with R2s, like the weapon's own R2s)
-        // (a stance's with its next attack's button, R1 or R2, and the chain again from the stance,
-        // with L2)
-        ...timingOf(
-          steps.map(({ label }, i) =>
-            buffedR2Skills.has(skill)
-              ? { label, next: "R2" as const, repeat: "R2" as const }
-              : {
-                  label,
-                  next: stanceR2Skills.has(skill)
-                    ? ("R2" as const)
-                    : getFollowUpButton(steps[i + 1]?.label ?? ""),
-                  // (one that goes back to its first step with its button, after the stance once)
-                  ...(getStanceRepeat(skill, steps[0]!.label) && {
-                    repeat: getStanceRepeat(skill, steps[0]!.label),
-                  }),
-                },
-          ),
-        ),
+        // (one cut short doesn't start again)
+        ...(chainRepeatSteps[skill] != null &&
+          !cut && { repeatFrom: chainRepeatSteps[skill]! - 1 }),
+        ...timingOf(partsOf(steps, cut ? limit : undefined)),
       },
     };
   }

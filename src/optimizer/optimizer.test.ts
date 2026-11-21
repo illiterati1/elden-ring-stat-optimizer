@@ -21,8 +21,10 @@ import {
   attackTimingNotes,
   canTwoHand,
   getAttackData,
+  tooSlowReason,
   withOffhandRows,
   type AttackChoice,
+  type ChainLimit,
   type Movesets,
 } from "../app/useMovesets.ts";
 import {
@@ -9071,6 +9073,44 @@ describe("Ashes of War", () => {
         ],
       ],
     ]);
+  });
+
+  it("cuts buffed R2 chains short like the weapon's own", () => {
+    const weapon = getWeapon("Longsword");
+    const frames = (seconds: number | undefined) =>
+      seconds == null ? null : Math.round(seconds * 60);
+    const warCry = (limit?: ChainLimit) =>
+      getAshAttack(
+        ashes,
+        movesets,
+        weapon,
+        withFollowUp("War Cry", "R2 chain"),
+        true,
+        0.5,
+        false,
+        limit,
+      );
+    const timing = (limit?: ChainLimit) => {
+      const result = warCry(limit);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      const { stepTimes, cycleTimes } = result.attack;
+      return {
+        steps: result.attack.steps.length,
+        cycles: cycleTimes?.map(frames),
+        cut: !!stepTimes?.at(-1)?.cutShort,
+      };
+    };
+    // The whole chain: #1 goes on to #2 at 78 frames, and #2 back to #1 at 90
+    expect(timing()).toEqual({ steps: 2, cycles: [78, 90], cut: false });
+    // Cut to a number of steps, the last is over once a roll can start (78 frames into #2), and the
+    // chain doesn't start again; more steps than it has repeats the whole chain
+    expect(timing({ steps: 1 })).toEqual({ steps: 1, cycles: [86], cut: true });
+    expect(timing({ steps: 2 })).toEqual({ steps: 2, cycles: [78, 78], cut: true });
+    expect(timing({ steps: 3 })).toEqual(timing());
+    // To a time to dodge, the steps until a roll can start in time (#2's roll at 164 frames)
+    expect(timing({ seconds: 1.5 })).toEqual({ steps: 1, cycles: [86], cut: true });
+    expect(timing({ seconds: 3 })).toEqual(timing());
+    expect(warCry({ seconds: 0.5 })).toEqual({ unavailableReason: tooSlowReason, shown: true });
   });
 
   it("matches Spinning Guillotine in game", () => {
