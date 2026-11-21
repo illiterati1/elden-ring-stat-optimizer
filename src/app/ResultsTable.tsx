@@ -1100,16 +1100,6 @@ function ResultsTable({
             )}
             {showHits && (
               <TableCell>
-                {result.fixedSkill && (
-                  <Typography
-                    variant="caption"
-                    display="block"
-                    color="text.secondary"
-                    whiteSpace="nowrap"
-                  >
-                    {result.skillVariant?.label ?? result.fixedSkill}
-                  </Typography>
-                )}
                 {result.attackSteps && (
                   <AttackHits
                     steps={result.attackSteps}
