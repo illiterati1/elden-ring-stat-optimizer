@@ -36,13 +36,13 @@
     "Weapon level picker": {
       "renders": {
         "App": 3,
-        "ResultRow": 340,
+        "ResultRow": 200,
         "ResultsTable": 1,
         "ValueChart": 3
       },
-      "paintMs": 105,
-      "blockingMs": 1021,
-      "longestTaskMs": 835
+      "paintMs": 95,
+      "blockingMs": 742,
+      "longestTaskMs": 631
     },
     "Sort by column": {
       "renders": {

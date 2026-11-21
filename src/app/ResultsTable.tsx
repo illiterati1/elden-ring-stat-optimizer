@@ -1352,12 +1352,10 @@ function ResultsTable({
   // Only the first results by the sort column are shown until more are asked for, going back to
   // the first ones when the number of results changes (e.g. other weapons are picked), but not
   // when they're only sorted again or recalculated
-  const [rowLimit, setRowLimit] = useState(rowLimitStep);
-  const [rowLimitCount, setRowLimitCount] = useState(sorted.length);
-  if (rowLimitCount !== sorted.length) {
-    setRowLimitCount(sorted.length);
-    setRowLimit(rowLimitStep);
-  }
+  // (kept with the number of results it was asked for with, so it doesn't take another render)
+  const [shownMore, setShownMore] = useState({ count: 0, limit: rowLimitStep });
+  const rowLimit = shownMore.count === sorted.length ? shownMore.limit : rowLimitStep;
+  const showRows = (limit: number) => setShownMore({ count: sorted.length, limit });
   const shownResults = sorted.length > rowLimit ? sorted.slice(0, rowLimit) : sorted;
   /**
    * @param compact for narrow columns: the arrow sits in the cell's left padding instead of
@@ -1753,11 +1751,11 @@ function ResultsTable({
             Showing the first {shownResults.length.toLocaleString()} of{" "}
             {sorted.length.toLocaleString()} rows
           </Typography>
-          <Button size="small" onClick={() => setRowLimit(rowLimit + rowLimitStep)}>
+          <Button size="small" onClick={() => showRows(rowLimit + rowLimitStep)}>
             Show {Math.min(rowLimitStep, sorted.length - rowLimit).toLocaleString()} more
           </Button>
           <Tooltip describeChild title="Many rows can make the page slow or run out of memory">
-            <Button size="small" color="inherit" onClick={() => setRowLimit(sorted.length)}>
+            <Button size="small" color="inherit" onClick={() => showRows(sorted.length)}>
               Show all
             </Button>
           </Tooltip>
