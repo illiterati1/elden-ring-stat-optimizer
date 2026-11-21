@@ -16,7 +16,8 @@ const settingKeys = <K extends keyof AppState>(...keys: K[]) => keys;
 
 /**
  * The settings a row's values depend on besides its weapon and attack: kept with a frozen pin, shown
- * in its tooltip, and restored from it. (Not the attack, which the pin has, or what's shown.)
+ * in its tooltip, and restored from it. (Not the attack or upgrade level, which the pin has, or
+ * what's shown.)
  */
 export const pinSettingKeys = settingKeys(
   "startingClass",
@@ -26,7 +27,6 @@ export const pinSettingKeys = settingKeys(
   "meetRequirements",
   "fastMode",
   "objective",
-  "upgradeLevel",
   "twoHanding",
   "buffs",
   "stackTier",
@@ -63,14 +63,19 @@ export function getPinSettings(appState: AppState): PinSettings {
   return Object.fromEntries(pinSettingKeys.map((key) => [key, appState[key]])) as PinSettings;
 }
 
+/** A row's attack: one of the attacks, or ashAttack for a skill */
+export type RowAttack = AppState["attacks"][number] | typeof ashAttack;
+
 /** A row kept at the top of the table until it's unpinned: a weapon with an attack */
 export interface Pin {
   readonly id: string;
   /** The weapon's full name as the table shows it (with its affinity, and ammunition if ranged) */
   readonly weaponName: string;
-  readonly attack: AppState["attack"];
+  readonly attack: RowAttack;
   /** The Ash of War picker's choice, for the "ash" attack */
   readonly ashOfWar: string;
+  /** On the regular scale (+25), like the upgrade levels picked */
+  readonly upgradeLevel: number;
   /** Which version of the weapon's fixed skill (its short label), if it has several */
   readonly skillVariant?: string;
   /** Shown after the weapon's name, e.g. "R1 chain" or the skill's name */
@@ -146,18 +151,44 @@ export function restoreRequest(
   };
 }
 
-/** Identifies a row: its weapon (and fixed skill version) with its attack */
+/** What a row is besides its weapon and fixed skill version */
+export interface RowChoice {
+  readonly attack: RowAttack;
+  readonly ashOfWar: string;
+  readonly upgradeLevel: number;
+}
+
+/**
+ * Identifies a row: its weapon (and fixed skill version) with its attack and upgrade level. It's
+ * JSON, so the row's choices can be read back from it (parseRowKey).
+ */
 export function getPinKey(
   weaponName: string,
   skillVariant: string | undefined,
-  attack: AppState["attack"],
-  ashOfWar: string,
+  { attack, ashOfWar, upgradeLevel }: RowChoice,
 ) {
-  return [weaponName, skillVariant ?? "", attack, attack === ashAttack ? ashOfWar : ""].join("\n");
+  return JSON.stringify([
+    weaponName,
+    skillVariant ?? "",
+    attack,
+    attack === ashAttack ? ashOfWar : "",
+    upgradeLevel,
+  ]);
 }
 
-export const getKeyOfPin = (pin: Pin) =>
-  getPinKey(pin.weaponName, pin.skillVariant, pin.attack, pin.ashOfWar);
+/** @returns the choices of the row with this key (getPinKey) */
+export function parseRowKey(key: string): RowChoice {
+  const [, , attack, ashOfWar, upgradeLevel] = JSON.parse(key) as [
+    string,
+    string,
+    RowAttack,
+    string,
+    number,
+  ];
+  return { attack, ashOfWar, upgradeLevel };
+}
+
+export const getKeyOfPin = (pin: Pin) => getPinKey(pin.weaponName, pin.skillVariant, pin);
 
 /** The chart's key for a pinned row (chartWeapons), which can't be a weapon name */
 export const getPinChartKey = (pin: Pin) => `pin:${pin.id}`;
@@ -171,6 +202,7 @@ export function isPin(value: unknown): value is Pin {
     typeof pin.weaponName === "string" &&
     typeof pin.attack === "string" &&
     typeof pin.ashOfWar === "string" &&
+    typeof pin.upgradeLevel === "number" &&
     typeof pin.label === "string" &&
     (pin.frozen == null ||
       (typeof pin.frozen.request === "object" && typeof pin.frozen.settings === "object"))
@@ -217,7 +249,7 @@ export function describePinSettings(
   frozen: PinSettings,
   current: PinSettings,
   defaults: PinSettings,
-  attack: AppState["attack"],
+  attack: RowAttack,
   chain: boolean,
   allBuffs: readonly Buff[],
 ): PinSettingLine[] {
@@ -287,7 +319,6 @@ export function describePinSettings(
       value: (s) =>
         objectiveOptions.find(([value]) => value === s.objective)?.[1] ?? String(s.objective),
     },
-    { label: "Upgrade level", value: (s) => `+${s.upgradeLevel}`, always: true },
     { label: "Two handing", value: (s) => yesNo(s.twoHanding), always: true },
     {
       label: "Buffs",

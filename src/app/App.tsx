@@ -23,6 +23,8 @@ import {
   type Attributes,
 } from "../calculator/calculator.ts";
 import {
+  getWeaponUpgradeLevel,
+  maxRegularUpgradeLevel,
   scadutreeBlessingRates,
   type BuffEffect,
   type BuildRequest,
@@ -60,6 +62,7 @@ import BuffSettings from "./BuffSettings.tsx";
 import ReportIssueDialog from "./ReportIssueDialog.tsx";
 import useAshes, {
   ashAttack,
+  fixedSkillsChoice,
   buffedR2Skills,
   getAshAttack,
   getAshAttacks,
@@ -99,11 +102,13 @@ import {
   getPinKey,
   getFrozenKey,
   getPinSettings,
+  parseRowKey,
   pinSettingKeys,
   restoreRequest,
   storeRequest,
   type Pin,
   type PinSettings,
+  type RowChoice,
 } from "./pins.ts";
 import ValueChart from "./ValueChart.tsx";
 import { getResultStatus, sortResults } from "./results.ts";
@@ -131,11 +136,21 @@ const skillDebuffs: Partial<Record<string, string>> = { "Shriek of Milos": "Shri
  * (tested with a Rapier), and the Pickaxe, a Great Hammer with greataxes' animations
  * (wepmotionCategory 32), with greataxes (tested with the Rusted Anchor)
  */
-/** Identifies a request's result: the weapon, and which version of its fixed skill */
-const getRequestKey = (request: BuildRequest) =>
-  `${request.weapon.name}\n${request.skillVariant?.short ?? ""}`;
-const getResultKey = (result: BuildResult) =>
-  `${result.weaponName}\n${result.skillVariant?.short ?? ""}`;
+/**
+ * Identifies a request's result: its row (the weapon, which version of its fixed skill, the attack,
+ * and the upgrade level)
+ */
+const getRequestKey = (request: BuildRequest) => request.row?.id ?? request.weapon.name;
+const getResultKey = (result: BuildResult) => result.row?.id ?? result.weaponName;
+
+/**
+ * A weapon's name with its upgrade level, on its own scale (e.g. +10 for a somber weapon), kept
+ * together so the level doesn't wrap onto a line alone
+ */
+const withUpgradeLevel = (weapon: Weapon | undefined, name: string, regularUpgradeLevel: number) =>
+  `${name}\u00a0+${
+    weapon ? getWeaponUpgradeLevel(weapon, regularUpgradeLevel) : regularUpgradeLevel
+  }`;
 
 const powerstanceExceptions: { weapon: string; weaponType: WeaponType; leftHandOnly?: true }[] = [
   { weapon: "Wakizashi", weaponType: WeaponType.KATANA, leftHandOnly: true },
@@ -189,7 +204,7 @@ export default function App() {
     catalyst: catalystName,
     catalystUpgradeLevel,
     equipWeight,
-    upgradeLevel,
+    upgradeLevels: savedUpgradeLevels,
     twoHanding,
     showScaling,
     showStatus: savedShowStatus,
@@ -229,10 +244,10 @@ export default function App() {
     radahnBeaten,
     scadutreeBlessing: savedScadutreeBlessing,
     scadutreeBlessingLevel,
-    attack: savedAttack,
+    attacks: savedAttacks,
     chainWeight,
     sumChains,
-    ashOfWar: savedAshOfWar,
+    ashesOfWar: savedAshesOfWar,
     offhandWeapon: offhandWeaponName,
     offhandUpgradeLevel,
     offhandAffinityId,
@@ -409,7 +424,7 @@ export default function App() {
   }, [weapons, pickedWeapons]);
 
   // Attacks some picked weapon has (all of them with none picked). With an enemy picked, only the
-  // ripostes it can take are offered. An attack that isn't one of the choices becomes the first.
+  // ripostes it can take are offered.
   const attackChoices = useMemo(
     () =>
       allAttacks.filter(
@@ -428,14 +443,29 @@ export default function App() {
   );
   // Spell scaling doesn't use an attack
   const attackActive = objective !== "spellScaling";
-  const attack =
-    savedAttack === ashAttack || (attackChoices as readonly string[]).includes(savedAttack)
-      ? savedAttack
-      : riposteAttacks.has(savedAttack)
-      ? attackChoices.find((attackName) => riposteAttacks.has(attackName)) ??
-        attackChoices[0] ??
-        "R1"
-      : attackChoices[0] ?? "R1";
+  // The picked attacks that are choices: a riposte the picked enemy can't take becomes one it can
+  const attacks = useMemo(
+    (): AppState["attacks"] => [
+      ...new Set(
+        savedAttacks.flatMap((attackName): AppState["attacks"][number][] =>
+          (attackChoices as readonly string[]).includes(attackName)
+            ? [attackName]
+            : riposteAttacks.has(attackName)
+            ? attackChoices.filter((choice) => riposteAttacks.has(choice)).slice(0, 1)
+            : [],
+        ),
+      ),
+    ],
+    [savedAttacks, attackChoices],
+  );
+  // (each once, lowest first)
+  const upgradeLevels = useMemo(
+    () =>
+      [...new Set(savedUpgradeLevels)]
+        .filter((level) => level >= 0 && level <= maxRegularUpgradeLevel)
+        .sort((a, b) => a - b),
+    [savedUpgradeLevels],
+  );
   // Skills some picked weapon can use: an Ash of War it can take, or its own built-in skill (all
   // of them with none picked). Weapons with a fixed skill use it whichever is picked.
   const ashChoices = useMemo(() => {
@@ -451,10 +481,21 @@ export default function App() {
     }
     return allAshChoices.filter(({ value }) => usable.has(parseAshChoice(value)[0]));
   }, [allAshChoices, pickedWeaponList, ashes]);
-  // The saved Ash of War, or the first if it isn't one of the choices (e.g. from an earlier version)
-  const ashOfWar = ashChoices.some(({ value }) => value === savedAshOfWar)
-    ? savedAshOfWar
-    : ashChoices[0]?.value ?? "";
+  // The picked skills that are choices
+  const ashesOfWar = useMemo(
+    () =>
+      savedAshesOfWar.filter(
+        (choice) =>
+          choice === fixedSkillsChoice || ashChoices.some(({ value }) => value === choice),
+      ),
+    [savedAshesOfWar, ashChoices],
+  );
+  const ashLabels = useMemo(
+    () => new Map(ashChoices.map(({ value, label }) => [value, label])),
+    [ashChoices],
+  );
+  // With more than one attack or skill, each row's name says which it is
+  const showRowLabels = attackActive && attacks.length + ashesOfWar.length > 1;
 
   // Each hit's physical damage type picks which physical negation applies. Standard is only
   // used for a weapon without attack data.
@@ -592,9 +633,9 @@ export default function App() {
     return (
       weapon: Weapon,
       unavailableReason: string | undefined,
-      attack: AppState["attack"],
-      ashOfWar: string,
+      choice: RowChoice,
     ): BuildRequest[] => {
+      const { attack, ashOfWar, upgradeLevel } = choice;
       // The two handing setting doesn't apply to weapons that can't be two handed
       const weaponTwoHanding =
         twoHanding &&
@@ -734,6 +775,13 @@ export default function App() {
         const buffUpkeep = weaponBuffApplies && !ownWeaponBuff ? weaponBuff?.upkeep : undefined;
         const upkeptAttackData =
           attackData && buffUpkeep ? { ...attackData, buffUpkeep } : attackData;
+        // Named with its attack when there are several: the attack, or the skill's name
+        const label = !showRowLabels
+          ? undefined
+          : attack !== ashAttack
+          ? attack
+          : variant?.label ?? attackData?.fixedSkill ?? ashLabels.get(ashOfWar) ?? "Skill";
+        const name = withUpgradeLevel(weapon, weapon.name, upgradeLevel);
         return {
           unavailableReason:
             unavailableReason ??
@@ -823,6 +871,11 @@ export default function App() {
           meetRequirements,
           fast: fastMode,
           ...(variant && { skillVariant: variant }),
+          row: {
+            id: getPinKey(weapon.name, variant?.short, choice),
+            // (kept together with the weapon's last word, so it doesn't wrap onto a line alone)
+            name: label ? `${name}\u00a0·\u00a0${label}` : name,
+          },
         };
       });
     };
@@ -842,7 +895,8 @@ export default function App() {
     offhandWeaponData,
     offhandUpgradeLevel,
     offhandBuffEffects,
-    upgradeLevel,
+    showRowLabels,
+    ashLabels,
     twoHanding,
     bonusAttributes,
     classAttributes,
@@ -957,9 +1011,50 @@ export default function App() {
       return [{ weapon: standard, unavailableReason: "No affinity selected" }];
     });
 
+    // A row for each upgrade level with each attack, and each skill the weapon can use: its own
+    // fixed skill, or the Ashes of War picked. Spell scaling doesn't use an attack.
+    type Choice = Omit<RowChoice, "upgradeLevel">;
+    const getChoices = (weapon: Weapon): Choice[] => {
+      if (!attackActive) return [{ attack: attacks[0] ?? "R1", ashOfWar: "" }];
+      const info = ashes.weapons[weapon.weaponName];
+      const skills =
+        info && !info.canChange
+          ? ashesOfWar.includes(fixedSkillsChoice)
+            ? [""]
+            : []
+          : ashesOfWar.filter((choice) => choice !== fixedSkillsChoice);
+      return [
+        ...attacks.map((attackName): Choice => ({ attack: attackName, ashOfWar: "" })),
+        ...skills.map((ashOfWar): Choice => ({ attack: ashAttack, ashOfWar })),
+      ];
+    };
     return [...weaponsWithAmmo, ...noAffinityWeapons, ...unbuffableWeapons].flatMap(
-      ({ weapon, unavailableReason }) =>
-        getWeaponRequests(weapon, unavailableReason, attack, ashOfWar),
+      ({ weapon, unavailableReason }) => {
+        const choices = getChoices(weapon);
+        // Somber weapons' levels are coarser, so several picked levels can be the same one
+        const seen = new Set<string>();
+        const weaponRequests = upgradeLevels.flatMap((upgradeLevel) =>
+          choices.flatMap((choice) =>
+            getWeaponRequests(weapon, unavailableReason, { ...choice, upgradeLevel }).filter(
+              (request) => {
+                const key = JSON.stringify([
+                  getWeaponUpgradeLevel(weapon, upgradeLevel),
+                  choice.attack,
+                  choice.ashOfWar,
+                  request.skillVariant?.short,
+                ]);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+              },
+            ),
+          ),
+        );
+        // Only the attacks and skills the weapon has, unless it has none of them, so the reason
+        // is shown
+        const available = weaponRequests.filter((request) => !request.unavailableReason);
+        return available.length ? available : weaponRequests.slice(0, 1);
+      },
     );
   }, [
     weapons,
@@ -972,8 +1067,10 @@ export default function App() {
     onlyBuffable,
     weaponTypes,
     getWeaponRequests,
-    attack,
-    ashOfWar,
+    attackActive,
+    attacks,
+    ashesOfWar,
+    upgradeLevels,
   ]);
   // Filtered before optimizing, so weapons filtered out aren't calculated at all. (Top N needs the
   // results, so it's applied after sorting.)
@@ -1007,12 +1104,15 @@ export default function App() {
     filterDamageTypes,
     filterStatusTypes,
     maxWeight,
+    savedUpgradeLevels,
+    savedAttacks,
+    savedAshesOfWar,
   ];
   const lastSelection = useRef(selection);
   useEffect(() => {
     if (selection.every((value, i) => value === lastSelection.current[i])) return;
     lastSelection.current = selection;
-    const requested = new Set(requests.map((request) => request.weapon.name));
+    const requested = new Set(requests.map(getRequestKey));
     const kept = chartWeapons.filter((name) => requested.has(name) || name.startsWith("pin:"));
     if (kept.length < chartWeapons.length) updateAppState({ chartWeapons: kept });
   });
@@ -1095,7 +1195,7 @@ export default function App() {
             : (() => {
                 const weapon = findPinWeapon(pin.weaponName);
                 return weapon
-                  ? getWeaponRequests(weapon, undefined, pin.attack, pin.ashOfWar).find(
+                  ? getWeaponRequests(weapon, undefined, pin).find(
                       (candidate) => candidate.skillVariant?.short === pin.skillVariant,
                     )
                   : undefined;
@@ -1196,7 +1296,14 @@ export default function App() {
         pin,
         result,
         // (kept together with the weapon's last word, so it doesn't wrap onto a line alone)
-        name: pin.label ? `${pin.weaponName}\u00a0·\u00a0${pin.label}` : pin.weaponName,
+        name: (() => {
+          const name = withUpgradeLevel(
+            findPinWeapon(pin.weaponName),
+            pin.weaponName,
+            pin.upgradeLevel,
+          );
+          return pin.label ? `${name}\u00a0·\u00a0${pin.label}` : name;
+        })(),
         chartKey: getPinChartKey(pin),
         ...(!pin.frozen && {
           freezeBlocked: getFreezeBlocked(pinResultRequestsById.get(pin.id), frozenKeys),
@@ -1244,6 +1351,8 @@ export default function App() {
     pinResultSettings,
     allBuffs,
     tooltipTimings,
+    weaponsByName,
+    ammo,
     effectiveSortBy,
     effectiveReverse,
     sortHidden,
@@ -1251,51 +1360,40 @@ export default function App() {
   ]);
   // (the same empty array while there are no pins)
   const pinnedRows = useStableArray(unstablePinnedRows);
-  // The table's rows that are pinned too: with the chosen attack, a live pin's are the same row. (A
-  // frozen pin isn't, so the row can be pinned again to compare it with the current settings.)
+  // The table's rows that are pinned too: a live pin's are the same row. (A frozen pin isn't, so the
+  // row can be pinned again to compare it with the current settings.)
   const rowPins = useMemo(() => {
     const pinsByKey = new Map(
       pins.filter((pin) => !pin.frozen).map((pin) => [getKeyOfPin(pin), pin]),
     );
     return new Map(
       sortedResults.flatMap((result): [BuildResult, Pin][] => {
-        const pin = pinsByKey.get(
-          getPinKey(result.weaponName, result.skillVariant?.short, attack, ashOfWar),
-        );
+        const pin = result.row && pinsByKey.get(result.row.id);
         return pin ? [[result, pin]] : [];
       }),
     );
-  }, [pins, sortedResults, attack, ashOfWar]);
+  }, [pins, sortedResults]);
 
   // Pinning, freezing, and restoring a frozen pin's settings, with the latest state (so the table
   // gets the same functions every time)
-  const latest = useRef({
-    pins,
-    chartWeapons,
-    pinRequests,
-    appState,
-    attack,
-    ashOfWar,
-    ashChoices,
-  });
-  latest.current = { pins, chartWeapons, pinRequests, appState, attack, ashOfWar, ashChoices };
+  const latest = useRef({ pins, chartWeapons, pinRequests, appState, ashLabels });
+  latest.current = { pins, chartWeapons, pinRequests, appState, ashLabels };
   const [pinActions] = useState(() => ({
     pin: (result: BuildResult) => {
-      const { pins, attack, ashOfWar, ashChoices, appState } = latest.current;
+      const { pins, ashLabels, appState } = latest.current;
+      if (!result.row) return;
+      const choice = parseRowKey(result.row.id);
+      const { attack, ashOfWar } = choice;
       const label =
         appState.objective === "spellScaling"
           ? ""
           : attack === ashAttack
-          ? result.skillVariant?.label ??
-            result.fixedSkill ??
-            ashChoices.find(({ value }) => value === ashOfWar)?.label ??
-            "Skill"
+          ? result.skillVariant?.label ?? result.fixedSkill ?? ashLabels.get(ashOfWar) ?? "Skill"
           : attack;
       const pin: Pin = {
         id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
         weaponName: result.weaponName,
-        attack,
-        ashOfWar,
+        ...choice,
         ...(result.skillVariant && { skillVariant: result.skillVariant.short }),
         label,
       };
@@ -1343,11 +1441,22 @@ export default function App() {
       });
     },
     restore: (id: string) => {
-      const settings = latest.current.pins.find((pin) => pin.id === id)?.frozen?.settings;
-      // Pins frozen before a limit was added don't have it
-      if (settings) {
-        updateAppState({ ...settings, limits: { ...defaultAppState.limits, ...settings.limits } });
-      }
+      const pin = latest.current.pins.find((other) => other.id === id);
+      if (!pin?.frozen) return;
+      // (pins frozen when there was one upgrade level have it in their settings)
+      const { upgradeLevel: _, ...settings } = pin.frozen.settings as PinSettings & {
+        upgradeLevel?: number;
+      };
+      // Its upgrade level is picked too, so its row is in the table
+      const { upgradeLevels } = latest.current.appState;
+      updateAppState({
+        ...settings,
+        // Pins frozen before a limit was added don't have it
+        limits: { ...defaultAppState.limits, ...settings.limits },
+        ...(!upgradeLevels.includes(pin.upgradeLevel) && {
+          upgradeLevels: [...upgradeLevels, pin.upgradeLevel].sort((a, b) => a - b),
+        }),
+      });
     },
   }));
 
@@ -1381,7 +1490,7 @@ export default function App() {
   const chartedResults = useMemo(
     () =>
       sortedResults.filter(
-        (result) => result.applicable && chartWeapons.includes(result.weaponName),
+        (result) => result.applicable && chartWeapons.includes(getResultKey(result)),
       ),
     [sortedResults, chartWeapons],
   );
@@ -1417,9 +1526,10 @@ export default function App() {
   const pinDpsCurves = useDpsCurves(pinPoolRef, pinDpsRequests);
   const chartResults = chartedResults.map((result) => ({
     ...result,
-    ...(result.skillVariant && {
-      weaponName: `${result.weaponName} (${result.skillVariant.short})`,
-    }),
+    weaponName:
+      (result.row?.name ?? result.weaponName) +
+      // (named with its skill already when rows are named with their attacks)
+      (result.skillVariant && !showRowLabels ? ` (${result.skillVariant.short})` : ""),
     // (until they're worked out, the last ones for the weapon)
     ...(showDps && {
       curve: {
@@ -1462,14 +1572,34 @@ export default function App() {
     (objective !== "spellScaling" &&
       sortedResults.some((result) => (result.attackSteps?.flat().length ?? 0) > 1));
   const objectiveLabel = objectiveOptions.find(([value]) => value === objective)![1];
-  // The Ash of War isn't named, since weapons with a fixed skill use their own (named by their hits)
   // One-off attacks (running, backstep, guard counters, critical hits) don't say when they could
   // start again
-  const tooltipTimingsShown = useMemo(
-    () => (oneOffAttacks.has(attack) ? { ...tooltipTimings, nextChain: false } : tooltipTimings),
-    [attack, tooltipTimings],
+  const oneOffTimings = useMemo(() => ({ ...tooltipTimings, nextChain: false }), [tooltipTimings]);
+  // What each row's attack is shown with
+  const rowAttacks = useMemo(
+    () =>
+      new Map(
+        sortedResults.map((result) => {
+          const attack = result.row ? parseRowKey(result.row.id).attack : "R1";
+          const oneOffAttack = oneOffAttacks.has(attack);
+          return [
+            result,
+            {
+              skill: attack === ashAttack,
+              oneOffAttack,
+              hitsNote: attackTimingNotes[attack],
+              tooltipTimings: oneOffAttack ? oneOffTimings : tooltipTimings,
+            },
+          ];
+        }),
+      ),
+    [sortedResults, oneOffTimings, tooltipTimings],
   );
-  const valueLabel = objectiveLabel + (attackMode && attack !== ashAttack ? ` (${attack})` : "");
+  // The attack is named when there's one, but not an Ash of War, since weapons with a fixed skill use
+  // their own (named by their hits)
+  const valueLabel =
+    objectiveLabel +
+    (attackMode && attacks.length === 1 && !ashesOfWar.length ? ` (${attacks[0]})` : "");
   const pointLabel = objective === "spellScaling" ? "scaling" : "damage";
   // As the table's header labels it, without the attack, e.g. "DPS" or "Total damage"
   const chartValueLabel = showDps ? "DPS" : objectiveLabel;
@@ -1500,7 +1630,7 @@ export default function App() {
         onChange={updateAppState}
       />
       <BuildSettings
-        upgradeLevel={upgradeLevel}
+        upgradeLevels={upgradeLevels}
         twoHanding={twoHanding}
         showScaling={showScaling}
         showStatus={savedShowStatus}
@@ -1514,11 +1644,11 @@ export default function App() {
         onlyBuffable={onlyBuffable}
         weaponFilters={weaponFilters}
         weaponTypes={weaponTypes}
-        attack={attack}
+        attacks={attacks}
         chainWeight={chainWeight}
         sumChains={sumChains}
         hasChain={requests.some((request) => request.attack?.chain)}
-        ashOfWar={ashOfWar}
+        ashesOfWar={ashesOfWar}
         ashChoices={ashChoices}
         attackChoices={attackChoices}
         affinityIds={affinityIds}
@@ -1544,7 +1674,7 @@ export default function App() {
         spellScaling={spellScalingMode}
         tooltipTimings={tooltipTimings}
         chainLimit={chainLimit}
-        mounted={mountedAttacks.has(attack)}
+        mounted={attacks.some((attackName) => mountedAttacks.has(attackName))}
         closedAlerts={closedAlerts}
         onChange={updateAppState}
       />
@@ -1558,7 +1688,9 @@ export default function App() {
         equipWeight={equipWeight}
         health={health}
         leftHandWeapon={
-          attack.startsWith("Powerstance") && offhandWeaponData ? offhandWeaponData.name : null
+          attacks.some((attackName) => attackName.startsWith("Powerstance")) && offhandWeaponData
+            ? offhandWeaponData.name
+            : null
         }
         pickedWeapons={pickedWeapons}
         closedAlerts={closedAlerts}
@@ -1693,10 +1825,12 @@ export default function App() {
                         showStancePerStamina={showStancePerStamina}
                         showPotential={showPotential}
                         showDps={showDps}
-                        oneOffAttack={oneOffAttacks.has(attack)}
-                        tooltipTimings={tooltipTimingsShown}
-                        skill={attack === ashAttack}
-                        hitsNote={attackTimingNotes[attack]}
+                        oneOffAttack={
+                          attacks.length > 0 &&
+                          !ashesOfWar.length &&
+                          attacks.every((attackName) => oneOffAttacks.has(attackName))
+                        }
+                        rowAttacks={rowAttacks}
                         showRequirements={showRequirements}
                         sortBy={sortBy}
                         reverse={reverse}
@@ -1706,9 +1840,13 @@ export default function App() {
                     </Stack>
                   ) : (
                     <Typography color="text.secondary" p={2}>
-                      {validSelectedWeapons.length > 0 || weaponTypes.length > 0
-                        ? "Pick at least one affinity, or a weapon that can't be infused."
-                        : "Pick some weapons or weapon types to compare."}
+                      {validSelectedWeapons.length === 0 && weaponTypes.length === 0
+                        ? "Pick some weapons or weapon types to compare."
+                        : upgradeLevels.length === 0
+                        ? "Pick at least one weapon level."
+                        : attackActive && attacks.length === 0 && ashesOfWar.length === 0
+                        ? "Pick at least one attack or Ash of War."
+                        : "Pick at least one affinity, or a weapon that can't be infused."}
                     </Typography>
                   )}
                 </Box>

@@ -10,7 +10,7 @@ import {
 import type { Defense } from "../optimizer/defense.ts";
 import type { Objective } from "../optimizer/optimizer.ts";
 import type { AttackChoice } from "./useMovesets.ts";
-import type { ashAttack } from "./useAshes.ts";
+import { ashAttack, fixedSkillsChoice } from "./useAshes.ts";
 import type { StackTier } from "./useBuffs.ts";
 import { defaultWeaponFilters, type WeaponFilters } from "./filters.ts";
 import { isPin, type Pin } from "./pins.ts";
@@ -107,7 +107,8 @@ export interface AppState {
   readonly equipWeight: number;
   /** The character's HP percentage, for buffs that depend on it */
   readonly health: number;
-  readonly upgradeLevel: number;
+  /** The weapon upgrade levels to compare, on the regular scale (+25), each a row of its own */
+  readonly upgradeLevels: readonly number[];
   readonly twoHanding: boolean;
   readonly showScaling: boolean;
   readonly showStatus: boolean;
@@ -194,16 +195,19 @@ export interface AppState {
    */
   readonly radahnBeaten: boolean;
   readonly showFriendlyEnemies: boolean;
-  /** An attack whose motion values are used, "base" for 100 motion values, or "ash" for a skill */
-  readonly attack: AttackChoice | typeof ashAttack;
-  /** For the "ash" attack, the Ash of War picker's choice (the first choice if empty or unknown) */
-  readonly ashOfWar: string;
+  /** The attacks to compare, each a row of its own for every weapon */
+  readonly attacks: readonly AttackChoice[];
+  /**
+   * The skills to compare, each a row of its own for every weapon that can use it: Ash of War
+   * picker choices, and fixedSkillsChoice for weapons' fixed skills
+   */
+  readonly ashesOfWar: readonly string[];
   /**
    * For powerstance attacks, the off hand weapon (a base weapon name), or null for the same weapon in
    * both hands
    */
   readonly offhandWeapon: string | null;
-  /** The off hand weapon's upgrade level, on the regular scale like upgradeLevel */
+  /** The off hand weapon's upgrade level, on the regular scale like upgradeLevels */
   readonly offhandUpgradeLevel: number;
   /** The off hand weapon's affinity, or null for its standard (or unique) version */
   readonly offhandAffinityId: number | null;
@@ -267,7 +271,7 @@ export const defaultAppState: AppState = {
   catalystUpgradeLevel: 25,
   equipWeight: minEquipWeight,
   health: 100,
-  upgradeLevel: 25,
+  upgradeLevels: [25],
   twoHanding: false,
   showScaling: false,
   showStatus: false,
@@ -331,8 +335,8 @@ export const defaultAppState: AppState = {
   ngPlus: 0,
   radahnBeaten: false,
   showFriendlyEnemies: false,
-  attack: "R1",
-  ashOfWar: "",
+  attacks: ["R1"],
+  ashesOfWar: [],
   offhandWeapon: null,
   offhandUpgradeLevel: 25,
   offhandAffinityId: null,
@@ -381,15 +385,65 @@ function getStoredLevelLimit(stored: Record<string, unknown> | undefined): Level
   };
 }
 
+/** An attack saved by an earlier version, or undefined if it's one that's gone */
+function getStoredAttack(attack: string): AttackChoice | undefined {
+  // Earlier versions had a custom motion value instead of the base attack (the base attack is
+  // gone: its ranged weapons' shot is the Standard Shot, and others' R1)
+  if (attack === "custom" || attack === "base" || attack === ashAttack) return undefined;
+  return renamedAttacks[attack] ?? (attack as AttackChoice);
+}
+
+/**
+ * Earlier versions had one attack ("ash" for a skill, with one Ash of War, which weapons with a
+ * fixed skill ignored) and one upgrade level
+ */
+function getStoredChoices(stored: {
+  attacks?: unknown;
+  ashesOfWar?: unknown;
+  upgradeLevels?: unknown;
+  attack?: string;
+  ashOfWar?: string;
+  upgradeLevel?: number;
+}): Pick<AppState, "attacks" | "ashesOfWar" | "upgradeLevels"> {
+  const upgradeLevels = Array.isArray(stored.upgradeLevels)
+    ? (stored.upgradeLevels as number[])
+    : [stored.upgradeLevel ?? defaultAppState.upgradeLevels[0]];
+  if (Array.isArray(stored.attacks)) {
+    return {
+      attacks: (stored.attacks as string[]).flatMap((attack) => getStoredAttack(attack) ?? []),
+      ashesOfWar: Array.isArray(stored.ashesOfWar) ? (stored.ashesOfWar as string[]) : [],
+      upgradeLevels,
+    };
+  }
+  if (stored.attack === ashAttack) {
+    return {
+      attacks: [],
+      ashesOfWar: [fixedSkillsChoice, ...(stored.ashOfWar ? [stored.ashOfWar] : [])],
+      upgradeLevels,
+    };
+  }
+  return {
+    attacks: [(stored.attack && getStoredAttack(stored.attack)) || "R1"],
+    ashesOfWar: [],
+    upgradeLevels,
+  };
+}
+
 function getInitialAppState(): AppState {
   try {
-    const stored = JSON.parse(localStorage.getItem(storageKey) ?? "{}") as Omit<
-      Partial<AppState>,
-      "limits"
-    > & { limits?: Record<string, unknown> & Partial<LimitSettings> };
+    const { attack, ashOfWar, upgradeLevel, ...stored } = JSON.parse(
+      localStorage.getItem(storageKey) ?? "{}",
+    ) as Omit<Partial<AppState>, "limits"> & {
+      limits?: Record<string, unknown> & Partial<LimitSettings>;
+      attack?: string;
+      ashOfWar?: string;
+      upgradeLevel?: number;
+    };
+    const choices = getStoredChoices({ ...stored, attack, ashOfWar, upgradeLevel });
     return {
       ...defaultAppState,
       ...stored,
+      ...choices,
       // Only known limits, since their settings change between versions
       limits: {
         maxLevels: getStoredLevelLimit(stored.limits),
@@ -413,14 +467,6 @@ function getInitialAppState(): AppState {
       weaponFilters: { ...defaultAppState.weaponFilters, ...stored.weaponFilters },
       chainLimit: { ...defaultAppState.chainLimit, ...stored.chainLimit },
       physicalNegation: { ...defaultAppState.physicalNegation, ...stored.physicalNegation },
-      // Earlier versions had a custom motion value instead of the base attack
-      // (the base attack is gone: its ranged weapons' shot is the Standard Shot, and others' R1)
-      attack:
-        stored.attack &&
-        stored.attack !== ("custom" as string) &&
-        stored.attack !== ("base" as string)
-          ? renamedAttacks[stored.attack as string] ?? stored.attack
-          : "R1",
       // Great Arrows and Radahn's Spears were one choice before Radahn's Spears got the Lion
       // Greatbow's bonus
       selectedAmmo: (stored.selectedAmmo ?? defaultAppState.selectedAmmo).flatMap((key) =>
@@ -428,7 +474,22 @@ function getInitialAppState(): AppState {
           ? ["greatarrow:Great Arrow", "greatarrow:Radahn's Spear"]
           : [key],
       ),
-      pins: Array.isArray(stored.pins) ? stored.pins.filter(isPin) : [],
+      // Pins from before several upgrade levels could be compared had the one level
+      pins: Array.isArray(stored.pins)
+        ? stored.pins
+            .map((pin: Pin) =>
+              pin && typeof pin.upgradeLevel !== "number"
+                ? {
+                    ...pin,
+                    upgradeLevel:
+                      pin.frozen?.request.regularUpgradeLevel ??
+                      upgradeLevel ??
+                      defaultAppState.upgradeLevels[0],
+                  }
+                : pin,
+            )
+            .filter(isPin)
+        : [],
       // Sort columns can be removed between versions
       sortBy: isSortBy(stored.sortBy) ? stored.sortBy : defaultAppState.sortBy,
     };

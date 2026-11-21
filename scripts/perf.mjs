@@ -168,10 +168,14 @@ try {
     {
       name: "Weapon level picker",
       prepare: async () => {
-        await page.getByLabel("Weapon Level").click();
+        await page.getByRole("combobox", { name: "Weapon Levels" }).click();
         await page.getByRole("option").first().waitFor();
       },
-      act: (i) => page.getByRole("option", { name: i % 2 ? /^\+25 / : /^\+24 / }).click(),
+      // Adds +24 beside +25, then takes it off again, closing the picker each time
+      act: async () => {
+        await page.getByRole("option", { name: /^\+24 / }).click();
+        await page.keyboard.press("Escape");
+      },
     },
   ].filter((s) => !args.only || s.name.toLowerCase().includes(args.only.toLowerCase()));
 

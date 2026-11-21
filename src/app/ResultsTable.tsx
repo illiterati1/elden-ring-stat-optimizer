@@ -72,6 +72,21 @@ interface RowOptions {
   planStats: Stats;
 }
 
+/** What a row's attack is shown with */
+export interface RowAttack {
+  /** The attack is a skill (Ash of War) */
+  skill: boolean;
+  /**
+   * The attack is done once from a run, a backstep, a block, or a critical hit (oneOffAttacks): its
+   * values per second only count the attack itself, not setting it up again
+   */
+  oneOffAttack: boolean;
+  /** A note on the attack's timing, shown under its hits */
+  hitsNote?: string;
+  /** Timings shown in the hits tooltip */
+  tooltipTimings: TooltipTimings;
+}
+
 /** The actions on pinned rows, from App */
 export interface PinActions {
   pin: (result: BuildResult) => void;
@@ -180,16 +195,12 @@ interface Props {
   /** Show the chosen attack's damage per second */
   showDps: boolean;
   /**
-   * The chosen attack is done once from a run, a backstep, a block, or a critical hit
+   * Every row's attack is done once from a run, a backstep, a block, or a critical hit
    * (oneOffAttacks): its values per second only count the attack itself, not setting it up again
    */
   oneOffAttack: boolean;
-  /** Timings shown in the hits tooltip */
-  tooltipTimings: TooltipTimings;
-  /** The chosen attack is a skill (Ash of War) */
-  skill: boolean;
-  /** A note on the chosen attack's timing, shown under its hits */
-  hitsNote?: string;
+  /** Each result's attack */
+  rowAttacks: ReadonlyMap<BuildResult, RowAttack>;
   sortBy: AppState["sortBy"];
   reverse: AppState["reverse"];
   /** Plans a row's final stats */
@@ -753,9 +764,7 @@ function ResultsTable({
   showPotential,
   showDps,
   oneOffAttack,
-  tooltipTimings,
-  skill,
-  hitsNote,
+  rowAttacks,
   sortBy,
   reverse,
   onPlanStats,
@@ -1480,17 +1489,15 @@ function ResultsTable({
             )}
             {sorted.map((result) => {
               const pin = rowPins.get(result);
+              const key = result.row?.id ?? result.weaponName;
               return renderRow(result, {
-                key: `${result.weaponName} ${result.skillVariant?.label ?? ""}`,
-                name: result.weaponName,
-                chartKey: result.weaponName,
+                key,
+                name: result.row?.name ?? result.weaponName,
+                chartKey: key,
                 pinCell: rowPinCell(result, pin),
-                // A live pin with the chosen attack is the same row, so it's dimmed here
+                // A live pin is the same row, so it's dimmed here
                 sx: pin && !pin.frozen ? { opacity: 0.55 } : undefined,
-                skill,
-                oneOffAttack,
-                hitsNote,
-                tooltipTimings,
+                ...rowAttacks.get(result)!,
                 startAttributes,
                 planStats,
               });

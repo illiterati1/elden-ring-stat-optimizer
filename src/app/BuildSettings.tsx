@@ -1,6 +1,7 @@
-import { memo, useState, type Key, type ReactNode } from "react";
+import { memo, useMemo, useState, type Key, type ReactNode } from "react";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -10,6 +11,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  TextField,
   Typography,
 } from "@mui/material";
 import {
@@ -31,7 +33,7 @@ import { countActiveFilters, type WeaponFilters } from "./filters.ts";
 import WeaponTypePicker from "./WeaponTypePicker.tsx";
 import NumberTextField from "./NumberTextField.tsx";
 import { chainAttacks, type AttackName } from "./useMovesets.ts";
-import { ashAttack } from "./useAshes.ts";
+import { fixedSkillsChoice } from "./useAshes.ts";
 import AffinityPicker from "./AffinityPicker.tsx";
 import AmmoPicker from "./AmmoPicker.tsx";
 import type { AmmoGroup } from "./useAmmo.ts";
@@ -39,7 +41,8 @@ import OffhandPicker from "./OffhandPicker.tsx";
 import type { Buff } from "./useBuffs.ts";
 
 interface Props {
-  upgradeLevel: AppState["upgradeLevel"];
+  /** The picked upgrade levels, lowest first */
+  upgradeLevels: AppState["upgradeLevels"];
   twoHanding: AppState["twoHanding"];
   showScaling: AppState["showScaling"];
   showStatus: AppState["showStatus"];
@@ -54,12 +57,12 @@ interface Props {
   weaponFilters: AppState["weaponFilters"];
   objective: AppState["objective"];
   weaponTypes: AppState["weaponTypes"];
-  attack: AppState["attack"];
+  attacks: AppState["attacks"];
   chainWeight: AppState["chainWeight"];
   sumChains: AppState["sumChains"];
   /** True if any weapon's attack is a chain, e.g. a weapon's own skill, so its options apply */
   hasChain: boolean;
-  ashOfWar: AppState["ashOfWar"];
+  ashesOfWar: AppState["ashesOfWar"];
   /** The Ash of War picker's choices: every Ash of War, and with each of its follow-ups */
   ashChoices: { value: string; label: string }[];
   /** The attacks to offer, e.g. only the ripostes the picked enemy can take */
@@ -97,6 +100,49 @@ const attackNotes: Partial<Record<AttackName, string>> = {
   "Jump Shot + Landing Shot":
     "Light bows (and the Black Bow and Ansbach's Longbow): a jumping shot, then a shot as soon as it lands",
 };
+
+const upgradeLevelChoices = Array.from({ length: maxRegularUpgradeLevel + 1 }, (_, level) => level);
+const upgradeLevelLabel = (level: number) => `+${level} / +${toSpecialUpgradeLevel(level)}`;
+
+/** Like the weapon picker: an autocomplete to pick several of, which stays open while picking */
+function MultiPicker<T extends string | number>({
+  label,
+  placeholder,
+  options,
+  value,
+  getOptionLabel,
+  getOptionTitle,
+  onChange,
+}: {
+  label: string;
+  placeholder: string;
+  options: readonly T[];
+  value: readonly T[];
+  getOptionLabel: (option: T) => string;
+  /** A tooltip for an option */
+  getOptionTitle?: (option: T) => string | undefined;
+  onChange: (value: T[]) => void;
+}) {
+  return (
+    <Autocomplete
+      multiple
+      options={options}
+      value={value as T[]}
+      onChange={(_, newValue) => onChange(newValue)}
+      getOptionLabel={getOptionLabel}
+      renderOption={(props, option) => (
+        <li {...props} key={option} title={getOptionTitle?.(option)}>
+          {getOptionLabel(option)}
+        </li>
+      )}
+      renderInput={(params) => <TextField {...params} label={label} placeholder={placeholder} />}
+      size="small"
+      disableCloseOnSelect
+      // On a row of its own, since it grows with what's picked
+      sx={{ gridColumn: "1 / -1" }}
+    />
+  );
+}
 
 /**
  * A section of the weapon settings that can be expanded and collapsed, starting collapsed
@@ -254,7 +300,7 @@ function FilterSettings({
  * affinities
  */
 function BuildSettings({
-  upgradeLevel,
+  upgradeLevels,
   twoHanding,
   showScaling,
   showStatus,
@@ -269,11 +315,11 @@ function BuildSettings({
   weaponFilters,
   objective,
   weaponTypes,
-  attack,
+  attacks,
   chainWeight,
   sumChains,
   hasChain,
-  ashOfWar,
+  ashesOfWar,
   ashChoices,
   attackChoices,
   affinityIds,
@@ -294,6 +340,19 @@ function BuildSettings({
   onChange,
 }: Props) {
   const spellScaling = objective === "spellScaling";
+  // Weapons' fixed skills first, then the Ashes of War
+  const ashOptions = useMemo(
+    () => [fixedSkillsChoice, ...ashChoices.map(({ value }) => value)],
+    [ashChoices],
+  );
+  const ashLabels = useMemo(
+    () =>
+      new Map([
+        [fixedSkillsChoice, "Fixed skills"],
+        ...ashChoices.map(({ value, label }): [string, string] => [value, label]),
+      ]),
+    [ashChoices],
+  );
   return (
     <Section id="weapon" title="Weapon">
       <Box display="grid" gridTemplateColumns="1fr 1fr" gap={1}>
@@ -313,83 +372,71 @@ function BuildSettings({
           </Select>
         </FormControl>
 
-        <FormControl fullWidth size="small">
-          <InputLabel id="upgradeLevelLabel">Weapon Level</InputLabel>
-          <Select
-            labelId="upgradeLevelLabel"
-            label="Weapon Level"
-            value={upgradeLevel}
-            onChange={(evt) => onChange({ upgradeLevel: +evt.target.value })}
-          >
-            {Array.from({ length: maxRegularUpgradeLevel + 1 }, (_, level) => (
-              <MenuItem key={level} value={level}>
-                +{level} / +{toSpecialUpgradeLevel(level)}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <MultiPicker
+          label="Weapon Levels"
+          placeholder="Add a level, e.g. +25"
+          options={upgradeLevelChoices}
+          value={upgradeLevels}
+          getOptionLabel={upgradeLevelLabel}
+          onChange={(levels) => onChange({ upgradeLevels: levels.sort((a, b) => a - b) })}
+        />
 
         {/* Spell scaling doesn't use an attack */}
         {objective !== "spellScaling" && (
-          <FormControl fullWidth size="small">
-            <InputLabel id="attackLabel">Attack</InputLabel>
-            <Select
-              labelId="attackLabel"
-              label="Attack"
-              value={attack}
-              onChange={(evt) => onChange({ attack: evt.target.value as AppState["attack"] })}
-            >
-              <MenuItem value={ashAttack}>Ash of War</MenuItem>
-              {attackChoices.map((attackName) => (
-                <MenuItem key={attackName} value={attackName} title={attackNotes[attackName]}>
-                  {attackName}
-                  {chainAttacks.has(attackName) ? " chain" : ""}
-                </MenuItem>
+          <>
+            <MultiPicker
+              label="Attacks"
+              placeholder="Add an attack, e.g. R1"
+              options={attackChoices}
+              value={attacks}
+              getOptionLabel={(attackName) =>
+                attackName + (chainAttacks.has(attackName) ? " chain" : "")
+              }
+              getOptionTitle={(attackName) => attackNotes[attackName]}
+              onChange={(newAttacks) => onChange({ attacks: newAttacks })}
+            />
+            {attacks
+              .filter((attackName) => attackName in attackNotes)
+              .map((attackName) => (
+                <Typography
+                  key={attackName}
+                  variant="body2"
+                  color="text.secondary"
+                  gridColumn="1 / -1"
+                >
+                  {attacks.length > 1 && `${attackName}: `}
+                  {attackNotes[attackName]}
+                </Typography>
               ))}
-            </Select>
-          </FormControl>
+            <MultiPicker
+              label="Ashes of War"
+              placeholder="Add a skill, e.g. Lion's Claw"
+              options={ashOptions}
+              value={ashesOfWar}
+              getOptionLabel={(choice) => ashLabels.get(choice) ?? choice}
+              getOptionTitle={(choice) =>
+                choice === fixedSkillsChoice
+                  ? "Weapons' own skills, for weapons that can't take an Ash of War"
+                  : undefined
+              }
+              onChange={(newAshes) => onChange({ ashesOfWar: newAshes })}
+            />
+          </>
         )}
-        {objective !== "spellScaling" && attack in attackNotes && (
-          <Typography variant="body2" color="text.secondary" alignSelf="center">
-            {attackNotes[attack as AttackName]}
-          </Typography>
-        )}
-        {objective !== "spellScaling" && attack === ashAttack && !ashChoices.length && (
-          <Typography variant="body2" color="text.secondary" alignSelf="center">
-            The weapons picked use their own skills
-          </Typography>
-        )}
-        {objective !== "spellScaling" && attack === ashAttack && ashChoices.length > 0 && (
-          <FormControl fullWidth size="small">
-            <InputLabel id="ashOfWarLabel">Ash of War</InputLabel>
-            <Select
-              labelId="ashOfWarLabel"
-              label="Ash of War"
-              value={ashChoices.length ? ashOfWar : ""}
-              onChange={(evt) => onChange({ ashOfWar: evt.target.value })}
-              MenuProps={{ PaperProps: { sx: { maxHeight: 400 } } }}
-            >
-              {ashChoices.map(({ value, label }) => (
-                <MenuItem key={value} value={value}>
-                  {label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-        {objective !== "spellScaling" && attack.startsWith("Powerstance") && (
-          <OffhandPicker
-            offhandWeapon={offhandWeapon}
-            offhandUpgradeLevel={offhandUpgradeLevel}
-            offhandAffinityId={offhandAffinityId}
-            offhandBuff={offhandBuff}
-            weaponChoices={offhandWeaponChoices}
-            weaponTypes={offhandWeaponTypes}
-            affinityChoices={offhandAffinityChoices}
-            buffChoices={offhandBuffChoices}
-            onChange={onChange}
-          />
-        )}
+        {objective !== "spellScaling" &&
+          attacks.some((attackName) => attackName.startsWith("Powerstance")) && (
+            <OffhandPicker
+              offhandWeapon={offhandWeapon}
+              offhandUpgradeLevel={offhandUpgradeLevel}
+              offhandAffinityId={offhandAffinityId}
+              offhandBuff={offhandBuff}
+              weaponChoices={offhandWeaponChoices}
+              weaponTypes={offhandWeaponTypes}
+              affinityChoices={offhandAffinityChoices}
+              buffChoices={offhandBuffChoices}
+              onChange={onChange}
+            />
+          )}
         {objective !== "spellScaling" && hasChain && (
           <>
             <NumberTextField

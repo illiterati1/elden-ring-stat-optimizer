@@ -109,7 +109,12 @@ export function sortResults(
     if (a.applicable !== b.applicable) return +b.applicable - +a.applicable;
     // Alphabetically, A to Z first
     if (sortBy === "name") {
-      const order = a.weaponName.localeCompare(b.weaponName);
+      // (by the row's name, with its upgrade level: +9 before +10)
+      const order = (a.row?.name ?? a.weaponName).localeCompare(
+        b.row?.name ?? b.weaponName,
+        undefined,
+        { numeric: true },
+      );
       if (order) return reverse ? -order : order;
       return b.finalValue - a.finalValue;
     }

@@ -178,6 +178,8 @@ export interface BuildRequest {
   buffNote?: string;
   /** Which version of the weapon's fixed skill this is, if it has several */
   skillVariant?: { label: string; short: string };
+  /** Which table row this is for (its key, and the name it's shown with), given back with the result */
+  row?: { id: string; name: string };
   /**
    * Equip weight besides the weapon's (and the off hand weapon's when powerstancing), for buffs that
    * shrink with it (the Blue Dancer Charm)
@@ -767,6 +769,8 @@ export interface BuildResult {
   /** True for a skill that can't be used because the weapon's requirements aren't met */
   skillRequirementsUnmet?: boolean;
   skillVariant?: { label: string; short: string };
+  /** The request's row, if it has one */
+  row?: { id: string; name: string };
   /** Damage of a percentage of the enemy's max HP included in the value, e.g. "Black flame" */
   hpDamage?: { label: string; damage: number };
   /**
@@ -1318,6 +1322,7 @@ export function optimizeBuild(
     unavailableReason,
     buffNote,
     skillVariant,
+    row,
     catalyst,
     catalystUpgradeLevel = maxRegularUpgradeLevel,
     castingRequirements,
@@ -1581,6 +1586,7 @@ export function optimizeBuild(
     return {
       unavailableReason,
       weaponName: weapon.name,
+      ...(row && { row }),
       url: weapon.url,
       applicable: false,
       exact: true,
@@ -1877,6 +1883,7 @@ export function optimizeBuild(
 
   return {
     weaponName: weapon.name,
+    ...(row && { row }),
     url: weapon.url,
     applicable: true,
     ...((buffNote || !meetsCastingRequirements) && {

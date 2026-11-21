@@ -8,9 +8,9 @@
         "ResultsTable": 1,
         "ValueChart": 4
       },
-      "paintMs": 19,
-      "blockingMs": 592,
-      "longestTaskMs": 502
+      "paintMs": 14,
+      "blockingMs": 561,
+      "longestTaskMs": 479
     },
     "Two handing checkbox": {
       "renders": {
@@ -19,8 +19,8 @@
         "ValueChart": 4
       },
       "paintMs": 83,
-      "blockingMs": 601,
-      "longestTaskMs": 503
+      "blockingMs": 606,
+      "longestTaskMs": 486
     },
     "Chart from level": {
       "renders": {
@@ -33,13 +33,13 @@
     },
     "Weapon level picker": {
       "renders": {
-        "App": 4,
+        "App": 3,
         "ResultsTable": 1,
-        "ValueChart": 4
+        "ValueChart": 3
       },
-      "paintMs": 96,
-      "blockingMs": 573,
-      "longestTaskMs": 483
+      "paintMs": 92,
+      "blockingMs": 995,
+      "longestTaskMs": 837
     }
   }
 }

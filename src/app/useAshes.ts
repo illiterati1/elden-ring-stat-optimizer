@@ -20,8 +20,10 @@ import {
   type Movesets,
 } from "./useMovesets.ts";
 
-/** The attack picker's choice for a weapon's skill */
+/** A row's attack when it's a skill (Ash of War picker choices) rather than an attack */
 export const ashAttack = "ash";
+/** The Ash of War picker's choice for weapons' fixed skills (ones that can't take an Ash of War) */
+export const fixedSkillsChoice = "fixed";
 
 /**
  * [motion value, status motion value, stance motion value, physical type, details?], like a moveset
