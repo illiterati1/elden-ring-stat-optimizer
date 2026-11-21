@@ -4,8 +4,6 @@ import { getAllocation, getAllocationCount } from "../optimizer/allocations.ts";
 import type { BuildResult, ValueCurve } from "../optimizer/build.ts";
 import type { SortBy } from "./useAppState.ts";
 
-const epsilon = 1e-9;
-
 /**
  * @returns the best value achievable at the given character level, or null if the weapon's
  * requirements can't be met by then

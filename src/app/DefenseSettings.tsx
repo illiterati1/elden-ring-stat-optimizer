@@ -14,7 +14,6 @@ import {
   allPhysicalTypes,
   type AppState,
   type DamageTypeDefenses,
-  type PhysicalType,
   type UpdateAppState,
 } from "./useAppState.ts";
 import { damageTypeIcons, damageTypeLabels, physicalTypeLabels } from "./uiUtils.ts";

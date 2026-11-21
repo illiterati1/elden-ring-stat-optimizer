@@ -3,7 +3,6 @@ import { noteSettingsChange } from "./pickerChange.ts";
 import {
   AttackPowerType,
   type Attribute,
-  type Attributes,
   type EnemyType,
   type WeaponType,
 } from "../calculator/calculator.ts";

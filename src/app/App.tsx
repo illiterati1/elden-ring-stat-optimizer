@@ -120,7 +120,6 @@ import {
 import ValueChart from "./ValueChart.tsx";
 import { getResultStatus, sortResults } from "./results.ts";
 import { defaultWeaponFilters, passesFilters } from "./filters.ts";
-import { maxCharacterLevel } from "../optimizer/runes.ts";
 import {
   compareWeaponTypes,
   damageTypeLabels,
@@ -1654,7 +1653,6 @@ export default function App() {
         affinityIds={affinityIds}
         ammo={ammo}
         selectedAmmo={selectedAmmo}
-        pointLabel={pointLabel}
         objective={objective}
         offhandWeapon={offhandWeaponName}
         offhandUpgradeLevel={offhandUpgradeLevel}

@@ -70,8 +70,6 @@ interface Props {
   affinityIds: AppState["affinityIds"];
   ammo: AmmoGroup[];
   selectedAmmo: AppState["selectedAmmo"];
-  /** What one point of the objective is called: "damage" or "scaling" */
-  pointLabel: string;
   offhandWeapon: AppState["offhandWeapon"];
   offhandUpgradeLevel: AppState["offhandUpgradeLevel"];
   offhandAffinityId: AppState["offhandAffinityId"];
@@ -327,7 +325,6 @@ function BuildSettings({
   affinityIds,
   ammo,
   selectedAmmo,
-  pointLabel,
   offhandWeapon,
   offhandUpgradeLevel,
   offhandAffinityId,

@@ -1,6 +1,5 @@
 import { memo } from "react";
 import { Box, Button, FormControl, InputLabel, MenuItem, Select, Typography } from "@mui/material";
-import { allAttributes } from "../calculator/calculator.ts";
 import {
   allStats,
   getCharacterLevel,
