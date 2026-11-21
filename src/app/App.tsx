@@ -110,7 +110,7 @@ import {
   type PinSettings,
   type RowChoice,
 } from "./pins.ts";
-import ValueChart, { maxSeries } from "./ValueChart.tsx";
+import ValueChart from "./ValueChart.tsx";
 import { getResultStatus, sortResults } from "./results.ts";
 import { defaultWeaponFilters, passesFilters } from "./filters.ts";
 import { maxCharacterLevel } from "../optimizer/runes.ts";
@@ -1487,19 +1487,10 @@ export default function App() {
         }),
       });
     },
-    // Freezing a charted live pin charts its row in the table too (if there's room), which is no
-    // longer the same
+    // Freezing a charted live pin keeps only the frozen pin charted, not its row in the table
     toggleFreeze: (id: string) => {
-      const { pins, pinRequests, appState, chartWeapons, rowKeysByPinChartKey } = latest.current;
-      const chartKey = `pin:${id}`;
-      const rowKey = rowKeysByPinChartKey.get(chartKey);
-      const chartRow =
-        rowKey &&
-        chartWeapons.includes(chartKey) &&
-        chartWeapons.length < maxSeries &&
-        !getFreezeBlocked(pinRequests.get(id), getFrozenKeys(pins));
+      const { pins, pinRequests, appState } = latest.current;
       updateAppState({
-        ...(chartRow && { chartWeapons: [...chartWeapons, rowKey] }),
         // Unfreezing a pin that's also pinned live just leaves the live one, which is the same
         pins: pins.flatMap((pin): Pin[] => {
           if (pin.id !== id) return [pin];
