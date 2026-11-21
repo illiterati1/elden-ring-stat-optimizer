@@ -654,7 +654,16 @@ export default function App() {
       const skillAttacks: { ash?: AshAttack; variant?: SkillVariant }[] = !attackActive
         ? [{ ash: undefined }]
         : attack === ashAttack && !unavailableReason
-        ? getAshAttacks(ashes, movesets, weapon, ashOfWar, weaponTwoHanding, chainWeight, sumChains)
+        ? getAshAttacks(
+            ashes,
+            movesets,
+            weapon,
+            ashOfWar,
+            weaponTwoHanding,
+            chainWeight,
+            sumChains,
+            limit,
+          )
         : attack === ashAttack
         ? [
             {
@@ -666,6 +675,7 @@ export default function App() {
                 weaponTwoHanding,
                 chainWeight,
                 sumChains,
+                limit,
               ),
             },
           ]

@@ -872,12 +872,19 @@ export function getAshAttacks(
   twoHanding: boolean,
   chainWeight = 0.5,
   sumChains = false,
+  limit?: ChainLimit,
 ): { ash: AshAttack; variant?: SkillVariant }[] {
-  const build = (value: string) =>
-    getAshAttack(ashes, movesets, weapon, value, twoHanding, chainWeight, sumChains);
-  const chosen = build(choice);
+  const build = (value: string, chainLimit?: ChainLimit) =>
+    getAshAttack(ashes, movesets, weapon, value, twoHanding, chainWeight, sumChains, chainLimit);
+  // The versions it has are told apart by their whole chains, so they don't change with the chain
+  // cutoff, which cuts each one short (and leaves out one too slow for the time to dodge)
+  const versionOf = (value: string) => {
+    const whole = build(value);
+    return { whole, ash: limit ? build(value, limit) : whole };
+  };
+  const chosen = versionOf(choice);
   const info = ashes.weapons[weapon.weaponName];
-  if (!info || info.canChange || !("attack" in chosen)) return [{ ash: chosen }];
+  if (!info || info.canChange || !("attack" in chosen.whole)) return [{ ash: chosen.ash }];
 
   const skill = info.skill;
   const attackKey = (ash: AshAttack) =>
@@ -886,8 +893,8 @@ export function getAshAttacks(
   const variants: { ash: AshAttack; variant: SkillVariant }[] = [];
   const seen = new Set<string>();
   for (const { value, label } of getSkillChoices(ashes, skill, true)) {
-    const ash = build(value);
-    const key = attackKey(ash);
+    const { whole, ash } = versionOf(value);
+    const key = attackKey(whole);
     if (key == null || seen.has(key)) continue;
     seen.add(key);
     // A skill that's one chain is just its name
@@ -898,14 +905,14 @@ export function getAshAttacks(
         .replace(/^\((.*)\)$/, "$1") || skill;
     variants.push({ ash, variant: { label, short } });
   }
-  if (!seen.has(attackKey(chosen)!) && !followUpOnlySkills.has(skill)) {
-    variants.unshift({ ash: chosen, variant: { label: skill, short: skill } });
+  if (!seen.has(attackKey(chosen.whole)!) && !followUpOnlySkills.has(skill)) {
+    variants.unshift({ ash: chosen.ash, variant: { label: skill, short: skill } });
   }
   if (variants.length > 1) return variants;
   // One version is just the skill's name, or with its label if it has one
   const label = ashes.skills[skill]?.label;
   return [
-    { ash: chosen, ...(label && { variant: { label: `${skill} (${label})`, short: label } }) },
+    { ash: chosen.ash, ...(label && { variant: { label: `${skill} (${label})`, short: label } }) },
   ];
 }
 
@@ -923,7 +930,7 @@ export function getAshAttack(
   chainWeight = 0.5,
   /** For chains, add up the steps rather than taking their weighted average */
   sumChains = false,
-  /** For the weapon's own chains a skill changes (weaponAttackSkills), how far they go */
+  /** For chains (the skill's own, or the weapon's it changes), how far they go */
   limit?: ChainLimit,
 ): AshAttack {
   const result = getSkillAttack(
@@ -1135,9 +1142,11 @@ function getSkillAttack(
         ...(cutShort && i === chainSteps.length - 1 && { cutShort }),
       }));
     // Cut short like the weapon's own chains (e.g. War Cry's R2s, in place of the weapon's)
-    const { length, cut } = limitChainLength(wholeChain.length, limit, () =>
-      getSkillStepTimes(hits, skillRange, partsOf(wholeChain), hands),
-    );
+    const { length, cut } = limitChainLength(wholeChain.length, limit, () => {
+      const times = getSkillStepTimes(hits, skillRange, partsOf(wholeChain), hands);
+      // (not a loop's, whose opening and pass are two steps of one part)
+      return times?.length === wholeChain.length ? times : undefined;
+    });
     if (!length) return { unavailableReason: tooSlowReason, shown: true };
     const steps = wholeChain.slice(0, length);
     // The buff's physical attack power multiplier is the same as multiplying physical motion values

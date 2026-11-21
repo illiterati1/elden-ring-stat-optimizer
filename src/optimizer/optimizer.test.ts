@@ -4166,6 +4166,46 @@ describe("Ashes of War", () => {
     ]);
   });
 
+  it("cuts skills' chains short like the weapon's own", () => {
+    const frames = (seconds: number | undefined) =>
+      seconds == null ? null : Math.round(seconds * 60);
+    const versions = (weaponName: string, choice: string, limit?: ChainLimit) =>
+      getAshAttacks(ashes, movesets, getWeapon(weaponName), choice, false, 0.5, false, limit).map(
+        ({ ash, variant }) =>
+          "attack" in ash
+            ? {
+                version: variant?.short,
+                cycles: ash.attack.cycleTimes?.map(frames),
+                cut: !!ash.attack.stepTimes?.at(-1)?.cutShort,
+              }
+            : { version: variant?.short, unavailableReason: ash.unavailableReason },
+      );
+    // Moon-and-Fire Stance's R1 chain: cut to a number of steps, the last is over once a roll can
+    // start (98 frames into #1, 80 into #2); its R2 isn't a chain, so isn't cut
+    const r2 = { version: "R2", cycles: [202], cut: false };
+    expect(versions("Rellana's Twin Blades", "Lion's Claw")).toEqual([
+      { version: "R1 chain", cycles: [90, 68, 120], cut: false },
+      r2,
+    ]);
+    expect(versions("Rellana's Twin Blades", "Lion's Claw", { steps: 2 })).toEqual([
+      { version: "R1 chain", cycles: [90, 80], cut: true },
+      r2,
+    ]);
+    // Too slow for the time to dodge, the chain says so, and its other versions are still offered
+    expect(versions("Rellana's Twin Blades", "Lion's Claw", { seconds: 1 })).toEqual([
+      { version: "R1 chain", unavailableReason: tooSlowReason },
+      r2,
+    ]);
+    // A skill that's one chain, e.g. Double Slash
+    const doubleSlash = withFollowUp("Double Slash", " chain");
+    expect(versions("Longsword", doubleSlash, { steps: 1 })).toEqual([
+      { version: undefined, cycles: [78], cut: true },
+    ]);
+    expect(versions("Longsword", doubleSlash, { seconds: 2.7 })).toEqual([
+      { version: undefined, cycles: [72, 86], cut: true },
+    ]);
+  });
+
   it("adds up a chain's steps if asked", () => {
     const weapon = getWeapon("Longsword");
     const chain = withFollowUp("Glintstone Pebble", " chain");
