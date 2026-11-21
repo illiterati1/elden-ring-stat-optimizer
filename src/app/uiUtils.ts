@@ -31,7 +31,8 @@ export interface AffinityOption {
 export const uniqueAffinityId = -1;
 
 /** Debug details are shown with ?debug in the URL, e.g. enemies' NpcParam IDs */
-export const debug = new URLSearchParams(window.location.search).has("debug");
+export const debug =
+  typeof window !== "undefined" && new URLSearchParams(window.location.search).has("debug");
 
 /**
  * Affinities that can be applied to infusable weapons, plus "Unique" for weapons that can't be

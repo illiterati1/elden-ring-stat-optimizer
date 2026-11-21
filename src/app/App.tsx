@@ -100,16 +100,23 @@ import {
   getKeyOfPin,
   getPinChartKey,
   getPinKey,
-  getFrozenKey,
   getPinSettings,
   parseRowKey,
   pinSettingKeys,
   restoreRequest,
-  storeRequest,
   type Pin,
   type PinSettings,
   type RowChoice,
 } from "./pins.ts";
+import {
+  getFreezeBlocked,
+  getFrozenKeys,
+  getRestoredSettings,
+  mergeChartKeys,
+  toggleFreeze,
+  unpin,
+  unpinAll,
+} from "./pinActions.ts";
 import ValueChart from "./ValueChart.tsx";
 import { getResultStatus, sortResults } from "./results.ts";
 import { defaultWeaponFilters, passesFilters } from "./filters.ts";
@@ -144,24 +151,6 @@ const getRequestKey = (request: BuildRequest) => request.row?.id ?? request.weap
 const getResultKey = (result: BuildResult) => result.row?.id ?? result.weaponName;
 
 /**
- * The chart's keys with a row that's pinned live charted by its pin's key, so the row's checkbox and
- * the pin's are the same (it's one line), and keys of pins that are gone dropped
- */
-function mergeChartKeys(chartWeapons: readonly string[], pins: readonly Pin[]) {
-  const livePinKeys = new Map(
-    pins.filter((pin) => !pin.frozen).map((pin) => [getKeyOfPin(pin), getPinChartKey(pin)]),
-  );
-  const pinKeys = new Set(pins.map(getPinChartKey));
-  return [
-    ...new Set(
-      chartWeapons.flatMap((key) =>
-        key.startsWith("pin:") ? (pinKeys.has(key) ? [key] : []) : [livePinKeys.get(key) ?? key],
-      ),
-    ),
-  ];
-}
-
-/**
  * A weapon's name with its upgrade level, on its own scale (e.g. +10 for a somber weapon), kept
  * together so the level doesn't wrap onto a line alone
  */
@@ -190,19 +179,6 @@ function powerstancesWith(main: Weapon, offhand: Weapon) {
         (!leftHandOnly && main.weaponName === weapon && offhand.weaponType === weaponType),
     )
   );
-}
-
-/** The frozen pins' keys (getFrozenKey), to not freeze the same row with the same settings twice */
-const getFrozenKeys = (pins: readonly Pin[]) =>
-  new Set(pins.flatMap((pin) => (pin.frozen ? [getFrozenKey(pin.frozen.request)] : [])));
-
-/** @returns why a live pin with this request can't be frozen, if it can't */
-function getFreezeBlocked(request: BuildRequest | undefined, frozenKeys: ReadonlySet<string>) {
-  if (!request) return "Can't be frozen: the weapon or its attack wasn't found";
-  if (frozenKeys.has(getFrozenKey(storeRequest(request)))) {
-    return "Already frozen with these settings";
-  }
-  return undefined;
 }
 
 // Requests for an attack a weapon has but that can't be used here (e.g. too slow to roll in time,
@@ -1462,73 +1438,25 @@ export default function App() {
       };
       updateAppState({ pins: [...pins, pin] });
     },
-    // A live pin's row in the table stays charted by its own key
     unpin: (id: string) => {
       const { pins, chartWeapons, rowKeysByPinChartKey } = latest.current;
-      const chartKey = `pin:${id}`;
-      const rowKey = rowKeysByPinChartKey.get(chartKey);
-      updateAppState({
-        pins: pins.filter((pin) => pin.id !== id),
-        ...(chartWeapons.includes(chartKey) && {
-          chartWeapons: chartWeapons.flatMap((key) =>
-            key !== chartKey ? [key] : rowKey ? [rowKey] : [],
-          ),
-        }),
-      });
+      updateAppState(unpin({ pins, chartWeapons }, id, rowKeysByPinChartKey));
     },
     unpinAll: () => {
       const { chartWeapons, rowKeysByPinChartKey } = latest.current;
-      updateAppState({
-        pins: [],
-        chartWeapons: chartWeapons.flatMap((key) => {
-          if (!key.startsWith("pin:")) return [key];
-          const rowKey = rowKeysByPinChartKey.get(key);
-          return rowKey ? [rowKey] : [];
-        }),
-      });
+      updateAppState(unpinAll({ chartWeapons }, rowKeysByPinChartKey));
     },
-    // Freezing a charted live pin keeps only the frozen pin charted, not its row in the table
     toggleFreeze: (id: string) => {
       const { pins, pinRequests, appState } = latest.current;
       updateAppState({
-        // Unfreezing a pin that's also pinned live just leaves the live one, which is the same
-        pins: pins.flatMap((pin): Pin[] => {
-          if (pin.id !== id) return [pin];
-          if (pin.frozen) {
-            const { frozen: _, ...live } = pin;
-            const key = getKeyOfPin(pin);
-            return pins.some((other) => !other.frozen && getKeyOfPin(other) === key) ? [] : [live];
-          }
-          const request = pinRequests.get(id);
-          if (getFreezeBlocked(request, getFrozenKeys(pins))) return [pin];
-          return [
-            request
-              ? {
-                  ...pin,
-                  frozen: { request: storeRequest(request), settings: getPinSettings(appState) },
-                }
-              : pin,
-          ];
-        }),
+        pins: toggleFreeze(pins, id, pinRequests.get(id), getPinSettings(appState)),
       });
     },
     restore: (id: string) => {
-      const pin = latest.current.pins.find((other) => other.id === id);
-      if (!pin?.frozen) return;
-      // (pins frozen when there was one upgrade level have it in their settings)
-      const { upgradeLevel: _, ...settings } = pin.frozen.settings as PinSettings & {
-        upgradeLevel?: number;
-      };
-      // Its upgrade level is picked too, so its row is in the table
-      const { upgradeLevels } = latest.current.appState;
-      updateAppState({
-        ...settings,
-        // Pins frozen before a limit was added don't have it
-        limits: { ...defaultAppState.limits, ...settings.limits },
-        ...(!upgradeLevels.includes(pin.upgradeLevel) && {
-          upgradeLevels: [...upgradeLevels, pin.upgradeLevel].sort((a, b) => a - b),
-        }),
-      });
+      const { pins, appState } = latest.current;
+      const pin = pins.find((other) => other.id === id);
+      const settings = pin && getRestoredSettings(pin, appState);
+      if (settings) updateAppState(settings);
     },
   }));
 
