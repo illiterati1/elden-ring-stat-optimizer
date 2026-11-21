@@ -1935,8 +1935,7 @@ export default function App() {
                             </Button>
                           }
                         >
-                          Every row but frozen pins is worked out with {assumed.name}&apos;s final
-                          stats (level {getCharacterLevel(assumed.stats)}), without optimizing.
+                          Using assumed stats
                         </Alert>
                       )}
                       <ResultsTable
