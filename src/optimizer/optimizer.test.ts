@@ -9535,6 +9535,20 @@ describe("Ashes of War", () => {
       ["Weapon", "Weapon (left)", "Bullet"],
       ["Weapon", "Weapon (left)", "Bullet (left)"],
     ]);
+    // Cut short like the flail's own chains
+    const cutL1 = getAshAttack(
+      ashes,
+      movesets,
+      weapon,
+      withFollowUp("Flare, O Serpent", "Powerstance L1 chain"),
+      false,
+      0.5,
+      false,
+      { steps: 1 },
+    );
+    expect("attack" in cutL1 && kinds(cutL1.attack)).toEqual([
+      ["Weapon", "Weapon (left)", "Bullet"],
+    ]);
     expect(kinds(changed("Powerstance Rolling L1"))).toEqual([
       ["Weapon", "Weapon (left)", "Bullet (left)", "Bullet"],
     ]);

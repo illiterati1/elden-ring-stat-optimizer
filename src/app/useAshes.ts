@@ -1157,7 +1157,15 @@ function getSkillAttack(
     const extraHits = hits.extraHits?.[`${attackName}|${twoHanding ? "2h" : "1h"}`];
     const weaponAttack =
       extraHits && (allAttacks as readonly string[]).includes(attackName)
-        ? getAttackData(movesets, weapon, attackName as AttackName, twoHanding, chainWeight)
+        ? getAttackData(
+            movesets,
+            weapon,
+            attackName as AttackName,
+            twoHanding,
+            chainWeight,
+            sumChains,
+            limit,
+          )
         : undefined;
     const cast = hits.upkeep?.cast;
     if (!extraHits || !weaponAttack || cast == null) {
