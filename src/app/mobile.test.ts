@@ -32,12 +32,13 @@ describe("isMobileDevice", () => {
     ).toBe(true);
     // An iPad asks for desktop sites, saying it's a Mac
     expect(
-      isMobileDevice(
-        desktop(
+      isMobileDevice({
+        ...desktop(
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15",
           5,
         ),
-      ),
+        coarsePointer: true,
+      }),
     ).toBe(true);
     // Chromium's client hints, even with a desktop user agent
     expect(
@@ -78,6 +79,26 @@ describe("isMobileDevice", () => {
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15",
         ),
       ),
+    ).toBe(false);
+    // A touchscreen MacBook: its main pointer is the trackpad
+    expect(
+      isMobileDevice(
+        desktop(
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15",
+          10,
+        ),
+      ),
+    ).toBe(false);
+    // Chrome on one, even if it reports a coarse pointer, sends client hints
+    expect(
+      isMobileDevice({
+        ...desktop(
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0 Safari/537.36",
+          10,
+        ),
+        userAgentData: { mobile: false },
+        coarsePointer: true,
+      }),
     ).toBe(false);
     expect(isMobileDevice(undefined)).toBe(false);
   });
