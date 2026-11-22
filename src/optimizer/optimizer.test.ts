@@ -14137,10 +14137,12 @@ describe("NG+ enemy stats", () => {
     expect(Math.round(getEnemyStats(inquisitor, 7, true).defense[0])).toBe(164);
   });
 
-  // In game: Rellana had 29.7k HP in NG on a character who had beaten Radahn (2026-11-22)
-  it("doesn't raise HP for beating Radahn in NG, as tested in game", () => {
+  // In game (2026-11-22), on a character who beat Radahn in NG: Rellana had 29.7k HP in NG, and
+  // 43.7k in NG+ (journey 2), so a kill in an earlier journey counts
+  it("raises HP from NG+ once Radahn is beaten, as tested in game", () => {
     const rellana = findEnemy(53000082);
     expect(rellana.ngPlus?.radahnHpRate).toBeCloseTo(1.367, 3);
     expect(getEnemyStats(rellana, 0, true).hp).toBe(29723);
+    expect(getEnemyStats(rellana, 1, true).hp).toBe(43743);
   });
 });

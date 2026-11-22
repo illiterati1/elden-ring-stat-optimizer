@@ -65,7 +65,7 @@ step, from that step's press).
 |---|---|---|
 | 38 | Scadutree Blessing's damage bonus: the same hit on a Realm of Shadow enemy at blessing +0 and +20 | ×2.05 at +20 (SpEffectParam 20000100-20000120 atkEnemyDmgCorrectRate), after defenses |
 | 39 | Whether the blessing also raises black flame's %-HP damage (e.g. Black Flame Blade on a DLC enemy) | Not applied |
-| 40 | Whether beating Promised Consort Radahn in NG alone raises DLC enemies' HP at NG+2 (e.g. a Hornsent Inquisitor in the Abyssal Woods, NpcParam 53110586), and whether beating him first in NG+ raises it later in that journey | Hornsent Inquisitor: 2,711 HP at NG+2 without, 3,004 with |
+| 40 | Whether beating Promised Consort Radahn for the first time in NG+ raises DLC enemies' HP later in that journey (a kill in an earlier journey does: Rellana 43.7k in NG+) | Raised (the save's flag 61143 is set by any kill) |
 
 ## Not timed: need measurements
 

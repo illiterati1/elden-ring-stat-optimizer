@@ -15,8 +15,8 @@
   Katanas, Perfume Bottles, Beast Claws, the Smithscript Cirque, Claws of Night, and the
   Smithscript Dagger.
 - **Unverified timings:** many attack timings and stamina costs haven't been checked in game yet.
-- **NG+ stats:** enemies' NG+ HP and defenses match the datamining spreadsheet's, but haven't been
-  tested in game. HP after beating Radahn can be 1 off, as can a few enemies' NG+ HP (e.g.
+- **NG+ stats:** enemies' NG+ HP and defenses match the datamining spreadsheet's, but only
+  Rellana's HP (NG+, with Radahn beaten) has been tested in game. HP after beating Radahn can be 1 off, as can a few enemies' NG+ HP (e.g.
   Omenkillers in Scadu Altus).
 - **Human enemies' defenses:** NPC invaders and other human enemies (183 of them) have defenses 1–2
   higher than the datamining spreadsheet's, at every NG+ level. Which is right is untested.
