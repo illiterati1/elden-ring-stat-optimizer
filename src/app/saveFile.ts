@@ -7,8 +7,8 @@ import type { Stats } from "../optimizer/startingClasses.ts";
  * In a slot: a version, then a table of the character's items (each handle and item ID, with more
  * for weapons and armor), then the character's stats. What comes before the stats varies in length,
  * so they're found by what they look like: eight attributes, with the level three words later.
- * Most else read is at a fixed offset from them. The NG+ cycle is further on, past sections whose
- * lengths are in the save (layout from ER-Save-Editor's save_slot.rs).
+ * Most else read is at a fixed offset from them. The NG+ cycle and the event flags are further on,
+ * past sections whose lengths are in the save (layout from ER-Save-Editor's save_slot.rs).
  */
 
 /** Weapon slots in the order the save lists them: left and right hand, 1 to 3 */
@@ -47,6 +47,8 @@ export interface SaveCharacter {
   scadutreeBlessing: number;
   /** Times the game has been beaten: 0 in the first journey (NG), 1 in NG+, …; null if not found */
   clearCount: number | null;
+  /** Whether Promised Consort Radahn has been beaten, in this journey or an earlier one; null if not found */
+  radahnBeaten: boolean | null;
 }
 
 export class SaveFileError extends Error {}
@@ -140,34 +142,52 @@ function readSlot(slot: number, view: DataView): SaveCharacter | undefined {
     armor: equipped.slice(12, 16).filter((id) => id !== emptyId),
     talismans: equipped.slice(17, 21).filter((id) => id !== emptyId),
     scadutreeBlessing: Math.min(view.getUint8(statsOffset + 0xc0), 20),
-    clearCount: readClearCount(view, statsOffset - 0x34),
+    ...readJourney(view, statsOffset - 0x34),
   };
 }
 
 /**
- * @param playerData where the player's data (HP, stats, name, …) starts, 0x34 bytes before the stats
- * @returns the game's clear count, right after the horse's data, if the sections before it fit
+ * Event flags are in blocks of 1000 flags (125 bytes) in the save, in an order of their own: flag
+ * 61143 (block 61, at index 11) is set for good once Promised Consort Radahn is beaten, unlike his
+ * boss flags (9143, 20010800), which a new journey clears. Found by comparing saves.
  */
-function readClearCount(view: DataView, playerData: number): number | null {
+const radahnBeatenFlag = { byte: 11 * 125 + Math.floor(143 / 8), mask: 1 << (7 - (143 % 8)) };
+const eventFlagsSize = 0x1bf99f;
+
+/**
+ * @param playerData where the player's data (HP, stats, name, …) starts, 0x34 bytes before the stats
+ * @returns the game's clear count, right after the horse's data, and from the event flags further on,
+ * whether Radahn has been beaten, if the sections before them fit
+ */
+function readJourney(
+  view: DataView,
+  playerData: number,
+): Pick<SaveCharacter, "clearCount" | "radahnBeaten"> {
+  const notFound = { clearCount: null, radahnBeaten: null };
   const inventory = (common: number, keyItems: number) => 4 + common * 12 + 4 + keyItems * 12 + 8;
   // Player data and an unknown block, then equipped items (three ways), the inventory, equipped
   // spells, items and gestures
   let position = playerData + 0x1b0 + 0xd0 + 0x58 + 0x74 + 0x58;
   position += inventory(0xa80, 0x180) + 0x74 + 0x8c + 0x18;
   // Equipped ammo: a count, then 8 bytes each
-  if (position + 4 > view.byteLength) return null;
+  if (position + 4 > view.byteLength) return notFound;
   position += 4 + view.getUint32(position, true) * 8;
   // Equipped items again, physick, an unknown word, the face, storage, gestures
   position += 0x9c + 8 + 4 + 0x12f + inventory(0x780, 0x80) + 0x100;
   // Unlocked regions: a count, then a word each
-  if (position + 4 > view.byteLength) return null;
+  if (position + 4 > view.byteLength) return notFound;
   position += 4 + view.getUint32(position, true) * 4;
   // The horse's data, an unknown byte, 0x40 bytes, and a word
   position += 0x28 + 1 + 0x40 + 4;
-  if (position + 4 > view.byteLength) return null;
+  if (position + 4 > view.byteLength) return notFound;
   const clearCount = view.getUint32(position, true);
   // Anything else means the layout is off
-  return clearCount <= 100 ? clearCount : null;
+  if (clearCount > 100) return notFound;
+  // The clear count and another word, the menu profile, trophies, every item picked up, the tutorials, and 0x1d bytes
+  position += 4 + 4 + 0x1008 + 0x34 + 8 + 0x1b58 * 16 + 0x408 + 0x1d;
+  if (position + eventFlagsSize > view.byteLength) return { clearCount, radahnBeaten: null };
+  const flags = view.getUint8(position + radahnBeatenFlag.byte);
+  return { clearCount, radahnBeaten: (flags & radahnBeatenFlag.mask) !== 0 };
 }
 
 /**

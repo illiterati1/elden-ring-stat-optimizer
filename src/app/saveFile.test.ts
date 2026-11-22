@@ -54,7 +54,11 @@ function makeSave({ corrupt = false } = {}) {
   at(ammo, 2);
   const regions = ammo + 4 + 2 * 8 + 0x9c + 8 + 4 + 0x12f + 0x6010 + 0x100;
   at(regions, 3);
-  at(regions + 4 + 3 * 4 + 0x28 + 1 + 0x40 + 4, 1);
+  const clearCount = regions + 4 + 3 * 4 + 0x28 + 1 + 0x40 + 4;
+  at(clearCount, 1);
+  // Flag 61143: Promised Consort Radahn beaten
+  const eventFlags = clearCount + 4 + 4 + 0x1008 + 0x34 + 8 + 0x1b58 * 16 + 0x408 + 0x1d;
+  view.setUint8(start + eventFlags + 11 * 125 + 17, 1);
 
   const slotData = bytes.subarray(start, start + slotSize);
   bytes.set(createHash("md5").update(slotData).digest(), start - 16);
@@ -88,6 +92,7 @@ describe("readSaveFile", () => {
       talismans: [8220, 1231],
       scadutreeBlessing: 19,
       clearCount: 1,
+      radahnBeaten: true,
     });
   });
 

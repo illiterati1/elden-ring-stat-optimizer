@@ -65,6 +65,8 @@ export interface ImportedGear {
   scadutreeBlessingLevel: number;
   /** The journey's NG+ level (0 for NG), if the save has it */
   ngPlus: number | null;
+  /** Whether Promised Consort Radahn has been beaten (in any journey), if the save has it */
+  radahnBeaten: boolean | null;
 }
 
 export interface SaveImportData {
@@ -207,6 +209,7 @@ export function getImportedGear(character: SaveCharacter, data: SaveImportData):
     ammo: [...new Set(ammo)],
     scadutreeBlessingLevel: character.scadutreeBlessing,
     ngPlus: character.clearCount != null ? Math.min(character.clearCount, maxNgPlus) : null,
+    radahnBeaten: character.radahnBeaten,
   };
 }
 
@@ -270,6 +273,9 @@ export function getGearUpdate(
   }
   if (gear.ngPlus != null && (!previous || previous.ngPlus !== gear.ngPlus)) {
     update.ngPlus = gear.ngPlus;
+  }
+  if (gear.radahnBeaten != null && (!previous || previous.radahnBeaten !== gear.radahnBeaten)) {
+    update.radahnBeaten = gear.radahnBeaten;
   }
   return update;
 }

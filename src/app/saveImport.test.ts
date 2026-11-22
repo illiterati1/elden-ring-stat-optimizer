@@ -33,6 +33,7 @@ describe("getGearUpdate", () => {
     ammo: ["arrow:Arrow"],
     scadutreeBlessingLevel: 12,
     ngPlus: 1,
+    radahnBeaten: true,
   };
 
   test("sets everything without earlier gear, keeping buffs the save doesn't decide", () => {
@@ -51,6 +52,7 @@ describe("getGearUpdate", () => {
       selectedAmmo: ["arrow:Arrow"],
       scadutreeBlessingLevel: 12,
       ngPlus: 1,
+      radahnBeaten: true,
     });
   });
 
@@ -74,9 +76,10 @@ describe("getGearUpdate", () => {
   });
 
   test("keeps the ammunition and NG+ when the save has none", () => {
-    const update = getGearUpdate({ ...gear, ammo: [], ngPlus: null }, null, []);
+    const update = getGearUpdate({ ...gear, ammo: [], ngPlus: null, radahnBeaten: null }, null, []);
     expect(update).not.toHaveProperty("selectedAmmo");
     expect(update).not.toHaveProperty("ngPlus");
+    expect(update).not.toHaveProperty("radahnBeaten");
   });
 });
 
