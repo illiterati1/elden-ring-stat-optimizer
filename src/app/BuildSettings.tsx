@@ -22,6 +22,9 @@ import {
   toSpecialUpgradeLevel,
 } from "../optimizer/build.ts";
 import type { Objective } from "../optimizer/optimizer.ts";
+import { allAttributes } from "../calculator/attributes.ts";
+import { allPhysicalTypes } from "../optimizer/defense.ts";
+import { getStatLabel } from "../optimizer/startingClasses.ts";
 import Section from "./Section.tsx";
 import type { AppState, Grip, UpdateAppState } from "./useAppState.ts";
 import {
@@ -29,6 +32,7 @@ import {
   damageTypeLabels,
   debug,
   objectiveOptions,
+  physicalTypeLabels,
   statusTypes,
 } from "./uiUtils.ts";
 import { countActiveFilters, type WeaponFilters } from "./filters.ts";
@@ -189,7 +193,15 @@ function FilterSettings({
   weaponFilters: AppState["weaponFilters"];
   onChange: UpdateAppState;
 }) {
-  const { damageTypes, statusTypes: filterStatusTypes, maxWeight, topN } = weaponFilters;
+  const {
+    damageTypes,
+    statusTypes: filterStatusTypes,
+    maxWeight,
+    maxRequirements,
+    scalesWith,
+    physicalTypes,
+    topN,
+  } = weaponFilters;
   const update = (update: Partial<WeaponFilters>) =>
     onChange({ weaponFilters: { ...weaponFilters, ...update } });
   const active = countActiveFilters(weaponFilters, onlyBuffable);
@@ -263,6 +275,60 @@ function FilterSettings({
           step={0.5}
           onChange={(value) => update({ maxWeight: { ...maxWeight, value } })}
         />
+        {checkbox("Max requirements", maxRequirements.enabled, (enabled) =>
+          update({ maxRequirements: { ...maxRequirements, enabled } }),
+        )}
+        <Box />
+        <Box gridColumn="1 / -1" display="grid" gridTemplateColumns="repeat(5, 1fr)" gap={1}>
+          {allAttributes.map((attribute) => (
+            <NumberTextField
+              key={attribute}
+              label={getStatLabel(attribute).slice(0, 3)}
+              size="small"
+              disabled={!maxRequirements.enabled}
+              value={maxRequirements.value[attribute]}
+              min={0}
+              max={99}
+              step={1}
+              onChange={(value) =>
+                update({
+                  maxRequirements: {
+                    ...maxRequirements,
+                    value: { ...maxRequirements.value, [attribute]: value },
+                  },
+                })
+              }
+            />
+          ))}
+        </Box>
+      </Box>
+
+      <Typography variant="body2" color="text.secondary" mt={1}>
+        Scales with all of
+      </Typography>
+      <Box display="flex" flexWrap="wrap" columnGap={3}>
+        {allAttributes.map((attribute) =>
+          checkbox(
+            getStatLabel(attribute),
+            scalesWith.includes(attribute),
+            (checked) => update({ scalesWith: toggle(scalesWith, attribute, checked) }),
+            attribute,
+          ),
+        )}
+      </Box>
+
+      <Typography variant="body2" color="text.secondary" mt={1}>
+        Main physical damage type is any of
+      </Typography>
+      <Box display="flex" flexWrap="wrap" columnGap={3}>
+        {allPhysicalTypes.map((physicalType) =>
+          checkbox(
+            physicalTypeLabels[physicalType],
+            physicalTypes.includes(physicalType),
+            (checked) => update({ physicalTypes: toggle(physicalTypes, physicalType, checked) }),
+            physicalType,
+          ),
+        )}
       </Box>
 
       <Typography variant="body2" color="text.secondary" mt={1}>

@@ -664,6 +664,9 @@ export default function App() {
     damageTypes: filterDamageTypes,
     statusTypes: filterStatusTypes,
     maxWeight,
+    maxRequirements,
+    scalesWith,
+    physicalTypes: filterPhysicalTypes,
   } = weaponFilters;
   const requests = useMemo(() => {
     const filters = {
@@ -672,9 +675,22 @@ export default function App() {
       damageTypes: filterDamageTypes,
       statusTypes: filterStatusTypes,
       maxWeight,
+      maxRequirements,
+      scalesWith,
+      physicalTypes: filterPhysicalTypes,
     };
-    return unfilteredRequests.filter((request) => passesFilters(request, filters));
-  }, [unfilteredRequests, baseGameOnly, filterDamageTypes, filterStatusTypes, maxWeight]);
+    return unfilteredRequests.filter((request) => passesFilters(request, filters, movesets));
+  }, [
+    unfilteredRequests,
+    baseGameOnly,
+    filterDamageTypes,
+    filterStatusTypes,
+    maxWeight,
+    maxRequirements,
+    scalesWith,
+    filterPhysicalTypes,
+    movesets,
+  ]);
 
   // Weapons that are no longer picked come off the chart, rather than coming back if they're picked
   // again (or taking up its slots). Only after the selection changes, since on page load the data
@@ -689,6 +705,9 @@ export default function App() {
     filterDamageTypes,
     filterStatusTypes,
     maxWeight,
+    maxRequirements,
+    scalesWith,
+    filterPhysicalTypes,
     savedUpgradeLevels,
     savedAttacks,
     savedAshesOfWar,

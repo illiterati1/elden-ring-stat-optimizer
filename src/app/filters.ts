@@ -3,8 +3,11 @@ import {
   allStatusTypes,
   type AttackPowerType,
 } from "../calculator/attackPowerTypes.ts";
+import { allAttributes, type Attribute } from "../calculator/attributes.ts";
 import type { Weapon } from "../calculator/weapon.ts";
 import { getWeaponUpgradeLevel, type BuildRequest } from "../optimizer/build.ts";
+import { allPhysicalTypes, type PhysicalType } from "../optimizer/defense.ts";
+import type { Movesets } from "./useMovesets.ts";
 
 /** Filters on the weapons calculated, from the weapon settings' Filters section */
 export interface WeaponFilters {
@@ -16,6 +19,21 @@ export interface WeaponFilters {
   readonly statusTypes: readonly AttackPowerType[];
   /** Only weapons that weigh at most this much */
   readonly maxWeight: { readonly enabled: boolean; readonly value: number };
+  /**
+   * Only weapons whose listed requirements are at most these (and the off hand weapon's, when
+   * powerstancing with another weapon)
+   */
+  readonly maxRequirements: {
+    readonly enabled: boolean;
+    readonly value: Readonly<Record<Attribute, number>>;
+  };
+  /** Only weapons that scale with all of these stats at their upgrade level (none for no filter) */
+  readonly scalesWith: readonly Attribute[];
+  /**
+   * Only weapons whose own physical damage type (or their ammunition's) is any of these (none for
+   * no filter)
+   */
+  readonly physicalTypes: readonly PhysicalType[];
   /** Only the first results by the sort column */
   readonly topN: { readonly enabled: boolean; readonly value: number };
 }
@@ -25,6 +43,9 @@ export const defaultWeaponFilters: WeaponFilters = {
   damageTypes: [],
   statusTypes: [],
   maxWeight: { enabled: false, value: 10 },
+  maxRequirements: { enabled: false, value: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 } },
+  scalesWith: [],
+  physicalTypes: [],
   topN: { enabled: false, value: 10 },
 };
 
@@ -36,6 +57,9 @@ export function countActiveFilters(filters: WeaponFilters, onlyBuffable: boolean
     +(filters.damageTypes.length > 0) +
     +(filters.statusTypes.length > 0) +
     +filters.maxWeight.enabled +
+    +filters.maxRequirements.enabled +
+    +(filters.scalesWith.length > 0) +
+    +(filters.physicalTypes.length > 0) +
     +filters.topN.enabled
   );
 }
@@ -94,15 +118,48 @@ export function getRequestTypes(request: BuildRequest): Set<AttackPowerType> {
 }
 
 /**
+ * @returns the weapon's own physical damage type (its ammunition's for a ranged weapon), from the
+ * moveset data, if it has a moveset
+ */
+export function getWeaponPhysicalType(
+  weapon: Weapon,
+  movesets: Movesets,
+): PhysicalType | undefined {
+  if (weapon.ammoPhysicalType) return weapon.ammoPhysicalType;
+  const moveset = movesets[weapon.weaponName];
+  return moveset && (allPhysicalTypes[moveset.type] ?? "standard");
+}
+
+/**
  * @returns whether a request passes the filters that apply before optimizing (all but top N), so
  * weapons filtered out aren't calculated at all
  */
-export function passesFilters(request: BuildRequest, filters: WeaponFilters) {
-  if (filters.baseGameOnly && request.weapon.dlc) return false;
+export function passesFilters(request: BuildRequest, filters: WeaponFilters, movesets: Movesets) {
+  const { weapon } = request;
+  if (filters.baseGameOnly && weapon.dlc) return false;
+  if (filters.maxRequirements.enabled) {
+    const weapons = request.offhand ? [weapon, request.offhand.weapon] : [weapon];
+    const tooHigh = weapons.some((weapon) =>
+      allAttributes.some(
+        (attribute) =>
+          (weapon.requirements[attribute] ?? 0) > filters.maxRequirements.value[attribute],
+      ),
+    );
+    if (tooHigh) return false;
+  }
+  if (filters.scalesWith.length > 0) {
+    const scaling =
+      weapon.attributeScaling[getWeaponUpgradeLevel(weapon, request.regularUpgradeLevel)] ?? {};
+    if (!filters.scalesWith.every((attribute) => (scaling[attribute] ?? 0) > 0)) return false;
+  }
+  if (filters.physicalTypes.length > 0) {
+    const physicalType = getWeaponPhysicalType(weapon, movesets);
+    if (!physicalType || !filters.physicalTypes.includes(physicalType)) return false;
+  }
   if (
     filters.maxWeight.enabled &&
-    request.weapon.weight != null &&
-    request.weapon.weight > filters.maxWeight.value + 1e-9
+    weapon.weight != null &&
+    weapon.weight > filters.maxWeight.value + 1e-9
   ) {
     return false;
   }

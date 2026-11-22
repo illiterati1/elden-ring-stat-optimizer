@@ -3,13 +3,26 @@ import { describe, expect, it } from "vitest";
 import { AttackPowerType } from "../calculator/attackPowerTypes.ts";
 import type { AttackDataHit, BuildRequest } from "../optimizer/build.ts";
 import { decodeRegulationData } from "../regulationData.ts";
-import { defaultWeaponFilters, getRequestTypes, passesFilters } from "./filters.ts";
+import {
+  defaultWeaponFilters,
+  getRequestTypes,
+  passesFilters as passesFiltersWith,
+  type WeaponFilters,
+} from "./filters.ts";
+import type { Movesets } from "./useMovesets.ts";
 
 const weapons = decodeRegulationData(
   JSON.parse(
     readFileSync(new URL("../../public/regulation-vanilla-v1.17.js", import.meta.url), "utf8"),
   ),
 );
+
+const movesets: Movesets = JSON.parse(
+  readFileSync(new URL("../../public/movesets.json", import.meta.url), "utf8"),
+);
+
+const passesFilters = (request: BuildRequest, filters: WeaponFilters) =>
+  passesFiltersWith(request, filters, movesets);
 
 function request(name: string, extra: Partial<BuildRequest> = {}): BuildRequest {
   const weapon = weapons.find((weapon) => weapon.name === name);
@@ -86,5 +99,58 @@ describe("weapon filters", () => {
     const baseGame = { ...defaultWeaponFilters, baseGameOnly: true };
     expect(passesFilters(request("Uchigatana"), baseGame)).toBe(true);
     expect(passesFilters(request("Star-Lined Sword"), baseGame)).toBe(false);
+  });
+
+  it("filters by max requirements, including the off hand weapon's", () => {
+    const max = (value: Partial<WeaponFilters["maxRequirements"]["value"]>) => ({
+      ...defaultWeaponFilters,
+      maxRequirements: {
+        enabled: true,
+        value: { ...defaultWeaponFilters.maxRequirements.value, ...value },
+      },
+    });
+    const uchigatana = request("Uchigatana");
+    expect(uchigatana.weapon.requirements).toMatchObject({ str: 11, dex: 15 });
+    expect(passesFilters(uchigatana, max({ str: 11, dex: 15 }))).toBe(true);
+    expect(passesFilters(uchigatana, max({ dex: 14 }))).toBe(false);
+    expect(
+      passesFilters(uchigatana, {
+        ...max({ dex: 14 }),
+        maxRequirements: {
+          ...max({ dex: 14 }).maxRequirements,
+          enabled: false,
+        },
+      }),
+    ).toBe(true);
+
+    const greatsword = request("Greatsword");
+    const powerstanced = request("Uchigatana", {
+      offhand: { weapon: greatsword.weapon, regularUpgradeLevel: 25, stanceBase: 0 },
+    });
+    expect(passesFilters(powerstanced, max({ str: 11, dex: 15 }))).toBe(false);
+  });
+
+  it("filters by the stats a weapon scales with, all of them", () => {
+    const filters = (scalesWith: WeaponFilters["scalesWith"]) => ({
+      ...defaultWeaponFilters,
+      scalesWith,
+    });
+    expect(passesFilters(request("Uchigatana"), filters(["str", "dex"]))).toBe(true);
+    expect(passesFilters(request("Uchigatana"), filters(["int"]))).toBe(false);
+    expect(passesFilters(request("Magic Uchigatana"), filters(["dex", "int"]))).toBe(true);
+    expect(passesFilters(request("Heavy Uchigatana"), filters(["dex"]))).toBe(false);
+  });
+
+  it("filters by the weapon's own physical damage type, including standard", () => {
+    const filters = (physicalTypes: WeaponFilters["physicalTypes"]) => ({
+      ...defaultWeaponFilters,
+      physicalTypes,
+    });
+    expect(passesFilters(request("Uchigatana"), filters(["slash"]))).toBe(true);
+    expect(passesFilters(request("Uchigatana"), filters(["strike", "pierce"]))).toBe(false);
+    expect(passesFilters(request("Club"), filters(["strike"]))).toBe(true);
+    expect(passesFilters(request("Rapier"), filters(["pierce"]))).toBe(true);
+    expect(passesFilters(request("Longsword"), filters(["standard"]))).toBe(true);
+    expect(passesFilters(request("Longsword"), filters(["slash"]))).toBe(false);
   });
 });
