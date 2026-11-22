@@ -47,7 +47,10 @@ export interface SaveCharacter {
   scadutreeBlessing: number;
   /** Times the game has been beaten: 0 in the first journey (NG), 1 in NG+, …; null if not found */
   clearCount: number | null;
-  /** Whether Promised Consort Radahn has been beaten, in this journey or an earlier one; null if not found */
+  /**
+   * Whether Promised Consort Radahn was beaten in an earlier journey, which raises some DLC enemies'
+   * HP (beating him in this journey doesn't, until the next); null if not found
+   */
   radahnBeaten: boolean | null;
 }
 
@@ -147,11 +150,12 @@ function readSlot(slot: number, view: DataView): SaveCharacter | undefined {
 }
 
 /**
- * Event flags are in blocks of 1000 flags (125 bytes) in the save, in an order of their own: flag
- * 61143 (block 61, at index 11) is set for good once Promised Consort Radahn is beaten, unlike his
- * boss flags (9143, 20010800), which a new journey clears. Found by comparing saves.
+ * Event flags are in blocks of 1000 flags (125 bytes) in the save, in an order of their own; flags
+ * 0-999 are the first block. Flag 70 is set when a journey starts if Promised Consort Radahn was
+ * beaten before (flag 61143, which stays set for good, unlike his boss flags 9143 and 20010800).
+ * Found by comparing saves: Rellana's HP rose in the journey after beating him, but not right away.
  */
-const radahnBeatenFlag = { byte: 11 * 125 + Math.floor(143 / 8), mask: 1 << (7 - (143 % 8)) };
+const radahnBeatenFlag = { byte: Math.floor(70 / 8), mask: 1 << (7 - (70 % 8)) };
 const eventFlagsSize = 0x1bf99f;
 
 /**

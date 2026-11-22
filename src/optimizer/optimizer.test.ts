@@ -14139,7 +14139,7 @@ describe("NG+ enemy stats", () => {
 
   // In game (2026-11-22), on a character who beat Radahn in NG: Rellana had 29.7k HP in NG, and
   // 43.7k in NG+ (journey 2), so a kill in an earlier journey counts. Without beating him: 35,208 in
-  // NG+2
+  // NG+2, still 35,208 after beating him for the first time there (it waits for the next journey)
   it("raises HP from NG+ once Radahn is beaten, as tested in game", () => {
     const rellana = findEnemy(53000082);
     expect(rellana.ngPlus?.radahnHpRate).toBeCloseTo(1.367, 3);

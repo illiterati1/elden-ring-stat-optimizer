@@ -65,7 +65,7 @@ export interface ImportedGear {
   scadutreeBlessingLevel: number;
   /** The journey's NG+ level (0 for NG), if the save has it */
   ngPlus: number | null;
-  /** Whether Promised Consort Radahn has been beaten (in any journey), if the save has it */
+  /** Whether Promised Consort Radahn was beaten in an earlier journey, if the save has it */
   radahnBeaten: boolean | null;
 }
 

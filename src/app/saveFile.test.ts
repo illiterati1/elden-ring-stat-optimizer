@@ -56,9 +56,9 @@ function makeSave({ corrupt = false } = {}) {
   at(regions, 3);
   const clearCount = regions + 4 + 3 * 4 + 0x28 + 1 + 0x40 + 4;
   at(clearCount, 1);
-  // Flag 61143: Promised Consort Radahn beaten
+  // Flag 70: Promised Consort Radahn beaten in an earlier journey
   const eventFlags = clearCount + 4 + 4 + 0x1008 + 0x34 + 8 + 0x1b58 * 16 + 0x408 + 0x1d;
-  view.setUint8(start + eventFlags + 11 * 125 + 17, 1);
+  view.setUint8(start + eventFlags + 8, 0b10);
 
   const slotData = bytes.subarray(start, start + slotSize);
   bytes.set(createHash("md5").update(slotData).digest(), start - 16);
