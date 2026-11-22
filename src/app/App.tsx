@@ -108,6 +108,7 @@ import {
   debug,
 } from "./uiUtils.ts";
 import { countRender } from "./perfProbe.ts";
+import { isMobile } from "./mobile.ts";
 import {
   getBuffSelection,
   getTableRequests,
@@ -1314,11 +1315,14 @@ export default function App() {
 
   const settings = (
     <Stack spacing={2}>
-      <SaveImport
-        data={saveImportData}
-        selectedBuffs={selectedBuffKeys}
-        onChange={updateAppState}
-      />
+      {/* No save file to open on a phone or tablet */}
+      {!isMobile && (
+        <SaveImport
+          data={saveImportData}
+          selectedBuffs={selectedBuffKeys}
+          onChange={updateAppState}
+        />
+      )}
       <CharacterSettings
         startingClass={startingClass}
         stats={stats}
