@@ -118,6 +118,12 @@ describe("getTableRequests", () => {
     ]);
   });
 
+  it("makes a row for each grip of a paired weapon, whose attacks differ", () => {
+    expect(
+      rows({ selectedWeapons: ["Twinned Knight Swords"], grips: ["1h", "2h"], affinityIds: [0] }),
+    ).toEqual(["Twinned Knight Swords +25 · 1H R1", "Twinned Knight Swords +25 · 2H R1"]);
+  });
+
   it("makes one unlabeled row when both grips work out the same", () => {
     expect(
       rows({
