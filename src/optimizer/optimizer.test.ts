@@ -4877,9 +4877,9 @@ describe("Ashes of War", () => {
       ["Weapon", "Weapon"],
     ]);
     expect(steps("AoE only")).toEqual([
-      ["Bullet", "Bullet", "Bullet"],
-      ["Bullet", "Bullet"],
-      ["Bullet", "Bullet"],
+      ["Whirlwind", "Whirlwind", "Whirlwind"],
+      ["Whirlwind", "Whirlwind"],
+      ["Whirlwind", "Whirlwind"],
     ]);
   });
 
@@ -6910,7 +6910,7 @@ describe("Ashes of War", () => {
     expect(steps.flat().reduce((sum, hit) => sum + Math.floor(hit.damage), 0)).toBe(4135);
     expect(steps.flat().reduce((sum, hit) => sum + hit.stance, 0)).toBe(52);
     expect(build.attackNote).toBe(
-      "Doesn't count its small light projectiles, which may miss: 97 damage each",
+      "Doesn't count its small light beams, which may miss: 97 damage each",
     );
   });
 
@@ -9756,12 +9756,12 @@ describe("Ashes of War", () => {
         step.map((hit) => `${hit.kind ?? "Weapon"}${hit.leftHand ? " (left)" : ""}`),
       );
     for (const attack of ["Running R2", "Charged R2", "Jumping R2", "Rolling R1"]) {
-      expect(kinds(changed(attack))).toEqual([["Weapon", "Bullet"]]);
+      expect(kinds(changed(attack))).toEqual([["Weapon", "Explosion"]]);
     }
     // Powerstanced, the left flail's too: the L1 chain's #1 (the right's) and #2 (the left's)
     expect(kinds(changed("Powerstance L1"))).toEqual([
-      ["Weapon", "Weapon (left)", "Bullet"],
-      ["Weapon", "Weapon (left)", "Bullet (left)"],
+      ["Weapon", "Weapon (left)", "Explosion"],
+      ["Weapon", "Weapon (left)", "Explosion (left)"],
     ]);
     // Cut short like the flail's own chains
     const cutL1 = getAshAttack(
@@ -9775,14 +9775,14 @@ describe("Ashes of War", () => {
       { steps: 1 },
     );
     expect("attack" in cutL1 && kinds(cutL1.attack)).toEqual([
-      ["Weapon", "Weapon (left)", "Bullet"],
+      ["Weapon", "Weapon (left)", "Explosion"],
     ]);
     expect(kinds(changed("Powerstance Rolling L1"))).toEqual([
-      ["Weapon", "Weapon (left)", "Bullet (left)", "Bullet"],
+      ["Weapon", "Weapon (left)", "Explosion (left)", "Explosion"],
     ]);
     expect(
-      kinds(changed("Powerstance Running L1"))[0].filter((kind) => kind.startsWith("Bullet")),
-    ).toEqual(["Bullet"]);
+      kinds(changed("Powerstance Running L1"))[0].filter((kind) => kind.startsWith("Explosion")),
+    ).toEqual(["Explosion"]);
     expect(
       getAshAttack(ashes, movesets, weapon, withFollowUp("Flare, O Serpent", "R1 chain"), false),
     ).toEqual({ unavailableReason: "Flare, O Serpent doesn't change the R1" });
@@ -10590,7 +10590,7 @@ describe("Ashes of War", () => {
     ).toBeCloseTo(130, -2);
   });
 
-  it("chains Bloodfiends' Bloodboon's bullets", () => {
+  it("chains Bloodfiends' Bloodboon's AoEs", () => {
     // The Bloodfiend's Sacred Spear's fixed skill, a chain whose bullets hit several times, reportedly
     // up to 4, 4, and 8 (tested in game: 2 or 3 for #1 and #2, and at least 5 for #3); at +25 with 99 in
     // every stat on a 123.2 defense target, 176 damage, 3 stance, and about 71 blood loss each
@@ -10610,7 +10610,7 @@ describe("Ashes of War", () => {
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
     expect(result.attack.note).toBe(
-      "Counts its bullets' most hits, 4, 4, and 8: in practice they hit less",
+      "Counts its AoEs' most hits, 4, 4, and 8: in practice they hit less",
     );
     const bullet = optimizeBuild({
       weapon,
@@ -10692,7 +10692,7 @@ describe("Ashes of War", () => {
       "Mohgwyn's Sacred Spear": [{ flat: [0, 0, 30, 0, 0], group: 162 }],
     });
     expect(result.attack.note).toBe(
-      "Counts its bullets' most ticks, 4, 4, and 8: in practice they hit less",
+      "Counts its AoEs' most ticks, 4, 4, and 8: in practice they hit less",
     );
   });
 
@@ -10901,7 +10901,7 @@ describe("Ashes of War", () => {
       hits.reduce((sum, hit) => sum + (hit.status[AttackPowerType.SCARLET_ROT] ?? 0), 0),
     ).toBeCloseTo(160, -2);
     expect(result.attack.note).toBe(
-      "Counts 3 hits of its bullet, which can hit more or fewer times",
+      "Counts 3 hits of its explosion, which can hit more or fewer times",
     );
   });
 
@@ -13036,7 +13036,7 @@ describe("Ashes of War", () => {
     });
   });
 
-  it("counts only Beast's Roar's bullet", () => {
+  it("counts only Beast's Roar's shockwave", () => {
     // Tested in game: a Quality Longsword +25 with 99 in every stat does 542 with the bullet on the
     // training dummy (or 363 with the AoE, never both)
     const weapon = getWeapon("Quality Longsword");
@@ -13058,7 +13058,7 @@ describe("Ashes of War", () => {
       limits: { ...noLimits, maxLevels: 0 },
       attack: attack.attack,
     });
-    expect(build.attackSteps!.map((step) => step.map((hit) => hit.kind))).toEqual([["Bullet"]]);
+    expect(build.attackSteps!.map((step) => step.map((hit) => hit.kind))).toEqual([["Shockwave"]]);
     // Its physical damage is all flat attack
     expect(build.attackSteps![0][0].physicalType).toBe("strike");
     expect(Math.floor(build.finalValue)).toBe(542);
