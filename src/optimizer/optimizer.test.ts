@@ -14136,4 +14136,11 @@ describe("NG+ enemy stats", () => {
     expect(getEnemyStats(inquisitor, 7, true).hp).toBe(3823);
     expect(Math.round(getEnemyStats(inquisitor, 7, true).defense[0])).toBe(164);
   });
+
+  // In game: Rellana had 29.7k HP in NG on a character who had beaten Radahn (2026-11-22)
+  it("doesn't raise HP for beating Radahn in NG, as tested in game", () => {
+    const rellana = findEnemy(53000082);
+    expect(rellana.ngPlus?.radahnHpRate).toBeCloseTo(1.367, 3);
+    expect(getEnemyStats(rellana, 0, true).hp).toBe(29723);
+  });
 });
