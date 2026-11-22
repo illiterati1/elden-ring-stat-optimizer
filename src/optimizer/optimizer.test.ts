@@ -14149,4 +14149,11 @@ describe("NG+ enemy stats", () => {
     expect(getEnemyStats(rellana, 2, false).hp).toBe(35208);
     expect(getEnemyStats(rellana, 3, true).hp).toBe(50304);
   });
+
+  // In game (2026-11-22), NG+3 with Radahn beaten: a Scadu Altus Omenkiller had 7,813 HP. The datamining
+  // spreadsheet's NG+ HP for it is 1 lower than ours (4,639 vs 4,640), and its value would give 7,811
+  it("keeps Omenkillers' unrounded NG+ HP, as tested in game", () => {
+    const omenkiller = findEnemy(59809090);
+    expect(getEnemyStats(omenkiller, 3, true).hp).toBe(7813);
+  });
 });
