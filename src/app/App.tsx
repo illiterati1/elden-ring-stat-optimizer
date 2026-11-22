@@ -475,7 +475,7 @@ export default function App() {
   // What importing from a save file needs, once it's all loaded
   const saveImportData = useMemo(
     () =>
-      weapons.length && allBuffs.length && ashes.ashes.length
+      weapons.length && allBuffs.length && ashes.ashes.length && ammo.length
         ? {
             weapons,
             buffs: allBuffs,
@@ -483,9 +483,10 @@ export default function App() {
             ashChoices: allAshChoices.map(({ value }) => value),
             offhandChoices: new Set(offhandWeaponChoices),
             catalystNames: new Set(catalysts.map((weapon) => weapon.weaponName)),
+            ammo,
           }
         : undefined,
-    [weapons, allBuffs, ashes, allAshChoices, offhandWeaponChoices, catalysts],
+    [weapons, allBuffs, ashes, allAshChoices, offhandWeaponChoices, catalysts, ammo],
   );
   const offhandVersions = useMemo(
     () => weapons.filter((weapon) => weapon.weaponName === offhandWeaponName),

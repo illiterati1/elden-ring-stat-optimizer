@@ -2,9 +2,11 @@ import type { Weapon } from "../calculator/weapon.ts";
 import { maxSpecialUpgradeLevel } from "../optimizer/build.ts";
 import type { StartingClassName, Stats } from "../optimizer/startingClasses.ts";
 import { weaponSlots, type SaveCharacter, type WeaponSlot } from "./saveFile.ts";
+import { getAmmoKey, type AmmoGroup } from "./useAmmo.ts";
 import type { AppState, Grip } from "./useAppState.ts";
 import { fixedSkillsChoice, parseAshChoice, type Ashes } from "./useAshes.ts";
 import { getBuffKey, type Buff } from "./useBuffs.ts";
+import { maxNgPlus } from "./useEnemies.ts";
 
 /** public/saveItems.json (scripts/build_save_data.py): names by the save's item IDs */
 export interface SaveItems {
@@ -58,6 +60,11 @@ export interface ImportedGear {
   /** Talismans and armor in the buff list (ones that don't do anything to damage aren't) */
   buffs: string[];
   catalyst: { name: string; upgradeLevel: number } | null;
+  /** The equipped arrows and bolts, as ammunition keys (getAmmoKey) */
+  ammo: string[];
+  scadutreeBlessingLevel: number;
+  /** The journey's NG+ level (0 for NG), if the save has it */
+  ngPlus: number | null;
 }
 
 export interface SaveImportData {
@@ -71,6 +78,7 @@ export interface SaveImportData {
   offhandChoices: ReadonlySet<string>;
   /** Staves and seals, by base name */
   catalystNames: ReadonlySet<string>;
+  ammo: readonly AmmoGroup[];
 }
 
 /** The kinds of buffs the save decides: other selected buffs (e.g. consumables) are kept */
@@ -177,6 +185,13 @@ export function getImportedGear(character: SaveCharacter, data: SaveImportData):
     .map((slot) => getAppWeapon(character.weapons[slot].id, data))
     .find((found) => found && data.catalystNames.has(found.weapon.weaponName));
 
+  // Arrows and bolts are weapons in the save, with no affinity or upgrade level
+  const ammo = character.ammo.flatMap((id) => {
+    const name = items.weapons[id - (id % 10000)];
+    const group = name && data.ammo.find((g) => g.names.includes(name));
+    return group ? [getAmmoKey(group)] : [];
+  });
+
   return {
     startingClass: saveClasses[character.classIndex] ?? "Wretch",
     stats: character.stats,
@@ -189,6 +204,9 @@ export function getImportedGear(character: SaveCharacter, data: SaveImportData):
     offhand,
     buffs,
     catalyst: catalyst ? { name: catalyst.weapon.weaponName, upgradeLevel: catalyst.level } : null,
+    ammo: [...new Set(ammo)],
+    scadutreeBlessingLevel: character.scadutreeBlessing,
+    ngPlus: character.clearCount != null ? Math.min(character.clearCount, maxNgPlus) : null,
   };
 }
 
@@ -243,6 +261,15 @@ export function getGearUpdate(
   if (!previous || !same(previous.catalyst, gear.catalyst)) {
     update.catalyst = gear.catalyst?.name ?? "";
     if (gear.catalyst) update.catalystUpgradeLevel = gear.catalyst.upgradeLevel;
+  }
+  if (gear.ammo.length && (!previous || !same(previous.ammo, gear.ammo))) {
+    update.selectedAmmo = gear.ammo;
+  }
+  if (!previous || previous.scadutreeBlessingLevel !== gear.scadutreeBlessingLevel) {
+    update.scadutreeBlessingLevel = gear.scadutreeBlessingLevel;
+  }
+  if (gear.ngPlus != null && (!previous || previous.ngPlus !== gear.ngPlus)) {
+    update.ngPlus = gear.ngPlus;
   }
   return update;
 }

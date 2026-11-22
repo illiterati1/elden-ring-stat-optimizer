@@ -20,6 +20,7 @@ import {
   type SaveImportData,
   type SaveItems,
 } from "./saveImport.ts";
+import { getNgPlusLabel, maxNgPlus } from "./useEnemies.ts";
 import { loadRememberedSave, storeRememberedSave, type RememberedSave } from "./rememberedSave.ts";
 import Section from "./Section.tsx";
 import type { AppState, UpdateAppState } from "./useAppState.ts";
@@ -314,6 +315,7 @@ function SaveImport({ data, selectedBuffs, onChange }: Props) {
               {save.characters.map((c) => (
                 <MenuItem key={c.slot} value={c.slot}>
                   {c.name} — Level {c.level}
+                  {c.clearCount ? `, ${getNgPlusLabel(Math.min(c.clearCount, maxNgPlus))}` : ""}
                 </MenuItem>
               ))}
             </Select>

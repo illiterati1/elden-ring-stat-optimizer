@@ -48,6 +48,13 @@ function makeSave({ corrupt = false } = {}) {
   ];
   equipped.forEach((id, i) => at(stats + 0x2c0 + i * 4, id >>> 0));
   at(stats + 0x2c0 + 22 * 4 + 1 * 4, 0x80800001);
+  view.setUint8(start + stats + 0xc0, 19);
+  // The clear count, after sections of the lengths readClearCount skips: two ammo and three regions
+  const ammo = stats - 0x34 + 0x1b0 + 0xd0 + 0x58 + 0x74 + 0x58 + 0x9010 + 0x74 + 0x8c + 0x18;
+  at(ammo, 2);
+  const regions = ammo + 4 + 2 * 8 + 0x9c + 8 + 4 + 0x12f + 0x6010 + 0x100;
+  at(regions, 3);
+  at(regions + 4 + 3 * 4 + 0x28 + 1 + 0x40 + 4, 1);
 
   const slotData = bytes.subarray(start, start + slotSize);
   bytes.set(createHash("md5").update(slotData).digest(), start - 16);
@@ -79,6 +86,8 @@ describe("readSaveFile", () => {
       ammo: [50000000, 52060000, 50330000],
       armor: [1700000, 1700100, 1700200, 1700300],
       talismans: [8220, 1231],
+      scadutreeBlessing: 19,
+      clearCount: 1,
     });
   });
 
