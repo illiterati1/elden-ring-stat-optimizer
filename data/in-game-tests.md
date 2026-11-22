@@ -63,7 +63,6 @@ step, from that step's press).
 
 | # | Test | Calculated |
 |---|---|---|
-| 38 | Scadutree Blessing's damage bonus: the same hit on a Realm of Shadow enemy at blessing +0 and +20 | ×2.05 at +20 (SpEffectParam 20000100-20000120 atkEnemyDmgCorrectRate), after defenses |
 | 39 | Whether the blessing also raises black flame's %-HP damage (e.g. Black Flame Blade on a DLC enemy) | Not applied |
 
 ## Not timed: need measurements
