@@ -67,6 +67,7 @@ import useAmmo, { getAmmoLabel, weaponTypeAmmoClasses, withAmmo } from "./useAmm
 import useBuildResults, { useDpsCurves } from "./useBuildResults.ts";
 import useStableArray from "./useStableArray.ts";
 import CharacterSettings from "./CharacterSettings.tsx";
+import SaveImport from "./SaveImport.tsx";
 import BuildSettings from "./BuildSettings.tsx";
 import TimingSettings from "./TimingSettings.tsx";
 import LimitSettings from "./LimitSettings.tsx";
@@ -470,6 +471,21 @@ export default function App() {
     );
   }, [weapons, movesets, weaponOrder]);
   const offhandWeaponChoices = useMemo(() => [...offhandWeaponTypes.keys()], [offhandWeaponTypes]);
+  // What importing from a save file needs, once it's all loaded
+  const saveImportData = useMemo(
+    () =>
+      weapons.length && allBuffs.length && ashes.ashes.length
+        ? {
+            weapons,
+            buffs: allBuffs,
+            ashes,
+            ashChoices: allAshChoices.map(({ value }) => value),
+            offhandChoices: new Set(offhandWeaponChoices),
+            catalystNames: new Set(catalysts.map((weapon) => weapon.weaponName)),
+          }
+        : undefined,
+    [weapons, allBuffs, ashes, allAshChoices, offhandWeaponChoices, catalysts],
+  );
   const offhandVersions = useMemo(
     () => weapons.filter((weapon) => weapon.weaponName === offhandWeaponName),
     [weapons, offhandWeaponName],
@@ -1298,6 +1314,11 @@ export default function App() {
 
   const settings = (
     <Stack spacing={2}>
+      <SaveImport
+        data={saveImportData}
+        selectedBuffs={selectedBuffKeys}
+        onChange={updateAppState}
+      />
       <CharacterSettings
         startingClass={startingClass}
         stats={stats}
