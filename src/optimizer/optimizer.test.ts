@@ -6323,6 +6323,14 @@ describe("Ashes of War", () => {
         )[0],
       ).toEqual([573, 573, 676]);
     });
+
+    it("leaves R1s under Barbaric Roar unboosted by the Roar Medallion", () => {
+      // Confirmed in game: only the roar's R2s count as roar attacks (category 106), not R1s
+      const r1 = (names: string[]) =>
+        steps("Claymore", moveset("Claymore", "R1"), names)[0].reduce((sum, hit) => sum + hit, 0);
+      expect(r1(["Barbaric Roar", "Roar Medallion"])).toBe(r1(["Barbaric Roar"]));
+      expect(r1(["Barbaric Roar"])).toBeGreaterThan(r1([]));
+    });
   });
 
   it("boosts only Lightning Slash's stomp and slash with skill buffs", () => {
