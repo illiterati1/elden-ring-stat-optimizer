@@ -673,13 +673,21 @@ class Steps:
         # An attack whose hits cost nothing costs its first window's behavior's (the judge ending in
         # 0, as a second window's costs nothing, e.g. 101 after 100) instead: tested in game, the
         # Backhand Blade's one handed jumping R2 (judge 161, 0) costs 22, its 160's, not its
-        # landing's (judge 550, 19), and its jump 10 more
+        # landing's (judge 550, 19), and its jump 10 more. But not where the weapon's own variation
+        # makes them free, overriding the shared one's cost: tested in game (er-logger, in combat,
+        # 2026-11-22), Rellana's Twin Blades' one handed jumping R2 (judges 163 and 164, 0 in 6701,
+        # 10 in 6700) costs only its jump's 10, not its 160's 10. Why the Backhand Blade's pays isn't
+        # known (its 161 is 0 in its own, shared, variation 6400)
         if not stamina:
-            first = min(
-                (judge for _, _, judge, event_type, *_ in windows or [] if event_type != PC_BEHAVIOR_EVENT),
-                default=None,
+            judges = [judge for _, _, judge, event_type, *_ in windows or [] if event_type != PC_BEHAVIOR_EVENT]
+            first = min(judges, default=None)
+            made_free = any(
+                self.behaviors.get_behavior_id(variation, judge) != self.behaviors.get_behavior_id(variation // 100 * 100, judge)
+                and self.behaviors.get_stamina(variation // 100 * 100, judge)
+                for judge in judges
+                if judge != 550
             )
-            if first is not None:
+            if first is not None and not made_free:
                 stamina = charged_stamina(self.behaviors.get_stamina(variation, first // 10 * 10), rate)
         return file_number, hits, merged, cancels, extra_hitboxes, stamina, left_stamina
 
@@ -893,7 +901,9 @@ def get_timings(steps, param, moveset):
                         }
                         if landing:
                             timing["landing"] = landing
-                if stamina:
+                # A jumping attack's 0 is kept, for its jump's stamina to be added to (e.g. Rellana's
+                # Twin Blades' one handed jumping R2's)
+                if stamina or "Jumping" in attack:
                     timing["stamina"] = round(stamina, 2)
                 if left_stamina:
                     timing["leftStamina"] = round(left_stamina, 2)

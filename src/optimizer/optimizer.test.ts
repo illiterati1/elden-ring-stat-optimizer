@@ -14299,6 +14299,22 @@ describe("timing coverage", () => {
       moveStamina: { action: "jump", stamina: 10 },
     });
   });
+
+  it("costs only the jump for a jumping attack its weapon's own behaviors make free", () => {
+    // Tested in game (er-logger, in combat, 2026-11-22): Rellana's Twin Blades' one handed jumping
+    // R2 costs only its jump's 10, four times. Its hits' behaviors (judges 163 and 164) cost
+    // none in its own variation (6701), though the shared twinblades' (6700) cost 10, so its 160's
+    // 10 isn't taken as on the Backhand Blade
+    const jumping = getAttackData(
+      movesets,
+      getWeapon("Rellana's Twin Blades"),
+      "Jumping R2",
+      false,
+      0.5,
+    )!;
+    expect(jumping.stamina).toEqual([10]);
+    expect(jumping.moveStamina).toEqual({ action: "jump", stamina: 10 });
+  });
 });
 
 describe("NG+ enemy stats", () => {
