@@ -45,15 +45,21 @@ hits, with damage, stance and buildup. Use frames from each animation's start. E
 ✗s where the log shows why, e.g. ticks from an earlier cast that land during the next attack.
 
 Then compare with the calculator, unless the user only asked for the log: follow the
-`in-game-test` skill. The summary already does a first pass: after each press, a `calc` line
-(from `scripts/predict.ts`) with the calculator attack whose damage is closest, each hit's damage
-and frame from the press (✓ within 1 damage and 2 frames, else ✗ with the game's), its stance and
-buildup, and logged hits it has no hit for. It assumes 99 in every stat, NG+1 and no buffs, and
-uses the defenses of the enemy hit (`vs <name>`; the training dummy's if enemies.json doesn't have
-that NpcParam ID); rerun with `--ng 0` or `--stat N` if those were different. It only knows skills
-(040000 on), the basic and mounted moveset animations, so check the right version was picked. A
-buffered press (its animation starting well after the press) puts the hits later than the calc's
-frames. Things to check first:
+`in-game-test` skill, but get the calculator's numbers from `scripts/predict.ts`, not by editing
+a test. Pass the weapon's logged ID from the summary's equipment line (in brackets):
+
+```
+npx vite-node scripts/predict.ts -- 67520010 --2h [--attack "jumping r2"] [--anim 918040060,918040010]
+```
+
+It prints, per attack (every moveset attack and every version of the skill, or those `--attack`'s
+text or `--anim`'s logged animations pick), each step's stamina, lead (frames before its animation
+starts), cycle and cancels from the press, and each hit's damage, stance, buildup and frame, both
+from the press (`@56`) and from the animation's start (`anim 36`). It assumes 99 in every stat,
+NG+1 (the dummy's 144.4) and no buffs: `--ng 0`, `--stat N`, `--enemy <NpcParam ID>` (from the log's
+`npc <id>@...` rows) for others, `--ash <id>` for an Ash of War, `--json` for JSON. Compare its
+`anim` frames with the summary's `anim+N` (a buffered press starts its animation late). Things to
+check first:
 
 - **Stats and NG+:** assume 99 in every stat and NG+1, where the training dummy's defense is
   144.4, not 123.2. Only if the damage doesn't match, read the character from the save with
@@ -63,13 +69,12 @@ frames. Things to check first:
   equipment over it.
 - **Weapon ID:** the logged one is base + affinity × 100 + upgrade, e.g. 3180825 = Claymore,
   Magic (8), +25.
-- **Stance skills:** the calc's first step counts from the L2 press (the stance's opening, about
-  18 frames), so compare its hits from the animation's start instead when R1/R2 came from a held
-  stance.
-- **Jumping attacks:** predict.ts doesn't know them; get the calculator's from `getAttackData`
-  (e.g. `"Jumping R2"`). The log shows the jump (anim 3202000, 10 stamina at the A press) and then
-  the landing, never the attack's own animation, so time its hit from the jump press (the
-  calculator's hit times include the jump's lead).
+- **Stamina:** the summary shows only an animation's first stamina drop. A step whose windows each
+  cost stamina drops several times (Moon-and-Fire Stance's R1 #1: four 10s), and predict.ts gives the
+  step's total, so check the log's `stamina` rows before calling it a mismatch.
+- **Jumping attacks:** the log shows the jump (anim 3202000, 10 stamina at the A press) and then the
+  landing, never the attack's own animation, so time its hit from the jump press: predict.ts's
+  `@` frame for a jumping attack is from the jump press (its lead is the jump's start).
 
 Always check `data/in-game-tests.md` too: for each attack logged, look for its rows (weapon, skill,
 attack, and the other grip or version, which doesn't count as tested). Remove the rows the log

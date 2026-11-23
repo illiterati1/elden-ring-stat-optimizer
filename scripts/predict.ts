@@ -1,30 +1,45 @@
 /**
- * The calculator's predictions for attacks logged in game by er-logger, for its summarize.mjs to
- * compare with: each hit's damage, stance, and buildup on the training dummy, and when it lands.
+ * The calculator's numbers for one weapon's attacks, to compare with in-game tests (e.g. er-logger's
+ * summaries) without editing a test: each step's stamina, timing and cancels, and each hit's damage,
+ * stance, buildup and frame.
  *
- *   echo '[{"weapon": 1500725, "ash": 0, "twoHanding": true, "anims": [877040000, 877040001]}]' |
- *     npx vite-node scripts/predict.ts -- [--ng 0|1] [--stat 99]
+ *   npx vite-node scripts/predict.ts -- <weapon> [options]
  *
- * Each query is one press: the logged weapon ID (base + affinity × 100 + upgrade level, as the save
- * has it), the hand's Ash of War ID (0 for the weapon's own skill), the grip, and the animations the
- * press played. Prints, per query, every calculator attack those animations could be (a skill's
- * versions and follow-ups, or the moveset attack and chain step the animation is), each with its
- * hits in order: [damage, stance, {status: buildup}, frames from the press (or null)]. The caller
- * picks the one whose damage matches.
+ * <weapon> is a logged weapon ID (base + affinity × 100 + upgrade level, e.g. 3180825 = Claymore,
+ * Magic, +25) or a name ("Rellana's Twin Blades", with --affinity and --upgrade).
  *
- * A query can name the enemy hit (`"enemy": <NpcParam ID>`): its defenses and negations are used if
- * enemies.json has it, the Boss Arena training dummy's otherwise. Also prints each query's enemy name.
- * Assumes 99 in every stat (--stat) and NG+1 (--ng 0 for NG), no buffs.
+ *   --2h               two handed (default one handed)
+ *   --affinity <name>  with a name: the affinity (default Standard, or the unique one)
+ *   --upgrade <n>      with a name: the upgrade level, +25 scale or +10 for somber (default the max)
+ *   --ash <id|name>    the Ash of War (a logged ID, or its name; default the weapon's own skill)
+ *   --attack <text>    only attacks whose label has this in it (any case), e.g. "jumping r2", "moon"
+ *   --anim <ids>       only the attacks these logged animations could be (comma separated): a skill's
+ *                      (040000 on) are all its versions, the moveset's are their attack and step
+ *   --enemy <id>       the NpcParam ID hit: its defenses from enemies.json (the dummy's otherwise)
+ *   --ng <n>           NG+ level: 0 or 1 (default 1, the dummy's defense 144.4; 123.2 in NG)
+ *   --stat <n>         every stat (default 99)
+ *   --json             print JSON instead
+ *
+ * Frames are at 60 fps. Each step's hits are from its press ("@56") and from its animation's start
+ * ("anim 36"): a step's lead is the frames before its animation starts (the press's 2-frame delay,
+ * plus a stance's opening or a jump's start before a chain's first step). Cancels are from the press.
+ * Hits marked ~ have approximate times (projectiles); "(not counted)" ones are shown but not counted.
+ * No buffs.
  */
 import { readFileSync } from "node:fs";
 import { allDamageTypes, AttackPowerType, type Attributes } from "../src/calculator/calculator.ts";
 import type { Weapon } from "../src/calculator/weapon.ts";
 import { decodeRegulationData } from "../src/regulationData.ts";
 import { optimizeBuild, maxSpecialUpgradeLevel } from "../src/optimizer/build.ts";
-import type { AttackData } from "../src/optimizer/build.ts";
-import { getAttackData, type AttackName, type Movesets } from "../src/app/useMovesets.ts";
+import type { AttackData, StepTimes } from "../src/optimizer/build.ts";
+import {
+  allAttacks,
+  getAttackData,
+  type AttackName,
+  type Movesets,
+} from "../src/app/useMovesets.ts";
 import { getEnemyStats, type Enemy, type EnemyArea } from "../src/app/useEnemies.ts";
-import { getAshAttack, getAshChoices, parseAshChoice, type Ashes } from "../src/app/useAshes.ts";
+import { getAshAttacks, getAshChoices, parseAshChoice, type Ashes } from "../src/app/useAshes.ts";
 import type { SaveItems } from "../src/app/saveImport.ts";
 
 const root = new URL("../public/", import.meta.url);
@@ -34,38 +49,85 @@ const movesets: Movesets = read("movesets.json");
 const ashes: Ashes = read("ashes.json");
 const items: SaveItems = read("saveItems.json");
 
-const args = process.argv.slice(2);
-const option = (name: string, fallback: number) => {
+const args = process.argv.slice(2).filter((arg) => arg !== "--");
+const flag = (name: string) => args.includes(name);
+const option = (name: string) => {
   const i = args.indexOf(name);
-  return i >= 0 ? Number(args[i + 1]) : fallback;
+  return i >= 0 ? args[i + 1] : undefined;
 };
-const ngPlus = option("--ng", 1);
-const stat = option("--stat", 99);
+const valueOptions = [
+  "--affinity",
+  "--upgrade",
+  "--ash",
+  "--attack",
+  "--anim",
+  "--enemy",
+  "--ng",
+  "--stat",
+];
+const positional = args.filter(
+  (arg, i) => !arg.startsWith("--") && !valueOptions.includes(args[i - 1]),
+);
+if (positional.length !== 1) {
+  console.error("Usage: npx vite-node scripts/predict.ts -- <weapon ID or name> [options]");
+  process.exit(1);
+}
+
+const ngPlus = Number(option("--ng") ?? 1);
+const stat = Number(option("--stat") ?? 99);
+const twoHanding = flag("--2h");
+const json = flag("--json");
 // The training dummy's defense in NG and NG+1 (useEnemies.ts's trainingDummyArea)
 const defense = ngPlus > 0 ? 144.4 : 123.2;
-const enemiesById = new Map<number, Enemy>(
-  (read("enemies.json").areas as EnemyArea[]).flatMap((area) =>
-    area.enemies.flatMap((enemy) => enemy.npcParamIds.map((id) => [id, enemy] as const)),
-  ),
-);
+
+const AFFINITIES: Record<string, number> = {
+  standard: 0,
+  heavy: 1,
+  keen: 2,
+  quality: 3,
+  fire: 4,
+  "flame art": 5,
+  lightning: 6,
+  sacred: 7,
+  magic: 8,
+  cold: 9,
+  poison: 10,
+  blood: 11,
+  occult: 12,
+};
+const STATUS_NAMES: Partial<Record<AttackPowerType, string>> = {
+  [AttackPowerType.POISON]: "poison",
+  [AttackPowerType.SCARLET_ROT]: "rot",
+  [AttackPowerType.BLEED]: "bleed",
+  [AttackPowerType.FROST]: "frost",
+  [AttackPowerType.SLEEP]: "sleep",
+  [AttackPowerType.MADNESS]: "madness",
+  [AttackPowerType.DEATH_BLIGHT]: "blight",
+};
 
 interface Target {
   name: string;
   defenses: Record<AttackPowerType, { defense: number; negation: number }>;
   physicalNegation: { standard: number; slash: number; strike: number; pierce: number };
 }
-const dummy: Target = {
-  name: `${ngPlus > 0 ? "NG+1" : "NG"} dummy`,
-  defenses: Object.fromEntries(
-    allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
-  ) as Target["defenses"],
-  physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
-};
 
 /** @returns an enemy's defenses as the enemy picker sets them, or the dummy's if it isn't known */
 function getTarget(npcParamId: number | undefined): Target {
-  const enemy = npcParamId == null ? undefined : enemiesById.get(npcParamId);
-  if (!enemy) return dummy;
+  const enemy =
+    npcParamId == null
+      ? undefined
+      : (read("enemies.json").areas as EnemyArea[])
+          .flatMap((area) => area.enemies)
+          .find((enemy: Enemy) => enemy.npcParamIds.includes(npcParamId));
+  if (!enemy) {
+    return {
+      name: `${ngPlus > 0 ? "NG+1" : "NG"} dummy (${defense})`,
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
+      ) as Target["defenses"],
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+    };
+  }
   const [phys, mag, fire, lightning, holy] = getEnemyStats(enemy, ngPlus, false).defense.map(
     Math.round,
   );
@@ -116,52 +178,77 @@ const MOUNTED_ANIMATIONS: Record<number, [AttackName, number]> = Object.fromEntr
   ]),
 );
 const TWO_HANDED_OFFSET = 2000;
-const STATUS_NAMES: Partial<Record<AttackPowerType, string>> = {
-  [AttackPowerType.POISON]: "poison",
-  [AttackPowerType.SCARLET_ROT]: "rot",
-  [AttackPowerType.BLEED]: "bleed",
-  [AttackPowerType.FROST]: "frost",
-  [AttackPowerType.SLEEP]: "sleep",
-  [AttackPowerType.MADNESS]: "madness",
-  [AttackPowerType.DEATH_BLIGHT]: "blight",
-};
 
-interface Query {
-  weapon: number;
-  ash: number;
-  twoHanding: boolean;
-  anims: number[];
-  enemy?: number;
-}
-type Hit = [damage: number, stance: number, status: Record<string, number>, frame: number | null];
-interface Candidate {
-  label: string;
-  hits: Hit[];
-}
-
-/** @returns the app's weapon and regular-scale upgrade level for a logged weapon ID */
-function getWeapon(id: number): { weapon: Weapon; level: number } | undefined {
-  const name = items.weapons[Math.floor(id / 10000) * 10000];
-  const affinityId = Math.floor((id % 10000) / 100);
-  const level = id % 100;
+/** @returns the app's weapon and regular-scale upgrade level */
+function getWeapon(input: string): { weapon: Weapon; level: number } | undefined {
+  let name: string;
+  let affinityId: number;
+  let level: number | undefined;
+  if (/^\d+$/.test(input)) {
+    const id = Number(input);
+    name = items.weapons[Math.floor(id / 10000) * 10000];
+    affinityId = Math.floor((id % 10000) / 100);
+    level = id % 100;
+  } else {
+    name = input;
+    const affinity = option("--affinity")?.toLowerCase() ?? "standard";
+    affinityId = AFFINITIES[affinity] ?? Number(affinity);
+    const upgrade = option("--upgrade");
+    level = upgrade == null ? undefined : Number(upgrade);
+  }
+  const matches = (w: Weapon) => w.weaponName.toLowerCase() === name?.toLowerCase();
   const weapon =
-    weapons.find((w) => w.weaponName === name && w.affinityId === affinityId) ??
-    (affinityId === 0
-      ? weapons.find((w) => w.weaponName === name && w.affinityId === -1)
-      : undefined);
+    weapons.find((w) => matches(w) && w.affinityId === affinityId) ??
+    (affinityId === 0 ? weapons.find((w) => matches(w) && w.affinityId === -1) : undefined);
   if (!weapon) return undefined;
   const special = weapon.attack.length - 1 === maxSpecialUpgradeLevel;
+  if (level == null) return { weapon, level: 25 };
   return { weapon, level: special ? Math.max(0, Math.ceil(level * 2.5 - 0.5)) : level };
 }
 
-/** @returns each step's hits, as the calculator has them */
+interface Hit {
+  damage: number;
+  stance: number;
+  status: Record<string, number>;
+  /** Frames from the step's press, and from its animation's start */
+  frame: number | null;
+  animFrame: number | null;
+  approximate?: true;
+  kind?: string;
+  notCounted?: true;
+}
+interface Step {
+  label?: string;
+  stamina?: number;
+  leftStamina?: number;
+  hitStamina?: number[];
+  /** Frames from the press until its animation starts */
+  lead?: number;
+  /** Frames until the next step (or the attack again) */
+  cycle?: number;
+  cancels: Record<string, number | number[] | string>;
+  hits: Hit[];
+}
+interface Prediction {
+  label: string;
+  chain?: boolean;
+  repeatFrom?: number;
+  note?: string;
+  steps: Step[];
+}
+
+const frames = (seconds: number | undefined) =>
+  seconds == null ? undefined : Math.round(seconds * 60);
+
+/** @returns the attack's steps and hits, as the calculator has them */
 function predict(
+  label: string,
   weapon: Weapon,
   level: number,
-  twoHanding: boolean,
   attack: AttackData,
   target: Target,
-): Hit[][] {
+  onlyStep?: number,
+): Prediction {
   const attributes: Attributes = { str: stat, dex: stat, int: stat, fai: stat, arc: stat };
   const result = optimizeBuild({
     weapon,
@@ -186,12 +273,40 @@ function predict(
     attack,
     buffs: [],
   });
-  return (result.attackSteps ?? []).map((step, i) => {
-    const times = attack.stepTimes?.[i];
-    return step
-      .filter((hit) => !hit.notCounted)
-      .map((hit, j): Hit => {
-        const time = times?.hitTimes?.[j] ?? times?.hits[j];
+  const steps = (result.attackSteps ?? []).map((hits, i): Step => {
+    const times: StepTimes | undefined = attack.stepTimes?.[i];
+    const lead = frames(times?.lead);
+    const cancels: Step["cancels"] = {};
+    if (times) {
+      if (times.earliest) {
+        cancels.earliest = `${times.earliest.attack} ${frames(times.earliest.time)}`;
+      }
+      for (const key of [
+        "rightHandAttack",
+        "quickL2",
+        "L2",
+        "roll",
+        "block",
+        "move",
+        "jump",
+        "recast",
+        "opening",
+      ] as const) {
+        const value = frames(times[key]);
+        if (value != null) cancels[key] = value;
+      }
+      if (times.earlyRolls?.length) cancels.earlyRolls = times.earlyRolls.map((t) => frames(t)!);
+    }
+    return {
+      label: attack.stepLabels?.[i],
+      stamina: attack.stamina?.[i],
+      leftStamina: attack.leftStamina?.[i],
+      hitStamina: attack.hitStamina?.[i],
+      lead,
+      cycle: frames(attack.cycleTimes?.[i] ?? times?.cycle),
+      cancels,
+      hits: hits.map((hit, j): Hit => {
+        const frame = frames(times?.hitTimes?.[j] ?? times?.hits[j]) ?? null;
         const status = Object.fromEntries(
           Object.entries(hit.status)
             .filter(([, value]) => value)
@@ -200,60 +315,146 @@ function predict(
               Math.round(value!),
             ]),
         );
-        return [
-          hit.damage,
-          Math.round(hit.stance * 10) / 10,
+        return {
+          damage: hit.damage,
+          stance: Math.round(hit.stance * 100) / 100,
           status,
-          time == null ? null : Math.round(time * 60),
-        ];
-      });
+          frame,
+          animFrame: frame == null || lead == null ? null : frame - lead,
+          ...(times?.approximate?.[j] && { approximate: true as const }),
+          ...(hit.kind && { kind: hit.kind }),
+          ...(hit.notCounted && { notCounted: true as const }),
+        };
+      }),
+    };
   });
+  return {
+    label: onlyStep != null && steps.length > 1 ? `${label} ${onlyStep + 1}` : label,
+    ...(attack.chain && { chain: true }),
+    ...(attack.repeatFrom != null && { repeatFrom: attack.repeatFrom }),
+    ...(attack.note && { note: attack.note }),
+    steps: onlyStep != null ? steps.slice(onlyStep, onlyStep + 1) : steps,
+  };
 }
 
-function getCandidates({ weapon: id, ash, twoHanding, anims, enemy }: Query): Candidate[] {
-  const target = getTarget(enemy);
-  const found = getWeapon(id);
-  if (!found) return [];
-  const { weapon, level } = found;
-  const candidates: Candidate[] = [];
-  const locals = anims.map((anim) => anim % 1_000_000);
-  // A skill (its animations are 040000 on): every version and follow-up of it
-  if (locals.some((local) => local >= 40000 && local < 50000)) {
-    const skill = ash ? items.ashes[ash] : ashes.weapons[weapon.weaponName]?.skill;
-    const choices = getAshChoices(ashes).filter(({ value }) => parseAshChoice(value)[0] === skill);
+function getPredictions(weapon: Weapon, level: number, target: Target): Prediction[] {
+  const predictions: Prediction[] = [];
+  const anims = option("--anim")
+    ?.split(",")
+    .map((anim) => Number(anim) % 1_000_000);
+  // The skill: every version and follow-up of it
+  if (!anims || anims.some((local) => local >= 40000 && local < 50000)) {
+    const ashOption = option("--ash");
+    const skill = ashOption
+      ? /^\d+$/.test(ashOption)
+        ? items.ashes[Number(ashOption)]
+        : ashOption
+      : ashes.weapons[weapon.weaponName]?.skill;
+    const choices = getAshChoices(ashes).filter(
+      ({ value }) => parseAshChoice(value)[0].toLowerCase() === skill?.toLowerCase(),
+    );
     if (!choices.length && skill) choices.push({ value: skill, label: skill });
     for (const { value, label } of choices) {
-      const result = getAshAttack(ashes, movesets, weapon, value, twoHanding, 0.5, true);
-      if (!("attack" in result)) continue;
-      const steps = predict(weapon, level, twoHanding, result.attack, target);
-      steps.forEach((hits, i) =>
-        candidates.push({ label: steps.length > 1 ? `${label}, step ${i + 1}` : label, hits }),
-      );
+      for (const { ash, variant } of getAshAttacks(
+        ashes,
+        movesets,
+        weapon,
+        value,
+        twoHanding,
+        0.5,
+        true,
+      )) {
+        const name = variant ? `${label}: ${variant.short}` : label;
+        if (!("attack" in ash)) {
+          predictions.push({ label: name, note: ash.unavailableReason, steps: [] });
+          continue;
+        }
+        predictions.push(predict(name, weapon, level, ash.attack, target));
+      }
     }
   }
-  // Moveset attacks, by their animation
-  for (const local of locals) {
-    const entry =
-      MOUNTED_ANIMATIONS[local] ??
-      MOVESET_ANIMATIONS[twoHanding ? local - TWO_HANDED_OFFSET : local];
-    if (!entry) continue;
-    const [attackName, step] = entry;
+  // Moveset attacks: all of them, or the logged animations'
+  const movesetAttacks: [AttackName, number | undefined][] = anims
+    ? anims.flatMap((local) => {
+        const entry =
+          MOUNTED_ANIMATIONS[local] ??
+          MOVESET_ANIMATIONS[twoHanding ? local - TWO_HANDED_OFFSET : local];
+        return entry ? [entry] : [];
+      })
+    : allAttacks.map((name) => [name, undefined]);
+  for (const [attackName, step] of movesetAttacks) {
     const attack = getAttackData(movesets, weapon, attackName, twoHanding, 0.5, true);
     if (!attack) continue;
-    const steps = predict(weapon, level, twoHanding, attack, target);
-    const label = steps.length > 1 ? `${attackName} ${step + 1}` : attackName;
-    if (steps[step]) candidates.push({ label, hits: steps[step] });
+    predictions.push(predict(attackName, weapon, level, attack, target, step));
   }
-  return candidates;
+  const text = option("--attack")?.toLowerCase();
+  return text ? predictions.filter(({ label }) => label.toLowerCase().includes(text)) : predictions;
 }
 
-const queries: Query[] = JSON.parse(readFileSync(0, "utf8"));
-console.log(
-  JSON.stringify({
-    ngPlus,
-    stat,
-    defense,
-    results: queries.map(getCandidates),
-    enemies: queries.map((query) => getTarget(query.enemy).name),
-  }),
-);
+function format(prediction: Prediction): string {
+  const lines = [
+    `${prediction.label}${prediction.chain ? " (chain" : ""}${
+      prediction.repeatFrom != null ? `, repeats from step ${prediction.repeatFrom + 1}` : ""
+    }${prediction.chain ? ")" : ""}${prediction.note ? ` — ${prediction.note}` : ""}`,
+  ];
+  prediction.steps.forEach((step, i) => {
+    const head = [
+      prediction.steps.length > 1 ? `step ${i + 1}` : "",
+      step.label ? `"${step.label}"` : "",
+      step.stamina != null ? `stamina ${step.stamina}` : "",
+      step.leftStamina ? `(left ${step.leftStamina})` : "",
+      step.hitStamina ? `per hit [${step.hitStamina.join(", ")}]` : "",
+      step.lead != null ? `lead ${step.lead}` : "",
+      step.cycle != null ? `cycle ${step.cycle}` : "",
+    ].filter(Boolean);
+    lines.push(`  ${head.join("  ")}`);
+    const cancels = Object.entries(step.cancels).map(
+      ([key, value]) => `${key} ${Array.isArray(value) ? value.join("/") : value}`,
+    );
+    if (cancels.length) lines.push(`    from press: ${cancels.join(", ")}`);
+    const byFrame = [...step.hits].sort((a, b) => (a.frame ?? Infinity) - (b.frame ?? Infinity));
+    for (const hit of byFrame) {
+      const status = Object.entries(hit.status).map(([type, value]) => `${type} ${value}`);
+      lines.push(
+        `    ${String(Math.floor(hit.damage)).padStart(5)}  stance ${hit.stance}${
+          hit.frame != null
+            ? `  @${hit.frame}${hit.approximate ? "~" : ""} (anim ${hit.animFrame})`
+            : "  (no time)"
+        }${status.length ? `  ${status.join(", ")}` : ""}${hit.kind ? `  ${hit.kind}` : ""}${
+          hit.notCounted ? "  (not counted)" : ""
+        }`,
+      );
+    }
+  });
+  return lines.join("\n");
+}
+
+const found = getWeapon(positional[0]);
+if (!found) {
+  console.error(`No weapon ${positional[0]}`);
+  process.exit(1);
+}
+const { weapon, level } = found;
+const enemyOption = option("--enemy");
+const target = getTarget(enemyOption == null ? undefined : Number(enemyOption));
+const predictions = getPredictions(weapon, level, target);
+if (json) {
+  console.log(
+    JSON.stringify({
+      weapon: weapon.name,
+      level,
+      twoHanding,
+      ngPlus,
+      stat,
+      target: target.name,
+      predictions,
+    }),
+  );
+} else {
+  console.log(
+    `${weapon.name} (+${level} on the regular scale), ${
+      twoHanding ? "two" : "one"
+    } handed; ${stat} in every stat, NG+${ngPlus}, vs ${target.name}; no buffs`,
+  );
+  console.log(predictions.map(format).join("\n\n") || "No attacks match");
+}
