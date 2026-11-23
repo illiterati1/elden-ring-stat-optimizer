@@ -37,3 +37,17 @@ export const isMobile = isMobileDevice(
         coarsePointer: typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches,
       },
 );
+
+export type DesktopOs = "windows" | "mac" | "linux";
+
+/**
+ * @returns the desktop OS, for where the save file is: Linux covers a Steam Deck and anything else running
+ * the game through Proton. Anything unrecognized is taken to be Windows, where the game runs natively
+ */
+export function getDesktopOs(userAgent: string): DesktopOs {
+  if (/Macintosh|Mac OS X/.test(userAgent)) return "mac";
+  if (/Linux|X11/.test(userAgent)) return "linux";
+  return "windows";
+}
+
+export const desktopOs = getDesktopOs(typeof navigator === "undefined" ? "" : navigator.userAgent);

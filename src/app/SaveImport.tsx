@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Alert,
   Box,
@@ -23,6 +23,7 @@ import {
 import { getNgPlusLabel, maxNgPlus } from "./useEnemies.ts";
 import { loadRememberedSave, storeRememberedSave, type RememberedSave } from "./rememberedSave.ts";
 import Section from "./Section.tsx";
+import { desktopOs, type DesktopOs } from "./mobile.ts";
 import type { AppState, UpdateAppState } from "./useAppState.ts";
 
 /** Chrome and Edge's File System Access API, which TypeScript's DOM types don't have yet */
@@ -39,6 +40,62 @@ declare global {
     requestPermission?: (options: { mode: "read" }) => Promise<PermissionState>;
   }
 }
+
+/** The save under Proton, in Steam's default library (another library has its own steamapps folder) */
+const protonSave =
+  "~/.local/share/Steam/steamapps/compatdata/1245620/pfx/drive_c/users/steamuser/AppData/Roaming/EldenRing/<number>/ER0000.sl2";
+/** The save under CrossOver (Elden Ring has no Mac version) */
+const crossOverSave =
+  "~/Library/Application Support/CrossOver/Bottles/<bottle>/drive_c/users/crossover/AppData/Roaming/EldenRing/<number>/ER0000.sl2";
+
+/** Where the save file is on each OS */
+const saveLocation: Record<DesktopOs, ReactNode> = {
+  windows: <code>%APPDATA%\EldenRing\&lt;number&gt;\ER0000.sl2</code>,
+  linux: (
+    <>
+      <code>{protonSave}</code> (in the file dialog, Ctrl+L types a path and Ctrl+H shows hidden
+      folders)
+    </>
+  ),
+  mac: (
+    <>
+      with CrossOver, <code>{crossOverSave}</code> (in the file dialog, Cmd+Shift+G types a path)
+    </>
+  ),
+};
+
+/**
+ * How to get live updates on each OS: Chrome's File System Access blocklist covers where the save is
+ * (AppData on Windows; ~/.local/share, /run/media, and dot folders in home on Linux; ~/Library on a Mac),
+ * and resolves symlinks and junctions, but a hard link elsewhere is a different path to the same file
+ */
+const liveUpdatesHint: Record<DesktopOs, ReactNode> = {
+  windows: (
+    <>
+      For live updates, the browser can't open the save in AppData, but can open a hard link to it
+      elsewhere, made once in a Command Prompt, e.g.{" "}
+      <code>
+        mklink /H "%USERPROFILE%\Documents\ER0000.sl2"
+        "%APPDATA%\EldenRing\&lt;number&gt;\ER0000.sl2"
+      </code>
+    </>
+  ),
+  linux: (
+    <>
+      For live updates, the browser can't open the save in ~/.local/share, but can open a hard link
+      to it elsewhere on the same drive, made once in a terminal, e.g.{" "}
+      <code>ln {protonSave} ~/Documents/ER0000.sl2</code>. A save on an SD card (under /run/media)
+      can't have live updates.
+    </>
+  ),
+  mac: (
+    <>
+      For live updates, the browser can't open the save in ~/Library, but can open a hard link to it
+      elsewhere, made once in Terminal, e.g.{" "}
+      <code>ln "{crossOverSave.replace("~", "$HOME")}" ~/Documents/ER0000.sl2</code>
+    </>
+  ),
+};
 
 /** How often a live save file is checked for changes */
 const pollInterval = 2000;
@@ -243,9 +300,14 @@ function SaveImport({ data, selectedBuffs, onChange }: Props) {
 
   return (
     <Section id="saveFile" title="Save File">
-      <Typography variant="body2" color="text.secondary" gutterBottom>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        gutterBottom
+        sx={{ overflowWrap: "anywhere" }}
+      >
         Fill in a character's stats, weapons, talismans, and armor from your save:{" "}
-        <code>%APPDATA%\EldenRing\&lt;number&gt;\ER0000.sl2</code>
+        {saveLocation[desktopOs]}
       </Typography>
       <Box display="flex" flexWrap="wrap" gap={1} mb={1}>
         <Button
@@ -279,13 +341,13 @@ function SaveImport({ data, selectedBuffs, onChange }: Props) {
         />
       </Box>
       {window.showOpenFilePicker && !save?.handle && (
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          For live updates, the browser can't open the save in AppData, but can open a hard link to
-          it elsewhere, made once in a Command Prompt, e.g.{" "}
-          <code>
-            mklink /H "%USERPROFILE%\Documents\ER0000.sl2"
-            "%APPDATA%\EldenRing\&lt;number&gt;\ER0000.sl2"
-          </code>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          gutterBottom
+          sx={{ overflowWrap: "anywhere" }}
+        >
+          {liveUpdatesHint[desktopOs]}
         </Typography>
       )}
       {error && (

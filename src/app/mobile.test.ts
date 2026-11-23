@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isMobileDevice } from "./mobile.ts";
+import { getDesktopOs, isMobileDevice } from "./mobile.ts";
 
 const desktop = (userAgent: string, maxTouchPoints = 0) => ({ userAgent, maxTouchPoints });
 
@@ -101,5 +101,28 @@ describe("isMobileDevice", () => {
       }),
     ).toBe(false);
     expect(isMobileDevice(undefined)).toBe(false);
+  });
+});
+
+describe("getDesktopOs", () => {
+  it("tells Windows, Mac, and Linux apart", () => {
+    expect(
+      getDesktopOs(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36",
+      ),
+    ).toBe("windows");
+    expect(
+      getDesktopOs(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15",
+      ),
+    ).toBe("mac");
+    // Steam Deck
+    expect(
+      getDesktopOs("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36"),
+    ).toBe("linux");
+    expect(
+      getDesktopOs("Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"),
+    ).toBe("linux");
+    expect(getDesktopOs("")).toBe("windows");
   });
 });
