@@ -11844,6 +11844,23 @@ describe("Ashes of War", () => {
     expect(results["Charged"]).toEqual([2834, 35.5]);
     expect(results["Uncharged"][1]).toBe(23.5);
     expect(Math.abs(results["Uncharged"][0]! - 1933)).toBeLessThanOrEqual(7);
+    // er-logger 2026-11-22 (+10, NG+1 dummy at 144.4), uncharged, six casts: animation 18-20 frames
+    // after L2; hits 26 to 82 (every 8) and 120 frames into it (each within a frame), 114 each and
+    // 434 and 532, stance 15, 0.75 ×6, 2, 2; 10 stamina at 26 and 10 at 120; rolled out early 94
+    // into it (112-114 after L2, buffered from as early as 76), skipping the last hit, and after the
+    // last hit 178 after L2 (pressed at 170)
+    const uncharged = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).find(
+      ({ variant }) => variant!.short === "Uncharged",
+    )!.ash;
+    if (!("attack" in uncharged)) throw new Error(uncharged.unavailableReason);
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const step = uncharged.attack.stepTimes![0];
+    expect(step.hitTimes!.map((time) => frames(time!))).toEqual([
+      46, 54, 62, 70, 78, 86, 94, 102, 140,
+    ]);
+    expect(step.earlyRolls!.map(frames)).toEqual([112]);
+    expect(frames(step.roll!)).toBe(174);
+    expect(uncharged.attack.stamina).toEqual([20]);
   });
 
   it("matches the Carian Knight's Sword's skill in game", () => {
