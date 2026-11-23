@@ -12,7 +12,7 @@ loaded enemy's HP, stance (super armor), toughness and status buildup.
 The summary prints one line per player animation: the press, the animation start, the stamina drop
 and each hit (damage, stance, buildup), checked against the animation's TAE hit windows
 (`tae_windows.py`, which uses the stat calculator's `scripts/check_animations.py`). Stamina should drop
-on the frame the first window opens; mismatches are marked ✗.
+on the frame a window opens (any: which ones cost stamina isn't known without the weapon); mismatches are marked ✗.
 
 ## Build
 
