@@ -11230,6 +11230,17 @@ describe("Ashes of War", () => {
       },
     );
     expect(results).toEqual([[undefined, [[...Array(4).fill([447, 4]), [627, 4]]]]]);
+    // er-logger 2026-11-23 (+10, NG+1 dummy at 144.4): 421 each, then 599, stance 4 each, as
+    // calculated. Stamina 20, 10, 10, 10, 20 at each hit's window (70). Hits landed 76-78, 115-117,
+    // 147-150, 177-181 and 209-210 after L2 (the 3rd and 4th land 2-4 into their windows). Rolled
+    // out 105 and 106 after L2 (before the 2nd spin), 200 and 204 (before the last), and 276 after it
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const flameDance = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
+    if (!("attack" in flameDance)) throw new Error(flameDance.unavailableReason);
+    const step = flameDance.attack.stepTimes![0];
+    expect(step.hitTimes!.map((time) => frames(time!))).toEqual([78, 116, 146, 176, 210]);
+    expect(step.earlyRolls!.map(frames)).toEqual([104, 198]);
+    expect(frames(step.roll!)).toBe(275);
   });
 
   it("matches Sea of Magma in game", () => {

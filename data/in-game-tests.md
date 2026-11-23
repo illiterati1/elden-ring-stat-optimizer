@@ -28,6 +28,7 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 | # | Test | In game | Calculated |
 |---|---|---|---|
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all (NG). er-logger 2026-11-22 (NG+1 dummy, 144.4): swings 744 and 744, both explosions 1058 together (2 × 529), stance 14.4, 14.4, 14 | NG: each swing 786, each explosion 550 (2672). NG+1: swings 754, explosions 529. The explosions match; each swing is 10 low. Without the buff (er-logger 2026-11-22, NG+1) both swings do 656 (one HP drop of 1312, stance 28.8), as calculated, so it's the buff: +88 per swing in game, +98 calculated (the R2's +104 at NG matches). Both swings are MV 105, sweet spot 1.125 |
+| 38 | Flame Dance's early roll before its last hit, Giant's Red Braid | er-logger 2026-11-23: roll started 200 and 204 after L2 (presses buffered from 192 and 196; the roll's stamina dropped at 197 and 200 after the skill's animation began) | 198 after L2 (196 after its animation starts). The earlier window (104) matched: 105 and 106 |
 
 ## Roll-outs
 
@@ -40,7 +41,6 @@ step, from that step's press).
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 32 | Flame Dance | Giant's Red Braid | Hits 78, 116, 146, 176, 210; early 104 and 198; after 275 |
 | 33 | I Command Thee, Kneel! #1 | Axe of Godrick | Hits 70, 127; early 95; after 183 |
 | 34 | Savage Claws | Beast Claw | Hits 36, 50, 66, 84, 106, 144; early 94; after 178 |
 | 35 | Shadow Sunflower Headbutt #2 | Shadow Sunflower Blossom | Hits 56, 104; early 72; after 146 |
