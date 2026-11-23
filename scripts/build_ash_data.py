@@ -1666,9 +1666,11 @@ LOOP_HIT_ORDERS = {
 # Moon-and-Fire Stance's stance starts in 40050 (Muleta's R2 chain tested: R2 #1 hit 75 frames after
 # the R2 press, R2 #2 87 after it, and the next R2 #1 219 after the last, each within a frame; and
 # Moon-and-Fire Stance's R1 chain: R1 #2's first hit 59 frames after R1 #1's (58 calculated), R1 #3's
-# 146 (146), and the next R1 #1's 275 (278, a few frames sooner, like other skills used again). Its
-# first R1 hit 42 frames after the R1 press, from the stance's hold (40051, only a right hand attack
-# cancel), against 38 from its start; not modeled).
+# 146 (146), and the next R1 #1's 275 (278, a few frames sooner, like other skills used again). From
+# the stance's hold (40051, only a right hand attack cancel), R1 #1 starts a frame after the press and
+# its hits land 37-39 and 60-62 frames after it (er-logger, 2026-11-22; windows 36/38 and 58/60), so
+# the hold is no slower than the stance's start. Its R1 #2 and #3 hits land within 1-3 frames of their
+# windows too; each step's blade hits up to 3 frames into its window, after its moon).
 # Chains in STANCE_ONCE don't go back through the stance: their last step goes on to their first with
 # its button (tested in game: Muleta's R2 #2 chains back to R2 #1, and Wing Stance's R1 into another
 # R1 or R2), so the stance is an "opening"
