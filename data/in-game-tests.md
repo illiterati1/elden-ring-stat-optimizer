@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 55 | Mounted R1 chain while running (low priority: is the Longsword's 7 frame slowdown per R1 after the first the same for other classes?) | Dagger, Claymore, Zweihander | Standing still: Dagger 26, 58, 92, next chain 158; Claymore 36, 90, 148, 250; Zweihander 46, 152, 270, 398. Running, if the same: each hit after the first 7 later per R1 before it (Dagger 26, 65, 106, 179) |
 
 ## Stamina
 
