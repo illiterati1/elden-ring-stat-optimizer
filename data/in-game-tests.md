@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 66 | Golden Land #1: its explosion and four projectiles (frames from the press) | Any weapon with Golden Land | Swings 74, 110; explosion 80; projectiles 80, 92, 104, 116 (approximate: when created) |
 | 67 | Swift Slash, uncharged and charged: when its vacuum (120 MV, 160 charged) lands, compared with the slash | Any weapon with Swift Slash | The app's times: uncharged vacuum 0.10 s, slash 0.13 s; charged vacuum 0.90 s, slash 0.93 s. The vacuum's is approximate (when it's created) and comes before the slash, which looks wrong |
 | 55 | Mounted R1 chain while running (low priority: is the Longsword's 7 frame slowdown per R1 after the first the same for other classes?) | Dagger, Claymore, Zweihander | Standing still: Dagger 26, 58, 92, next chain 158; Claymore 36, 90, 148, 250; Zweihander 46, 152, 270, 398. Running, if the same: each hit after the first 7 later per R1 before it (Dagger 26, 65, 106, 179) |
 

@@ -1817,6 +1817,15 @@ HIT_TIME_FITS = {
     ("Ghostflame Ignition", "R1"): [None, None, 89 / 60],
     ("Ghostflame Call", ""): [None, None, 155 / 60],
     ("Ghostflame Call", "R1"): [None, None, 89 / 60],
+    # Golden Land #1's explosion lands 145 frames after L2 on the training dummy, and its wave hits
+    # 290, 308 and 334 (measured in game on 2026-11-22 with er-logger on a Sacred Large Club; a
+    # second cast's wave hit 3 times too). Both are created with the bullet thrown 80 frames in
+    # (2790), but it lands in about 2 frames and waits 1s (2791) before the explosion (2792, 0.2s),
+    # then the wave's chain: 2793 (0.1s), 2794, which makes 6 of 2795 (0.1s), one every 0.15s, each
+    # waiting 1.8s (2796) before its wave (2797, 40 m/s). So the waves are made about 286, 295, ...,
+    # 331 frames after L2, and only some hit: the 3 seen fit the 1st, 3rd and 6th. The 4th (seen on a
+    # Greatsword, not timed) is assumed to be the 5th, 326.
+    ("Golden Land", "#1"): [None, None, 143 / 60, 288 / 60, 306 / 60, 324 / 60, 332 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index, or ALL_HITS. Only for hits without a travel time (a projectile that travels stays approximate,
@@ -1827,6 +1836,8 @@ ALL_HITS = "all"
 MEASURED_HIT_TIMES = {
     ("Black Flame Tornado", "Tap"): {2},
     ("Deadly Poison Spray", ""): {0},
+    # Golden Land's explosion, an AoE (HIT_TIME_FITS)
+    ("Golden Land", "#1"): {2},
     ("Euporia Vortex", "Luster Tier 1"): ALL_HITS,
     ("Euporia Vortex", "Luster Tier 2"): ALL_HITS,
 }

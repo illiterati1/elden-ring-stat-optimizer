@@ -3214,6 +3214,49 @@ describe("Ashes of War", () => {
     expect(attackSteps![0].map((hit) => hit.damage)).toEqual([764, 412, 905, 367, 367, 367, 367]);
     // It's a chain with its R2
     expect(attackSteps).toHaveLength(2);
+    // Timed in game with er-logger on a Sacred Large Club +25 (NG+1, so the dummy's defense is
+    // 144.4): its swings land 77 and 112 frames after L2 (586 and 295 damage), the explosion 145
+    // (997, 30 stance), and the wave 290, 308 and 334 (398 each; 3 hits on two casts). It takes 35
+    // stamina 76 frames after L2. The 4th wave hit (326 here) wasn't seen (HIT_TIME_FITS)
+    const frames = (seconds: number | undefined) => Math.round(seconds! * 60);
+    expect(result.attack.stepTimes![0].hitTimes!.map(frames)).toEqual([
+      76, 112, 145, 290, 308, 326, 334,
+    ]);
+    const sacredClub = getWeapon("Sacred Large Club");
+    const sacredResult = getAshAttack(
+      ashes,
+      movesets,
+      sacredClub,
+      withFollowUp("Golden Land", " chain"),
+      false,
+    );
+    if (!("attack" in sacredResult)) throw new Error(sacredResult.unavailableReason);
+    expect(
+      optimizeBuild({
+        weapon: sacredClub,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 144.4, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: sacredResult.attack,
+      }).attackSteps![0].map((hit) => [Math.floor(hit.damage), +hit.stance.toFixed(1)]),
+    ).toEqual([
+      [586, 7],
+      [295, 4.2],
+      [997, 30],
+      [398, 1],
+      [398, 1],
+      [398, 1],
+      [398, 1],
+    ]);
     // The Great Club's fixed Golden Land, also right in game at +25 with 99 in every stat
     const club = getWeapon("Great Club");
     const clubAttacks = getAshAttacks(ashes, movesets, club, "Lion's Claw", false).map(
