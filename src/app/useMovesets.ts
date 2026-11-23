@@ -157,7 +157,9 @@ export const attackTimingNotes: Partial<Record<string, string>> = {
  * one, recorded with each jumping attack). Tested in game on 60 fps recordings of a Rapier's one
  * handed jumping R1 (its window at 10 frames into the swing, 30 fps): pressed 13 and 14 frames after
  * the jump, it hit at 36 and landed at 53, twice; pressed 3 frames after, it hit at 37. Assumed the
- * same for every weapon and jumping attack. (An R1 after it is R1 2, tested on several weapons.)
+ * same for every weapon and jumping attack; logged on Rellana's Twin Blades' jumping R1 and R2 and a
+ * Rapier's jumping R2 (2026-11-22: their windows open on time, their damage 1-4 frames later). (An
+ * R1 after it is R1 2, tested on several weapons.)
  */
 const jumpAttackStart = 14 / 60;
 export const jumpAirTime = 53 / 60;

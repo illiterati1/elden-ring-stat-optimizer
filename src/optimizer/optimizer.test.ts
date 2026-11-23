@@ -13945,6 +13945,22 @@ describe("powerstance off hand weapons", () => {
     expect(times.hits[0] * 60).toBeCloseTo(36, 0);
     expect(times.roll! * 60).toBeCloseTo(53 + 16, 0);
     expect(jump.cycleTimes![0] * 60).toBeCloseTo(53 + 24, 0);
+
+    // Logged in game (er-logger, 2026-11-22), from the jump press: the attack's stamina (taken when
+    // its hit window opens) at 42 for Rellana's Twin Blades' one handed jumping R1 (R1 pressed 5
+    // frames into the jump), 43 for its two handed jumping R2 (14), and 50-52 for a Rapier's one
+    // handed jumping R2 (5 and 14); the damage 1-4 frames later, as on the ground. A later press
+    // starts the attack 2 frames after it instead (R1 pressed 21, 33 and 48: windows at 49, 61, 75)
+    const windowFrame = (
+      weapon: string,
+      attack: "Jumping R1" | "Jumping R2",
+      twoHanding: boolean,
+    ) =>
+      getAttackData(movesets, getWeapon(weapon), attack, twoHanding, 0.5)!.stepTimes![0].hits[0] *
+      60;
+    expect(windowFrame("Rellana's Twin Blades", "Jumping R1", false)).toBeCloseTo(42, 0);
+    expect(windowFrame("Rellana's Twin Blades", "Jumping R2", true)).toBeCloseTo(42, 0);
+    expect(windowFrame("Rapier", "Jumping R2", false)).toBeCloseTo(50, 0);
   });
 
   it("gives status buildup per second like DPS", () => {
