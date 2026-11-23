@@ -45,7 +45,12 @@ hits, with damage, stance and buildup. Use frames from each animation's start. E
 ✗s where the log shows why, e.g. ticks from an earlier cast that land during the next attack.
 
 Then compare with the calculator, unless the user only asked for the log: follow the
-`in-game-test` skill. Things to check first:
+`in-game-test` skill. The summary already does a first pass: after each press, a `calc` line
+(from `scripts/predict.ts`) with the calculator attack whose damage is closest, each hit's damage
+and frame from the press (✓ within 1 damage and 2 frames, else ✗ with the game's), its stance and
+buildup, and logged hits it has no hit for. It assumes 99 in every stat, the NG+1 dummy and no
+buffs; rerun with `--ng 0` or `--stat N` if those were different. It only knows skills (040000 on)
+and the basic moveset animations, so check the right version was picked. Things to check first:
 
 - **Stats and NG+:** assume 99 in every stat and NG+1, where the training dummy's defense is
   144.4, not 123.2. Only if the damage doesn't match, read the character from the save with
