@@ -40,3 +40,7 @@
 - **Buff uptime:** buffs are assumed to always be on. Only Black Flame Blade's and Flare, O
   Serpent's recast time is counted in damage per second. Black Flame Blade's cast speeds up with
   Dex from 10 to 70 (tested in game).
+- **Save file live updates on Linux and Mac:** the hard link the Save File panel suggests is
+  untested there. If the game under Proton or CrossOver saves by writing a new file rather than
+  rewriting the old one in place (as it does on Windows), the link stops updating after the first
+  save. A save on a Steam Deck SD card can't have live updates at all.
