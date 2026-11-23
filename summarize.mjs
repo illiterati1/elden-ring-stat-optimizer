@@ -9,8 +9,9 @@
 // the window it falls in. Mismatches are marked ✗ and counted at the end.
 //
 // Each press is also compared with the stat calculator (its scripts/predict.ts): the attack it
-// could be whose damage is closest, assuming 99 in every stat and the NG+1 training dummy (--ng 0
-// for NG, --stat N for other stats), no buffs. Damage within 1 and hit frames within 2 count as ✓.
+// could be whose damage is closest, assuming 99 in every stat and NG+1 (--ng 0 for NG, --stat N for
+// other stats), no buffs, against the enemy hit (the training dummy if enemies.json doesn't have
+// it). Damage within 1 and hit frames within 2 count as ✓.
 //
 //   node summarize.mjs [log.csv] [--ng 0] [--stat 80] [--no-calc]
 //
@@ -147,7 +148,7 @@ starts.forEach((s, i) => {
       win = w ? ` [window ${w[0]}${at >= w[0] ? "+" : ""}${Math.round((at - w[0]) * 10) / 10}]` : ` ✗ [before the first window, ${windows[0][0]}]`;
       if (!w) badAttacks.add(i);
     }
-    s.hits.push({ frame: h.frame - ref.frame, damage: -h.note });
+    s.hits.push({ frame: h.frame - ref.frame, damage: -h.note, npc: +h.who.split(/[ @]/)[1] });
     parts.push(`hit ${off(ref, h)} (anim${off(a, h)})${win}: ${-h.note} dmg` + same.map(e => `, ${e.field} ${e.note}`).join(''));
   }
   // damage with no HP drop at the same time (e.g. status procs land later) shows as its own hit above
@@ -168,6 +169,12 @@ if (starts.length >= 4 && new Set(starts.map(s => s.frame % 10)).size === 1)
  * be) whose damage is closest to the press's hits, with each hit's damage and frame from the press
  */
 function compareWithCalculator() {
+  // The NpcParam ID most of a press's hits landed on, for the calculator to use its defenses
+  const mostHit = hits => {
+    const counts = new Map();
+    for (const h of hits) counts.set(h.npc, (counts.get(h.npc) || 0) + 1);
+    return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+  };
   const groups = new Map();
   for (const s of starts) {
     if (!s.press || !s.equip) continue;
@@ -181,9 +188,9 @@ function compareWithCalculator() {
   try {
     const calc = new URL('../stat-calculator/', import.meta.url).pathname;
     const args = ['vite-node', 'scripts/predict.ts', '--', ...(ngFlag != null ? ['--ng', ngFlag] : []), ...(statFlag != null ? ['--stat', statFlag] : [])];
-    predicted = JSON.parse(execFileSync('npx', args, { cwd: calc, encoding: 'utf8', input: JSON.stringify(list.map(({ weapon, ash, twoHanding, anims }) => ({ weapon, ash, twoHanding, anims }))) }));
+    predicted = JSON.parse(execFileSync('npx', args, { cwd: calc, encoding: 'utf8', input: JSON.stringify(list.map(({ weapon, ash, twoHanding, anims, hits }) => ({ weapon, ash, twoHanding, anims, enemy: mostHit(hits) }))) }));
   } catch (e) { out.push({ text: '(calculator comparison unavailable: ' + e.message.split('\n')[0] + ')' }); return; }
-  out.unshift({ text: `calculator: ${predicted.stat} in every stat, ${predicted.ngPlus ? 'NG+1' : 'NG'} dummy (${predicted.defense} defense), no buffs` });
+  out.unshift({ text: `calculator: ${predicted.stat} in every stat, ${predicted.ngPlus ? 'NG+1' : 'NG'}, no buffs; against the enemy hit (its defenses from enemies.json; the dummy's, ${predicted.defense}, if it isn't there)` });
   list.forEach((g, i) => {
     const candidates = predicted.results[i];
     let text;
@@ -221,7 +228,8 @@ function compareWithCalculator() {
         return `${damage}${dmg}${time} (${extra})`;
       });
       const more = left.length ? `  |  not in the calculator: ${left.map(h => `${h.damage} @+${h.frame}`).join(', ')}` : '';
-      text = `  calc ${best.label}: ${hits.join('  |  ')}${more}`;
+      const vs = predicted.enemies?.[i] ? ` vs ${predicted.enemies[i]}` : '';
+      text = `  calc ${best.label}${vs}: ${hits.join('  |  ')}${more}`;
     }
     const at = out.findIndex(o => o.start === g.last);
     out.splice(at + 1, 0, { text });
