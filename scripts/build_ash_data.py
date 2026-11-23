@@ -1354,7 +1354,9 @@ CONDITIONAL_HP_DAMAGE = {
 # Projectile SpEffects that do a percentage of the enemy's max HP over time (changeHpRate percent plus
 # changeHpPoint every motionInterval seconds for effectEndurance seconds, including when applied), by
 # name. Tested in game: Black Flame Tornado's black flame (835) does 21 ticks of 0.1% of the training
-# dummy's 74212 HP plus 1, rounded down (75), finishing before the next loop reapplies it. The Black
+# dummy's 74212 HP plus 1, rounded down (75), each loop's in full though they overlap (a loop every 0.4s,
+# bullet 2430's shootInterval; each burn lasts 2s). The Scadutree Blessing doesn't raise it (tested in
+# game: 272 tapped on an Omenkiller at +5, its 168 of black flame unchanged). The Black
 # Knife's Blade of Death applies Destined Death (6845, 0.045% plus 4 every 0.1s for 5s), with 6865
 # lowering the target's max HP to 90% (maxHpRate), which the percentage is of: 34 a tick on the
 # training dummy, 51 ticks (tested in game: 1090 for the projectile and first tick, then 2916 in all

@@ -35,6 +35,7 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 
 | # | Test | In game | Calculated |
 |---|---|---|---|
+| 68 | Black Flame Tornado fully charged: Standard Halberd +0, Vagabond's starting stats, Scadutree Blessing +5, a Scadu Altus Omenkiller in NG+3 with Radahn beaten (7,813 HP). Tapped matches (272) | About 1,170 ± 10 | 1,136: swing 16, 5 loops 8 each, finisher 72, 6 black flames 168 each. Next: each part's damage (e.g. the black flame from one loop), to see where the ~34 is |
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all | 2674 (2672 in tests: each swing 786 with the buff's 90 fire, each explosion 550). Next: each hit's damage, to see which one is ~20 low |
 
 ## Roll-outs
@@ -58,12 +59,6 @@ step, from that step's press).
 | 34 | Savage Claws | Beast Claw | Hits 36, 50, 66, 84, 106, 144; early 94; after 178 |
 | 35 | Shadow Sunflower Headbutt #2 | Shadow Sunflower Blossom | Hits 56, 104; early 72; after 146 |
 | 37 | The Queen's Black Flame #1 | Godslayer's Greatsword | Hits 36, 138; early 86; after 186 |
-
-## Enemy scaling
-
-| # | Test | Calculated |
-|---|---|---|
-| 39 | Whether the blessing also raises black flame's %-HP damage (e.g. Black Flame Blade on a DLC enemy) | Not applied |
 
 ## Not timed: need measurements
 

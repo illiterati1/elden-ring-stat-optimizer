@@ -13036,6 +13036,49 @@ describe("Ashes of War", () => {
     });
   });
 
+  it("doesn't raise black flame with the Scadutree Blessing, as tested in game", () => {
+    // Tested in game: Black Flame Tornado tapped with a Standard Halberd +0 at the Vagabond's starting stats,
+    // blessing +5, on a Scadu Altus Omenkiller in NG+3 with Radahn beaten (7,813 HP; 131.8 defenses, 40%
+    // fire negation): 272, its black flame 21 × 8 like without the blessing. Fully charged: about
+    // 1,170 ± 10, but 1,136 here (data/in-game-tests.md #68)
+    const weapon = getWeapon("Halberd");
+    const build = (followUp: string) => {
+      const attack = getAshAttack(
+        ashes,
+        movesets,
+        weapon,
+        withFollowUp("Black Flame Tornado", followUp),
+        false,
+      );
+      if (!("attack" in attack)) throw new Error(attack.unavailableReason);
+      return optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 0,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 14, dex: 13, int: 9, fai: 9, arc: 7 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType, i) => [
+            damageType,
+            { defense: 125.5 * 1.05, negation: [0, 20, 40, 20, 20][i] },
+          ]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: attack.attack,
+        enemyHp: 7813,
+        scadutreeBlessingRate: scadutreeBlessingRates[5],
+      });
+    };
+    const tap = build("Tap");
+    expect(tap.finalValue).toBe(272);
+    expect(tap.hpDamage).toEqual({ label: "Black flame", damage: 168 });
+    expect(build("Fully charged").finalValue).toBe(1136);
+  });
+
   it("counts only Beast's Roar's shockwave", () => {
     // Tested in game: a Quality Longsword +25 with 99 in every stat does 542 with the bullet on the
     // training dummy (or 363 with the AoE, never both)
