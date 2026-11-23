@@ -47,10 +47,11 @@ hits, with damage, stance and buildup. Use frames from each animation's start. E
 Then compare with the calculator, unless the user only asked for the log: follow the
 `in-game-test` skill. Things to check first:
 
-- **Stats and NG+:** read the character from the save with `readSaveFile`
-  (`src/app/saveFile.ts`; the Boss Arena save is `BossArenaSandbox.sl2` in
-  `/mnt/c/Users/brend/AppData/Roaming/EldenRing/<steamid>/`). Its `clearCount` is the NG+ level.
-  On NG+1 the training dummy's defense is 144.4, not 123.2. The save can lag behind what's
-  equipped, so trust the log's equipment over it.
+- **Stats and NG+:** assume 99 in every stat and NG+1, where the training dummy's defense is
+  144.4, not 123.2. Only if the damage doesn't match, read the character from the save with
+  `readSaveFile` (`src/app/saveFile.ts`; the Boss Arena save is `BossArenaSandbox.sl2` in
+  `/mnt/c/Users/brend/AppData/Roaming/EldenRing/<steamid>/`). Its `stats` are the attributes, and
+  its `clearCount` is the NG+ level. The save can lag behind what's equipped, so trust the log's
+  equipment over it.
 - **Weapon ID:** the logged one is base + affinity × 100 + upgrade, e.g. 3180825 = Claymore,
   Magic (8), +25.
