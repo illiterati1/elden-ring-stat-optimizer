@@ -75,6 +75,9 @@ BULLET_EVENT = 2
 # Another kind of attack window, e.g. fists' rolling R1, when its PCBehaviorType is 16 (type 4 is
 # every jumping attack's landing, judge ID 550)
 PC_BEHAVIOR_EVENT = 307
+# A critical hit's (backstab's or riposte's) hit: its behavior judge ID at +4 (e.g. a23_031700's
+# riposte, judge 510 at 0.833s; a32_031710's backstab, 500 and 501)
+CRITICAL_EVENT = 304
 PC_BEHAVIOR_ATTACK_TYPE = 16
 HIT_EVENTS = (ATTACK_EVENT, BULLET_EVENT, PC_BEHAVIOR_EVENT)
 # Bows, greatbows, crossbows, and ballistae (wepType), whose attacks are their arrows and bolts,
@@ -241,6 +244,8 @@ class Animations:
         self.speeds = {}
         # Every window of each cancel (CANCEL_FLAGS), by file and animation: (start, end)
         self.cancel_windows = {}
+        # Each critical hit (CRITICAL_EVENT), by file and animation: (start, judge ID)
+        self.critical_hits = {}
 
     def get_file(self, number):
         if number not in self.files:
@@ -262,6 +267,14 @@ class Animations:
                         for start, end, event_type, params in events
                         if event_type in HIT_EVENTS
                     )
+                self.critical_hits[number] = {
+                    anim_id: sorted(
+                        (start, struct.unpack_from("<i", data, params + 4)[0])
+                        for start, end, event_type, params in events
+                        if event_type == CRITICAL_EVENT
+                    )
+                    for anim_id, events in animations.items()
+                }
                 # When each SpEffect an animation applies starts
                 effects = {}
                 for anim_id, events in animations.items():
@@ -403,6 +416,17 @@ class Animations:
         if not windows[anim_id] and anim_id in imports and depth < 4:
             return self.get_windows(*imports[anim_id], depth + 1)
         return windows[anim_id]
+
+    def get_critical_hits(self, number, anim_id, depth=0):
+        """@returns a critical hit animation's hits (CRITICAL_EVENT) as (start, judge ID), following imports"""
+        file = self.get_file(number)
+        if not file or anim_id not in file[0]:
+            return []
+        _, imports, _, _, _ = file
+        hits = self.critical_hits.get(number, {}).get(anim_id, [])
+        if not hits and anim_id in imports and depth < 4:
+            return self.get_critical_hits(*imports[anim_id], depth + 1)
+        return hits
 
     def get_cancels(self, number, anim_id, depth=0):
         """
@@ -752,7 +776,7 @@ def merge_hits(hits, both_fists, held_items=False):
 
 
 # Animation IDs of the moveset's shared attacks' steps (see build_moveset_data.py's SHARED_ATTACKS),
-# by step; critical hits have none
+# by step (critical hits': CRITICAL_ANIMATION_IDS)
 SHARED_ATTACK_ANIMATION_IDS = {
     "Powerstance L1": [34000 + i * 10 for i in range(6)],
     "Powerstance Running L1": [34200],
@@ -763,6 +787,57 @@ SHARED_ATTACK_ANIMATION_IDS = {
     "Mounted R2/L2": [38110],
     "Mounted Charged R2/L2": [38100],
 }
+
+
+# Critical hits' animations (the same one and two handed), and how long after the press each starts.
+# Tested in game (er-logger, 2026-11-23): Miséricorde's riposte (a23_031700) started 3-4 frames after
+# R1 (8 times), against 1 for an attack from standing, so 4 frames rather than the usual 2; and
+# Godslayer's Greatsword's backstab (a32_031710) 15 after (once), so 16. The small and large
+# ripostes aren't measured and are taken as the riposte's
+CRITICAL_ANIMATION_IDS = {"Backstab": 31710, "Riposte": 31700, "Small Riposte": 31720, "Large Riposte": 31750}
+CRITICAL_STARTS = {"Backstab": 16 / 60, "Riposte": 4 / 60, "Small Riposte": 4 / 60, "Large Riposte": 4 / 60}
+
+
+def get_critical_timing(steps, param, attack, moveset_step):
+    """
+    @param moveset_step the attack's moveset hits
+    @returns a critical hit's timing (in get_timings's format), or None if its animation has no
+    hits: its hits are CRITICAL_EVENTs, not attack windows. Its stamina is its hits' behaviors' without
+    the weapon's staminaConsumptionRate: tested in game (er-logger, 2026-11-23), Miséricorde's
+    riposte (judge 510, 14 in variation 100; rate 1.11) cost 14, and Godslayer's Greatsword's
+    backstab (500 and 501, 12 and 13 in variation 400; rate 1.02) 12 + 13
+    """
+    anim_id = CRITICAL_ANIMATION_IDS[attack]
+    files = [n for n in (int(param["spAtkcategory"]), int(param["wepmotionCategory"])) if n]
+    file_number, _ = steps.animations.find(files, anim_id)
+    if file_number is None:
+        return None
+    hits = steps.animations.get_critical_hits(file_number, anim_id)
+    if not hits:
+        return None
+
+    def real(time):
+        return steps.animations.to_real_time(file_number, anim_id, time)
+
+    variation = int(param["behaviorVariationId"])
+    costs = [steps.behaviors.get_stamina(variation, judge) for _, judge in hits]
+    timing = {"start": round(CRITICAL_STARTS[attack], 3), "hits": [round(real(start), 3) for start, _ in hits]}
+    cancels = {name: real(time) for name, time in steps.animations.get_cancels(file_number, anim_id).items()}
+    button_cancels = sorted((cancels[name], name) for name in CANCEL_BUTTONS if name in cancels)
+    if button_cancels:
+        timing["cancels"] = {name: round(time, 3) for time, name in button_cancels}
+    for name in ["rightHandAttack", "leftHandAttack", "roll", "block", "move", "jump", "quickL2", "L2"]:
+        if name in cancels:
+            timing[name] = round(cancels[name], 3)
+    if "rightHandAttack" not in cancels:
+        length = steps.animations.get_length(file_number, anim_id)
+        if length is not None:
+            timing["end"] = round(real(length), 3)
+    if sum(costs):
+        timing["stamina"] = sum(costs)
+        if len(costs) > 1 and len(costs) == len(moveset_step):
+            timing["hitStamina"] = costs
+    return timing
 
 
 # A crouching attack's animation is its rolling attack's plus this (e.g. the Greatsword's 032310, its
@@ -848,6 +923,11 @@ def get_timings(steps, param, moveset):
     for hands in ["1h", "2h"]:
         for attack, attack_steps in moveset.get(hands, {}).items():
             step_timings = []
+            if attack in CRITICAL_ANIMATION_IDS:
+                timing = get_critical_timing(steps, param, attack, attack_steps[0])
+                if timing:
+                    timings.setdefault(hands, {})[attack] = [timing]
+                continue
             for index in range(len(attack_steps)):
                 anim_id = get_attack_animation(steps, param, attack, hands, index)
                 if anim_id is None:

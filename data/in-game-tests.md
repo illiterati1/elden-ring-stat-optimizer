@@ -46,17 +46,12 @@ All tested (the last, The Queen's Black Flame #1, on 2026-11-23).
 
 Nothing to compare yet; measure from the press, as above.
 
-- Backstabs and ripostes (their animations have no attack windows; their hits are TAE event 304,
-  judges 500/501, e.g. a32_031710). Measured 2026-11-23 (er-logger): Godslayer's Greatsword's
-  backstab (a26_031710, from a32) starts 15 frames after the press, hits at 33 and 123 from its start
-  (TAE 16 and 62 at 30 fps), and costs 12 + 13 stamina (calculated: none)
-  On an unaware enemy (stealth) the first hit did 446 rather than 346: ×1.2 before defenses (MV 52
-  as 62.4), the second hit unchanged (1525). The calculator has no unaware option
-  Miséricorde's riposte after Buckler Parry (a20_031700, imported from a23), 4 times on 2026-11-23
-  (er-logger): starts 3-4 frames after the R1 press, costs 14 stamina at 46-48 from its start (its
-  one hit, event 304 judge 510, is at TAE 25 at 30 fps = 50), and returns to idle 304 frames after
-  its start. On the Leonine Misbegotten (Boss Arena, NpcParam 34600913) its hit lands at 49-50 from its
-  start and does 2261, as calculated (3 ripostes; a 4th took the last 1265 HP)
+- Small and large ripostes' and other classes' backstabs' and ripostes' leads (press to animation
+  start), taken as the riposte's 4 frames and the backstab's 16 (check_animations.py's
+  CRITICAL_STARTS: Miséricorde's riposte and Godslayer's Greatsword's backstab, 2026-11-23). Their hits
+  and stamina are from the game's data (each class group has its own animations). On an unaware
+  enemy (stealth) Godslayer's Greatsword's backstab's first hit did 446 rather than 346: ×1.2 before
+  defenses (MV 52 as 62.4), the second hit unchanged (1525). The calculator has no unaware option
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
