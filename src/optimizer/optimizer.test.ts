@@ -6917,7 +6917,8 @@ describe("Ashes of War", () => {
   it("matches Maliketh's Black Blade's Destined Death in game", () => {
     // Its swings and projectiles each apply Destined Death (21 ticks), and the projectiles lower the
     // enemy's max HP to 90%, which most of the swings' ticks are of. Tested in game at +10 with 99 in
-    // every stat on the training dummy (74212 HP): 9509 to 9726, more when the projectiles hit later
+    // every stat on the training dummy (74212 HP): 9509 to 9726, more when the projectiles hit later.
+    // Overlapping ticks that land together are added up before rounding down (getStepHpDamages)
     const weapon = getWeapon("Maliketh's Black Blade");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -6941,9 +6942,9 @@ describe("Ashes of War", () => {
     expect(build.attackSteps![0].map((hit) => Math.floor(hit.damage))).toEqual([
       692, 801, 323, 323, 323,
     ]);
-    // Each a tick of 67 (0.1% of the lowered max HP, plus 1)
-    expect(build.hpDamage).toEqual({ label: "Destined Death", damage: 5 * 21 * 67 });
-    expect(build.finalValue).toBe(9497);
+    // Each a tick of 67.79 (0.1% of the lowered max HP, plus 1): 5 × 21 × 67 rounding each down
+    expect(build.hpDamage).toEqual({ label: "Destined Death", damage: 7098 });
+    expect(build.finalValue).toBe(9560);
     expect(result.attack.note).toMatch(/a little more/);
   });
 
@@ -12985,7 +12986,8 @@ describe("Ashes of War", () => {
     // Tested in game: a Standard Twinblade +25 with 99 in every stat does 2881 tapped (two swings,
     // 432 together, and the finisher) and 11905 fully charged (one swing, 5 loops, and the
     // finisher) on the training dummy (74212 HP). Each bullet does 273 (loop) or 874 (finisher), and
-    // its black flame 21 × 75.
+    // its black flame 21 × 75 (75.212 a tick: 11910 here, 5 more, with the 5 times 5 ticks land
+    // together; in game some land a frame apart)
     const weapon = getWeapon("Twinblade");
     const build = (followUp: string, enemyHp?: number) => {
       const attack = getAshAttack(
@@ -13023,8 +13025,8 @@ describe("Ashes of War", () => {
     expect(total(tap)).toBe(2881);
     const charged = build("Fully charged", 74212);
     const swing = Math.floor(tap.attackSteps![0][0].damage);
-    expect(total(charged)).toBe(11905);
-    expect(build("Fully charged", 74212).hpDamage).toEqual({ label: "Black flame", damage: 9450 });
+    expect(total(charged)).toBe(11910);
+    expect(build("Fully charged", 74212).hpDamage).toEqual({ label: "Black flame", damage: 9455 });
     // Without an enemy, black flame isn't counted, and the result says so
     const unknown = build("Tap");
     expect(Math.floor(unknown.finalValue)).toBe(874 + 2 * swing);
@@ -13033,14 +13035,17 @@ describe("Ashes of War", () => {
       rate: 0.001,
       ticks: 21,
       flat: 1,
+      interval: 0.1,
     });
   });
 
   it("doesn't raise black flame with the Scadutree Blessing, as tested in game", () => {
     // Tested in game: Black Flame Tornado tapped with a Standard Halberd +0 at the Vagabond's starting stats,
     // blessing +5, on a Scadu Altus Omenkiller in NG+3 with Radahn beaten (7,813 HP; 131.8 defenses, 40%
-    // fire negation): 272, its black flame 21 × 8 like without the blessing. Fully charged: about
-    // 1,170 ± 10, but 1,136 here (data/in-game-tests.md #68)
+    // fire negation): 272, its black flame 21 × 8 like without the blessing. Fully charged: 1,187, the
+    // swing 16, loops 8, finisher 72, and its 6 burns' 8.813 ticks 8 alone, 17 for two landing on
+    // the same frame, 26 for three: 1,059 (1,008 rounding each tick down). 1,211 here, every burn's
+    // ticks lined up (in game some land a frame apart)
     const weapon = getWeapon("Halberd");
     const build = (followUp: string) => {
       const attack = getAshAttack(
@@ -13076,7 +13081,9 @@ describe("Ashes of War", () => {
     const tap = build("Tap");
     expect(tap.finalValue).toBe(272);
     expect(tap.hpDamage).toEqual({ label: "Black flame", damage: 168 });
-    expect(build("Fully charged").finalValue).toBe(1136);
+    const charged = build("Fully charged");
+    expect(charged.hpDamage).toEqual({ label: "Black flame", damage: 1083 });
+    expect(charged.finalValue).toBe(1211);
   });
 
   it("counts only Beast's Roar's shockwave", () => {

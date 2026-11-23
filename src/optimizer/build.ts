@@ -488,6 +488,8 @@ export interface HpDamage {
   ticks: number;
   /** Flat damage each tick also does, e.g. Poison Moth Flight's poisoned bonus's 250 */
   flat?: number;
+  /** Seconds between ticks, if known: overlapping effects' ticks then land together */
+  interval?: number;
 }
 
 /**
@@ -497,6 +499,50 @@ export interface HpDamage {
  */
 export function getHpDamage({ rate, ticks, flat = 0 }: HpDamage, enemyHp: number) {
   return ticks * Math.floor(rate * enemyHp + flat);
+}
+
+/**
+ * @returns each of a step's hits' percentage of max HP damage (0 for hits without any), where the
+ * same effect applied by several hits overlaps: ticks that land together are added up before
+ * rounding down, the hits' ticks assumed to line up (their times rounded to the tick interval).
+ * Tested in game: Black Flame Tornado fully charged on a 7,813 HP Omenkiller, its black flame's
+ * 8.813 a tick doing 8 alone, 17 for two at once, 26 for three; 1,059 in all for its 6 burns, vs.
+ * 1,008 rounding each tick down, 1,083 with every tick lined up (some land a frame apart in game).
+ * A hit's damage is what it adds to the step's hits before it, so they add up to the total.
+ */
+export function getStepHpDamages(
+  step: AttackDataHit[],
+  times: StepTimes | undefined,
+  enemyHp: number,
+): number[] {
+  const hitTimes =
+    times?.hitTimes?.length === step.length
+      ? times.hitTimes
+      : times?.hits.length === step.length
+      ? times.hits
+      : undefined;
+  // Ticks by effect, then by tick (its time over the interval)
+  const ticksByEffect = new Map<string, Map<number, number>>();
+  return step.map((hit, i) => {
+    const { hpDamage } = hit;
+    if (!hpDamage) return 0;
+    const time = hitTimes?.[i];
+    const { rate, ticks, flat = 0, interval } = hpDamage;
+    if (time == null || !interval) return getHpDamage(hpDamage, enemyHp);
+    const key = [hpDamage.label, rate, ticks, flat, interval].join();
+    let counts = ticksByEffect.get(key);
+    if (!counts) ticksByEffect.set(key, (counts = new Map()));
+    const tickDamage = rate * enemyHp + flat;
+    const first = Math.round(time / interval);
+    let added = 0;
+    for (let tick = first; tick < first + ticks; tick++) {
+      const count = counts.get(tick) ?? 0;
+      // (with a little leeway for floating point, e.g. 2 × 8.813)
+      added += Math.floor((count + 1) * tickDamage + 1e-9) - Math.floor(count * tickDamage + 1e-9);
+      counts.set(tick, count + 1);
+    }
+    return added;
+  });
 }
 
 /**
@@ -1210,8 +1256,10 @@ function getAttackSteps(
   hitStatusOf?: (hit: AttackDataHit) => StatusBuildup,
   stanceDamageRate = 1,
 ): AttackResultHit[][] {
-  return attack.steps.map((step, stepIndex) =>
-    step.map((hit, hitIndex) => {
+  return attack.steps.map((step, stepIndex) => {
+    const hpDamages =
+      enemyHp != null ? getStepHpDamages(step, attack.stepTimes?.[stepIndex], enemyHp) : undefined;
+    return step.map((hit, hitIndex) => {
       const status = getHitStatus(hit, attackPower, hitStatusOf);
       const damage = getHitDamageFor(hit);
       return {
@@ -1239,7 +1287,7 @@ function getAttackSteps(
         ...(hit.notCounted && { notCounted: true }),
         ...(hit.hpDamage &&
           enemyHp != null && {
-            hpDamage: { label: hit.hpDamage.label, damage: getHpDamage(hit.hpDamage, enemyHp) },
+            hpDamage: { label: hit.hpDamage.label, damage: hpDamages![hitIndex] },
           }),
         ...getHitStamina(attack, step, stepIndex, hitIndex),
         // (the jump's, roll's, or backstep's on the first hit whose stamina includes it: the right hand's, for
@@ -1250,8 +1298,8 @@ function getAttackSteps(
             moveStamina: attack.moveStamina,
           }),
       };
-    }),
-  );
+    });
+  });
 }
 
 /**
@@ -1264,7 +1312,10 @@ function getAttackHpDamage(attack: AttackData | undefined, enemyHp: number | und
     (total, step, i) =>
       total +
       attack.weights[i] *
-        step.reduce((sum, hit) => sum + (hit.hpDamage ? getHpDamage(hit.hpDamage, enemyHp) : 0), 0),
+        getStepHpDamages(step, attack.stepTimes?.[i], enemyHp).reduce(
+          (sum, damage) => sum + damage,
+          0,
+        ),
     0,
   );
 }

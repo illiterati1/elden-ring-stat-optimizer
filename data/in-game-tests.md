@@ -35,7 +35,6 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 
 | # | Test | In game | Calculated |
 |---|---|---|---|
-| 68 | Black Flame Tornado fully charged: Standard Halberd +0, Vagabond's starting stats, Scadutree Blessing +5, a Scadu Altus Omenkiller in NG+3 with Radahn beaten (7,813 HP). Tapped matches (272) | About 1,170 ± 10 | 1,136: swing 16, 5 loops 8 each, finisher 72, 6 black flames 168 each. Next: each part's damage (e.g. the black flame from one loop), to see where the ~34 is |
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all | 2674 (2672 in tests: each swing 786 with the buff's 90 fire, each explosion 550). Next: each hit's damage, to see which one is ~20 low |
 
 ## Roll-outs

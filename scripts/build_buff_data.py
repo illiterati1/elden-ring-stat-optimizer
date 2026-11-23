@@ -481,6 +481,7 @@ def main():
                     "label": HIT_HP_DAMAGE_EFFECTS[source["id"]],
                     "rate": source["changeHpRate"] / 100,
                     "ticks": round(source["effectEndurance"] / source["motionInterval"]) + 1,
+                    "interval": source["motionInterval"],
                     **({"flat": source["changeHpPoint"]} if source["changeHpPoint"] else {}),
                 }
         # Effects that lower damage are debuffs on enemies, e.g. Greyoll's Roar, unless they're the

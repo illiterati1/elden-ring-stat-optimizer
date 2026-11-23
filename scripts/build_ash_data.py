@@ -1355,7 +1355,8 @@ CONDITIONAL_HP_DAMAGE = {
 # changeHpPoint every motionInterval seconds for effectEndurance seconds, including when applied), by
 # name. Tested in game: Black Flame Tornado's black flame (835) does 21 ticks of 0.1% of the training
 # dummy's 74212 HP plus 1, rounded down (75), each loop's in full though they overlap (a loop every 0.4s,
-# bullet 2430's shootInterval; each burn lasts 2s). The Scadutree Blessing doesn't raise it (tested in
+# bullet 2430's shootInterval; each burn lasts 2s), ticks landing together added up before rounding
+# down (the app's getStepHpDamages; tested on an Omenkiller). The Scadutree Blessing doesn't raise it (tested in
 # game: 272 tapped on an Omenkiller at +5, its 168 of black flame unchanged). The Black
 # Knife's Blade of Death applies Destined Death (6845, 0.045% plus 4 every 0.1s for 5s), with 6865
 # lowering the target's max HP to 90% (maxHpRate), which the percentage is of: 34 a tick on the
@@ -2858,6 +2859,7 @@ def main():
                         )
                         / 100,
                         "ticks": round(float(effect["effectEndurance"]) / float(effect["motionInterval"])) + 1,
+                        "interval": number(effect["motionInterval"]),
                         **({"flat": number(effect["changeHpPoint"])} if number(effect["changeHpPoint"]) else {}),
                     },
                 )
@@ -3103,6 +3105,7 @@ def main():
                     "rate": number(effect["changeHpRate"]) / 100,
                     "ticks": round(float(effect["effectEndurance"]) / float(effect["motionInterval"])) + 1,
                     "flat": number(effect["changeHpPoint"]),
+                    "interval": number(effect["motionInterval"]),
                 },
             },
         ]

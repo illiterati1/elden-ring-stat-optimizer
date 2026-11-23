@@ -22,6 +22,10 @@
   can't be compared against them.
 - **Off by one:** some hits come out 1 lower than in game, mostly with stacked damage buffs or
   hits that mix damage types.
+- **Overlapping black flame and Destined Death:** when several hits' burns overlap (e.g. Black
+  Flame Tornado fully charged), ticks landing together are assumed to line up, which can make
+  them a little higher than in game (2% on a 7,813 HP Omenkiller). Burns from different steps of a
+  chain (e.g. Black Flame Blade's R1s) aren't added up together, which can make them a little lower.
 - **Damage breakdown:** the breakdown tooltip on a result can differ slightly from its total,
   since the total rounds each hit down and the breakdown rounds each damage type. Its attack
   power column is also confusing: it shows the weapon's attack power, while the damage column is
