@@ -15,7 +15,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 62 | Night-and-Flame Stance's R1 (its swing's 25, then its beam's window's 45 at 1.03; the R2 charges only one of its two windows at once, so is the beam's charged too?) | Sword of Night and Flame | 71 |
 
 ## Damage
 

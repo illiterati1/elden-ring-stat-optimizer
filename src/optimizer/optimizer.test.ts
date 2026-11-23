@@ -11718,7 +11718,8 @@ describe("Ashes of War", () => {
     // the R2 2595, its swing 719 and one fire burst 1876 (its two fire rows hit one or the other); the
     // R1 3175, its swing 650, the point blank burst 195, the beam's loops 321 six times, and its final
     // hit 404, and 49.5 stance in all (with 3 stance-only hits of 5). The R2's stamina 25: its swing's
-    // window's, not the 45 of an empty attack's window alongside it
+    // window's, not the 45 of an empty attack's window alongside it. The R1's stamina 71 (er-logger,
+    // 2026-11-22): 25 at its swing's window (anim 88), then 46 at the beam's (anim 92)
     const weapon = getWeapon("Sword of Night and Flame");
     const getAsh = (followUp: string) => {
       const { ash } = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false).find(
@@ -11754,6 +11755,7 @@ describe("Ashes of War", () => {
     ).toEqual([[650, 195, 321, 321, 321, 321, 321, 321, 404]]);
     expect(r1.attackStance).toBe(49.5);
     expect(r1.finalValue).toBe(3175);
+    expect(getAsh("R1").attack.stamina).toEqual([71]);
   });
 
   it("matches Golden Tempering in game", () => {
