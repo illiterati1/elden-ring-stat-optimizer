@@ -22,16 +22,17 @@ doesn't kill Windows exes.
 
 **Don't tell the user it's ready until it's actually logging.** It takes several seconds to attach
 to the game, and anything the user does before that is lost (2026-11-22: a whole Onyx Lords'
-Repulsion cast with an early roll-out happened before the log began). It's logging once its
-output has the equipment rows (`player  rweapon  -> 8010010 start` etc.). Wait for them in a
-second background Bash call, using the task's output file path from the start call's result:
+Repulsion cast with an early roll-out happened before the log began). It prints
+`ready: logging, right weapon <id>, left <id>` once it has written its first rows. Wait for that
+line in a second background Bash call, using the task's output file path from the start call's
+result:
 
 ```
-f=<output file>; for i in $(seq 120); do grep -q ' start$' "$f" && { grep -m1 'logging to' "$f"; exit 0; }; sleep 0.5; done; tail -5 "$f"; exit 1
+f=<output file>; for i in $(seq 120); do grep -q '^ready' "$f" && { grep -m1 '^ready' "$f"; exit 0; }; sleep 0.5; done; tail -5 "$f"; exit 1
 ```
 
-When it exits 0, tell the user, in one line, that it's logging (with the weapon from the
-`rweapon` row) and to say "done" when they've finished. If it exits 1, or the logger's own task
+When it exits 0, tell the user, in one line, that it's logging (with the right weapon's ID from
+the ready line) and to say "done" when they've finished. If it exits 1, or the logger's own task
 ends first, it isn't logging: show its output (e.g. the game isn't running, or EAC is on) and
 don't say it's ready. After that, don't poll its output, don't sleep, and don't do anything else:
 wait for their reply.
