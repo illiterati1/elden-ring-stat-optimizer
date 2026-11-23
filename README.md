@@ -3,7 +3,9 @@
 Reads Elden Ring's memory (read-only, from outside the game) about once per millisecond and logs every
 change to a CSV, numbered by game frame: controller presses, player animation/stamina/FP/HP, and every
 loaded enemy's HP, stance (super armor), toughness and status buildup, plus the player's equipped
-weapons and arm style (`armstyle`, `lweapon`, `rweapon`: logged at the start and on each change).
+weapons, their Ashes of War and arm style (`armstyle`, `lweapon`, `rweapon`, `lash`, `rash`: logged
+at the start and on each change; an Ash is its EquipParamGem ID, 0 for the weapon's own skill). The
+summary prints equipment changes by name, from the stat calculator's `public/saveItems.json`.
 
 ## Use
 
@@ -23,8 +25,8 @@ Uses the C# 5 compiler that ships with Windows (.NET Framework 4):
 
     powershell.exe -NoProfile -Command "& \"$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe\" /nologo /optimize /platform:x64 /out:er-logger.exe Mem.cs Logger.cs"
 
-Stop a running logger before rebuilding. `Probe.cs` and `EquipProbe.cs` are scratch programs for finding new
-fields (build one with Mem.cs instead of Logger.cs); `EquipProbe.cs` prints PlayerGameData changes
+Stop a running logger before rebuilding. `Probe.cs`, `EquipProbe.cs` and `Find.cs` (dump, value search, pointer
+and code references, AOB check) are scratch programs for finding new fields (build one with Mem.cs instead of Logger.cs); `EquipProbe.cs` prints PlayerGameData changes
 next to pad presses, which is how the equipment offsets were found.
 
 ## Notes

@@ -50,7 +50,38 @@ try {
 let checked = 0;
 const badAttacks = new Set();
 
+// Equipment changes (and the starting equipment), by name from the stat calculator's saveItems.json,
+// printed before the next animation's line
+let names = { weapons: {}, ashes: {} };
+try { names = JSON.parse(fs.readFileSync(new URL('../stat-calculator/public/saveItems.json', import.meta.url), 'utf8')); } catch {}
+const AFFINITIES = ['', 'Heavy', 'Keen', 'Quality', 'Fire', 'Flame Art', 'Lightning', 'Sacred', 'Magic', 'Cold', 'Poison', 'Blood', 'Occult'];
+const weaponName = id => {
+  const n = +id, base = Math.floor(n / 10000) * 10000, affinity = Math.floor(n % 10000 / 100), level = n % 100;
+  const name = names.weapons[base] || `weapon ${id}`;
+  return n === 110000 ? 'Unarmed' : `${AFFINITIES[affinity] ? AFFINITIES[affinity] + ' ' : ''}${name} +${level}`;
+};
+const ashName = id => id === '0' ? 'its own skill' : id === '?' ? 'unknown Ash' : names.ashes[id] || `Ash ${id}`;
+const equipEvents = ev.filter(e => e.who === 'player' && ['armstyle', 'lweapon', 'rweapon', 'lash', 'rash'].includes(e.field));
+let shown = 0;
+const showEquipment = upTo => {
+  const now = {};
+  while (shown < equipEvents.length && equipEvents[shown].frame <= upTo) { const e = equipEvents[shown++]; now[e.frame] = (now[e.frame] || []).concat(e); }
+  for (const [frame, es] of Object.entries(now)) {
+    const parts = [];
+    for (const hand of ['r', 'l']) {
+      const w = es.find(e => e.field === hand + 'weapon'), a = es.find(e => e.field === hand + 'ash');
+      if (!w && !a) continue;
+      const weapon = w ? w.new : equipEvents.filter(e => e.field === hand + 'weapon' && e.frame <= +frame).at(-1)?.new;
+      parts.push(`${hand === 'r' ? 'right' : 'left'} ${weapon ? weaponName(weapon) : '?'}` + (a ? ` (${ashName(a.new)})` : ''));
+    }
+    const style = es.find(e => e.field === 'armstyle');
+    if (style) parts.push(['empty-handed', 'one-handed', 'two-handing left', 'two-handing right'][+style.new] || `arm style ${style.new}`);
+    console.log(`equipment f${frame}: ${parts.join(', ')}`);
+  }
+};
+
 starts.forEach((s, i) => {
+  showEquipment(s.frame);
   const end = i + 1 < starts.length ? starts[i + 1].frame : Infinity;
   const press = ev.filter(e => isPress(e) && e.frame <= s.frame).at(-1);
   const seg = ev.filter(e => e.frame >= s.frame && e.frame < end);
@@ -105,6 +136,7 @@ starts.forEach((s, i) => {
   if (!t && s.new) parts.push('(no TAE data)');
   console.log(parts.join('  |  '));
 });
+showEquipment(Infinity);
 console.log(`TAE check: ${checked} attacks with a stamina drop; ${badAttacks.size ? badAttacks.size + ' disagree (✗)' : 'all match'}`);
 // Logs from before 2026-11-22 20:25 read a 10-slot animation history (one slot per frame), so
 // animation changes only showed up every 10 frames and starts are up to 9 frames late

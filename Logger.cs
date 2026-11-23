@@ -29,7 +29,7 @@ public static class Logger {
         public Dictionary<string, int> Trend = new Dictionary<string, int>(); // -1 dropping, +1 rising, 0 full
     }
 
-    static Mem m; static long wcm, gdm, chrSetVt;
+    static Mem m; static long wcm, gdm, gaitem, chrSetVt;
     static StreamWriter log; static Stopwatch clock = Stopwatch.StartNew();
     static int frame = 0; static int lastPlayTime = int.MinValue, firstPlayTime = int.MinValue;
     static Dictionary<long, Chr> chrs = new Dictionary<long, Chr>();
@@ -51,6 +51,7 @@ public static class Logger {
         while ((m = Mem.Attach()) == null) { Console.WriteLine("waiting for eldenring.exe..."); Thread.Sleep(2000); }
         wcm = m.Rip(m.Scan("48 8B 05 ?? ?? ?? ?? 48 85 C0 74 0F 48 39 88"), 3, 7);
         gdm = m.Rip(m.Scan("48 8B 05 ?? ?? ?? ?? 48 85 C0 74 05 48 8B 40 58 C3 C3"), 3, 7);
+        gaitem = m.Rip(m.Scan("48 8B 0D ?? ?? ?? ?? 8B 84 24 ?? ?? ?? ?? 41 83 C9 FF 3D FF FF FF 0F"), 3, 7);
         string path = Path.Combine(dir, DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".csv");
         log = new StreamWriter(path) { AutoFlush = true };
         log.WriteLine("frame,ms,gametime,who,field,old,new,note");
@@ -120,8 +121,24 @@ public static class Logger {
     // 3 right two-handed), +328/+32C the left/right hand's current slot (0-2), +398 on the weapons'
     // EquipParamWeapon IDs (with affinity and upgrade level), left and right alternating per slot.
     // (The Hexinton 8.0.4 table has these 4 bytes later; found by watching them change on 2026-11-22.)
-    // Logged once at the start and on every change, as player armstyle/lweapon/rweapon
+    // Each weapon's item handle is at +340 on (likewise), and the mounted Ash of War comes from the
+    // item table (the static at that AOB: +8 + (handle & FFFF) * 8 points to the handle's object, with
+    // the handle at +8 and the item ID at +C): a weapon's +28 is its Ash's handle (0: its own skill),
+    // whose item ID less the 0x80000000 type bit is the EquipParamGem ID.
+    // Logged once at the start and on every change, as player armstyle/lweapon/rweapon/lash/rash
+    // (lash/rash: the EquipParamGem ID, or 0 for the weapon's own skill)
     static string[] prevEquip;
+    static long Item(uint handle) {
+        long table = m.Ptr(gaitem); if (table == 0 || handle == 0 || handle == 0xFFFFFFFF) return 0;
+        long obj = m.Ptr(table + 8 + (handle & 0xFFFF) * 8);
+        return obj != 0 && (uint)m.I32(obj + 8) == handle ? obj : 0;
+    }
+    static string Ash(uint weaponHandle) {
+        long w = Item(weaponHandle); if (w == 0) return "?";
+        uint gem = (uint)m.I32(w + 0x28); if (gem == 0) return "0";
+        long g = Item(gem); if (g == 0) return "?";
+        return ((uint)m.I32(g + 0xC) & 0x0FFFFFFF).ToString();
+    }
     static void PollEquipment() {
         long pgd = m.Ptr(m.Ptr(gdm) + 0x8); if (pgd == 0) return;
         var b = m.Read(pgd + 0x324, 0x90); if (b == null) return;
@@ -131,8 +148,10 @@ public static class Logger {
             b[0].ToString(),
             BitConverter.ToInt32(b, 0x398 - 0x324 + lslot * 8).ToString(),
             BitConverter.ToInt32(b, 0x39C - 0x324 + rslot * 8).ToString(),
+            Ash(BitConverter.ToUInt32(b, 0x340 - 0x324 + lslot * 8)),
+            Ash(BitConverter.ToUInt32(b, 0x344 - 0x324 + rslot * 8)),
         };
-        string[] names = { "armstyle", "lweapon", "rweapon" };
+        string[] names = { "armstyle", "lweapon", "rweapon", "lash", "rash" };
         for (int i = 0; i < now.Length; i++)
             if (prevEquip == null || prevEquip[i] != now[i]) Emit("player", names[i], prevEquip == null ? "" : prevEquip[i], now[i], prevEquip == null ? "start" : "");
         prevEquip = now;
