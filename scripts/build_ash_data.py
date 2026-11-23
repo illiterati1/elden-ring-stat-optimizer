@@ -1696,10 +1696,9 @@ BUFF_UPKEEP = {"Flare, O Serpent": 20000851}
 # the flails' animations (a34): R2s', running R2s', rolling R1s', jumping R2s' landings, and
 # powerstance L1s'. Each weapon's is spent on its first one (the buff can't be cast again
 # mid-chain), so each attack only counts each weapon's first and ends after it: e.g. the
-# powerstance L1 chain's #1 (the right flail's) and #2 (the left's). A jumping attack's are on its
-# landing: in the landings of the second of its jumping animations (031240 and 034540, 4 frames
-# after landing), assumed to be the ones played with the buff (031230's landing, 031271, has one too;
-# 034530's, 034571, doesn't)
+# powerstance L1 chain's #1 (the right flail's) and #2 (the left's). A jumping attack's are in the
+# version of its animation that the game plays (JUMP_PLAYED_OFFSET), timed like the attack's own
+# hits: e.g. the powerstance jumping L1's explosions at 0.633 s in 034570, after its swings' 0.533
 WEAPON_ATTACK_EXTRA_HITS = {
     "Flare, O Serpent": {
         "judges": {
@@ -1724,8 +1723,12 @@ WEAPON_ATTACK_EXTRA_HITS = {
         ],
     }
 }
-# The jumping animation played with such a buff, after the usual one (WEAPON_ATTACK_EXTRA_HITS)
-BUFFED_JUMP_OFFSET = 10
+# The version of a jumping attack's animation the game plays, after the one its moveset row names
+# (WEAPON_ATTACK_EXTRA_HITS): seen in game with er-logger, the Serpent Flail's powerstance jumping L1
+# 034530 plays 034570 (with the same swing windows) and then lands in 034571, with Flare, O
+# Serpent's buff or without it. With the buff, its explosions hit 4 frames after its swings, 6 in
+# 034570's windows (the landing 034581's that were used before put them 9 after)
+JUMP_PLAYED_OFFSET = 40
 # The delay from a press until its animation starts (useMovesets.ts stepStartDelay)
 STEP_START_DELAY = 2 / 60
 # Skills not timed until they're measured
@@ -3367,7 +3370,7 @@ def main():
         skills[name]["label"] = label
 
     # Each version's timing, from its skill's animations
-    from check_animations import JUMP_LANDING_OFFSET, Steps, get_animation_id  # noqa: E402
+    from check_animations import Steps, get_animation_id  # noqa: E402
 
     steps = Steps(game_dir, project_dir)
     behavior_rows = {
@@ -3499,7 +3502,6 @@ def main():
                 hits["timing"] = timing
             # The buff's hits on the weapon's own attacks (WEAPON_ATTACK_EXTRA_HITS): by attack and
             # hands, each step's (until the last that has one), when they hit after the step's start
-            # (or after landing, "landing")
             if name in WEAPON_ATTACK_EXTRA_HITS and row:
                 extra = WEAPON_ATTACK_EXTRA_HITS[name]
                 anims = steps.animations
@@ -3512,9 +3514,8 @@ def main():
                             anim_id = get_animation_id(attack, hands, index)
                             if anim_id is None:
                                 break
-                            landing = "Jumping" in attack
-                            if landing:
-                                anim_id += BUFFED_JUMP_OFFSET + JUMP_LANDING_OFFSET
+                            if "Jumping" in attack:
+                                anim_id += JUMP_PLAYED_OFFSET
                             attack_file, _ = anims.find(weapon_files, anim_id)
                             if attack_file is None:
                                 break
@@ -3529,7 +3530,6 @@ def main():
                                     {
                                         "time": time,
                                         "hit": label,
-                                        **({"landing": True} if landing else {}),
                                         **({"left": True} if side == "left" else {}),
                                     }
                                 )

@@ -13,7 +13,6 @@ import {
   allAttacks,
   chargedStamina,
   getAttackData,
-  jumpAirTime,
   limitChainLength,
   tooSlowReason,
   stepStartDelay,
@@ -89,10 +88,10 @@ interface SkillHits {
   /**
    * For a buff that changes the weapon's own attacks (weaponAttackSkills), the hits it adds to them,
    * by attack and hands ("R2|1h"): each step's (until the last that has one), the version whose hit
-   * it is, when it hits after the step's start (or after landing), and whether it's the left hand
+   * it is, when it hits after the step's start, and whether it's the left hand
    * weapon's
    */
-  extraHits?: Record<string, { hit: string; time: number; landing?: boolean; left?: boolean }[][]>;
+  extraHits?: Record<string, { hit: string; time: number; left?: boolean }[][]>;
   /** A note shown with this version's results, e.g. the Wing of Astel's Nebula's */
   note?: string;
   /**
@@ -1235,8 +1234,8 @@ function getSkillAttack(
           : step.hits.length === weaponHits
           ? step.hits
           : [step.hits[0], ...Array(weaponHits - 1).fill(undefined)];
-      const extraTimes = extraHits[i].flatMap(({ hit, time, landing }) =>
-        versionHits(hit).map(() => (landing ? jumpAirTime : step.lead) + time),
+      const extraTimes = extraHits[i].flatMap(({ hit, time }) =>
+        versionHits(hit).map(() => step.lead + time),
       );
       const last = i === stepCount - 1;
       // The last ends once the skill can be used again, to cast the buff again: at the attack's

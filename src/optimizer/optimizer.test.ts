@@ -9893,6 +9893,12 @@ describe("Ashes of War", () => {
       ["Weapon", "Weapon (left)", "Explosion"],
       ["Weapon", "Weapon (left)", "Explosion (left)"],
     ]);
+    // A jumping attack's explosions are in the animation the game plays (034570 for the powerstance
+    // jumping L1), after its swings: tested in game with er-logger, the swings 49 frames after the
+    // jump press and the explosions 53 (here 48 and 54, from the cast's L2 press at 62 frames before)
+    expect(changed("Powerstance Jumping L1").stepTimes![0].hitTimes!.map(frames)).toEqual([
+      110, 110, 116, 116,
+    ]);
     // Cut short like the flail's own chains
     const cutL1 = getAshAttack(
       ashes,
