@@ -1785,6 +1785,12 @@ HIT_TIME_FITS = {
     # Deadly Poison Spray's cloud's first tick, 40 frames after L2 (TICK_ROWS)
     ("Deadly Poison Spray", ""): [38 / 60],
     # Wall of Sparks's explosion lands 137 frames after L2 tapped (ANIMATION_SEQUENCES), 174 charged
+    # Swift Slash's vacuum hits the dummy 60 frames after L2 tapped, 84 charged, about 24 frames after
+    # its slash (36 and 61: 3-4 frames after its window opens, here 32 and 58). Measured in game on a
+    # Keen Backhand Blade +25 at the usual test distance; the vacuum flies, so further away it's later
+    # (the uncharged one's from its release, 24 frames after L2)
+    ("Swift Slash", "Uncharged"): [None, 36 / 60],
+    ("Swift Slash", "Charged"): [None, 82 / 60],
     ("Wall of Sparks", "Uncharged"): [135 / 60],
     ("Wall of Sparks", "Charged"): [172 / 60],
     # Rolling Sparks's explosion lands 103 frames after L2 (measured in game on a Firespark Perfume
@@ -1836,6 +1842,8 @@ ALL_HITS = "all"
 MEASURED_HIT_TIMES = {
     ("Black Flame Tornado", "Tap"): {2},
     ("Deadly Poison Spray", ""): {0},
+    ("Swift Slash", "Uncharged"): {1},
+    ("Swift Slash", "Charged"): {1},
     # Golden Land's explosion, an AoE (HIT_TIME_FITS)
     ("Golden Land", "#1"): {2},
     ("Euporia Vortex", "Luster Tier 1"): ALL_HITS,

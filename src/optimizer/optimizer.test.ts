@@ -5124,6 +5124,24 @@ describe("Ashes of War", () => {
     // multiplies by both and rounds once (796)
     expect(Math.abs(total(build("Charged", [...icon, ...shard])) - 1760)).toBeLessThanOrEqual(1);
     expect(total(build("Uncharged", shard))).toBe(1308);
+    // Tested in game on a Keen Backhand Blade +25, two-handed, with 99 in every stat on the NG+1
+    // training dummy (144.4 defense): uncharged 471 then 657, charged 550 then 919 (both as here).
+    // The slash landed 36 frames after L2 tapped, 61 charged (32 and 58 here: 3-4 frames after its
+    // window opens), and the vacuum 60 and 84 (measured, HIT_TIME_FITS)
+    const keen = getWeapon("Keen Backhand Blade");
+    const hitFrames = (followUp: string) => {
+      const result = getAshAttack(
+        ashes,
+        movesets,
+        keen,
+        withFollowUp("Swift Slash", followUp),
+        true,
+      );
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return result.attack.stepTimes![0].hitTimes!.map((time) => Math.round(time! * 60));
+    };
+    expect(hitFrames("Uncharged")).toEqual([32, 60]);
+    expect(hitFrames("Charged")).toEqual([58, 84]);
   });
 
   it("matches Sword Dance in game", () => {
