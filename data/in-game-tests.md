@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 70 | I Command Thee, Kneel! #1's shockwaves, from a distance (point blank the axe hits instead: 65 and ~121, tested) | Axe of Godrick | Hits 70, 127 |
 
 ## Stamina
 

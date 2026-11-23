@@ -1837,6 +1837,10 @@ HIT_TIME_FITS = {
     # 331 frames after L2, and only some hit: the 3 seen fit the 1st, 3rd and 6th. The 4th (seen on a
     # Greatsword, not timed) is assumed to be the 5th, 326.
     ("Golden Land", "#1"): [None, None, 143 / 60, 288 / 60, 306 / 60, 324 / 60, 332 / 60],
+    # I Command Thee, Kneel! #1's first shockwave lands 75 frames after L2 on the training dummy, 5
+    # after its window opens (67.8 into the animation), its second 129, 2 after its window (measured
+    # in game on 2026-11-23 with er-logger, from a few steps away; it travels, so it's later further)
+    ("I Command Thee, Kneel!", "#1"): [73 / 60, None],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index, or ALL_HITS. Only for hits without a travel time (a projectile that travels stays approximate,

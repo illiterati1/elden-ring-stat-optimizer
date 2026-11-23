@@ -9322,9 +9322,12 @@ describe("Ashes of War", () => {
     // er-logger 2026-11-23 (+10, NG+1 dummy at 144.4), point blank, so the axe hit each time, not
     // its shockwave: 673 each, stance 8.25 each, stamina 30 at each axe window (63 and 119 into the
     // animation, as in its TAE). Rolled out 95 after L2 twice (before the 2nd swing), and 185 after
-    // it (mashing; a press at 172 didn't take)
+    // it (mashing; a press at 172 didn't take). From a few steps away (er-logger 2026-11-23, NG+1):
+    // its shockwaves 809 and 827, stance 8.25 each, as calculated, landing 75 and 129 after L2 (the
+    // first fitted; the second 127 here)
     const frames = (seconds: number) => Math.round(seconds * 60);
     const step = result.attack.stepTimes![0];
+    expect(step.hitTimes!.map((time) => frames(time!))).toEqual([75, 127]);
     expect(step.earlyRolls!.map(frames)).toEqual([95]);
     expect(frames(step.roll!)).toBe(183);
   });
