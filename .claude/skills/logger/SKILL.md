@@ -71,7 +71,7 @@ It prints, per attack (every moveset attack and every version of the skill, or t
 text or `--anim`'s logged animations pick), each step's stamina, lead (frames before its animation
 starts), cycle and cancels from the press, and each hit's damage, stance, buildup and frame, both
 from the press (`@56`) and from the animation's start (`anim 36`). It assumes 99 in every stat,
-NG+1 (the dummy's 144.4) and no buffs: `--ng 0`, `--stat N`, `--enemy <NpcParam ID>` (from the log's
+NG+1 (the dummy's 144.4) and no buffs: `--ng 0`, `--stat N` (or one stat: `--str N`, `--arc N`, …), `--enemy <NpcParam ID>` (from the log's
 `npc <id>@...` rows) for others, `--ash <id>` for an Ash of War, `--json` for JSON. Compare its
 `anim` frames with the summary's `anim+N` (a buffered press starts its animation late). Things to
 check first:

@@ -18,6 +18,7 @@
  *   --enemy <id>       the NpcParam ID hit: its defenses from enemies.json (the dummy's otherwise)
  *   --ng <n>           NG+ level: 0 or 1 (default 1, the dummy's defense 144.4; 123.2 in NG)
  *   --stat <n>         every stat (default 99)
+ *   --str/--dex/--int/--fai/--arc <n>  one stat (overrides --stat for it)
  *   --json             print JSON instead
  *
  * Frames are at 60 fps. Each step's hits are from its press ("@56") and from its animation's start
@@ -64,6 +65,11 @@ const valueOptions = [
   "--enemy",
   "--ng",
   "--stat",
+  "--str",
+  "--dex",
+  "--int",
+  "--fai",
+  "--arc",
 ];
 const positional = args.filter(
   (arg, i) => !arg.startsWith("--") && !valueOptions.includes(args[i - 1]),
@@ -249,7 +255,12 @@ function predict(
   target: Target,
   onlyStep?: number,
 ): Prediction {
-  const attributes: Attributes = { str: stat, dex: stat, int: stat, fai: stat, arc: stat };
+  const attributes = Object.fromEntries(
+    (["str", "dex", "int", "fai", "arc"] as const).map((name) => [
+      name,
+      Number(option(`--${name}`) ?? stat),
+    ]),
+  ) as Attributes;
   const result = optimizeBuild({
     weapon,
     regularUpgradeLevel: level,
