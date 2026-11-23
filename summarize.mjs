@@ -4,7 +4,8 @@
 //   node summarize.mjs [log.csv]      default: newest log in %USERPROFILE%\Videos\er-logs
 //
 // Each attack is checked against its TAE hit windows (via tae_windows.py and the stat calculator's
-// TAE reader): stamina should drop on the frame the first window opens; each HP drop is shown after
+// TAE reader): stamina should drop on the frame a window opens (the first that costs stamina, which isn't known
+// here, so any; marked when it isn't the first); each HP drop is shown after
 // the window it falls in. Mismatches are marked ✗ and counted at the end.
 //
 // Offsets are game frames from the press ("+30") and from the animation start ("anim+29").
@@ -52,9 +53,17 @@ starts.forEach((s, i) => {
   if (st) {
     let check = '';
     if (windows) {
-      const d = (st.frame - a.frame) - windows[0][0];
-      checked++; if (d) badAttacks.add(i);
-      check = d ? ` ✗ TAE window opens ${windows[0][0]} (off by ${d > 0 ? '+' : ''}${d})` : ` ✓ TAE ${windows[0][0]}`;
+      // Stamina is taken when the first window whose behavior costs any opens. Which ones cost isn't
+      // known here (that needs the weapon's behavior variation, and the log doesn't say which weapon),
+      // so any window's start counts; an earlier one is usually a hitbox that costs and does nothing
+      // (e.g. Cursed-Blood Slice's judge 3900 push at 25, before its slash at 68). Window starts are
+      // fractional frames: a drop less than a frame from one matches it
+      const at = st.frame - a.frame;
+      const w = windows.findIndex(w => Math.abs(at - w[0]) < 1);
+      checked++; if (w < 0) badAttacks.add(i);
+      const d = Math.round((at - windows[0][0]) * 10) / 10;
+      check = w < 0 ? ` ✗ TAE window opens ${windows[0][0]} (off by ${d > 0 ? '+' : ''}${d}; no window opens then)`
+        : ` ✓ TAE ${windows[w][0]}${w ? ` (window ${w + 1}: the ${w === 1 ? 'first costs' : 'earlier ones cost'} none)` : ''}`;
     }
     parts.push(`stamina ${st.note} ${off(ref, st)} (anim${off(a, st)})${check}`);
   } else if (windows) parts.push(`no stamina drop (TAE window ${windows[0][0]})`);
@@ -62,7 +71,7 @@ starts.forEach((s, i) => {
     const same = seg.filter(e => e.who === h.who && e.frame === h.frame && e.field !== 'hp' && e.field !== 'anim' && e.note && e.note !== 'recovering' && e.note !== 'full');
     let win = '';
     if (windows) {
-      const at = h.frame - a.frame, w = windows.filter(w => w[0] <= at).at(-1);
+      const at = h.frame - a.frame, w = windows.filter(w => w[0] < at + 1).at(-1);
       win = w ? ` [window ${w[0]}+${Math.round((at - w[0]) * 10) / 10}]` : ` ✗ [before the first window, ${windows[0][0]}]`;
       if (!w) badAttacks.add(i);
     }
