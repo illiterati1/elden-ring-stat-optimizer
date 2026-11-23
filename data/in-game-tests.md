@@ -10,7 +10,6 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 63 | Cursed-Blood Slice #1: what its second hit (80 flat fire, 70 physical MV; the sheet's "Bullet", now called an explosion) is, and when it lands | Morgott's Cursed Sword | Swing and explosion both at 68 (the explosion's time approximate: when it's created) |
 | 64 | Ghostflame Call and Ghostflame Ignition: the skill, then its R1 and R2 follow-ups (frames from each press). The flare's ticks and the R1's ground fire tick every 0.4 and 0.5 s: when do they start, and how many land? | Any weapon with Ghostflame Call; Death's Poker | Same for both. Skill: swing 52, flare and explosion 56 (flare ticks to 1.46 s). R1: swing 54, explosion and ground fire 58 (ground fire for 5 s). R2: swing 46, explosion 50. The flare's, explosions' and ground fire's times are approximate (when created) |
 | 66 | Golden Land #1: its explosion and four projectiles (frames from the press) | Any weapon with Golden Land | Swings 74, 110; explosion 80; projectiles 80, 92, 104, 116 (approximate: when created) |
 | 67 | Swift Slash, uncharged and charged: when its vacuum (120 MV, 160 charged) lands, compared with the slash | Any weapon with Swift Slash | The app's times: uncharged vacuum 0.10 s, slash 0.13 s; charged vacuum 0.90 s, slash 0.93 s. The vacuum's is approximate (when it's created) and comes before the slash, which looks wrong |

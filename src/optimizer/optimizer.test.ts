@@ -8010,7 +8010,8 @@ describe("Ashes of War", () => {
 
   it("matches Cursed-Blood Slice in game", () => {
     // Morgott's Cursed Sword's skill, one chain: its slash, then its follow-up. Tested in game at +10
-    // with 99 in every stat on the training dummy (damage, stance, and blood loss)
+    // with 99 in every stat on the training dummy (damage, stance, and blood loss; #1's slash lands
+    // 70 frames after L2 and its explosion 107, #2's slash 52)
     const weapon = getWeapon("Morgott's Cursed Sword");
     const variants = getAshAttacks(ashes, movesets, weapon, "Lion's Claw", false);
     expect(variants).toHaveLength(1);

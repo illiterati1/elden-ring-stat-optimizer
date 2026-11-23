@@ -1805,6 +1805,9 @@ HIT_TIME_FITS = {
     ("Causality's Wrath", "Tier 1"): [191 / 60],
     ("Causality's Wrath", "Tier 2"): [198 / 60],
     ("Causality's Wrath", "Tier 3"): [197 / 60],
+    # Cursed-Blood Slice #1's explosion lands 107 frames after L2 on the training dummy, 37 after the
+    # slash (measured in game on 2026-11-22 with er-logger), though it's created with the slash
+    ("Cursed-Blood Slice", "#1"): [None, 105 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index, or ALL_HITS. Only for hits without a travel time (a projectile that travels stays approximate,
