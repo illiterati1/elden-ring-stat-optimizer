@@ -10,6 +10,7 @@ from here.
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
+| 70 | I Command Thee, Kneel! #1's shockwaves, from a distance (point blank the axe hits instead: 65 and ~121, tested) | Axe of Godrick | Hits 70, 127 |
 
 ## Stamina
 
@@ -40,7 +41,6 @@ step, from that step's press).
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 33 | I Command Thee, Kneel! #1 | Axe of Godrick | Hits 70, 127; early 95; after 183 |
 | 34 | Savage Claws | Beast Claw | Hits 36, 50, 66, 84, 106, 144; early 94; after 178 |
 | 35 | Shadow Sunflower Headbutt #2 | Shadow Sunflower Blossom | Hits 56, 104; early 72; after 146 |
 | 37 | The Queen's Black Flame #1 | Godslayer's Greatsword | Hits 36, 138; early 86; after 186 |

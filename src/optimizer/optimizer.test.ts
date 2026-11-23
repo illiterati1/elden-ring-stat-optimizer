@@ -9319,6 +9319,14 @@ describe("Ashes of War", () => {
       [1572],
     ]);
     expect(steps[0].reduce((sum, hit) => sum + hit.stance, 0)).toBe(16.5);
+    // er-logger 2026-11-23 (+10, NG+1 dummy at 144.4), point blank, so the axe hit each time, not
+    // its shockwave: 673 each, stance 8.25 each, stamina 30 at each axe window (63 and 119 into the
+    // animation, as in its TAE). Rolled out 95 after L2 twice (before the 2nd swing), and 185 after
+    // it (mashing; a press at 172 didn't take)
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const step = result.attack.stepTimes![0];
+    expect(step.earlyRolls!.map(frames)).toEqual([95]);
+    expect(frames(step.roll!)).toBe(183);
   });
 
   it("matches Blinkbolt: Long-hafted Axe in game", () => {
