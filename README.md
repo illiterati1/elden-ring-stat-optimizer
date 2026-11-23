@@ -19,11 +19,12 @@ on the frame the first window whose behavior costs stamina opens, by that much (
 the right hand's, or the left's when two-handing it; logs without the weapon match any window's
 start); mismatches are marked ✗.
 
-After each press, a `calc` line compares its hits with the stat calculator (its `scripts/predict.ts`,
-run with vite-node): of the attacks its animations could be (the skill's versions and follow-ups, or
-the moveset attack and chain step), the one whose damage is closest, assuming 99 in every stat
-(`--stat`), the NG+1 training dummy (`--ng 0` for NG) and no buffs. Each hit's damage and frame from
-the press is ✓ within 1 and 2 frames; logged hits it has none for are listed. `--no-calc` skips it.
+Equipment lines give each weapon's and Ash's logged ID in brackets. To compare with the stat
+calculator, run its `scripts/predict.ts` with that ID (from `../stat-calculator`):
+`npx vite-node scripts/predict.ts -- 67520010 --2h [--attack <text>] [--anim <ids>] [--enemy <NpcParam ID>]`
+prints each attack's stamina, cancels, and hits (damage, stance, buildup, frames from the press
+and from the animation's start), assuming 99 in every stat (`--stat`), NG+1 (`--ng 0` for NG) and no
+buffs.
 
 ## Build
 

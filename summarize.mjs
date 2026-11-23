@@ -8,12 +8,8 @@
 // much (for logs without the equipped weapon, any window's start); each HP drop is shown after
 // the window it falls in. Mismatches are marked ✗ and counted at the end.
 //
-// Each press is also compared with the stat calculator (its scripts/predict.ts): the attack it
-// could be whose damage is closest, assuming 99 in every stat and NG+1 (--ng 0 for NG, --stat N for
-// other stats), no buffs, against the enemy hit (the training dummy if enemies.json doesn't have
-// it). Damage within 1 and hit frames within 2 count as ✓.
-//
-//   node summarize.mjs [log.csv] [--ng 0] [--stat 80] [--no-calc]
+// Equipment lines give each weapon's and Ash's logged ID in brackets, for the stat calculator's
+// scripts/predict.ts (its numbers for that weapon's attacks, to compare with).
 //
 // Offsets are game frames from the press ("+30") and from the animation start ("anim+29").
 // If wall-clock time disagrees with the frame count by 2+ frames (a hitch), it's flagged with "~".
@@ -24,8 +20,6 @@ import { execFileSync } from 'node:child_process';
 
 const dir = '/mnt/c/Users/USER/Videos/er-logs';
 const argv = process.argv.slice(2);
-const flag = name => { const i = argv.indexOf(name); return i < 0 ? null : argv.splice(i, name === '--no-calc' ? 1 : 2).at(-1); };
-const ngFlag = flag('--ng'), statFlag = flag('--stat'), noCalc = flag('--no-calc') != null;
 const file = argv[0] || path.join(dir, fs.readdirSync(dir).filter(f => f.endsWith('.csv')).sort().at(-1));
 const [header, ...lines] = fs.readFileSync(file, 'utf8').trim().split(/\r?\n/);
 const cols = header.split(',');
@@ -51,7 +45,6 @@ for (const s of starts) {
   }
   const left = equipped.armstyle === '2', weapon = left ? equipped.lweapon : equipped.rweapon;
   s.key = weapon ? `${s.new}:${weapon}` : s.new;
-  s.equip = weapon && { weapon: +weapon, ash: +(left ? equipped.lash : equipped.rash) || 0, twoHanding: ['2', '3'].includes(equipped.armstyle) };
 }
 const ids = [...new Set(starts.map(s => s.key))];
 let tae = {};
@@ -69,12 +62,11 @@ const AFFINITIES = ['', 'Heavy', 'Keen', 'Quality', 'Fire', 'Flame Art', 'Lightn
 const weaponName = id => {
   const n = +id, base = Math.floor(n / 10000) * 10000, affinity = Math.floor(n % 10000 / 100), level = n % 100;
   const name = names.weapons[base] || `weapon ${id}`;
-  return n === 110000 ? 'Unarmed' : `${AFFINITIES[affinity] ? AFFINITIES[affinity] + ' ' : ''}${name} +${level}`;
+  return n === 110000 ? 'Unarmed' : `${AFFINITIES[affinity] ? AFFINITIES[affinity] + ' ' : ''}${name} +${level} [${id}]`;
 };
-const ashName = id => id === '0' ? 'its own skill' : id === '?' ? 'unknown Ash' : names.ashes[id] || `Ash ${id}`;
+const ashName = id => id === '0' ? 'its own skill' : id === '?' ? 'unknown Ash' : `${names.ashes[id] || 'Ash'} [${id}]`;
 const equipEvents = ev.filter(e => e.who === 'player' && ['armstyle', 'lweapon', 'rweapon', 'lash', 'rash'].includes(e.field));
 let shown = 0;
-// Lines are collected, so each press's comparison with the calculator can go after its last one
 const out = [];
 const say = (text, start) => out.push({ text, start });
 const showEquipment = upTo => {
@@ -104,7 +96,6 @@ starts.forEach((s, i) => {
   const parts = [];
   const ref = press || s;
   s.press = press;
-  s.hits = [];
   const rel = press && ev.find(e => e.who === 'pad' && e.field === press.field && e.new === 'release' && e.frame > press.frame);
   const held = rel ? ` held ${rel.frame - press.frame}` : '';
   const a = s;
@@ -148,7 +139,6 @@ starts.forEach((s, i) => {
       win = w ? ` [window ${w[0]}${at >= w[0] ? "+" : ""}${Math.round((at - w[0]) * 10) / 10}]` : ` ✗ [before the first window, ${windows[0][0]}]`;
       if (!w) badAttacks.add(i);
     }
-    s.hits.push({ frame: h.frame - ref.frame, damage: -h.note, npc: +h.who.split(/[ @]/)[1] });
     parts.push(`hit ${off(ref, h)} (anim${off(a, h)})${win}: ${-h.note} dmg` + same.map(e => `, ${e.field} ${e.note}`).join(''));
   }
   // damage with no HP drop at the same time (e.g. status procs land later) shows as its own hit above
@@ -156,82 +146,9 @@ starts.forEach((s, i) => {
   say(parts.join('  |  '), s);
 });
 showEquipment(Infinity);
-if (!noCalc) compareWithCalculator();
 for (const { text } of out) console.log(text);
 console.log(`TAE check: ${checked} attacks with a stamina drop; ${badAttacks.size ? badAttacks.size + ' disagree (✗)' : 'all match'}`);
 // Logs from before 2026-11-22 20:25 read a 10-slot animation history (one slot per frame), so
 // animation changes only showed up every 10 frames and starts are up to 9 frames late
 if (starts.length >= 4 && new Set(starts.map(s => s.frame % 10)).size === 1)
   console.log('warning: every animation change in this log is on a frame ending in ' + starts[0].frame % 10 + ': it was recorded with the old, lagging animation field, so anim+N and the TAE check are off by up to 9 frames');
-
-/**
- * Adds a line after each press's last animation: the calculator attack (of those its animations could
- * be) whose damage is closest to the press's hits, with each hit's damage and frame from the press
- */
-function compareWithCalculator() {
-  // The NpcParam ID most of a press's hits landed on, for the calculator to use its defenses
-  const mostHit = hits => {
-    const counts = new Map();
-    for (const h of hits) counts.set(h.npc, (counts.get(h.npc) || 0) + 1);
-    return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
-  };
-  const groups = new Map();
-  for (const s of starts) {
-    if (!s.press || !s.equip) continue;
-    const g = groups.get(s.press) || { ...s.equip, anims: [], hits: [], last: s };
-    g.anims.push(+s.new); g.hits.push(...s.hits); g.last = s;
-    groups.set(s.press, g);
-  }
-  const list = [...groups.values()].filter(g => g.hits.length);
-  if (!list.length) return;
-  let predicted;
-  try {
-    const calc = new URL('../stat-calculator/', import.meta.url).pathname;
-    const args = ['vite-node', 'scripts/predict.ts', '--', ...(ngFlag != null ? ['--ng', ngFlag] : []), ...(statFlag != null ? ['--stat', statFlag] : [])];
-    predicted = JSON.parse(execFileSync('npx', args, { cwd: calc, encoding: 'utf8', input: JSON.stringify(list.map(({ weapon, ash, twoHanding, anims, hits }) => ({ weapon, ash, twoHanding, anims, enemy: mostHit(hits) }))) }));
-  } catch (e) { out.push({ text: '(calculator comparison unavailable: ' + e.message.split('\n')[0] + ')' }); return; }
-  out.unshift({ text: `calculator: ${predicted.stat} in every stat, ${predicted.ngPlus ? 'NG+1' : 'NG'}, no buffs; against the enemy hit (its defenses from enemies.json; the dummy's, ${predicted.defense}, if it isn't there)` });
-  list.forEach((g, i) => {
-    const candidates = predicted.results[i];
-    let text;
-    if (!candidates.length) text = '  calc: no attack in the calculator for these animations';
-    else {
-      // Each predicted hit is paired with a logged one of the same damage (within 1), nearest in time,
-      // and the rest with the nearest unpaired one within 10 frames; the closest attack is the one
-      // with the least damage unaccounted for (logged hits left over count half: e.g. ticks of an
-      // earlier cast)
-      const pair = c => {
-        const used = new Set(), pairs = c.hits.map(() => null);
-        const nearest = (j, ok) => {
-          let best = -1;
-          g.hits.forEach((h, k) => {
-            if (used.has(k) || !ok(h)) return;
-            const t = c.hits[j][3] ?? h.frame;
-            if (best < 0 || Math.abs(h.frame - t) < Math.abs(g.hits[best].frame - t)) best = k;
-          });
-          if (best >= 0) { used.add(best); pairs[j] = g.hits[best]; }
-        };
-        c.hits.forEach(([damage], j) => nearest(j, h => Math.abs(h.damage - damage) <= 1));
-        c.hits.forEach(([, , , frame], j) => { if (!pairs[j]) nearest(j, h => frame == null || Math.abs(h.frame - frame) <= 10); });
-        const left = g.hits.filter((_, k) => !used.has(k));
-        const cost = c.hits.reduce((d, [damage], j) => d + Math.abs(damage - (pairs[j]?.damage ?? 0)), 0)
-          + left.reduce((d, h) => d + h.damage / 2, 0);
-        return { pairs, left, cost };
-      };
-      const scored = candidates.map(c => ({ c, ...pair(c) }));
-      const { c: best, pairs, left } = scored.reduce((a, b) => b.cost < a.cost ? b : a);
-      const hits = best.hits.map(([damage, stance, status, frame], j) => {
-        const seen = pairs[j];
-        const dmg = seen ? (Math.abs(seen.damage - damage) <= 1 ? ' ✓' : ` ✗ (${seen.damage})`) : ' (not seen)';
-        const time = frame == null ? '' : ` @+${frame}` + (seen ? (Math.abs(seen.frame - frame) <= 2 ? ' ✓' : ` ✗ (+${seen.frame})`) : '');
-        const extra = [`stance ${stance}`, ...Object.entries(status).map(([k, v]) => `${k} ${v}`)].join(', ');
-        return `${damage}${dmg}${time} (${extra})`;
-      });
-      const more = left.length ? `  |  not in the calculator: ${left.map(h => `${h.damage} @+${h.frame}`).join(', ')}` : '';
-      const vs = predicted.enemies?.[i] ? ` vs ${predicted.enemies[i]}` : '';
-      text = `  calc ${best.label}${vs}: ${hits.join('  |  ')}${more}`;
-    }
-    const at = out.findIndex(o => o.start === g.last);
-    out.splice(at + 1, 0, { text });
-  });
-}
