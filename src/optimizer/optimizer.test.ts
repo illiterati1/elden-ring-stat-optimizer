@@ -12223,6 +12223,18 @@ describe("Ashes of War", () => {
     // With the R2 follow-up: 2483 with 32 stance (the R2's swing 5.5), and about 860 frost (875 here)
     expect([r2Build.finalValue, r2Build.attackStance]).toEqual([2483, 32]);
     expect(r2Build.attackStatus![AttackPowerType.FROST]).toBe(875);
+    // Retested in NG+1 with er-logger (2026-11-22; the dummy's defense 144.4): ticks of 202, the
+    // explosion 648, the R1's swing and explosion 1453 together (749 and 704 here), its ground fire
+    // 225 ten times, the R2's explosion 977, all as calculated.
+    // Timing from each animation's start (the calculator adds 2 frames before it): the thrust 52,
+    // the flare's ticks 57-58, 83, 107, 132, its explosion 156 (153 on a second cast); the R1 (from
+    // 88 after the skill's animation starts) swing and explosion both 58, its ground fire 89 then
+    // every 31; the R2's swing 46, explosion 51
+    const frames = (seconds: number | undefined) => Math.round(seconds! * 60);
+    expect(result.attack.stepTimes![0].hitTimes!.map(frames)).toEqual([54, 58, 157]);
+    expect(r1.attack.cycleTimes!.map(frames)).toEqual([88, 98]);
+    expect(r1.attack.stepTimes![1].hitTimes!.map(frames)).toEqual([56, 60, 91]);
+    expect(r2.attack.stepTimes![1].hitTimes!.map(frames)).toEqual([48, 52]);
   });
 
   it("matches Wave of Gold in game", () => {
