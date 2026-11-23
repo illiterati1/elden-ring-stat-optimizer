@@ -8212,6 +8212,15 @@ describe("Ashes of War", () => {
         [1368, 20],
       ],
     ]);
+    // er-logger 2026-11-22 (+10, NG+1 dummy at 144.4): hits 81 and 134 frames after L2 for 715 and
+    // 1368, stance 5.5 and 20, 30 stamina at the swing and 9 at the ring, rolled out 178 after L2
+    // (pressed at 173, buffered). The early roll (122) wasn't tried
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const step = result.attack.stepTimes![0];
+    expect(step.hitTimes!.map((time) => frames(time!))).toEqual([80, 134]);
+    expect(step.earlyRolls!.map(frames)).toEqual([122]);
+    expect(frames(step.roll!)).toBe(178);
+    expect(result.attack.stamina).toEqual([39]);
   });
 
   it("matches Zamor Ice Storm in game", () => {
