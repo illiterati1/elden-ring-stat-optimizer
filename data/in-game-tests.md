@@ -40,7 +40,6 @@ step, from that step's press).
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 27 | Onyx Lords' Repulsion (early roll only: hits, stamina and the roll after tested 2026-11-22) | Onyx Lord's Greatsword | Early 122 |
 | 28 | Eochaid's Dancing Blade, uncharged | Regalia of Eochaid (or Marais Executioner's Sword) | Hits 46 to 102 (every 8), 140; early 112; after 174 |
 | 29 | Eochaid's Dancing Blade, charged | Regalia of Eochaid | Hits 94 to 172, 206; early 180; after 244 |
 | 31 | Familial Rancor (one window, open past its last hit) | Family Heads | Hits 72 to 116; roll from 110 |
