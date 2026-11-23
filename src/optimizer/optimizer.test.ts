@@ -6920,6 +6920,14 @@ describe("Ashes of War", () => {
         step.map((hit) => Math.floor(hit.damage) + (hit.hpDamage?.damage ?? 0)),
       ),
     ).toEqual([[606, 3634], [3733]]);
+    // er-logger 2026-11-23 (+10, NG+1 dummy at 144.4, 416171 HP): #1 575 (stance 6) and 2038
+    // (stance 18) 36 and 138 from the press, as calculated, stamina 5 + 20, then 21 ticks of black
+    // flame 6 apart, which go on through a roll. With B mashed, it rolled out 86 after the press
+    // (its stamina; the roll's animation 87), skipping the 2nd hit, and 184 after it (animation 185)
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const step = result.attack.stepTimes![0];
+    expect(step.earlyRolls!.map(frames)).toEqual([86]);
+    expect(frames(step.roll!)).toBe(186);
   });
 
   it("matches Lightspeed Slash in game", () => {
