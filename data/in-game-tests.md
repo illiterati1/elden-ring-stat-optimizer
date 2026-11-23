@@ -55,7 +55,8 @@ Nothing to compare yet; measure from the press, as above.
   Miséricorde's riposte after Buckler Parry (a20_031700, imported from a23), 4 times on 2026-11-23
   (er-logger): starts 3-4 frames after the R1 press, costs 14 stamina at 46-48 from its start (its
   one hit, event 304 judge 510, is at TAE 25 at 30 fps = 50), and returns to idle 304 frames after
-  its start. Damage not logged (the log didn't pick up the enemy)
+  its start. On the Leonine Misbegotten (Boss Arena, NpcParam 34600913) its hit lands at 49-50 from its
+  start and does 2261, as calculated (3 ripostes; a 4th took the last 1265 HP)
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
