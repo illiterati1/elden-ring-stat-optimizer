@@ -30,6 +30,7 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 |---|---|---|---|
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all (NG). er-logger 2026-11-22 (NG+1 dummy, 144.4): swings 744 and 744, both explosions 1058 together (2 × 529), stance 14.4, 14.4, 14 | NG: each swing 786, each explosion 550 (2672). NG+1: swings 754, explosions 529. The explosions match; each swing is 10 low. Without the buff (er-logger 2026-11-22, NG+1) both swings do 656 (one HP drop of 1312, stance 28.8), as calculated, so it's the buff: +88 per swing in game, +98 calculated (the R2's +104 at NG matches). Both swings are MV 105, sweet spot 1.125 |
 | 71 | The Queen's Black Flame's black flame ticks, NG+1 training dummy (416171 HP) | er-logger 2026-11-23: 21 ticks of 520 after each of #1 and #2 (0.125% of its HP, no +1) | 21 ticks of 417 (SpEffect 855: 0.1% + 1, which matched at NG: 75 of 74212). Not NG+ in general: on a Scadu Altus Omenkiller in NG+3 (7813 HP) it was 0.1% + 1 (commit 09bfee8). So likely the dummy's NG+1 scaling in the Boss Arena mod, e.g. the HP it's a percentage of isn't its NG+1 HP |
+| 74 | Lifesteal Fist, Iron Ball +25 two-handed, 99 in every stat, NG+1 training dummy (144.4). Grabs are throws (memory throw-damage-todo) | er-logger 2026-11-23: L2 press → grab animation 655040000 at 2, grab connects at 67 (stance -5, no damage), confirmed animation 655040090 at 69 (14 FP), hits at 70, 121, 186 (265 each), 263, 265 (323 each), stance -5 each (35 in all with the grab), animation ends at 357. No stamina | 434 ×3, 567 ×2 (61% and 57% of the calculated), stance 5 ×5, no hit times |
 
 ## Roll-outs
 
@@ -55,6 +56,5 @@ Nothing to compare yet; measure from the press, as above.
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
-- Lifesteal Fist (a grab)
 - Spinning Chain's loop length
 - How fast Feeble Lord's Frenzied Flame can be used again
