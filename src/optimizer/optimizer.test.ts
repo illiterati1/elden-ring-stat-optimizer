@@ -13777,8 +13777,8 @@ describe("powerstance off hand weapons", () => {
 
   it("matches the Longsword's mounted R1 chain in game", () => {
     // In game (one handed), with Torrent standing still: hits 27, 67, and 105 frames after the
-    // press, as its R1 cancels (0.633s, 0.6s) say. Running, each R1 after the first started 7 frames
-    // later: 27, 74, 119, the next chain's first 193 (attackTimingNotes says so)
+    // press, as its R1 cancels (0.633s, 0.6s) say. Logged moving, at both speeds, its steps start as
+    // far apart as standing still (see attackTimingNotes' comment), so no note
     const data = getAttackData(movesets, getWeapon("Longsword"), "Mounted R1/L1", false, 0.5)!;
     const frames: number[] = [];
     let start = 0;
@@ -13789,7 +13789,7 @@ describe("powerstance off hand weapons", () => {
       });
     }
     expect(frames.slice(0, 4)).toEqual([26, 66, 104, 172]);
-    expect(attackTimingNotes["Mounted R1/L1"]).toMatch(/moving/);
+    expect(attackTimingNotes["Mounted R1/L1"]).toBeUndefined();
     // One handed at +25 with 99 in every stat, 497 damage on Elden Beast (121.7 defense, 10%
     // physical negation, as the enemy picker rounds it): its motion value 110
     const build = optimizeBuild({

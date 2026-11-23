@@ -128,12 +128,13 @@ export const mountedAttacks: ReadonlySet<string> = new Set([
 export const stepStartDelay = 1 / 30;
 
 /**
- * Notes on attacks' timing, shown in the hits table. Mounted R1s are timed with Torrent standing
- * still. Tested in game on a Longsword's mounted R1 chain: standing still, hits 27, 67, and 105 frames
- * after the press, as the cancels say (26, 66, 104 here); running, each mounted R1 after the first
- * started 7 frames later: 27, 74, 119, and the next chain's first 193 (172 here), presumably from
- * Torrent's own animations, which aren't read. Mounted R2s don't slow down: they start at their
- * charging window anyway (an Uchigatana's repeated every 94 standing still, 95 running, 96 here).
+ * Notes on attacks' timing, shown in the hits table. Mounted R1s don't slow down while Torrent
+ * moves: logged in game (er-logger, 2026-11-22), a Longsword's mounted R1 chain started its steps
+ * 39, 37, and 67 frames apart standing still, 39, 39, 68 dashing, and 40, 38, 68 moving without
+ * dashing, as the cancels say (40, 38, 68); a Dagger's, Claymore's, and Zweihander's matched theirs
+ * standing still and dashing too. (An earlier test without the logger had each R1 after the first
+ * 7 frames later while running.) Mounted R2s don't slow down: they start at their charging window
+ * anyway (an Uchigatana's repeated every 94 standing still, 95 running, 96 here).
  */
 const rollingNote =
   "Timed from the attack press: the next attack's time includes rolling again first";
@@ -141,8 +142,6 @@ const crouchingNote =
   "Timed from the attack press: the next attack's time includes crouching again first";
 const jumpingNote = "Timed from the jump press, not the attack press";
 export const attackTimingNotes: Partial<Record<string, string>> = {
-  "Mounted R1/L1":
-    "Timed with Torrent standing still: while moving, each R1 after the first starts about 0.12s later",
   "Rolling R1": rollingNote,
   "Powerstance Rolling L1": rollingNote,
   "Crouching R1": crouchingNote,
