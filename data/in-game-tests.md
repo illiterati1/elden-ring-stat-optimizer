@@ -27,7 +27,8 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 
 | # | Test | In game | Calculated |
 |---|---|---|---|
-| 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all | 2674 (2672 in tests: each swing 786 with the buff's 90 fire, each explosion 550). Next: each hit's damage, to see which one is ~20 low |
+| 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all (NG). er-logger 2026-11-22 (NG+1 dummy, 144.4): swings 744 and 744, both explosions 1058 together (2 × 529), stance 14.4, 14.4, 14 | NG: each swing 786, each explosion 550 (2672). NG+1: swings 754, explosions 529. The explosions match; each swing is 10 low. Next: the unbuffed powerstance jumping L1 (calculated 656 per swing at NG+1), to see whether the buff or the attack is off |
+| 38 | Powerstance jumping L1 with Flare, O Serpent's buff: explosion timing | er-logger 2026-11-22: swings +49 from the jump press, explosions +53 (4 frames after the swings). The game played 034570 (the buffed attack: swings at 0.533 s, explosions 7360/7364 at 0.633) and then landed in 034571 (no windows) | Swings 48 from the jump press, explosions 57 (9 after): build_ash_data.py times them in the landing 034581 (BUFFED_JUMP_OFFSET + JUMP_LANDING_OFFSET), which the game didn't play. Timing them from 034570 would give 6 after the swings. The jumping R2's buffed 031270 (explosions at 0.633 and 0.733) is probably the same, untested |
 
 ## Roll-outs
 
