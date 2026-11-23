@@ -152,9 +152,12 @@ public static class Logger {
             Ash(BitConverter.ToUInt32(b, 0x344 - 0x324 + rslot * 8)),
         };
         string[] names = { "armstyle", "lweapon", "rweapon", "lash", "rash" };
+        bool first = prevEquip == null;
         for (int i = 0; i < now.Length; i++)
-            if (prevEquip == null || prevEquip[i] != now[i]) Emit("player", names[i], prevEquip == null ? "" : prevEquip[i], now[i], prevEquip == null ? "start" : "");
+            if (first || prevEquip[i] != now[i]) Emit("player", names[i], first ? "" : prevEquip[i], now[i], first ? "start" : "");
         prevEquip = now;
+        // The first rows are written, so presses from here on are logged
+        if (first) Console.WriteLine("ready: logging, right weapon " + now[2] + ", left " + now[1]);
     }
 
     static void Poll(Chr c) { Poll(c, false); }
