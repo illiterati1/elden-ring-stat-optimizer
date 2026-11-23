@@ -2,7 +2,8 @@
 
 Reads Elden Ring's memory (read-only, from outside the game) about once per millisecond and logs every
 change to a CSV, numbered by game frame: controller presses, player animation/stamina/FP/HP, and every
-loaded enemy's HP, stance (super armor), toughness and status buildup.
+loaded enemy's HP, stance (super armor), toughness and status buildup, plus the player's equipped
+weapons and arm style (`armstyle`, `lweapon`, `rweapon`: logged at the start and on each change).
 
 ## Use
 
@@ -12,7 +13,9 @@ loaded enemy's HP, stance (super armor), toughness and status buildup.
 The summary prints one line per player animation: the press, the animation start, the stamina drop
 and each hit (damage, stance, buildup), checked against the animation's TAE hit windows
 (`tae_windows.py`, which uses the stat calculator's `scripts/check_animations.py`). Stamina should drop
-on the frame a window opens (any: which ones cost stamina isn't known without the weapon); mismatches are marked ✗.
+on the frame the first window whose behavior costs stamina opens, by that much (from the weapon in use:
+the right hand's, or the left's when two-handing it; logs without the weapon match any window's
+start); mismatches are marked ✗.
 
 ## Build
 
@@ -20,8 +23,9 @@ Uses the C# 5 compiler that ships with Windows (.NET Framework 4):
 
     powershell.exe -NoProfile -Command "& \"$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe\" /nologo /optimize /platform:x64 /out:er-logger.exe Mem.cs Logger.cs"
 
-Stop a running logger before rebuilding. `Probe.cs` is a scratch program for finding new fields
-(build it with Mem.cs instead of Logger.cs).
+Stop a running logger before rebuilding. `Probe.cs` and `EquipProbe.cs` are scratch programs for finding new
+fields (build one with Mem.cs instead of Logger.cs); `EquipProbe.cs` prints PlayerGameData changes
+next to pad presses, which is how the equipment offsets were found.
 
 ## Notes
 

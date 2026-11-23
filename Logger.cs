@@ -83,6 +83,7 @@ public static class Logger {
             // characters: re-list every 500 ms, poll every loop
             if (now - lastEnum > 500) { Enumerate(); lastEnum = now; }
             foreach (var c in chrs.Values) Poll(c);
+            PollEquipment();
             Thread.Sleep(1);
         }
         log.Close();
@@ -113,6 +114,28 @@ public static class Logger {
         }
         var gone = new List<long>(); foreach (var k in chrs.Keys) if (!seen.Contains(k)) gone.Add(k);
         foreach (var k in gone) chrs.Remove(k);
+    }
+
+    // equipment: PlayerGameData ([GameDataMan]+8) +324 arm style (0 empty, 1 one hand, 2 left two-handed,
+    // 3 right two-handed), +328/+32C the left/right hand's current slot (0-2), +398 on the weapons'
+    // EquipParamWeapon IDs (with affinity and upgrade level), left and right alternating per slot.
+    // (The Hexinton 8.0.4 table has these 4 bytes later; found by watching them change on 2026-11-22.)
+    // Logged once at the start and on every change, as player armstyle/lweapon/rweapon
+    static string[] prevEquip;
+    static void PollEquipment() {
+        long pgd = m.Ptr(m.Ptr(gdm) + 0x8); if (pgd == 0) return;
+        var b = m.Read(pgd + 0x324, 0x90); if (b == null) return;
+        int lslot = BitConverter.ToInt32(b, 4), rslot = BitConverter.ToInt32(b, 8);
+        if (lslot < 0 || lslot > 2 || rslot < 0 || rslot > 2) return;
+        var now = new string[] {
+            b[0].ToString(),
+            BitConverter.ToInt32(b, 0x398 - 0x324 + lslot * 8).ToString(),
+            BitConverter.ToInt32(b, 0x39C - 0x324 + rslot * 8).ToString(),
+        };
+        string[] names = { "armstyle", "lweapon", "rweapon" };
+        for (int i = 0; i < now.Length; i++)
+            if (prevEquip == null || prevEquip[i] != now[i]) Emit("player", names[i], prevEquip == null ? "" : prevEquip[i], now[i], prevEquip == null ? "start" : "");
+        prevEquip = now;
     }
 
     static void Poll(Chr c) { Poll(c, false); }

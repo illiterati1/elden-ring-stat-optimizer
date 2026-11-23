@@ -4,8 +4,8 @@
 //   node summarize.mjs [log.csv]      default: newest log in %USERPROFILE%\Videos\er-logs
 //
 // Each attack is checked against its TAE hit windows (via tae_windows.py and the stat calculator's
-// TAE reader): stamina should drop on the frame a window opens (the first that costs stamina, which isn't known
-// here, so any; marked when it isn't the first); each HP drop is shown after
+// TAE reader): stamina should drop on the frame the first window whose behavior costs stamina opens, by that
+// much (for logs without the equipped weapon, any window's start); each HP drop is shown after
 // the window it falls in. Mismatches are marked ✗ and counted at the end.
 //
 // Offsets are game frames from the press ("+30") and from the animation start ("anim+29").
@@ -30,7 +30,19 @@ const off = (from, e) => {
   return Math.abs(w - f) >= 2 ? `+${f} (~${w} by wall clock)` : `+${f}`;
 };
 
-const ids = [...new Set(starts.map(s => s.new))];
+// The weapon each animation was done with: the right hand's, or the left's when two-handing it (logs
+// from before 2026-11-22 20:55 don't have the equipment, so their stamina check matches any window)
+const equipped = {};
+let next = 0;
+for (const s of starts) {
+  for (; next < ev.length && ev[next].frame <= s.frame; next++) {
+    const e = ev[next];
+    if (e.who === 'player' && ['armstyle', 'lweapon', 'rweapon'].includes(e.field)) equipped[e.field] = e.new;
+  }
+  const weapon = equipped.armstyle === '2' ? equipped.lweapon : equipped.rweapon;
+  s.key = weapon ? `${s.new}:${weapon}` : s.new;
+}
+const ids = [...new Set(starts.map(s => s.key))];
 let tae = {};
 try {
   tae = JSON.parse(execFileSync('python3', ['-I', new URL('tae_windows.py', import.meta.url).pathname, ...ids], { encoding: 'utf8' }));
@@ -49,21 +61,33 @@ starts.forEach((s, i) => {
   const a = s;
   parts.push((press ? `${press.field} f${press.frame}${held} → anim ${s.new} ${off(press, a)}` : `anim ${s.new} f${a.frame}`));
   const st = seg.find(e => e.who === 'player' && e.field === 'stamina' && +e.note < 0);
-  const t = tae[s.new], windows = t && t.windows.length ? t.windows : null;
+  const t = tae[s.key], windows = t && t.windows.length ? t.windows : null;
   if (st) {
     let check = '';
     if (windows) {
-      // Stamina is taken when the first window whose behavior costs any opens. Which ones cost isn't
-      // known here (that needs the weapon's behavior variation, and the log doesn't say which weapon),
-      // so any window's start counts; an earlier one is usually a hitbox that costs and does nothing
-      // (e.g. Cursed-Blood Slice's judge 3900 push at 25, before its slash at 68). Window starts are
-      // fractional frames: a drop less than a frame from one matches it
+      // Stamina is taken when the first window whose behavior costs any opens (an earlier one can be a
+      // hitbox that costs and does nothing, e.g. Cursed-Blood Slice's judge 3900 push at 25, before
+      // its slash at 68). Without the weapon (older logs) which ones cost isn't known, so any window's
+      // start counts. Window starts are fractional frames: a drop less than a frame from one matches it
       const at = st.frame - a.frame;
-      const w = windows.findIndex(w => Math.abs(at - w[0]) < 1);
-      checked++; if (w < 0) badAttacks.add(i);
-      const d = Math.round((at - windows[0][0]) * 10) / 10;
-      check = w < 0 ? ` ✗ TAE window opens ${windows[0][0]} (off by ${d > 0 ? '+' : ''}${d}; no window opens then)`
-        : ` ✓ TAE ${windows[w][0]}${w ? ` (window ${w + 1}: the ${w === 1 ? 'first costs' : 'earlier ones cost'} none)` : ''}`;
+      const costs = t.stamina, paying = costs ? costs.findIndex(c => c > 0) : -1;
+      const near = w => Math.abs(at - w[0]) < 1;
+      if (paying >= 0) {
+        const want = windows[paying], d = Math.round((at - want[0]) * 10) / 10, cost = costs[paying];
+        const ok = near(want) && cost === -st.note;
+        checked++; if (!ok) badAttacks.add(i);
+        const which = paying ? ` (window ${paying + 1}: the ${paying === 1 ? 'first costs' : 'earlier ones cost'} none)` : '';
+        check = ok ? ` ✓ TAE ${want[0]}, ${cost}${which}`
+          : ` ✗ TAE window opens ${want[0]}${which}, costing ${cost}` +
+            (near(want) ? '' : ` (off by ${d > 0 ? '+' : ''}${d})`) + (cost === -st.note ? '' : ` (spent ${-st.note})`);
+      } else {
+        const w = windows.findIndex(near);
+        checked++; if (w < 0) badAttacks.add(i);
+        const d = Math.round((at - windows[0][0]) * 10) / 10;
+        const why = costs ? '; its windows cost no stamina' : '; weapon not logged, so any window counts';
+        check = w < 0 ? ` ✗ TAE window opens ${windows[0][0]} (off by ${d > 0 ? '+' : ''}${d}; no window opens then${why})`
+          : ` ✓ TAE ${windows[w][0]}${w ? ` (window ${w + 1}${why})` : ''}`;
+      }
     }
     parts.push(`stamina ${st.note} ${off(ref, st)} (anim${off(a, st)})${check}`);
   } else if (windows) parts.push(`no stamina drop (TAE window ${windows[0][0]})`);
@@ -72,7 +96,7 @@ starts.forEach((s, i) => {
     let win = '';
     if (windows) {
       const at = h.frame - a.frame, w = windows.filter(w => w[0] < at + 1).at(-1);
-      win = w ? ` [window ${w[0]}+${Math.round((at - w[0]) * 10) / 10}]` : ` ✗ [before the first window, ${windows[0][0]}]`;
+      win = w ? ` [window ${w[0]}${at >= w[0] ? "+" : ""}${Math.round((at - w[0]) * 10) / 10}]` : ` ✗ [before the first window, ${windows[0][0]}]`;
       if (!w) badAttacks.add(i);
     }
     parts.push(`hit ${off(ref, h)} (anim${off(a, h)})${win}: ${-h.note} dmg` + same.map(e => `, ${e.field} ${e.note}`).join(''));
