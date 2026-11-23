@@ -63,3 +63,16 @@ frames. Things to check first:
   equipment over it.
 - **Weapon ID:** the logged one is base + affinity × 100 + upgrade, e.g. 3180825 = Claymore,
   Magic (8), +25.
+- **Stance skills:** the calc's first step counts from the L2 press (the stance's opening, about
+  18 frames), so compare its hits from the animation's start instead when R1/R2 came from a held
+  stance.
+- **Jumping attacks:** predict.ts doesn't know them; get the calculator's from `getAttackData`
+  (e.g. `"Jumping R2"`). The log shows the jump (anim 3202000, 10 stamina at the A press) and then
+  the landing, never the attack's own animation, so time its hit from the jump press (the
+  calculator's hit times include the jump's lead).
+
+Always check `data/in-game-tests.md` too: for each attack logged, look for its rows (weapon, skill,
+attack, and the other grip or version, which doesn't count as tested). Remove the rows the log
+settles, as the `in-game-test` skill says, and add a row under "Discrepancies to look into" for
+anything the log shows off by more than 2 frames or 1 damage that isn't fixed now. Say in the report
+which rows were checked, removed or added.

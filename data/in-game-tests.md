@@ -30,6 +30,7 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 | # | Test | In game | Calculated |
 |---|---|---|---|
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all | 2674 (2672 in tests: each swing 786 with the buff's 90 fire, each explosion 550). Next: each hit's damage, to see which one is ~20 low |
+| 69 | Two handed jumping R2's hit, from the jump press: Rellana's Twin Blades (er-logger, 2026-11-22; R2 pressed 17 and 14 frames into the jump). Damage (678 on the NG+1 dummy) and stamina (10 at the jump, 10 just before the hit) match; the landing started 51-52 frames after the jump (53 assumed) | 47 both times | 42 (attack from 14, its window at 26). Does a jumping R2 start later than a jumping R1 (Rapier's, measured)? Next: another weapon's jumping R2 |
 
 ## Roll-outs
 
