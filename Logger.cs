@@ -60,10 +60,11 @@ public static class Logger {
 
         ushort prevButtons = 0; bool prevLT = false, prevRT = false; int pad = -1;
         long lastEnum = -100000;
-        long lastStatus = 0;
+        long lastStatus = 0, loops = 0;
         while (clock.Elapsed.TotalSeconds < runFor) {
             long now = clock.ElapsedMilliseconds;
-            if (now - lastStatus >= 5000) { Console.WriteLine("[status] frame {0}, {1} characters tracked", frame, chrs.Count); lastStatus = now; }
+            loops++;
+            if (now - lastStatus >= 5000) { Console.WriteLine("[status] frame {0}, {1} characters tracked, {2} polls/s", frame, chrs.Count, loops * 1000 / Math.Max(1, now - lastStatus)); lastStatus = now; loops = 0; }
             // game frame
             int pt = m.I32(m.Ptr(gdm) + 0xA0);
             if (pt == int.MinValue) { Thread.Sleep(500); m = Mem.Attach() ?? m; continue; }
