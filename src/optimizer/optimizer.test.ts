@@ -6924,6 +6924,8 @@ describe("Ashes of War", () => {
     // (stance 18) 36 and 138 from the press, as calculated, stamina 5 + 20, then 21 ticks of black
     // flame 6 apart, which go on through a roll. With B mashed, it rolled out 86 after the press
     // (its stamina; the roll's animation 87), skipping the 2nd hit, and 184 after it (animation 185)
+    // Then, with L2 mashed, #2's animation started 158 into #1's (160 calculated), and hit 2137
+    // (stance 24) 78 into its own, stamina 25, then 21 more ticks of black flame
     const frames = (seconds: number) => Math.round(seconds * 60);
     const step = result.attack.stepTimes![0];
     expect(step.earlyRolls!.map(frames)).toEqual([86]);
