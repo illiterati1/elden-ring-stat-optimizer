@@ -52,6 +52,10 @@ Nothing to compare yet; measure from the press, as above.
   (TAE 16 and 62 at 30 fps), and costs 12 + 13 stamina (calculated: none)
   On an unaware enemy (stealth) the first hit did 446 rather than 346: ×1.2 before defenses (MV 52
   as 62.4), the second hit unchanged (1525). The calculator has no unaware option
+  Miséricorde's riposte after Buckler Parry (a20_031700, imported from a23), 4 times on 2026-11-23
+  (er-logger): starts 3-4 frames after the R1 press, costs 14 stamina at 46-48 from its start (its
+  one hit, event 304 judge 510, is at TAE 25 at 30 fps = 50), and returns to idle 304 frames after
+  its start. Damage not logged (the log didn't pick up the enemy)
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
