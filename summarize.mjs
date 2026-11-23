@@ -72,7 +72,9 @@ const showEquipment = upTo => {
       const w = es.find(e => e.field === hand + 'weapon'), a = es.find(e => e.field === hand + 'ash');
       if (!w && !a) continue;
       const weapon = w ? w.new : equipEvents.filter(e => e.field === hand + 'weapon' && e.frame <= +frame).at(-1)?.new;
-      parts.push(`${hand === 'r' ? 'right' : 'left'} ${weapon ? weaponName(weapon) : '?'}` + (a ? ` (${ashName(a.new)})` : ''));
+      // the Ash too when only the weapon changed (e.g. two weapons with their own skills, both 0)
+      const ash = a ? a.new : equipEvents.filter(e => e.field === hand + 'ash' && e.frame <= +frame).at(-1)?.new;
+      parts.push(`${hand === 'r' ? 'right' : 'left'} ${weapon ? weaponName(weapon) : '?'}` + (ash ? ` (${ashName(ash)})` : ''));
     }
     const style = es.find(e => e.field === 'armstyle');
     if (style) parts.push(['empty-handed', 'one-handed', 'two-handing left', 'two-handing right'][+style.new] || `arm style ${style.new}`);
