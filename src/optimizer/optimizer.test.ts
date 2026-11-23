@@ -9732,6 +9732,13 @@ describe("Ashes of War", () => {
     ]);
     expect(hits.reduce((sum, hit) => sum + Math.floor(hit.damage), 0)).toBe(1417);
     expect(hits.reduce((sum, hit) => sum + hit.stance, 0)).toBeCloseTo(19.8, 5);
+    // er-logger 2026-11-23 (+10, NG+1 dummy at 144.4): the large skull 275 and small ones 184 each,
+    // stance 5.4 and 1.8 (the skulls home in, so their hit frames vary), 25 FP and no stamina.
+    // Rolled out 111 and 112 after L2 (presses buffered from 103 and 107), before the medium
+    // skulls, which never hit
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const step = result.attack.stepTimes![0];
+    expect(step.earlyRolls!.map(frames)).toEqual([110]);
   });
 
   it("lists Causality's Wrath's levels as versions", () => {
