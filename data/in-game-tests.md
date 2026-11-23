@@ -40,7 +40,6 @@ step, from that step's press).
 
 | # | Test | Weapon | Calculated |
 |---|---|---|---|
-| 35 | Shadow Sunflower Headbutt #2 | Shadow Sunflower Blossom | Hits 56, 104; early 72; after 146 |
 | 37 | The Queen's Black Flame #1 | Godslayer's Greatsword | Hits 36, 138; early 86; after 186 |
 
 ## Not timed: need measurements

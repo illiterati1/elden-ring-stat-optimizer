@@ -10589,6 +10589,14 @@ describe("Ashes of War", () => {
       ],
       [[2007, 30]],
     ]);
+    // er-logger 2026-11-23 (+10, NG+1 dummy at 144.4): #1 1916 (stance 21) 96 into its animation;
+    // #2 started 131 after #1's press, 721 and 742 (stance 7.5 each) 54 and 101 in, stamina 11 + 13.
+    // Rolled out of #2 by 72 into its animation (B released then, so the window may open sooner),
+    // skipping its 2nd hit, and 143 in after it (B pressed 142 in), within 1 of these
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const step = result.attack.stepTimes![1];
+    expect(step.earlyRolls!.map(frames)).toEqual([72]);
+    expect(frames(step.roll!)).toBe(146);
   });
 
   it("fires 8 bullets with Sorcery of the Crozier", () => {
