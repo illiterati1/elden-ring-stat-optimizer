@@ -90,6 +90,31 @@ public static class Logger {
         log.Close();
     }
 
+    // Characters come from two kinds of list in WorldChrMan's first 0x20000 bytes: ChrSets (vtable
+    // [WCM+10EE0], capacity +10, 16-byte entries +18; the world's map blocks) and vectors of ChrIns
+    // pointers (begin, end; +1F1C8 holds every character). During a Leonine Misbegotten fight on
+    // 2026-11-23 the sets held only the player and one junk entry, hence reading the vectors too.
+    static bool InModule(long p) { return p >= m.Base && p < m.Base + m.Size; }
+    static bool ValidChr(long ins) {
+        if (ins < 0x10000 || (ins & 7) != 0 || !InModule(m.Ptr(ins))) return false;
+        long mods = m.Ptr(ins + 0x190); if (mods == 0) return false;
+        long data = m.Ptr(mods); if (data == 0) return false;
+        var d = m.Read(data + 0x138, 8); if (d == null) return false;
+        int hp = BitConverter.ToInt32(d, 0), maxHp = BitConverter.ToInt32(d, 4);
+        return maxHp > 0 && maxHp < 100000000 && hp >= 0 && hp <= maxHp;
+    }
+    static void Add(long ins, long player, HashSet<long> seen) {
+        if (ins == 0 || seen.Contains(ins)) return;
+        if (!chrs.ContainsKey(ins)) {
+            long mods = m.Ptr(ins + 0x190); if (mods == 0) return;
+            var c = new Chr { Ins = ins, Param = m.I32(ins + 0x60) };
+            c.Data = m.Ptr(mods + 0x0); c.Resist = m.Ptr(mods + 0x20); c.SA = m.Ptr(mods + 0x40); c.Tough = m.Ptr(mods + 0x48); c.Anim = m.Ptr(mods + 0x18);
+            c.Name = ins == player ? "player" : "npc " + c.Param + "@" + (ins & 0xFFFFFF).ToString("X");
+            chrs[ins] = c;
+            Poll(c, true);
+        }
+        seen.Add(ins);
+    }
     static void Enumerate() {
         long w = m.Ptr(wcm); if (w == 0) return;
         long player = m.Ptr(w + 0x1E508);
@@ -101,17 +126,16 @@ public static class Logger {
             int cap = BitConverter.ToInt32(b, o + 0x10); long ents = BitConverter.ToInt64(b, o + 0x18);
             if (cap <= 0 || cap > 4096 || ents == 0) continue;
             var eb = m.Read(ents, cap * 16); if (eb == null) continue;
-            for (int i = 0; i < cap; i++) {
-                long ins = BitConverter.ToInt64(eb, i * 16); if (ins == 0) continue;
-                seen.Add(ins);
-                if (chrs.ContainsKey(ins)) continue;
-                long mods = m.Ptr(ins + 0x190); if (mods == 0) continue;
-                var c = new Chr { Ins = ins, Param = m.I32(ins + 0x60) };
-                c.Data = m.Ptr(mods + 0x0); c.Resist = m.Ptr(mods + 0x20); c.SA = m.Ptr(mods + 0x40); c.Tough = m.Ptr(mods + 0x48); c.Anim = m.Ptr(mods + 0x18);
-                c.Name = ins == player ? "player" : "npc " + c.Param + "@" + (ins & 0xFFFFFF).ToString("X");
-                chrs[ins] = c;
-                Poll(c, true);
-            }
+            for (int i = 0; i < cap; i++) Add(BitConverter.ToInt64(eb, i * 16), player, seen);
+        }
+        for (int o = 0; o + 16 <= b.Length; o += 8) {
+            long beg = BitConverter.ToInt64(b, o), end = BitConverter.ToInt64(b, o + 8);
+            if (beg < 0x10000 || end <= beg || end - beg > 0x8000 || ((end - beg) & 7) != 0) continue;
+            var vb = m.Read(beg, (int)(end - beg)); if (vb == null) continue;
+            if (!ValidChr(BitConverter.ToInt64(vb, 0))) continue;
+            bool ok = true;
+            for (int i = 8; i < vb.Length && ok; i += 8) ok = ValidChr(BitConverter.ToInt64(vb, i));
+            if (ok) for (int i = 0; i < vb.Length; i += 8) Add(BitConverter.ToInt64(vb, i), player, seen);
         }
         var gone = new List<long>(); foreach (var k in chrs.Keys) if (!seen.Contains(k)) gone.Add(k);
         foreach (var k in gone) chrs.Remove(k);
