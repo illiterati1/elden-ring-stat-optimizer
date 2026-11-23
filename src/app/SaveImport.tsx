@@ -307,7 +307,7 @@ function SaveImport({ data, selectedBuffs, onChange }: Props) {
         sx={{ overflowWrap: "anywhere" }}
       >
         Fill in a character's stats, weapons, talismans, and armor from your save:{" "}
-        {saveLocation[desktopOs]}
+        {saveLocation[desktopOs]}. It's only read here in your browser, never uploaded.
       </Typography>
       <Box display="flex" flexWrap="wrap" gap={1} mb={1}>
         <Button
