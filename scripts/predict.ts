@@ -12,8 +12,9 @@
  * hits in order: [damage, stance, {status: buildup}, frames from the press (or null)]. The caller
  * picks the one whose damage matches.
  *
- * Assumes 99 in every stat (--stat) and the Boss Arena training dummy at NG+1 (--ng 0 for NG), no
- * buffs.
+ * A query can name the enemy hit (`"enemy": <NpcParam ID>`): its defenses and negations are used if
+ * enemies.json has it, the Boss Arena training dummy's otherwise. Also prints each query's enemy name.
+ * Assumes 99 in every stat (--stat) and NG+1 (--ng 0 for NG), no buffs.
  */
 import { readFileSync } from "node:fs";
 import { allDamageTypes, AttackPowerType, type Attributes } from "../src/calculator/calculator.ts";
@@ -22,6 +23,7 @@ import { decodeRegulationData } from "../src/regulationData.ts";
 import { optimizeBuild, maxSpecialUpgradeLevel } from "../src/optimizer/build.ts";
 import type { AttackData } from "../src/optimizer/build.ts";
 import { getAttackData, type AttackName, type Movesets } from "../src/app/useMovesets.ts";
+import { getEnemyStats, type Enemy, type EnemyArea } from "../src/app/useEnemies.ts";
 import { getAshAttack, getAshChoices, parseAshChoice, type Ashes } from "../src/app/useAshes.ts";
 import type { SaveItems } from "../src/app/saveImport.ts";
 
@@ -41,6 +43,47 @@ const ngPlus = option("--ng", 1);
 const stat = option("--stat", 99);
 // The training dummy's defense in NG and NG+1 (useEnemies.ts's trainingDummyArea)
 const defense = ngPlus > 0 ? 144.4 : 123.2;
+const enemiesById = new Map<number, Enemy>(
+  (read("enemies.json").areas as EnemyArea[]).flatMap((area) =>
+    area.enemies.flatMap((enemy) => enemy.npcParamIds.map((id) => [id, enemy] as const)),
+  ),
+);
+
+interface Target {
+  name: string;
+  defenses: Record<AttackPowerType, { defense: number; negation: number }>;
+  physicalNegation: { standard: number; slash: number; strike: number; pierce: number };
+}
+const dummy: Target = {
+  name: `${ngPlus > 0 ? "NG+1" : "NG"} dummy`,
+  defenses: Object.fromEntries(
+    allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
+  ) as Target["defenses"],
+  physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+};
+
+/** @returns an enemy's defenses as the enemy picker sets them, or the dummy's if it isn't known */
+function getTarget(npcParamId: number | undefined): Target {
+  const enemy = npcParamId == null ? undefined : enemiesById.get(npcParamId);
+  if (!enemy) return dummy;
+  const [phys, mag, fire, lightning, holy] = getEnemyStats(enemy, ngPlus, false).defense.map(
+    Math.round,
+  );
+  const [standard, slash, strike, pierce, magN, fireN, lightningN, holyN] = enemy.negation.map(
+    Math.round,
+  );
+  return {
+    name: enemy.name,
+    defenses: {
+      [AttackPowerType.PHYSICAL]: { defense: phys, negation: 0 },
+      [AttackPowerType.MAGIC]: { defense: mag, negation: magN },
+      [AttackPowerType.FIRE]: { defense: fire, negation: fireN },
+      [AttackPowerType.LIGHTNING]: { defense: lightning, negation: lightningN },
+      [AttackPowerType.HOLY]: { defense: holy, negation: holyN },
+    } as Target["defenses"],
+    physicalNegation: { standard, slash, strike, pierce },
+  };
+}
 
 /** Moveset attacks by one handed animation ID (two handed ones are 2000 later), with their step */
 const MOVESET_ANIMATIONS: Record<number, [AttackName, number]> = {
@@ -64,6 +107,14 @@ const MOVESET_ANIMATIONS: Record<number, [AttackName, number]> = {
   34400: ["Powerstance Backstep L1", 0],
   34530: ["Powerstance Jumping L1", 0],
 };
+/** Mounted attacks by animation ID: R1/R2 are 038xxx, L1/L2 039xxx, the same in either grip */
+const MOUNTED_ANIMATIONS: Record<number, [AttackName, number]> = Object.fromEntries(
+  [38000, 39000].flatMap((base) => [
+    ...[0, 1, 2].map((i) => [base + i * 10, ["Mounted R1/L1", i]]),
+    [base + 110, ["Mounted R2/L2", 0]],
+    [base + 100, ["Mounted Charged R2/L2", 0]],
+  ]),
+);
 const TWO_HANDED_OFFSET = 2000;
 const STATUS_NAMES: Partial<Record<AttackPowerType, string>> = {
   [AttackPowerType.POISON]: "poison",
@@ -80,6 +131,7 @@ interface Query {
   ash: number;
   twoHanding: boolean;
   anims: number[];
+  enemy?: number;
 }
 type Hit = [damage: number, stance: number, status: Record<string, number>, frame: number | null];
 interface Candidate {
@@ -103,7 +155,13 @@ function getWeapon(id: number): { weapon: Weapon; level: number } | undefined {
 }
 
 /** @returns each step's hits, as the calculator has them */
-function predict(weapon: Weapon, level: number, twoHanding: boolean, attack: AttackData): Hit[][] {
+function predict(
+  weapon: Weapon,
+  level: number,
+  twoHanding: boolean,
+  attack: AttackData,
+  target: Target,
+): Hit[][] {
   const attributes: Attributes = { str: stat, dex: stat, int: stat, fai: stat, arc: stat };
   const result = optimizeBuild({
     weapon,
@@ -114,10 +172,8 @@ function predict(weapon: Weapon, level: number, twoHanding: boolean, attack: Att
     attributes,
     bonusAttributes: { str: 0, dex: 0, int: 0, fai: 0, arc: 0 },
     objective: "totalAttack",
-    defenses: Object.fromEntries(
-      allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
-    ),
-    physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+    defenses: target.defenses,
+    physicalNegation: target.physicalNegation,
     limits: {
       maxLevels: 0,
       minGainPerLevel: null,
@@ -154,7 +210,8 @@ function predict(weapon: Weapon, level: number, twoHanding: boolean, attack: Att
   });
 }
 
-function getCandidates({ weapon: id, ash, twoHanding, anims }: Query): Candidate[] {
+function getCandidates({ weapon: id, ash, twoHanding, anims, enemy }: Query): Candidate[] {
+  const target = getTarget(enemy);
   const found = getWeapon(id);
   if (!found) return [];
   const { weapon, level } = found;
@@ -168,7 +225,7 @@ function getCandidates({ weapon: id, ash, twoHanding, anims }: Query): Candidate
     for (const { value, label } of choices) {
       const result = getAshAttack(ashes, movesets, weapon, value, twoHanding, 0.5, true);
       if (!("attack" in result)) continue;
-      const steps = predict(weapon, level, twoHanding, result.attack);
+      const steps = predict(weapon, level, twoHanding, result.attack, target);
       steps.forEach((hits, i) =>
         candidates.push({ label: steps.length > 1 ? `${label}, step ${i + 1}` : label, hits }),
       );
@@ -176,12 +233,14 @@ function getCandidates({ weapon: id, ash, twoHanding, anims }: Query): Candidate
   }
   // Moveset attacks, by their animation
   for (const local of locals) {
-    const entry = MOVESET_ANIMATIONS[twoHanding ? local - TWO_HANDED_OFFSET : local];
+    const entry =
+      MOUNTED_ANIMATIONS[local] ??
+      MOVESET_ANIMATIONS[twoHanding ? local - TWO_HANDED_OFFSET : local];
     if (!entry) continue;
     const [attackName, step] = entry;
     const attack = getAttackData(movesets, weapon, attackName, twoHanding, 0.5, true);
     if (!attack) continue;
-    const steps = predict(weapon, level, twoHanding, attack);
+    const steps = predict(weapon, level, twoHanding, attack, target);
     const label = steps.length > 1 ? `${attackName} ${step + 1}` : attackName;
     if (steps[step]) candidates.push({ label, hits: steps[step] });
   }
@@ -189,4 +248,12 @@ function getCandidates({ weapon: id, ash, twoHanding, anims }: Query): Candidate
 }
 
 const queries: Query[] = JSON.parse(readFileSync(0, "utf8"));
-console.log(JSON.stringify({ ngPlus, stat, defense, results: queries.map(getCandidates) }));
+console.log(
+  JSON.stringify({
+    ngPlus,
+    stat,
+    defense,
+    results: queries.map(getCandidates),
+    enemies: queries.map((query) => getTarget(query.enemy).name),
+  }),
+);
