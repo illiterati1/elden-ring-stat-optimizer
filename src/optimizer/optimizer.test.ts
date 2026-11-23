@@ -6019,6 +6019,13 @@ describe("Ashes of War", () => {
     expect(tornado.stepTimes![0].earlyRolls!.map(frames)).toEqual([110]);
     // Its finisher's time measured (an AoE around the player, landing when it's created)
     expect(tornado.stepTimes![0].approximate).toEqual([false, false, false]);
+    // Alabaster Lords' Pull (er-logger 2026-11-22): the thrust 67 frames after L2 and the ring 115,
+    // rolled out 106 after L2 (early) and 155 (after it), 27 + 6 stamina
+    const pull = times("Alabaster Lord's Sword", "Lion's Claw");
+    expect(pull.stepTimes![0].hitTimes!.map((time) => frames(time!))).toEqual([67, 115]);
+    expect(pull.stepTimes![0].earlyRolls!.map(frames)).toEqual([105]);
+    expect(frames(pull.stepTimes![0].roll!)).toBe(155);
+    expect(pull.stamina).toEqual([33]);
   });
 
   it("matches Wild Strikes in game", () => {
