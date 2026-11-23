@@ -30,7 +30,6 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 |---|---|---|---|
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all (NG). er-logger 2026-11-22 (NG+1 dummy, 144.4): swings 744 and 744, both explosions 1058 together (2 × 529), stance 14.4, 14.4, 14 | NG: each swing 786, each explosion 550 (2672). NG+1: swings 754, explosions 529. The explosions match; each swing is 10 low. Without the buff (er-logger 2026-11-22, NG+1) both swings do 656 (one HP drop of 1312, stance 28.8), as calculated, so it's the buff: +88 per swing in game, +98 calculated (the R2's +104 at NG matches). Both swings are MV 105, sweet spot 1.125 |
 | 71 | The Queen's Black Flame's black flame ticks, NG+1 training dummy (416171 HP) | er-logger 2026-11-23: 21 ticks of 520 after each of #1 and #2 (0.125% of its HP, no +1) | 21 ticks of 417 (SpEffect 855: 0.1% + 1, which matched at NG: 75 of 74212). Not NG+ in general: on a Scadu Altus Omenkiller in NG+3 (7813 HP) it was 0.1% + 1 (commit 09bfee8). So likely the dummy's NG+1 scaling in the Boss Arena mod, e.g. the HP it's a percentage of isn't its NG+1 HP |
-| 73 | Godslayer's Greatsword +10 backstab's first hit, 99 in every stat, NG+1 dummy (144.4) | er-logger 2026-11-23: 446 + 1525 the first time (backstab started from animation 2022100), 346 + 1525 the second (from standing). AtkParam 400500's MV is 52, like the sheet | 346 + 1525. The first time's extra 100 isn't explained yet |
 
 ## Roll-outs
 
@@ -51,6 +50,8 @@ Nothing to compare yet; measure from the press, as above.
   judges 500/501, e.g. a32_031710). Measured 2026-11-23 (er-logger): Godslayer's Greatsword's
   backstab (a26_031710, from a32) starts 15 frames after the press, hits at 33 and 123 from its start
   (TAE 16 and 62 at 30 fps), and costs 12 + 13 stamina (calculated: none)
+  On an unaware enemy (stealth) the first hit did 446 rather than 346: ×1.2 before defenses (MV 52
+  as 62.4), the second hit unchanged (1525). The calculator has no unaware option
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
