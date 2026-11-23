@@ -3581,6 +3581,73 @@ describe("Ashes of War", () => {
     const r2 = build(withFollowUp("Ghostflame Call", "R2"));
     expect(r2.attackSteps![1].map((hit) => hit.damage)).toEqual([370, 369]);
     expect(r2.finalValue).toBe(1533);
+    // Retested with er-logger (2026-11-22) on a Magic Claymore +25 with 99 in every stat on the
+    // training dummy in NG+1 (defense 144.4), every hit as calculated: the swing 238 (5.5 stance),
+    // the flare's 4 ticks 93 (no stance), its explosion 211 (4); the R1's swing 431, explosion 211
+    // (5), ground fire 38 ten times; the R2's swing 470, explosion 377 (11). Timing from each
+    // animation's start (the calculator adds 2 frames before it): the swing 55, the flare's ticks 57,
+    // 82, 107, 132, its explosion 157; the R1 (88 after the skill's animation starts) swing 57,
+    // explosion 58, ground fire 89 then every 31; the R2's swing 49, explosion 51
+    const claymore = getWeapon("Magic Claymore");
+    const frames = (seconds: number | undefined) => Math.round(seconds! * 60);
+    const claymoreBuild = (ash: string) => {
+      const result = getAshAttack(ashes, movesets, claymore, ash, false, 0.5, true);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      const { attackSteps } = optimizeBuild({
+        weapon: claymore,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 144.4, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+      });
+      return {
+        damage: attackSteps!.map((step) => step.map((hit) => [hit.damage, hit.stance])),
+        hitTimes: result.attack.stepTimes!.map((step) => step.hitTimes!.map(frames)),
+        cycleTimes: result.attack.cycleTimes!.map(frames),
+      };
+    };
+    const skillDamage = [
+      [238, 5.5],
+      [93, 0],
+      [211, 4],
+    ];
+    expect(claymoreBuild(withFollowUp("Ghostflame Call", "R1"))).toEqual({
+      damage: [
+        skillDamage,
+        [
+          [431, 5.5],
+          [211, 5],
+          [38, 0],
+        ],
+      ],
+      hitTimes: [
+        [54, 58, 157],
+        [56, 60, 91],
+      ],
+      cycleTimes: [88, 98],
+    });
+    expect(claymoreBuild(withFollowUp("Ghostflame Call", "R2"))).toMatchObject({
+      damage: [
+        skillDamage,
+        [
+          [470, 5.5],
+          [377, 11],
+        ],
+      ],
+      hitTimes: [
+        [54, 58, 157],
+        [48, 52],
+      ],
+    });
   });
 
   it("builds up Chilling Mist's frost from the hit, the mist, and its cloud", () => {

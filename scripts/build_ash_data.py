@@ -1808,13 +1808,15 @@ HIT_TIME_FITS = {
     # Cursed-Blood Slice #1's explosion lands 107 frames after L2 on the training dummy, 37 after the
     # slash (measured in game on 2026-11-22 with er-logger), though it's created with the slash
     ("Cursed-Blood Slice", "#1"): [None, 105 / 60],
-    # The Death's Poker's Ghostflame Ignition: its flare explodes 157 frames after L2 on the training
-    # dummy (155 on a second cast), after its 4 ticks (58, 83, 107, 132), though it's created with the
-    # flare. The R1's ground fire first burns 89 frames after the R1's animation starts (then about
-    # every 31 frames, 10 times), its swing and explosion together 58 in (measured in game on
-    # 2026-11-22 with er-logger)
+    # The Death's Poker's Ghostflame Ignition and Ghostflame Call: the flare explodes 157 frames after
+    # L2 on the training dummy (Ignition's 155 on a second cast), after its 4 ticks (58, 83, 107, 132),
+    # though it's created with the flare. The R1's ground fire first burns 89 frames after the R1's
+    # animation starts (then about every 31 frames, 10 times), its explosion 58 in (measured in game
+    # on 2026-11-22 with er-logger, Ghostflame Call on a Magic Claymore)
     ("Ghostflame Ignition", ""): [None, None, 155 / 60],
     ("Ghostflame Ignition", "R1"): [None, None, 89 / 60],
+    ("Ghostflame Call", ""): [None, None, 155 / 60],
+    ("Ghostflame Call", "R1"): [None, None, 89 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index, or ALL_HITS. Only for hits without a travel time (a projectile that travels stays approximate,
