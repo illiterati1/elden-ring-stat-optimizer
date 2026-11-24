@@ -31,3 +31,5 @@ __pycache__/
 
 # Local only: save file copies and research scripts (saves hold the Steam ID)
 /data/saves/
+
+.claude/skills/caveman-learn/
