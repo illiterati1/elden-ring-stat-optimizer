@@ -4,9 +4,9 @@
   powerstanced weapon, not only a second Serpent Flail.
 - **Attacks that need extra movement:** time-scaled numbers are questionable for any attack that
   needs another action first, such as jumping, rolling, backstepping, running, or buffing.
-- **Untimed attacks:** backstabs, ripostes, shields' mounted R2, bow and crossbow jump shots,
-  Carian Retaliation, Golden Crux's grab, Spinning Chain's loop, and how often Feeble Lord's Frenzied
-  Flame can be repeated haven't been timed yet.
+- **Untimed attacks:** shields' mounted R2, bow and crossbow jump shots, Carian Retaliation,
+  Golden Crux's grab, Spinning Chain's loop, and how often Feeble Lord's Frenzied Flame can be
+  repeated haven't been timed yet.
 - **Feint attacks:** the attacks that follow a cancelled charged R2 aren't included. The motion
   value spreadsheet has them for Thrusting Swords, Heavy Thrusting Swords, Curved Swords, Great
   Katanas, Perfume Bottles, Beast Claws, the Smithscript Cirque, Claws of Night, and the
@@ -31,7 +31,6 @@
 - **Powerstance off-hand weapon:** its own passive or fixed skill's buff isn't applied to its
   hits unless picked separately in Buffs.
 - **Deadly Poison Spray:** its buildup's decay (5 a second) isn't counted.
-- **Ice Lightning Sword:** the stomp's lightning is about 4% lower than in game.
 - **Deflecting Hardtear:** not supported yet, so its attack power boost after a deflection
   can't be applied.
 - **Buff uptime:** buffs are assumed to always be on. Only Black Flame Blade's and Flare, O

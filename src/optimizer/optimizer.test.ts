@@ -8432,9 +8432,9 @@ describe("Ashes of War", () => {
 
   it("matches Ice Lightning Sword in game", () => {
     // The Dragonscale Blade's skill puts the Dragon Halberd's 160 lightning and 80 frost on it. Tested
-    // in game at +10 with 99 in every stat on the training dummy: 1792 damage (the stomp lightning
-    // 167, 161 here for its 30 flat lightning, not yet explained; the slash and projectile right),
-    // about 148 frost (its slash's own 70 and the buff's), and stance right
+    // in game at +10 with 99 in every stat on the training dummy: 1792 damage (the stomp's 30 flat
+    // lightning 167, scaled by the blade's lightning curve 4, not its physical curve 0), about 148
+    // frost (its slash's own 70 and the buff's), and stance right
     const weapon = getWeapon("Dragonscale Blade");
     const result = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -8456,8 +8456,7 @@ describe("Ashes of War", () => {
     });
     expect(build.attackStatus![AttackPowerType.FROST]).toBe(150);
     expect(build.attackSteps![0].map((hit) => hit.stance)).toEqual([2, 15, 5]);
-    // The game's stomp lightning is 167
-    expect(build.attackSteps![0].map((hit) => Math.floor(hit.damage))).toEqual([161, 1359, 266]);
+    expect(build.attackSteps![0].map((hit) => Math.floor(hit.damage))).toEqual([167, 1359, 266]);
   });
 
   it("matches Waterfowl Dance and the Meteoric Ore Blade's Gravitas in game", () => {
