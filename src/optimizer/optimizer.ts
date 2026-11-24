@@ -6,6 +6,8 @@ import getWeaponAttack, {
   type Attribute,
   type Attributes,
   getAttributeBonus,
+  getInfluencedMultiplier,
+  combineInfluencedMultipliers,
   getAttributeScaling,
   ineffectivePenaltyMultiplier,
   type Weapon,
@@ -117,6 +119,8 @@ export interface AttackHit {
    * weapon's own (overwriteAttackElementCorrectId), e.g. staves' melee hits use standard scaling
    */
   attackElementCorrect?: Weapon["attackElementCorrect"];
+  /** attackElementCorrect's Influence*CorrectRate, if any (see getWeaponAttack) */
+  attackElementInfluence?: Weapon["attackElementInfluence"];
   /** True for a powerstance hit with the off hand weapon (options.offhandWeapon), if there is one */
   offhand?: boolean;
 }
@@ -332,6 +336,15 @@ function getTermsDamage(
   );
 }
 
+/** The weapon with a hit's own scaling (overwriteAttackElementCorrectId) */
+function getHitScalingWeapon(weapon: Weapon, hit: AttackHit): Weapon {
+  return {
+    ...weapon,
+    attackElementCorrect: hit.attackElementCorrect!,
+    attackElementInfluence: hit.attackElementInfluence,
+  };
+}
+
 /**
  * Groups of an attack's hits that scale the same way, or null if they all scale like the weapon
  */
@@ -344,15 +357,15 @@ function getHitGroups(
   const groups = new Map<string, Pick<Term, "hits" | "noTwoHandBonus" | "weapon">>();
   for (const hit of hits) {
     const noTwoHandBonus = split && !!hit.noTwoHandBonus;
-    const key = `${noTwoHandBonus}:${JSON.stringify(hit.attackElementCorrect ?? null)}`;
+    const key = `${noTwoHandBonus}:${JSON.stringify(
+      hit.attackElementCorrect ?? null,
+    )}:${JSON.stringify(hit.attackElementInfluence ?? null)}`;
     let group = groups.get(key);
     if (!group) {
       group = {
         hits: [],
         noTwoHandBonus,
-        weapon: hit.attackElementCorrect
-          ? { ...weapon, attackElementCorrect: hit.attackElementCorrect }
-          : undefined,
+        weapon: hit.attackElementCorrect ? getHitScalingWeapon(weapon, hit) : undefined,
       };
       groups.set(key, group);
     }
@@ -391,7 +404,7 @@ function getFlatTerms(options: OptimizeOptions, damageTypes: readonly AttackPowe
         hit.fixedFlatAttack
           ? unscaledWeapon
           : hit.attackElementCorrect
-          ? { ...hitWeapon, attackElementCorrect: hit.attackElementCorrect }
+          ? getHitScalingWeapon(hitWeapon, hit)
           : hitWeapon,
       ],
       [hit.buffAttack, unscaledWeapon],
@@ -601,6 +614,20 @@ interface Model {
 
   /** What a penalized term's attack power is multiplied by (0 for attacks that need requirements) */
   penaltyMultiplier: number;
+
+  /**
+   * For each term whose damage type has Influence*CorrectRate, whose attack power doesn't just add
+   * up (see combineInfluencedMultipliers), its attributes' scaling multipliers; null for the others.
+   * Models with any can't use the searches that rely on adding up contributions.
+   */
+  influence: (InfluencedTerm | null)[];
+}
+
+interface InfluencedTerm {
+  /** multipliers[i][v] is the multiplier of model attribute i at leveled value v (null if none) */
+  multipliers: (Float64Array | null)[];
+  /** The multipliers of the other attributes the term scales with, which can't change */
+  fixed: number[];
 }
 
 /**
@@ -779,6 +806,7 @@ function buildModel(options: OptimizeOptions, terms: Term[]): Model {
           ),
     ),
     penaltyMultiplier: options.needsRequirements ? 0 : ineffectivePenaltyMultiplier,
+    influence: [],
   };
 
   attributeSet.forEach((attribute, i) => {
@@ -816,7 +844,65 @@ function buildModel(options: OptimizeOptions, terms: Term[]): Model {
     model.contributions.push(contributions);
   });
 
+  model.influence = terms.map((term, t) => {
+    const termWeapon = term.weapon ?? weapon;
+    const influence = termWeapon.attackElementInfluence?.[term.damageType];
+    if (!influence) return null;
+    // Unmet requirements are part of the multipliers, unless the attack needs them all
+    if (!options.needsRequirements) model.penaltyMasks[t] = 0;
+    // An attribute's multiplier at the given leveled attributes, like getWeaponAttack's
+    const getMultiplier = (attribute: Attribute, leveled: Attributes) => {
+      const effective = getEffectiveAttributes(leveled, bonusAttributes);
+      const adjusted = adjustAttributesForTwoHanding({ twoHanding, weapon, attributes: effective });
+      return getInfluencedMultiplier(
+        termWeapon,
+        upgradeLevel,
+        term.damageType,
+        attribute,
+        influence[attribute] ?? 1,
+        (term.noTwoHandBonus ? effective : adjusted)[attribute],
+        adjusted[attribute] < (weapon.requirements[attribute] ?? 0),
+      );
+    };
+    const scaling = allAttributes.filter(
+      (attribute) => termWeapon.attackElementCorrect[term.damageType]?.[attribute],
+    );
+    return {
+      multipliers: attributeSet.map((attribute, i) => {
+        if (!scaling.includes(attribute)) return null;
+        const multipliers = new Float64Array(maxAttributeValue + 1);
+        for (let value = model.min[i]; value <= maxAttributeValue; value++) {
+          multipliers[value] = getMultiplier(attribute, { ...attributes, [attribute]: value });
+        }
+        return multipliers;
+      }),
+      fixed: scaling
+        .filter((attribute) => !attributeSet.includes(attribute))
+        .map((attribute) => getMultiplier(attribute, attributes)),
+    };
+  });
+
   return model;
+}
+
+/** An influenced term's attack power (see Model.influence) with the given attribute values */
+function getInfluencedAttackPower(
+  { multipliers, fixed }: InfluencedTerm,
+  base: number,
+  values: readonly number[],
+) {
+  let sum = 1;
+  let lowest = Infinity;
+  const add = (multiplier: number) => {
+    sum += multiplier - 1;
+    if (multiplier < lowest) lowest = multiplier;
+  };
+  for (let i = 0; i < multipliers.length; i++) {
+    const attributeMultipliers = multipliers[i];
+    if (attributeMultipliers) add(attributeMultipliers[values[i]]);
+  }
+  fixed.forEach(add);
+  return base * (lowest < 1 ? lowest : sum);
 }
 
 function getMaxLevels(model: Model) {
@@ -839,6 +925,11 @@ function evaluateModel(model: Model, values: readonly number[]) {
   for (let t = 0; t < base.length; t++) {
     if (unmetMask & penaltyMasks[t]) {
       attackPowers[t] = base[t] * penaltyMultiplier;
+      continue;
+    }
+    const influence = model.influence[t];
+    if (influence) {
+      attackPowers[t] = getInfluencedAttackPower(influence, base[t], values);
       continue;
     }
     let attackPower = base[t];
@@ -1034,19 +1125,25 @@ function optimizeBruteForce(model: Model, maxLevels: number): number[][] {
     }
   };
   updateRest();
+  const influenced = model.influence.some(Boolean);
 
   for (;;) {
     const first = values[0];
     const cost = restCost + first - min[0];
     if (cost <= maxLevels) {
-      const unmetMask = restUnmet | unmet[0][first];
-      for (let t = 0; t < termCount; t++) {
-        attackPowers[t] =
-          unmetMask & penaltyMasks[t]
-            ? base[t] * penaltyMultiplier
-            : base[t] + contributions[0][t][first] + rest[t];
+      let value: number;
+      if (influenced) {
+        value = evaluateModel(model, values);
+      } else {
+        const unmetMask = restUnmet | unmet[0][first];
+        for (let t = 0; t < termCount; t++) {
+          attackPowers[t] =
+            unmetMask & penaltyMasks[t]
+              ? base[t] * penaltyMultiplier
+              : base[t] + contributions[0][t][first] + rest[t];
+        }
+        value = getPlanDamage(plan, attackPowers);
       }
-      const value = getPlanDamage(plan, attackPowers);
       if (value > best[cost] + epsilon) {
         best[cost] = value;
         allocations[cost] = [...values];
@@ -1558,7 +1655,9 @@ export function optimizeAttributes(options: OptimizeOptions): OptimizationCurve 
     const maxLevels = Math.min(getMaxLevels(model), onlyLevels ?? Infinity);
 
     let allocations: number[][];
-    const linear = terms.length === 1 || terms.every(({ defense }) => !defense);
+    // Influenced terms' attack power doesn't add up, so only exhaustive and local searches work
+    const additive = !model.influence.some(Boolean);
+    const linear = additive && (terms.length === 1 || terms.every(({ defense }) => !defense));
     if (linear) {
       allocations = optimizeLinear(model, maxLevels);
     } else {
@@ -1571,7 +1670,11 @@ export function optimizeAttributes(options: OptimizeOptions): OptimizationCurve 
       const separation = chooseFixedAttributes(model, dependencies);
       // Exact searches are worth more time when the alternative is an approximate one
       const workLimit = combinations <= bruteForceLimit ? combinations : exactWorkLimit;
-      if (separation && getSeparableWork(model, dependencies, separation, maxLevels) <= workLimit) {
+      if (
+        additive &&
+        separation &&
+        getSeparableWork(model, dependencies, separation, maxLevels) <= workLimit
+      ) {
         allocations = optimizeSeparable(model, maxLevels, separation.fixed);
       } else if (combinations <= bruteForceLimit) {
         allocations = optimizeBruteForce(model, maxLevels);
@@ -1714,11 +1817,17 @@ export function getBreakdown(options: OptimizeOptions, leveled: Attributes): Bre
   const weaponHits = options.hits?.filter((hit) =>
     (hit.motionValues ?? [hit.motionValue]).some((motionValue) => motionValue > 0),
   );
-  const correct = weaponHits?.[0]?.attackElementCorrect;
+  const firstHit = weaponHits?.[0];
   const scalingWeapon =
-    correct &&
-    weaponHits.every((hit) => JSON.stringify(hit.attackElementCorrect) === JSON.stringify(correct))
-      ? { ...weapon, attackElementCorrect: correct }
+    firstHit?.attackElementCorrect &&
+    weaponHits!.every(
+      (hit) =>
+        JSON.stringify(hit.attackElementCorrect) ===
+          JSON.stringify(firstHit.attackElementCorrect) &&
+        JSON.stringify(hit.attackElementInfluence) ===
+          JSON.stringify(firstHit.attackElementInfluence),
+    )
+      ? getHitScalingWeapon(weapon, firstHit)
       : weapon;
 
   const rows = (terms ?? []).flat().map(({ damageType, base, defense }) => {
@@ -1736,7 +1845,36 @@ export function getBreakdown(options: OptimizeOptions, leveled: Attributes): Bre
     };
     row.total = row.base;
 
-    if (!penalized) {
+    // With Influence*CorrectRate, each attribute's share is its multiplier minus 1, unless one below
+    // 1 caps the total (see combineInfluencedMultipliers), which then has no shares
+    const influence = scalingWeapon.attackElementInfluence?.[damageType];
+    if (influence) {
+      row.base = base;
+      const multipliers = allAttributes
+        .filter((attribute) => scalingWeapon.attackElementCorrect[damageType]?.[attribute])
+        .map(
+          (attribute) =>
+            [
+              attribute,
+              getInfluencedMultiplier(
+                scalingWeapon,
+                upgradeLevel,
+                damageType,
+                attribute,
+                influence[attribute] ?? 1,
+                adjustedAttributes[attribute],
+                ineffectiveAttributes.includes(attribute),
+              ),
+            ] as const,
+        );
+      const scaling = combineInfluencedMultipliers(multipliers.map(([, multiplier]) => multiplier));
+      if (multipliers.every(([, multiplier]) => multiplier >= 1)) {
+        for (const [attribute, multiplier] of multipliers) {
+          if (multiplier !== 1) row.attributes[attribute] = base * (multiplier - 1);
+        }
+      }
+      row.total = base * scaling;
+    } else if (!penalized) {
       for (const attribute of allAttributes) {
         if (getAttributeScaling(scalingWeapon, upgradeLevel, damageType, attribute)) {
           const bonus =

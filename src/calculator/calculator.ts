@@ -112,6 +112,69 @@ export function getAttributeBonus(
 }
 
 /**
+ * One attribute's scaling multiplier for a damage type with Influence*CorrectRate: the influence
+ * times 1 + its bonus, or times the requirement penalty if its requirement isn't met
+ */
+export function getInfluencedMultiplier(
+  weapon: Weapon,
+  upgradeLevel: number,
+  attackPowerType: AttackPowerType,
+  attribute: Attribute,
+  influence: number,
+  value: number,
+  unmet: boolean,
+) {
+  return (
+    influence *
+    (unmet
+      ? ineffectivePenaltyMultiplier
+      : 1 + getAttributeBonus(weapon, upgradeLevel, attackPowerType, attribute, value))
+  );
+}
+
+/**
+ * The game's scaling multiplier when a damage type has Influence*CorrectRate (eldenring.exe
+ * +691690, 2026-11-24): each attribute it scales with has a multiplier (getInfluencedMultiplier).
+ * If any is below 1, the lowest is the total; otherwise they add up, 1 + the sum of each minus 1.
+ * With no influence that's the same as the usual sum of bonuses, or the requirement penalty.
+ */
+export function combineInfluencedMultipliers(multipliers: Iterable<number>) {
+  let sum = 1;
+  let lowest = Infinity;
+  for (const multiplier of multipliers) {
+    sum += multiplier - 1;
+    lowest = Math.min(lowest, multiplier);
+  }
+  return lowest < 1 ? lowest : sum;
+}
+
+function getInfluencedScaling(
+  weapon: Weapon,
+  upgradeLevel: number,
+  attackPowerType: AttackPowerType,
+  influence: Partial<Record<Attribute, number>>,
+  attributes: Attributes,
+  ineffectiveAttributes: Attribute[],
+) {
+  const scalingAttributes = weapon.attackElementCorrect[attackPowerType] ?? {};
+  return combineInfluencedMultipliers(
+    allAttributes
+      .filter((attribute) => scalingAttributes[attribute])
+      .map((attribute) =>
+        getInfluencedMultiplier(
+          weapon,
+          upgradeLevel,
+          attackPowerType,
+          attribute,
+          influence[attribute] ?? 1,
+          attributes[attribute],
+          ineffectiveAttributes.includes(attribute),
+        ),
+      ),
+  );
+}
+
+/**
  * Determine the damage for a weapon with the given player stats
  */
 export default function getWeaponAttack({
@@ -143,8 +206,21 @@ export default function getWeaponAttack({
       const scalingAttributes = weapon.attackElementCorrect[attackPowerType] ?? {};
 
       let totalScaling = 1;
+      const influence = isDamageType ? weapon.attackElementInfluence?.[attackPowerType] : undefined;
 
-      if (ineffectiveAttributes.some((attribute) => scalingAttributes[attribute])) {
+      if (influence) {
+        totalScaling = getInfluencedScaling(
+          weapon,
+          upgradeLevel,
+          attackPowerType,
+          influence,
+          adjustedAttributes,
+          ineffectiveAttributes,
+        );
+        if (ineffectiveAttributes.some((attribute) => scalingAttributes[attribute])) {
+          ineffectiveAttackPowerTypes.push(attackPowerType);
+        }
+      } else if (ineffectiveAttributes.some((attribute) => scalingAttributes[attribute])) {
         // If the requirements for this damage type are not met, it's penalized instead of getting
         // a scaling bonus
         totalScaling = ineffectivePenaltyMultiplier;

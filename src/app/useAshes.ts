@@ -40,11 +40,8 @@ type AshHit = [
     /** True for flat attack not added to the weapon's base attack, assumed not to scale */
     fixed?: boolean;
     correct?: Weapon["attackElementCorrect"];
-    /**
-     * Multipliers to the motion value by damage type (AttackPowerType), fitted in game where the
-     * hit's scaling isn't modeled (build_ash_data.py ELEMENT_CORRECT_FITS, e.g. Lifesteal Fist's)
-     */
-    motionValueRates?: number[];
+    /** Its overwritten scaling's Influence*CorrectRate, e.g. Lifesteal Fist's grab's */
+    influence?: Weapon["attackElementInfluence"];
     noTwoHandBonus?: boolean;
     kind?: string;
     tick?: boolean;
@@ -1024,12 +1021,15 @@ function getSkillAttack(
   const physicalType = (type: number): PhysicalType =>
     allPhysicalTypes[type >= 4 ? info.types[type - 4] : type] ?? "standard";
   const toHit = ([motionValue, statusMotionValue, stanceMotionValue, type, details]: AshHit) => {
-    const rates = details?.motionValueRates;
-    const motionValues = rates
-      ? rates.map((rate, damageType) =>
-          (Array.isArray(motionValue) ? motionValue[damageType] : motionValue) * rate,
-        )
-      : motionValue;
+    // A critical hit's attack is multiplied by the weapon's Critical before defenses, its flat attack
+    // too, but not weapon buffs' (eldenring.exe +6845a0, 2026-11-24)
+    const criticalRate = (details?.critical && info.criticalRate) || 1;
+    const motionValues =
+      criticalRate === 1
+        ? motionValue
+        : Array.isArray(motionValue)
+        ? motionValue.map((value) => value * criticalRate)
+        : motionValue * criticalRate;
     const hit: AttackDataHit = {
       ...(Array.isArray(motionValues)
         ? { motionValue: Math.max(...motionValues), motionValues }
@@ -1038,9 +1038,10 @@ function getSkillAttack(
       stanceMotionValue,
       physicalType: physicalType(type),
     };
-    if (details?.flat) hit.flatAttack = details.flat;
+    if (details?.flat) hit.flatAttack = details.flat.map((flat) => flat * criticalRate);
     if (details?.fixed) hit.fixedFlatAttack = true;
     if (details?.correct) hit.attackElementCorrect = details.correct;
+    if (details?.influence) hit.attackElementInfluence = details.influence;
     if (details?.noTwoHandBonus) hit.noTwoHandBonus = true;
     if (details?.kind) hit.kind = details.kind;
     if (details?.tick) hit.tickInterval = details.tickInterval ?? 0;
@@ -1054,10 +1055,6 @@ function getSkillAttack(
     if (details?.scaledStatus) hit.scaledStatus = details.scaledStatus;
     if (details?.buffMotionValue != null) hit.buffMotionValue = details.buffMotionValue;
     if (details?.damageRates) hit.damageRates = details.damageRates;
-    if (details?.critical && info.criticalRate) {
-      const rates = hit.damageRates ?? allDamageTypes.map(() => 1);
-      hit.damageRates = rates.map((rate) => rate * info.criticalRate!);
-    }
     if (details?.buff) {
       const buffMotionValue = details.buffMotionValue ?? 100;
       hit.buffAttack = details.buff.map((value) => (value * buffMotionValue) / 100);

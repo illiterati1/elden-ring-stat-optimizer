@@ -405,6 +405,30 @@ def read_attack_element_correct(project_dir, correct_id):
     return correct
 
 
+@functools.cache
+def read_attack_element_influence(project_dir, correct_id):
+    """
+    @returns an AttackElementCorrectParam row's Influence*CorrectRate (as fractions) of the attributes
+    it scales with, where not 100, by damage type and attribute, or None if there are none. The game
+    multiplies each attribute's scaling multiplier (1 + its bonus, or the requirement penalty) by it;
+    one below 1 then caps the damage type's total at the lowest (see getWeaponAttack)
+    """
+    with open(os.path.join(project_dir, "data", "AttackElementCorrectParam-vanilla.csv"), encoding="utf-8") as f:
+        row = next((row for row in csv.DictReader(f) if row["id"] == str(correct_id)), None)
+    if row is None:
+        return None
+    influence = {}
+    for damage_type, damage_name in CORRECT_DAMAGE_TYPES.items():
+        attributes = {}
+        for attribute, attribute_name in CORRECT_ATTRIBUTES.items():
+            rate = int(row[f"Influence{attribute_name}CorrectRate_by{damage_name}"])
+            if row[f"is{attribute_name}Correct_by{damage_name}"] == "1" and rate != 100:
+                attributes[attribute] = rate / 100
+        if attributes:
+            influence[str(damage_type)] = attributes
+    return influence or None
+
+
 def read_unique_hits(project_dir):
     """
     @returns extra hits from the BaseMovesetUnique tab, by weapon and attack (e.g. "R2")

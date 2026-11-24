@@ -65,6 +65,7 @@ from build_moveset_data import (  # noqa: E402
     WEAPON_ATTRIBUTE_TYPES,
     number,
     read_attack_element_correct,
+    read_attack_element_influence,
     read_weapons,
 )
 from extract_fmg import read_fmg  # noqa: E402
@@ -266,30 +267,13 @@ MERGED_TICKS = {"War Cry": {"Charged R2 #1": 3, "Charged R2 #2": 2}}
 # does the Staff of the Avatar's and Rotten Staff's Erdtree Slam (tested in game on a Rotten Staff +10
 # with 99 in every stat: the tush 1441 with 36 stance, or the shockwave 1169; its "?" row doesn't hit).
 # Lifesteal Fist's grab doesn't do damage itself once it lands (only 5 stance), only the confirmed
-# grab's hits: 5, like in game (er-logger, 2026-11-23). Their damage is ELEMENT_CORRECT_FITS's.
+# grab's hits: 5, like in game (er-logger, 2026-11-23).
 MAIN_HIT_KINDS = {
     "Beast's Roar": {"Shockwave"},
     "Erdtree Slam": {"Tush"},
     "Golden Slam": {"Tush"},
     "Ground Slam": {"Tush"},
     "Lifesteal Fist": {"Confirmed Grab"},
-}
-
-# Stat scaling and motion value multipliers (by damage type) fitted in game for hits that overwrite
-# their scaling with an AttackElementCorrectParam row the calculator doesn't model. 52000 is only
-# Lifesteal Fist's (its grab and confirmed grab's hits). Its physical scales with Strength and
-# Dexterity equally, not like the weapon, and without two handing's bonus; its magic (the flat 42) is
-# as the row says, Arcane at 50. Tested in game with er-logger (2026-11-23) on the Iron Ball, training
-# dummy, each hit 3 × 62 and 2 × 91 motion value: +25 in NG, 99 in every stat 281/341, Arcane 10
-# 167/227, Str 15 Dex 10 256/303, Str 15 Dex 99 270/323; NG+1 265/323 (also one handed, with a
-# Miséricorde in the left hand); +0 NG+1 14/21. Physical attack power at 100 motion value works out as
-# the weapon's base × 0.6845 × (1 + 0.11 × upgrade growth × (Str's + Dex's CalcCorrectGraph)) at
-# every +25 point within 0.1 (the +0 one within rounding, better than without the growth). The row's
-# Influence*CorrectRate (70 on physical Str and Dex) presumably has to do with it, but how isn't known.
-# Golden Crux's NPC grab, another confirmed throw hit, uses the weapon's own scaling and matches the
-# game (1802 calculated, 1810 on Gideon Ofnir), so this isn't throws in general.
-ELEMENT_CORRECT_FITS = {
-    "52000": {"correct": {"0": {"str": 0.11, "dex": 0.11}}, "motionValueRates": [0.6845, 1, 1, 1, 1]},
 }
 
 # Skills whose sheet rows are alternative versions of one hit rather than several hits, with how many
@@ -1479,10 +1463,13 @@ def parse_hit(row, tick_bullets, hp_damage, attack_categories, hit_status):
         # +25 with 99 in every stat, 45 damage, its 30 flat physical times 4 for the upgrade level)
         if correct is not None:
             details["correct"] = correct
-        fit = ELEMENT_CORRECT_FITS.get(row["overwriteAttackElementCorrectId"])
-        if fit:
-            details["correct"] = {**details.get("correct", {}), **fit["correct"]}
-            details["motionValueRates"] = fit["motionValueRates"]
+        # Its Influence*CorrectRate, e.g. Lifesteal Fist's 52000 (70 on physical Str and Dex), whose
+        # grab does base × the lower of 0.7 × (1 + Str bonus) and 0.7 × (1 + Dex bonus) if either is
+        # below 1, else base × (1 + both added up) (found in eldenring.exe, 2026-11-24: exactly the
+        # attack power in the game's hit data, Hookclaws at Str 10 and 99, Beast Claw at Str 99)
+        influence = read_attack_element_influence(PROJECT_DIR, row["overwriteAttackElementCorrectId"])
+        if influence:
+            details["influence"] = influence
     if row["isDisableBothHandsAtkBonus"] == "TRUE":
         details["noTwoHandBonus"] = True
     if row["AtkId"] in UNCOUNTED_ROWS:
@@ -2815,9 +2802,10 @@ def main():
                 if float(row["staminaConsumptionRate"]) != 1
                 else {}
             ),
-            # Its critical hits' damage is multiplied by this (its Critical stat, 100 + throwAtkRate,
-            # over 100), after defenses (tested in game: Lifesteal Fist on the Hookclaws, Critical
-            # 110, 286/334 on the dummy at Str 10 / Dex 99 / Arc 99 in NG, 260/307 otherwise)
+            # Its critical hits' attack is multiplied by this (its Critical stat, 100 + throwAtkRate,
+            # over 100), before defenses, every damage type but weapon buffs' (found in eldenring.exe,
+            # 2026-11-24; tested in game: Lifesteal Fist on the Hookclaws, Critical 110, 286/334 on
+            # the dummy at Str 10 / Dex 99 / Arc 99 in NG)
             **(
                 {"criticalRate": 1 + float(row["throwAtkRate"]) / 100}
                 if float(row["throwAtkRate"] or 0)

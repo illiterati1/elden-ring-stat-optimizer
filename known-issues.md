@@ -4,8 +4,6 @@
   than in game.
 - **Powerstancing with Flare, O Serpent:** the left-hand weapon's explosions are counted for any
   powerstanced weapon, not only a second Serpent Flail.
-- **Lifesteal Fist:** its damage is fitted to in-game tests on the Iron Ball. On other weapons it
-  may be a few percent off (the Clinging Bone calculates about 4% higher than an older test).
 - **Attacks that need extra movement:** time-scaled numbers are questionable for any attack that
   needs another action first, such as jumping, rolling, backstepping, running, or buffing.
 - **Untimed attacks:** backstabs, ripostes, shields' mounted R2, bow and crossbow jump shots,

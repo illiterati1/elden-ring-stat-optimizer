@@ -268,6 +268,8 @@ export interface AttackDataHit {
   noTwoHandBonus?: boolean;
   /** Which stats scale this hit's flat attack, if not the weapon's own */
   attackElementCorrect?: Weapon["attackElementCorrect"];
+  /** Its overwritten scaling's Influence*CorrectRate, if any (see getWeaponAttack) */
+  attackElementInfluence?: Weapon["attackElementInfluence"];
   /** True for flat attack not added to the weapon's base attack, assumed not to scale */
   fixedFlatAttack?: boolean;
   /** For damage over time, the seconds between ticks (0 if unknown) */
@@ -1618,6 +1620,7 @@ export function optimizeBuild(
       }),
       ...(damageRates.some((rate) => rate !== 1) && { damageRates }),
       attackElementCorrect: hit.attackElementCorrect,
+      ...(hit.attackElementInfluence && { attackElementInfluence: hit.attackElementInfluence }),
       ...(offhandHit && { offhand: true }),
       weight,
     };

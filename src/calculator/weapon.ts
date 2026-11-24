@@ -6,6 +6,10 @@ export type AttackElementCorrect = Partial<
   Record<AttackPowerType, Partial<Record<Attribute, number | true>>>
 >;
 
+export type AttackElementInfluence = Partial<
+  Record<AttackPowerType, Partial<Record<Attribute, number>>>
+>;
+
 export interface AmmoShots {
   count: number;
   motionValue: number;
@@ -85,6 +89,13 @@ export interface Weapon {
    * Map indicating which damage types scale with which player attributes
    */
   attackElementCorrect: AttackElementCorrect;
+
+  /**
+   * AttackElementCorrectParam Influence*CorrectRate (as fractions) of the attributes each damage
+   * type scales with, where not 1, e.g. Lifesteal Fist's 0.7 on physical Str and Dex (see
+   * getWeaponAttack)
+   */
+  attackElementInfluence?: AttackElementInfluence;
 
   /**
    * Map indicating which scaling curve is used for each damage type, status effect, or spell scaling

@@ -6933,10 +6933,11 @@ describe("Ashes of War", () => {
   });
 
   it("matches Lifesteal Fist in game", () => {
-    // Its confirmed grab's 3 + 2 hits, whose scaling is fitted (build_ash_data.py
-    // ELEMENT_CORRECT_FITS). er-logger 2026-11-23 on the Iron Ball, training dummy (NG 123.2, NG+1
-    // 144.4), each hit's damage (as calculated within 1, the +0 one's last two 21), and each hit
-    // 68-70, 121-122, 184-186, 262-264, and 265-266 frames after L2
+    // Its confirmed grab's 3 + 2 hits (motion values 62 and 91) scale with AttackElementCorrectParam
+    // 52000's Influence*CorrectRate (the lower of 0.7 × each of Str's and Dex's multipliers if either
+    // is below 1) and the weapon's Critical before defenses (eldenring.exe, 2026-11-24). er-logger
+    // 2026-11-23 on the training dummy (NG 123.2, NG+1 144.4), each hit's damage in game, and each
+    // hit 68-70, 121-122, 184-186, 262-264, and 265-266 frames after L2
     const ironBall = getWeapon("Iron Ball");
     const [{ ash }] = getAshAttacks(ashes, movesets, ironBall, "Lifesteal Fist", true);
     if (!ash || !("attack" in ash)) throw new Error();
@@ -6945,9 +6946,12 @@ describe("Ashes of War", () => {
       defense: number,
       attributes: Partial<Attributes> = {},
       twoHanding = true,
-    ) =>
-      optimizeBuild({
-        weapon: ironBall,
+      weapon = ironBall,
+    ) => {
+      const [{ ash: weaponAsh }] = getAshAttacks(ashes, movesets, weapon, "Lifesteal Fist", true);
+      if (!weaponAsh || !("attack" in weaponAsh)) throw new Error();
+      return optimizeBuild({
+        weapon,
         regularUpgradeLevel: upgrade,
         twoHanding,
         startLevel: 9,
@@ -6960,41 +6964,77 @@ describe("Ashes of War", () => {
         ),
         physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
-        attack: ash.attack,
+        attack: weaponAsh.attack,
       }).attackSteps![0].map((hit) => Math.floor(hit.damage));
+    };
     expect(hits(25, 123.2)).toEqual([281, 281, 281, 341, 341]);
     expect(hits(25, 123.2, { arc: 10 })).toEqual([167, 167, 167, 227, 227]);
-    expect(hits(25, 123.2, { str: 15, dex: 10 })).toEqual([256, 256, 256, 302, 302]);
-    expect(hits(25, 123.2, { str: 15, dex: 99 })).toEqual([270, 270, 270, 322, 322]);
+    expect(hits(25, 123.2, { str: 15, dex: 10 })).toEqual([256, 256, 256, 303, 303]);
+    expect(hits(25, 123.2, { str: 15, dex: 99 })).toEqual([270, 270, 270, 323, 323]);
     expect(hits(25, 144.4)).toEqual([265, 265, 265, 323, 323]);
     expect(hits(25, 144.4, {}, false)).toEqual([265, 265, 265, 323, 323]);
-    expect(hits(0, 144.4, {}, false)).toEqual([14, 14, 14, 20, 20]);
-    // The Hookclaws' Critical 110 multiplies it by 1.1 after defenses: er-logger 2026-11-23, two
-    // handed, Str 10, Dex 99, Arc 99, NG, 286 ×3 and 334 ×2 in game (within 3; 260/307 without it)
+    expect(hits(0, 144.4, {}, false)).toEqual([14, 14, 14, 21, 21]);
+    // Clinging Bone (+10, its somber level for 25), one handed
+    const clingingBone = getWeapon("Clinging Bone");
+    expect(hits(25, 144.4, {}, false, clingingBone)).toEqual([299, 299, 299, 366, 366]);
+    expect(hits(25, 123.2, { arc: 16 }, false, clingingBone)).toEqual([207, 207, 207, 266, 266]);
+    expect(hits(0, 144.4, {}, false, clingingBone)).toEqual([19, 19, 19, 27, 27]);
+    expect(hits(25, 123.2, { str: 10 }, false, clingingBone)).toEqual([309, 309, 309, 373, 373]);
+    // Beast Claw, two handed
+    const beastClaw = getWeapon("Beast Claw");
+    expect(hits(25, 144.4, {}, true, beastClaw)).toEqual([307, 307, 307, 391, 391]);
+    expect(hits(25, 123.2, { str: 13, arc: 10 }, true, beastClaw)).toEqual([149, 149, 149, 199, 199]);
+    expect(hits(25, 123.2, { arc: 10 }, true, beastClaw)).toEqual([211, 211, 211, 294, 294]);
+    expect(hits(25, 123.2, { dex: 11, arc: 10 }, true, beastClaw)).toEqual([142, 142, 142, 188, 188]);
+    // Hookclaws (Critical 110), two handed: its first hit at Str 99 / Arc 10 did 189
     const hookclaws = getWeapon("Hookclaws");
-    const [{ ash: hookclawsAsh }] = getAshAttacks(ashes, movesets, hookclaws, "Lifesteal Fist", true);
-    if (!hookclawsAsh || !("attack" in hookclawsAsh)) throw new Error();
-    expect(
-      optimizeBuild({
-        weapon: hookclaws,
-        regularUpgradeLevel: 25,
-        twoHanding: true,
-        startLevel: 9,
-        currentLevel: 9,
-        attributes: { str: 10, dex: 99, int: 99, fai: 99, arc: 99 },
-        bonusAttributes: noBonus,
-        objective: "totalAttack",
-        defenses: Object.fromEntries(
-          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
-        ),
-        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
-        limits: { ...noLimits, maxLevels: 0 },
-        attack: hookclawsAsh.attack,
-      }).attackSteps![0].map((hit) => Math.floor(hit.damage)),
-    ).toEqual([285, 285, 285, 337, 337]);
+    expect(hits(25, 123.2, { str: 10 }, true, hookclaws)).toEqual([286, 286, 286, 334, 334]);
+    expect(hits(25, 123.2, { arc: 10 }, true, hookclaws)[0]).toBe(189);
     const frames = (seconds: number) => Math.round(seconds * 60);
     const step = ash.attack.stepTimes![0];
     expect(step.hitTimes!.map((time) => frames(time!))).toEqual([69, 121, 185, 263, 265]);
+  });
+
+  it("optimizes Lifesteal Fist's influenced scaling exactly", () => {
+    // Its grab's physical is the lower of Str's and Dex's multipliers while either is below 1, so it
+    // doesn't add up: the optimizer has to try allocations, and get the regular calculator's values
+    for (const [name, attributes] of [
+      ["Hookclaws", { str: 8, dex: 20, int: 9, fai: 9, arc: 12 }],
+      ["Beast Claw", { str: 13, dex: 11, int: 9, fai: 9, arc: 12 }],
+    ] as const) {
+      const weapon = getWeapon(name);
+      const [{ ash }] = getAshAttacks(ashes, movesets, weapon, "Lifesteal Fist", true);
+      if (!ash || !("attack" in ash)) throw new Error();
+      let checked = 0;
+      optimizeBuild(
+        {
+          weapon,
+          regularUpgradeLevel: 25,
+          twoHanding: true,
+          startLevel: 9,
+          attributes,
+          bonusAttributes: noBonus,
+          objective: "totalAttack",
+          defenses,
+          limits: { ...noLimits, maxLevels: 12 },
+          attack: ash.attack,
+        },
+        (options) => {
+          const curve = optimizeAttributes(options)!;
+          const expected = bruteForce(options, 12);
+          curve.values.forEach((value, n) => {
+            if (n < expected.length) expect(value).toBeCloseTo(expected[n], 6);
+            expect(value).toBeCloseTo(
+              evaluateObjective(options, getAllocation(curve.allocations, n))!,
+              6,
+            );
+            checked++;
+          });
+          return curve;
+        },
+      );
+      expect(checked).toBeGreaterThan(0);
+    }
   });
 
   it("matches Lightspeed Slash in game", () => {
