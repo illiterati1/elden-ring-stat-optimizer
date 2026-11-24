@@ -4,6 +4,7 @@ import {
   Button,
   Box,
   CircularProgress,
+  Collapse,
   CssBaseline,
   Drawer,
   Fab,
@@ -1270,6 +1271,11 @@ export default function App() {
     });
   }
 
+  const showChart = chartResults.length > 0 && !fastMode;
+  // The chart's last results, so it keeps its curves while it collapses away
+  const shownChartResults = useRef(chartResults);
+  if (showChart) shownChartResults.current = chartResults;
+
   // Attacks other than the base one have hits to show. They don't apply to spell scaling.
   const attackMode = attackActive;
   // Also show hits for the base attack when a weapon fires several, e.g. the Spread Crossbow
@@ -1505,15 +1511,15 @@ export default function App() {
                   <RunProgressBar progress={progress} pending={pending} />
                   {requests.length > 0 || pins.length > 0 ? (
                     <Stack spacing={2}>
-                      {chartResults.length > 0 && !fastMode && (
+                      <Collapse in={showChart} timeout={150} unmountOnExit>
                         <ValueChart
-                          results={chartResults}
+                          results={shownChartResults.current}
                           startLevel={planLevel}
                           valueLabel={chartValueLabel}
                           range={chartRange}
                           onChange={updateAppState}
                         />
-                      )}
+                      </Collapse>
                       {movesetsMissing && (
                         <Typography color="text.secondary" px={2}>
                           {movesetsMissingMessage}
