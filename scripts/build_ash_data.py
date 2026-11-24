@@ -30,7 +30,8 @@ Output format:
     "ashes": [{ "name": skill, "mounts": [weapon types], "affinities": [affinity IDs] }, ...],
     "weapons": { name: { "skill": skill, "canChange": bool, "types": [physical type, 2nd type],
                          "skillRange": which of skills' animations it uses (get_skill_range),
-                         "staminaRate"?: its staminaConsumptionRate, if not 1 } },
+                         "staminaRate"?: its staminaConsumptionRate, if not 1,
+                         "criticalRate"?: its critical hits' damage multiplier, if not 1 } },
     "skills": { skill: { "generic": hits, "classes": { weapon type: hits }, "unique": { weapon: hits },
                          "weaponBuff": true if it puts its own weapon buff on the weapon } }
   }
@@ -2814,6 +2815,14 @@ def main():
                 if float(row["staminaConsumptionRate"]) != 1
                 else {}
             ),
+            # Its critical hits' damage is multiplied by this (its Critical stat, 100 + throwAtkRate,
+            # over 100), after defenses (tested in game: Lifesteal Fist on the Hookclaws, Critical
+            # 110, 286/334 on the dummy at Str 10 / Dex 99 / Arc 99 in NG, 260/307 otherwise)
+            **(
+                {"criticalRate": 1 + float(row["throwAtkRate"]) / 100}
+                if float(row["throwAtkRate"] or 0)
+                else {}
+            ),
             "types": [
                 PHYSICAL_TYPES[WEAPON_ATTRIBUTE_TYPES.get(int(row["atkAttribute"]), "standard")],
                 PHYSICAL_TYPES[WEAPON_ATTRIBUTE_TYPES.get(int(row["atkAttribute2"]), "standard")],
@@ -2889,6 +2898,10 @@ def main():
         )
         if status:
             hit_status[row["id"]] = status
+        # Critical hits (throwFlag 2: a throw's hits, e.g. Lifesteal Fist's confirmed grab) do the
+        # weapon's critical damage (its throwAtkRate)
+        if row["throwFlag"] == "2":
+            hit_status.setdefault(row["id"], {})["critical"] = True
     for bullet in read_csv(os.path.join(data_dir, "Bullet-vanilla.csv")):
         status = effects_status(int(bullet[f"spEffectId{i}"]) for i in range(5))
         if status and bullet["atkId_Bullet"] not in hit_status and bullet["atkId_Bullet"] not in NO_STATUS_ROWS:

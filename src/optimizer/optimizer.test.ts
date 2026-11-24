@@ -6969,6 +6969,29 @@ describe("Ashes of War", () => {
     expect(hits(25, 144.4)).toEqual([265, 265, 265, 323, 323]);
     expect(hits(25, 144.4, {}, false)).toEqual([265, 265, 265, 323, 323]);
     expect(hits(0, 144.4, {}, false)).toEqual([14, 14, 14, 20, 20]);
+    // The Hookclaws' Critical 110 multiplies it by 1.1 after defenses: er-logger 2026-11-23, two
+    // handed, Str 10, Dex 99, Arc 99, NG, 286 ×3 and 334 ×2 in game (within 3; 260/307 without it)
+    const hookclaws = getWeapon("Hookclaws");
+    const [{ ash: hookclawsAsh }] = getAshAttacks(ashes, movesets, hookclaws, "Lifesteal Fist", true);
+    if (!hookclawsAsh || !("attack" in hookclawsAsh)) throw new Error();
+    expect(
+      optimizeBuild({
+        weapon: hookclaws,
+        regularUpgradeLevel: 25,
+        twoHanding: true,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 10, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: hookclawsAsh.attack,
+      }).attackSteps![0].map((hit) => Math.floor(hit.damage)),
+    ).toEqual([285, 285, 285, 337, 337]);
     const frames = (seconds: number) => Math.round(seconds * 60);
     const step = ash.attack.stepTimes![0];
     expect(step.hitTimes!.map((time) => frames(time!))).toEqual([69, 121, 185, 263, 265]);

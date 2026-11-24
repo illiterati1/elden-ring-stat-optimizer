@@ -62,6 +62,8 @@ type AshHit = [
     buffMotionValue?: number;
     /** The hit's own damage multipliers by damage type, from an effect its skill applies */
     damageRates?: number[];
+    /** True for a critical hit (AtkParam throwFlag 2, e.g. a throw's), which gets criticalRate */
+    critical?: boolean;
     /** Damage over time of a percentage of the enemy's max HP, e.g. black flame */
     hpDamage?: HpDamage;
     /** True for a hit left out of the total, whose damage the skill's note shows instead */
@@ -662,6 +664,11 @@ export interface Ashes {
        * its attacks' (tested in game: Lion's Claw on a Greatsword and a Short Sword)
        */
       staminaRate?: number;
+      /**
+       * Its critical hits' damage multiplier (its Critical stat over 100), if not 1, after defenses
+       * (tested in game: Lifesteal Fist on the Hookclaws, Critical 110)
+       */
+      criticalRate?: number;
     }
   >;
   skills: Record<
@@ -1047,6 +1054,10 @@ function getSkillAttack(
     if (details?.scaledStatus) hit.scaledStatus = details.scaledStatus;
     if (details?.buffMotionValue != null) hit.buffMotionValue = details.buffMotionValue;
     if (details?.damageRates) hit.damageRates = details.damageRates;
+    if (details?.critical && info.criticalRate) {
+      const rates = hit.damageRates ?? allDamageTypes.map(() => 1);
+      hit.damageRates = rates.map((rate) => rate * info.criticalRate!);
+    }
     if (details?.buff) {
       const buffMotionValue = details.buffMotionValue ?? 100;
       hit.buffAttack = details.buff.map((value) => (value * buffMotionValue) / 100);
