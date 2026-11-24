@@ -18,9 +18,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const dir = '/mnt/c/Users/USER/Videos/er-logs';
+// The logger's default folder, %USERPROFILE%\Videos\er-logs, as a WSL path
+const logDir = () => {
+  const run = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  return path.join(run('wslpath', [run('cmd.exe', ['/c', 'echo %USERPROFILE%'])]), 'Videos', 'er-logs');
+};
 const argv = process.argv.slice(2);
-const file = argv[0] || path.join(dir, fs.readdirSync(dir).filter(f => f.endsWith('.csv')).sort().at(-1));
+const file = argv[0] || (dir => path.join(dir, fs.readdirSync(dir).filter(f => f.endsWith('.csv')).sort().at(-1)))(logDir());
 const [header, ...lines] = fs.readFileSync(file, 'utf8').trim().split(/\r?\n/);
 const cols = header.split(',');
 const ev = lines.map(l => { const v = l.split(','); return Object.fromEntries(cols.map((c, i) => [c, v[i]])); });
