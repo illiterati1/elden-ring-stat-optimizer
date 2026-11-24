@@ -2559,6 +2559,32 @@ describe("attacks", () => {
     expect(Math.floor(crucibleKnight("Riposte").finalValue)).toBe(833);
     expect(Math.floor(crucibleKnight("Riposte", 0).finalValue)).toBe(274);
     expect(Math.floor(crucibleKnight("R1").attackSteps![0][0].damage)).toBe(331);
+
+    // The Miséricorde's Critical 140: a Quality Miséricorde +25 riposte (after Buckler Parry) does
+    // 2261 to the Boss Arena's Leonine Misbegotten (NpcParam 34600913), er-logger 2026-11-23
+    const misericorde = getWeapon("Quality Miséricorde");
+    const misericordeRiposte = optimizeBuild({
+      weapon: misericorde,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      // The Leonine Misbegotten's defenses and negation, as the enemy picker sets them
+      defenses: {
+        [AttackPowerType.PHYSICAL]: { defense: 104, negation: 0 },
+        [AttackPowerType.MAGIC]: { defense: 104, negation: 0 },
+        [AttackPowerType.FIRE]: { defense: 104, negation: 10 },
+        [AttackPowerType.LIGHTNING]: { defense: 104, negation: 10 },
+        [AttackPowerType.HOLY]: { defense: 104, negation: 20 },
+      },
+      physicalNegation: { standard: 10, slash: 0, strike: 10, pierce: 10 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: getAttackData(movesets, misericorde, "Riposte", false, 0.5),
+    });
+    expect(Math.floor(misericordeRiposte.finalValue)).toBe(2261);
   });
 
   it("multiplies damage by the Scadutree Blessing's rate", () => {
