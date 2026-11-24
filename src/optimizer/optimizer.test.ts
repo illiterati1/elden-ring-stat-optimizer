@@ -6932,6 +6932,48 @@ describe("Ashes of War", () => {
     expect(frames(step.roll!)).toBe(186);
   });
 
+  it("matches Lifesteal Fist in game", () => {
+    // Its confirmed grab's 3 + 2 hits, whose scaling is fitted (build_ash_data.py
+    // ELEMENT_CORRECT_FITS). er-logger 2026-11-23 on the Iron Ball, training dummy (NG 123.2, NG+1
+    // 144.4), each hit's damage (as calculated within 1, the +0 one's last two 21), and each hit
+    // 68-70, 121-122, 184-186, 262-264, and 265-266 frames after L2
+    const ironBall = getWeapon("Iron Ball");
+    const [{ ash }] = getAshAttacks(ashes, movesets, ironBall, "Lifesteal Fist", true);
+    if (!ash || !("attack" in ash)) throw new Error();
+    const hits = (
+      upgrade: number,
+      defense: number,
+      attributes: Partial<Attributes> = {},
+      twoHanding = true,
+    ) =>
+      optimizeBuild({
+        weapon: ironBall,
+        regularUpgradeLevel: upgrade,
+        twoHanding,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99, ...attributes },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: ash.attack,
+      }).attackSteps![0].map((hit) => Math.floor(hit.damage));
+    expect(hits(25, 123.2)).toEqual([281, 281, 281, 341, 341]);
+    expect(hits(25, 123.2, { arc: 10 })).toEqual([167, 167, 167, 227, 227]);
+    expect(hits(25, 123.2, { str: 15, dex: 10 })).toEqual([256, 256, 256, 302, 302]);
+    expect(hits(25, 123.2, { str: 15, dex: 99 })).toEqual([270, 270, 270, 322, 322]);
+    expect(hits(25, 144.4)).toEqual([265, 265, 265, 323, 323]);
+    expect(hits(25, 144.4, {}, false)).toEqual([265, 265, 265, 323, 323]);
+    expect(hits(0, 144.4, {}, false)).toEqual([14, 14, 14, 20, 20]);
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const step = ash.attack.stepTimes![0];
+    expect(step.hitTimes!.map((time) => frames(time!))).toEqual([69, 121, 185, 263, 265]);
+  });
+
   it("matches Lightspeed Slash in game", () => {
     // The Greatsword of Radahn (Light)'s skill, its swing without its fixed 20 holy (the game doesn't
     // add fixed flat attack to weapon hits). Tested in game at +10 with 99 in every stat on the

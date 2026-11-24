@@ -264,16 +264,31 @@ MERGED_TICKS = {"War Cry": {"Charged R2 #1": 3, "Charged R2 #2": 2}}
 # stat: the tush 1584 close, the shockwave 1132 further away), so only the close hit counts, and so
 # does the Staff of the Avatar's and Rotten Staff's Erdtree Slam (tested in game on a Rotten Staff +10
 # with 99 in every stat: the tush 1441 with 36 stance, or the shockwave 1169; its "?" row doesn't hit).
-# Lifesteal Fist's grab doesn't do damage itself once it lands, only the confirmed grab's hits: 5,
-# like in game (Iron Ball +25 with 99 in every stat: 281, 281, 281, then 682 for the last two, 1525
-# in total). Their damage doesn't match the sheet's rows yet: 281 is the grab row's motion value
-# (73) with physical alone, and 341 matches no row.
+# Lifesteal Fist's grab doesn't do damage itself once it lands (only 5 stance), only the confirmed
+# grab's hits: 5, like in game (er-logger, 2026-11-23). Their damage is ELEMENT_CORRECT_FITS's.
 MAIN_HIT_KINDS = {
     "Beast's Roar": {"Shockwave"},
     "Erdtree Slam": {"Tush"},
     "Golden Slam": {"Tush"},
     "Ground Slam": {"Tush"},
     "Lifesteal Fist": {"Confirmed Grab"},
+}
+
+# Stat scaling and motion value multipliers (by damage type) fitted in game for hits that overwrite
+# their scaling with an AttackElementCorrectParam row the calculator doesn't model. 52000 is only
+# Lifesteal Fist's (its grab and confirmed grab's hits). Its physical scales with Strength and
+# Dexterity equally, not like the weapon, and without two handing's bonus; its magic (the flat 42) is
+# as the row says, Arcane at 50. Tested in game with er-logger (2026-11-23) on the Iron Ball, training
+# dummy, each hit 3 × 62 and 2 × 91 motion value: +25 in NG, 99 in every stat 281/341, Arcane 10
+# 167/227, Str 15 Dex 10 256/303, Str 15 Dex 99 270/323; NG+1 265/323 (also one handed, with a
+# Miséricorde in the left hand); +0 NG+1 14/21. Physical attack power at 100 motion value works out as
+# the weapon's base × 0.6845 × (1 + 0.11 × upgrade growth × (Str's + Dex's CalcCorrectGraph)) at
+# every +25 point within 0.1 (the +0 one within rounding, better than without the growth). The row's
+# Influence*CorrectRate (70 on physical Str and Dex) presumably has to do with it, but how isn't known.
+# Golden Crux's NPC grab, another confirmed throw hit, uses the weapon's own scaling and matches the
+# game (1802 calculated, 1810 on Gideon Ofnir), so this isn't throws in general.
+ELEMENT_CORRECT_FITS = {
+    "52000": {"correct": {"0": {"str": 0.11, "dex": 0.11}}, "motionValueRates": [0.6845, 1, 1, 1, 1]},
 }
 
 # Skills whose sheet rows are alternative versions of one hit rather than several hits, with how many
@@ -1463,6 +1478,10 @@ def parse_hit(row, tick_bullets, hp_damage, attack_categories, hit_status):
         # +25 with 99 in every stat, 45 damage, its 30 flat physical times 4 for the upgrade level)
         if correct is not None:
             details["correct"] = correct
+        fit = ELEMENT_CORRECT_FITS.get(row["overwriteAttackElementCorrectId"])
+        if fit:
+            details["correct"] = {**details.get("correct", {}), **fit["correct"]}
+            details["motionValueRates"] = fit["motionValueRates"]
     if row["isDisableBothHandsAtkBonus"] == "TRUE":
         details["noTwoHandBonus"] = True
     if row["AtkId"] in UNCOUNTED_ROWS:
@@ -1737,6 +1756,10 @@ UNTIMED_SKILLS = set()
 BUFFED_R2_ANIMATIONS = (30600, 32600)
 BUFFED_R2_ANIMATION_COUNT = 100
 BUFFED_R2_BLOCK = 20
+# Skills timed by their throws' critical hit events, whose throw animation starts when the grab lands
+# (ANIMATION_SEQUENCES). Golden Crux's NPC grab (a923 40090, its hit 1.733 s in) isn't, until when its
+# grab lands is measured
+THROW_SKILLS = {"Lifesteal Fist"}
 # Skills whose main attack is several animations in a row, each from when it starts after the
 # first's start (measured in game): Prelate's Charge pressed once does its start (40000) and then its
 # finish (40004), without its charging loop (40003, while held): its initial attack 75 frames after
@@ -1744,6 +1767,9 @@ BUFFED_R2_BLOCK = 20
 # the start (with the step's 2 frames' delay). Held, the finish starts 3 frames after the release
 ANIMATION_SEQUENCES = {
     "Prelate's Charge": [(40000, 0), (40004, 109 / 60)],
+    # Lifesteal Fist: the grab (40000), then once it lands the confirmed grab (40090), 67 frames in
+    # (er-logger, 2026-11-23, 6 grabs: 66 or 67, its first hit 68 to 70 frames after the press)
+    "Lifesteal Fist": [(40000, 0), (40090, 67 / 60)],
     # The One-Eyed Shield's Flame Spit: raising the shield (40000), then spitting (40004) 112 frames
     # in (measured in game: tapped, its hit 122 frames after the press, the next 278 after it, the
     # spit's L2 cancel 164 frames in)
@@ -2241,7 +2267,14 @@ def get_skill_timing(
         signatures = []
         starts = []
         own_hits = []
-        for start, _, judge, *_ in animations.get_windows(number, anim_id) or []:
+        # A throw's hits are critical hit events, not attack windows (e.g. Lifesteal Fist's confirmed
+        # grab, 40090: tested in game with er-logger, its 5 hits at its frames 0, 52, 116, 194, 196)
+        windows = (animations.get_windows(number, anim_id) or []) + [
+            (start, start, judge)
+            for start, judge in animations.get_critical_hits(number, anim_id)
+            if name in THROW_SKILLS
+        ]
+        for start, _, judge, *_ in windows:
             # The weapon's (or its class's) own rows, or else the skill's general ones
             atks = get_window_hits(behaviors, bullets, steps.game.attacks, variation, judge)
             for atk, bullet in atks:
@@ -2256,7 +2289,7 @@ def get_skill_timing(
         # do stance damage by (e.g. Moore's Charge)
         stance_hits[anim_id] = sorted(
             (start, round(float(atk["atkSuperArmorCorrection"])), bullet)
-            for start, _, judge, *_ in animations.get_windows(number, anim_id) or []
+            for start, _, judge, *_ in windows
             for atk, bullet in get_window_hits(
                 behaviors, bullets, steps.game.attacks, variation, judge, stance_only=True
             )

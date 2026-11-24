@@ -40,6 +40,11 @@ type AshHit = [
     /** True for flat attack not added to the weapon's base attack, assumed not to scale */
     fixed?: boolean;
     correct?: Weapon["attackElementCorrect"];
+    /**
+     * Multipliers to the motion value by damage type (AttackPowerType), fitted in game where the
+     * hit's scaling isn't modeled (build_ash_data.py ELEMENT_CORRECT_FITS, e.g. Lifesteal Fist's)
+     */
+    motionValueRates?: number[];
     noTwoHandBonus?: boolean;
     kind?: string;
     tick?: boolean;
@@ -1012,10 +1017,16 @@ function getSkillAttack(
   const physicalType = (type: number): PhysicalType =>
     allPhysicalTypes[type >= 4 ? info.types[type - 4] : type] ?? "standard";
   const toHit = ([motionValue, statusMotionValue, stanceMotionValue, type, details]: AshHit) => {
+    const rates = details?.motionValueRates;
+    const motionValues = rates
+      ? rates.map((rate, damageType) =>
+          (Array.isArray(motionValue) ? motionValue[damageType] : motionValue) * rate,
+        )
+      : motionValue;
     const hit: AttackDataHit = {
-      ...(Array.isArray(motionValue)
-        ? { motionValue: Math.max(...motionValue), motionValues: motionValue }
-        : { motionValue }),
+      ...(Array.isArray(motionValues)
+        ? { motionValue: Math.max(...motionValues), motionValues }
+        : { motionValue: motionValues }),
       statusMotionValue,
       stanceMotionValue,
       physicalType: physicalType(type),

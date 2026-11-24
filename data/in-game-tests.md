@@ -30,7 +30,7 @@ At +10 with 99 in every stat, on the training dummy (123.2 defense, no negation)
 |---|---|---|---|
 | 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | 2652 in all (NG). er-logger 2026-11-22 (NG+1 dummy, 144.4): swings 744 and 744, both explosions 1058 together (2 × 529), stance 14.4, 14.4, 14 | NG: each swing 786, each explosion 550 (2672). NG+1: swings 754, explosions 529. The explosions match; each swing is 10 low. Without the buff (er-logger 2026-11-22, NG+1) both swings do 656 (one HP drop of 1312, stance 28.8), as calculated, so it's the buff: +88 per swing in game, +98 calculated (the R2's +104 at NG matches). Both swings are MV 105, sweet spot 1.125 |
 | 71 | The Queen's Black Flame's black flame ticks, NG+1 training dummy (416171 HP) | er-logger 2026-11-23: 21 ticks of 520 after each of #1 and #2 (0.125% of its HP, no +1) | 21 ticks of 417 (SpEffect 855: 0.1% + 1, which matched at NG: 75 of 74212). Not NG+ in general: on a Scadu Altus Omenkiller in NG+3 (7813 HP) it was 0.1% + 1 (commit 09bfee8). So likely the dummy's NG+1 scaling in the Boss Arena mod, e.g. the HP it's a percentage of isn't its NG+1 HP |
-| 74 | Lifesteal Fist (grabs are throws): Iron Ball, training dummy. Timing from the grab animation's critical-hit events (a655 40090: judges 3026 ×3, 3027 ×2 at anim frames 0, 52, 116, 194, 196), not attack windows | er-logger 2026-11-23, 6 logs. Grab connects ~67 after the press (stance 5, no damage), confirmed animation at 69, hits at 70, 121, 186, 263, 265 from the press, animation ends 357; 14 FP. +25, NG: 99 all 281/341; Str/Dex 99 Arc 10 167/227; Str 15 Dex 10 Arc 99 256/303; Str 15 Dex 99 Arc 99 270/323 (old untimed 15/10/10: 142/189). +25, NG+1: 99 all 265/323, same one handed with a Miséricorde in the left hand. +0, NG+1, 99 all: 14/21 | 434 ×3, 567 ×2 (NG+1, 99 all). Fits every log: each type through defense separately; magic = 42 × upgrade rate (1-4) × (1 + 0.5 × scaling growth × g(Arc)), with NO motion value; physical = MV 62/91 × the weapon's base physical × (0.6846 + 0.1128 × (g(Str) + g(Dex))), Str and Dex equal, no two handed bonus (g = the weapon's physical CalcCorrectGraph). Constants are fitted; Clinging Bone's old 1729 total fits too (1738) |
+| 75 | Lifesteal Fist on the Clinging Bone (its fixed skill) +10, 99 in every stat, training dummy. Its fitted scaling (build_ash_data.py ELEMENT_CORRECT_FITS) is from the Iron Ball, whose scaling grows ×1.5 to +25; the Clinging Bone's grows ×1.8 to +10, and it has its own magic | 1729 in all, 30 stance (2026-11-02, before er-logger: NG presumably) | 329 ×3, 409 ×2 (1805) in NG. If the fitted Str/Dex rate didn't grow with upgrades: about 1738, but then the Iron Ball +0 would be 15/23 (14/21 in game, 14/20 calculated) |
 
 ## Roll-outs
 
@@ -54,6 +54,8 @@ Nothing to compare yet; measure from the press, as above.
   enemy (stealth) Godslayer's Greatsword's backstab's first hit did 446 rather than 346: ×1.2 before
   defenses (MV 52 as 62.4), the second hit unchanged (1525). The calculator has no unaware option
 - Shields' mounted R2
+- Golden Crux's NPC grab (Greatsword of Damnation): when the grab lands after L2 (its throw animation
+  a923 40090's hit is 1.733 s in)
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
 - Spinning Chain's loop length
