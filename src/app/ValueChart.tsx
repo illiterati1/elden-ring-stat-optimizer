@@ -41,6 +41,10 @@ const height = 280;
 const margin = { top: 12, right: 16, bottom: 32, left: 48 };
 /** Room on the right for direct labels when there are few enough series */
 const labelWidth = 150;
+/** Narrowest plot area that still leaves room for direct labels; narrower, the legend alone names the lines */
+const minPlotWidthWithLabels = 400;
+/** Below this width (phones), the tooltip spans the top of the chart, above the finger, rather than following it */
+const narrowWidth = 600;
 
 function niceTicks(min: number, max: number, count: number) {
   const span = max - min || 1;
@@ -60,6 +64,18 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
   countRender("ValueChart");
   const [width, setWidth] = useState(600);
   const [hoverLevel, setHoverLevel] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // A touch leaves the tooltip up after the finger lifts, so it's hidden by touching anywhere else
+  const showingTooltip = hoverLevel != null;
+  useEffect(() => {
+    if (!showingTooltip) return;
+    const hide = (evt: PointerEvent) => {
+      if (!svgRef.current?.contains(evt.target as Node)) setHoverLevel(null);
+    };
+    document.addEventListener("pointerdown", hide);
+    return () => document.removeEventListener("pointerdown", hide);
+  }, [showingTooltip]);
 
   // The chart isn't rendered until there are results, so the container is measured whenever it
   // appears rather than once on mount. React calls this with null when it goes away, which
@@ -101,7 +117,9 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
     return null;
   }
 
-  const directLabels = series.length <= 4;
+  const narrow = width < narrowWidth;
+  const directLabels =
+    series.length <= 4 && width - margin.left - margin.right - labelWidth >= minPlotWidthWithLabels;
   const plotRight = width - margin.right - (directLabels ? labelWidth : 0);
   const plotBottom = height - margin.bottom;
 
@@ -163,7 +181,7 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
     labels[i].y = Math.max(labels[i].y, labels[i - 1].y + 14);
   }
 
-  const handlePointerMove = (evt: React.PointerEvent<SVGRectElement>) => {
+  const handlePointer = (evt: React.PointerEvent<SVGRectElement>) => {
     const bounds = evt.currentTarget.getBoundingClientRect();
     const fraction = (evt.clientX - bounds.left) / bounds.width;
     setHoverLevel(Math.round(minLevel + fraction * (maxLevel - minLevel)));
@@ -209,7 +227,7 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
             Clear all
           </Button>
         </Box>
-        <Box display="flex" alignItems="center" gap={1}>
+        <Box display="flex" flexWrap="wrap" alignItems="center" gap={1}>
           {(
             [
               ["min", "From level", minLevel],
@@ -240,7 +258,13 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
         </Box>
       </Box>
 
-      <svg width={width} height={height} role="img" aria-label={`${valueLabel} by level`}>
+      <svg
+        ref={svgRef}
+        width={width}
+        height={height}
+        role="img"
+        aria-label={`${valueLabel} by level`}
+      >
         {niceTicks(yMin, yMax, 5).map((tick) => (
           <g key={`y${tick}`}>
             <line x1={margin.left} x2={plotRight} y1={y(tick)} y2={y(tick)} stroke={gridColor} />
@@ -336,8 +360,12 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
           width={Math.max(0, plotRight - margin.left)}
           height={plotBottom - margin.top}
           fill="transparent"
-          onPointerMove={handlePointerMove}
-          onPointerLeave={() => setHoverLevel(null)}
+          // Horizontal drags move the crosshair rather than being taken by the browser; vertical
+          // ones still scroll the page
+          style={{ touchAction: "pan-y" }}
+          onPointerDown={handlePointer}
+          onPointerMove={handlePointer}
+          onPointerLeave={(evt) => evt.pointerType === "mouse" && setHoverLevel(null)}
         />
       </svg>
 
@@ -345,8 +373,9 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
         <Box
           sx={{
             position: "absolute",
-            top: 40,
-            left: Math.min(x(hoverLevel) + 24, width - 240),
+            ...(narrow
+              ? { top: 8, left: 8, right: 8 }
+              : { top: 40, left: Math.min(x(hoverLevel) + 24, width - 240) }),
             bgcolor: colors.surfaceRaised,
             border: 1,
             borderColor: gridColor,
@@ -354,15 +383,17 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
             px: 1,
             py: 0.5,
             pointerEvents: "none",
+            // Above the level fields' floating labels
+            zIndex: 2,
             minWidth: 180,
           }}
         >
           {/* Each weapon's value and the stats that achieve it, in columns */}
           <Box
             display="grid"
-            gridTemplateColumns={`auto 1fr auto repeat(${allAttributes.length}, auto)`}
+            gridTemplateColumns={`auto minmax(0, 1fr) auto repeat(${allAttributes.length}, auto)`}
             alignItems="center"
-            columnGap={1}
+            columnGap={narrow ? 0.75 : 1}
           >
             <Typography variant="caption" sx={{ color: textSecondary, gridColumn: "1 / 4" }}>
               Level {hoverLevel}
@@ -387,7 +418,7 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
                   bgcolor: seriesColors[slots.get(result.weaponName)!],
                 }}
               />,
-              <Typography key={`${result.weaponName}-name`} variant="caption">
+              <Typography key={`${result.weaponName}-name`} variant="caption" noWrap={narrow}>
                 {result.weaponName}
               </Typography>,
               <Typography key={`${result.weaponName}-value`} variant="caption" align="right">
