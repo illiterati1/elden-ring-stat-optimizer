@@ -1,7 +1,5 @@
 # Known issues
 
-- **Powerstanced Serpent Flails with Flare, O Serpent:** the jumping L1's damage is slightly higher
-  than in game.
 - **Powerstancing with Flare, O Serpent:** the left-hand weapon's explosions are counted for any
   powerstanced weapon, not only a second Serpent Flail.
 - **Attacks that need extra movement:** time-scaled numbers are questionable for any attack that

@@ -10075,6 +10075,11 @@ describe("Ashes of War", () => {
     expect(changed("Powerstance Jumping L1").stepTimes![0].hitTimes!.map(frames)).toEqual([
       110, 110, 116, 116,
     ]);
+    // Its swings get 90% of the buff's fire (AtkParam spEffectAtkPowerCorrectRate_byPoint, as most
+    // powerstance hits): tested in game, 2652 in all, two swings of 776 and two explosions of 550
+    expect(
+      firstHit(changed("Powerstance Jumping L1"), all99).map((hit) => Math.floor(hit.damage)),
+    ).toEqual([776, 776, 550, 550]);
     // Cut short like the flail's own chains
     const cutL1 = getAshAttack(
       ashes,

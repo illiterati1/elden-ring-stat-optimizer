@@ -1366,7 +1366,7 @@ CONDITIONAL_HP_DAMAGE = {
 # ticks of 75, tested in game: 3062 in all), and Maliketh's Black Blade's Destined Death 6850 (the
 # same with 6865's lowered max HP). Attack rows' effects count too: the Godslayer's Greatsword's The
 # Queen's Black Flame swings apply 855, the same as 835 (tested in game: 1575 of black flame after
-# each), and Maliketh's Black Blade's Destined Death swings 860. Each hit's effect counts in full.
+# each; on the Boss Arena mod's NG+1 dummy, 519488 max HP, 21 ticks of 520 after each), and Maliketh's Black Blade's Destined Death swings 860. Each hit's effect counts in full.
 HP_DAMAGE_EFFECTS = {835: "Black flame", 855: "Black flame", 860: "Destined Death", 6845: "Destined Death", 6850: "Destined Death"}
 
 # Max HP multipliers for hits' percentage of max HP damage from other hits' effects, by AtkId:

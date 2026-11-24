@@ -307,8 +307,10 @@ to check in game:
   damage multipliers (attack rates and vs-enemy damage rates) apply after defenses and multiply
   each other (the user's call); attack power rates (e.g. Blue Dancer Charm) before defenses; weapon
   buff flat attack (greases, Electrify Armament) is unscaled, added before defenses, only to hits
-  with a weapon motion value, and only on buffable weapons; buffs apply fully to every hit (the
-  per-attack AtkParam spEffectAtkPowerCorrectRate_* values aren't used); condition-only buffs (e.g.
+  with a weapon motion value, and only on buffable weapons; buffs apply fully to every hit, except
+  that a hit gets its AtkParam spEffectAtkPowerCorrectRate_byPoint percent of weapon buffs' flat
+  attack (e.g. 90 for most powerstance hits; tested: two Serpent Flails' powerstance jumping L1
+  with Flare, O Serpent, 776 a swing; the _byRate and _byDmg values aren't used); condition-only buffs (e.g.
   Red-Feathered Branchsword below 20% HP, the Exultations) are assumed active. Hits not matched to
   game rows get subcategories by the usual pattern (CATEGORY_FALLBACKS in build_moveset_data.py).
 

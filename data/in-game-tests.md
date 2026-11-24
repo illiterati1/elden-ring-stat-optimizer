@@ -15,10 +15,7 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 ## Discrepancies to look into
 
-| # | Test | In game | Calculated |
-|---|---|---|---|
-| 25 | Powerstance jumping L1 with Flare, O Serpent's buff: two Serpent Flails +10, 99 in every stat, training dummy | NG: 2652 in all. er-logger 2026-11-22, NG+1 (144.4): swings 744 each, explosions 529 each | NG: swings 786, explosions 550 (2672). NG+1: swings 754, explosions 529. The explosions match; each calculated swing is 10 too high. Without the buff both swings do 656 in game, as calculated, so it's the buff: +88 per swing in game, +98 calculated (the R2's +104 at NG matches). Both swings are MV 105, sweet spot 1.125 |
-| 71 | The Queen's Black Flame's ticks, NG+1 training dummy (416171 HP) | er-logger 2026-11-23: 21 ticks of 520 after each of #1 and #2 (0.125% of its HP, no +1) | 21 ticks of 417 (SpEffect 855: 0.1% + 1, which matched at NG: 75 of 74212, and on a Scadu Altus Omenkiller in NG+3, commit 09bfee8). Likely the Boss Arena mod's NG+1 dummy, e.g. the HP it's a percentage of isn't its NG+1 HP |
+None open.
 
 ## Not timed
 

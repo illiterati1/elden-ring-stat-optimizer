@@ -507,7 +507,7 @@ def main():
     game_attacks = GameAttacks(project_dir)
     unique_hits = read_unique_hits(project_dir)
     # Attack timings from the animations, if they've been unpacked (see check_animations.py)
-    from check_animations import TAE_DIR, Steps, get_left_hand_hits, get_left_hand_rows, get_timings  # noqa: E402
+    from check_animations import TAE_DIR, Steps, get_left_hand_rows, get_shared_hits, get_timings  # noqa: E402
 
     timings = Steps(game_dir, project_dir) if os.path.isdir(os.path.join(game_dir, TAE_DIR)) else None
     split_count = 0
@@ -662,14 +662,22 @@ def main():
                     hand_timing = timing.get(hands, {})
                     if rolling in hand_timing and crouching not in hand_timing:
                         del entry[hands][crouching]
-            # Powerstance hits with the left hand's weapon, for an off hand weapon of another kind
-            for attack, marks in get_left_hand_hits(timings, weapons[weapon], entry).items():
-                for step, step_marks in zip(entry["1h"][attack], marks):
-                    for i, judge in enumerate(step_marks or []):
-                        if judge:
+            # Powerstance and mounted hits matched to the animations' rows: how much of a weapon
+            # buff's flat attack each gets, and powerstance hits with the left hand's weapon, for an
+            # off hand weapon of another kind
+            for hands, attacks in get_shared_hits(timings, weapons[weapon], entry).items():
+                for attack, marks in attacks.items():
+                    for step, step_marks in zip(entry[hands][attack], marks):
+                        for i, mark in enumerate(step_marks or []):
                             hit = step[i]
-                            details = {**(hit[4] if len(hit) > 4 else {}), "leftHand": True, "judge": judge}
-                            step[i] = [*hit[:4], details]
+                            details = dict(hit[4]) if len(hit) > 4 else {}
+                            buff_motion_value = number(mark["buffMotionValue"])
+                            if buff_motion_value != 100:
+                                details["buffMotionValue"] = buff_motion_value
+                            if mark["judge"]:
+                                details.update(leftHand=True, judge=mark["judge"])
+                            if details:
+                                step[i] = [*hit[:4], details]
         output[weapon] = entry
 
     # Each weapon's own rows for the left hand's powerstance hits, for when it's in the left hand

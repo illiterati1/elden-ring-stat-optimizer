@@ -1025,32 +1025,47 @@ def match_hits(step, merged):
     return matched
 
 
-def get_left_hand_hits(steps, param, moveset):
+def get_shared_hits(steps, param, moveset):
     """
     @param steps a Steps
     @param moveset a weapon's build_moveset_data.py output
-    @returns for each powerstance attack's step, which of its hits are the left hand's weapon's
-    (AttackBehavior Source), matched to the moveset's hits by motion value, by attack: e.g. the
-    Longsword's powerstance L1 1's second hit. Each is its behavior judge ID for the left hand's
-    hits, or False. Steps that can't be matched are None.
+    @returns for each powerstance and mounted attack's step (the sheet's shared columns, which
+    aren't matched to game rows otherwise), its hits matched to the moveset's by motion value, by
+    hands and attack ({ "1h": { attack: [step hits or None] } }). Each hit is { "judge": behavior
+    judge ID or False, for the left hand's weapon's hits (AttackBehavior Source; e.g. the Longsword's
+    powerstance L1 1's second hit; never for hand-to-hand arts), "buffMotionValue": its AtkParam
+    spEffectAtkPowerCorrectRate_byPoint, as text }, e.g. 90 for most powerstance hits (tested: two Serpent
+    Flails' powerstance jumping L1 with Flare, O Serpent). Steps that can't be matched are None.
     """
-    if param["wepType"] == HAND_TO_HAND_ARTS_TYPE:
-        return {}
+    hand_to_hand = param["wepType"] == HAND_TO_HAND_ARTS_TYPE
     result = {}
-    for attack, attack_steps in moveset.get("1h", {}).items():
-        if not attack.startswith("Powerstance"):
-            continue
-        marks = []
-        for index, step in enumerate(attack_steps):
-            anim_id = get_attack_animation(steps, param, attack, "1h", index)
-            file_number, _, merged, _, _, _, _ = (
-                steps.get_step(param, "1h", anim_id, both_weapons=True) if anim_id else (None,) * 7
-            )
-            matched = match_hits(step, merged) if file_number is not None else None
-            marks.append(
-                [match["judge"] if match["leftHand"] else False for match in matched] if matched else None
-            )
-        result[attack] = marks
+    for hands in ["1h", "2h"]:
+        for attack, attack_steps in moveset.get(hands, {}).items():
+            powerstance = attack.startswith("Powerstance")
+            if not powerstance and not attack.startswith("Mounted"):
+                continue
+            both_weapons = powerstance and not hand_to_hand
+            marks = []
+            for index, step in enumerate(attack_steps):
+                anim_id = get_attack_animation(steps, param, attack, hands, index)
+                file_number, _, merged, _, _, _, _ = (
+                    steps.get_step(param, hands, anim_id, both_weapons=both_weapons) if anim_id else (None,) * 7
+                )
+                matched = match_hits(step, merged) if file_number is not None else None
+                marks.append(
+                    [
+                        {
+                            "judge": match["judge"] if match["leftHand"] and both_weapons else False,
+                            "buffMotionValue": steps.game.attacks[match["atk"]][
+                                "spEffectAtkPowerCorrectRate_byPoint"
+                            ],
+                        }
+                        for match in matched
+                    ]
+                    if matched
+                    else None
+                )
+            result.setdefault(hands, {})[attack] = marks
     return result
 
 
