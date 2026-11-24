@@ -10,9 +10,7 @@ buildup, plus the player's equipped weapons, their Ashes of War and arm style (`
 `lweapon`, `rweapon`, `lash`, `rash`: logged at the start and on each change; an Ash is its
 EquipParamGem ID, 0 for the weapon's own skill).
 
-It was written to check the
-[Elden Ring stat optimizer](https://github.com/illiterati1/elden-ring-stat-optimizer)'s
-attack timings and damage against the game.
+It was written to check this calculator's attack timings and damage against the game.
 
 ## Requirements
 
@@ -22,9 +20,9 @@ attack timings and damage against the game.
   risks a ban.
 - The game version the offsets were found on (2026). Globals are found by AOB scan, but structure
   offsets may change with game updates.
-- For `summarize.mjs` and `tae_windows.py`: WSL with Node 18+ and Python 3, and a checkout of the
-  stat optimizer next to this one (`../stat-calculator`), whose TAE reader and param data they use.
-  `tae_windows.py` expects the game at the default Steam install path.
+- For `summarize.mjs` and `tae_windows.py`: WSL with Node 18+ and Python 3. They use the
+  calculator's TAE reader and param data from this repo; `tae_windows.py` expects the game at the
+  default Steam install path.
 
 ## Use
 
@@ -36,14 +34,14 @@ rise ("recovering"), and "full".
 
 The summary prints one line per player animation: the press, the animation start, the stamina drop
 and each hit (damage, stance, buildup), checked against the animation's TAE hit windows
-(`tae_windows.py`, which uses the stat optimizer's `scripts/check_animations.py`). Stamina should
+(`tae_windows.py`, which uses the calculator's `scripts/check_animations.py`). Stamina should
 drop on the frame the first window whose behavior costs stamina opens, by that much (from the
 weapon in use: the right hand's, or the left's when two-handing it; logs without the weapon match
-any window's start); mismatches are marked ✗. Equipment changes are named from the optimizer's
+any window's start); mismatches are marked ✗. Equipment changes are named from the calculator's
 `public/saveItems.json`.
 
 Equipment lines give each weapon's and Ash's logged ID in brackets. To compare with the
-optimizer, run its `scripts/predict.ts` with that ID (from `../stat-calculator`):
+calculator, run `scripts/predict.ts` with that ID (from the repo root):
 `npx vite-node scripts/predict.ts -- 67520010 --2h [--attack <text>] [--anim <ids>] [--enemy <NpcParam ID>]`
 prints each attack's stamina, cancels, and hits (damage, stance, buildup, frames from the press
 and from the animation's start), assuming 99 in every stat (`--stat`), NG+1 (`--ng 0` for NG) and no
@@ -76,4 +74,4 @@ one by putting it in place of `Logger.cs` in the command above (it still needs `
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Not affiliated with FromSoftware or Bandai Namco.
+MIT, under the repo's [LICENSE](../../LICENSE). Not affiliated with FromSoftware or Bandai Namco.

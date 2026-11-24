@@ -14,7 +14,7 @@ Details and pitfalls are in memory `er-logger`.
 Run in the background (`run_in_background: true`), so the session stays free:
 
 ```
-~/elden_ring/er-logger/er-logger.exe --for 600
+~/elden_ring/stat-calculator/tools/er-logger/er-logger.exe --for 600
 ```
 
 `--for 600` stops it after 10 minutes. Use a longer time if the user asks for one. `timeout`
@@ -45,7 +45,7 @@ running.
 Stop it and summarize the newest log in one call:
 
 ```
-powershell.exe -NoProfile -Command 'Get-Process er-logger | Stop-Process'; node ~/elden_ring/er-logger/summarize.mjs
+powershell.exe -NoProfile -Command 'Get-Process er-logger | Stop-Process'; node ~/elden_ring/stat-calculator/tools/er-logger/summarize.mjs
 ```
 
 Stopping it makes the background task end with exit code 255. That's expected, not a failure, so

@@ -61,7 +61,7 @@ const badAttacks = new Set();
 // Equipment changes (and the starting equipment), by name from the stat calculator's saveItems.json,
 // printed before the next animation's line
 let names = { weapons: {}, ashes: {} };
-try { names = JSON.parse(fs.readFileSync(new URL('../stat-calculator/public/saveItems.json', import.meta.url), 'utf8')); } catch {}
+try { names = JSON.parse(fs.readFileSync(new URL('../../public/saveItems.json', import.meta.url), 'utf8')); } catch { /* no saveItems.json: equipment shows IDs only */ }
 const AFFINITIES = ['', 'Heavy', 'Keen', 'Quality', 'Fire', 'Flame Art', 'Lightning', 'Sacred', 'Magic', 'Cold', 'Poison', 'Blood', 'Occult'];
 const weaponName = id => {
   const n = +id, base = Math.floor(n / 10000) * 10000, affinity = Math.floor(n % 10000 / 100), level = n % 100;

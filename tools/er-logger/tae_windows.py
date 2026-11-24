@@ -18,7 +18,7 @@ import math
 import os
 import sys
 
-CALCULATOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "stat-calculator", "scripts")
+CALCULATOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "scripts")
 GAME = "/mnt/c/Program Files (x86)/Steam/steamapps/common/ELDEN RING/Game"
 sys.path.insert(0, CALCULATOR)
 from check_animations import Animations  # noqa: E402
