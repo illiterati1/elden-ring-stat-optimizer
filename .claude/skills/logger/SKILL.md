@@ -58,6 +58,8 @@ Say what was tested: the weapon, skill and grip from the summary's equipment lin
 attack, the press → animation start, the stamina drop vs the game's animation data (✓/✗), and the
 hits, with damage, stance and buildup. Use frames from each animation's start. Explain the summary's
 ✗s where the log shows why, e.g. ticks from an earlier cast that land during the next attack.
+"No stamina drop" on a log's first actions means the game didn't count the player as in combat yet,
+not a cost of 0: call it untested, not ✗, and never add it as a discrepancy.
 
 Then compare with the calculator, unless the user only asked for the log: follow the
 `in-game-test` skill, but get the calculator's numbers from `scripts/predict.ts`, not by editing
