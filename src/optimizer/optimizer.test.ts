@@ -19,6 +19,7 @@ import { applyLimits, type Limits } from "./limits.ts";
 import { getCumulativeLevelUpCosts, getLevelUpCost } from "./runes.ts";
 import { getCharacterLevel, startingClasses } from "./startingClasses.ts";
 import { getAmmoLabel, withAmmo, type AmmoGroup } from "../app/useAmmo.ts";
+import { getAmmoOffhandEffects } from "../app/weaponRequests.ts";
 import {
   attackTimingNotes,
   canTwoHand,
@@ -829,9 +830,9 @@ describe("bows", () => {
     const [jumpHit, landingHit] = pair.stepTimes![0].hits;
     expect(Math.round(jumpHit * 60)).toBe(33);
     expect(Math.round((landingHit - jumpHit) * 60 * 2) / 2).toBe(56.5);
-    // A Greatbow's hits 155 frames after the press, then every 220
+    // A Greatbow's hits 127 frames after the press, then every 220
     const great = getAttackData(movesets, getWeapon("Greatbow"), "Standard Shot", true, 0.5)!;
-    expect(Math.round(great.stepTimes![0].hits[0] * 60)).toBe(155);
+    expect(Math.round(great.stepTimes![0].hits[0] * 60)).toBe(127);
     expect(Math.round(great.cycleTimes![0] * 60)).toBe(220);
     // An unloaded Heavy Crossbow's hits 75 frames after the press, then every 110.5
     const crossbow = getAttackData(
@@ -1090,6 +1091,17 @@ describe("bows", () => {
       unrounded("Lion Greatbow", "Great Arrow") * 1.2,
       1,
     );
+    // A second Lion Greatbow in the other hand counts too: Radahn's Rain did 274 per spear on
+    // the NG+1 dummy (144.4), not 228
+    const lionSpear = withAmmo(
+      getWeapon("Lion Greatbow"),
+      ammo.find((group) => group.names.includes("Radahn's Spear"))!,
+    );
+    const offhandEffects = getAmmoOffhandEffects(lionSpear, "Lion Greatbow");
+    expect(
+      offhandEffects.map(({ damageRates }) => damageRates?.[AttackPowerType.PHYSICAL]),
+    ).toEqual([1.2]);
+    expect(getAmmoOffhandEffects(lionSpear, "Erdtree Greatbow")).toEqual([]);
     // Only for the Lion Greatbow
     expect(unrounded("Erdtree Greatbow", "Radahn's Spear", 0)).toBeCloseTo(
       unrounded("Erdtree Greatbow", "Great Arrow", 0),

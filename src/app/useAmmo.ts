@@ -85,7 +85,13 @@ export function getAmmoLabel({ names }: AmmoGroup) {
  */
 export function withAmmo(weapon: Weapon, group: AmmoGroup): Weapon {
   const bonus = group.weaponBonuses?.[weapon.weaponName];
+  const offhandMultipliers = Object.entries(group.weaponBonuses ?? {}).flatMap(
+    ([name, { damageMultipliers }]) => (damageMultipliers ? [[name, damageMultipliers]] : []),
+  );
   return {
+    ...(offhandMultipliers.length && {
+      ammoOffhandMultipliers: Object.fromEntries(offhandMultipliers),
+    }),
     ...(bonus?.damageMultipliers && { damageMultipliers: bonus.damageMultipliers }),
     ...(group.stance != null && { ammoStance: group.stance }),
     ammoNames: group.names,

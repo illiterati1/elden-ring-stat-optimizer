@@ -15,6 +15,10 @@
  *   --attack <text>    only attacks whose label has this in it (any case), e.g. "jumping r2", "moon"
  *   --anim <ids>       only the attacks these logged animations could be (comma separated): a skill's
  *                      (040000 on) are all its versions, the moveset's are their attack and step
+ *   --ammo <name>      for a bow or crossbow, the arrows or bolts fired (default none: the bow's own
+ *                      attack only)
+ *   --left <name>      the left hand weapon, for its passive's bonus to the ammunition (a second Lion
+ *                      Greatbow's for Radahn's Spears)
  *   --enemy <id>       the NpcParam ID hit: its defenses from enemies.json (the dummy's otherwise)
  *   --ng <n>           NG+ level: 0 or 1 (default 1, the dummy's defense 144.4; 123.2 in NG)
  *   --stat <n>         every stat (default 99)
@@ -42,6 +46,8 @@ import {
 import { getEnemyStats, type Enemy, type EnemyArea } from "../src/app/useEnemies.ts";
 import { getAshAttacks, getAshChoices, parseAshChoice, type Ashes } from "../src/app/useAshes.ts";
 import type { SaveItems } from "../src/app/saveImport.ts";
+import { withAmmo, type AmmoGroup } from "../src/app/useAmmo.ts";
+import { getAmmoOffhandEffects } from "../src/app/weaponRequests.ts";
 
 const root = new URL("../public/", import.meta.url);
 const read = (file: string) => JSON.parse(readFileSync(new URL(file, root), "utf8"));
@@ -49,6 +55,7 @@ const weapons = decodeRegulationData(read("regulation-vanilla-v1.17.js"));
 const movesets: Movesets = read("movesets.json");
 const ashes: Ashes = read("ashes.json");
 const items: SaveItems = read("saveItems.json");
+const ammo: AmmoGroup[] = read("ammo.json");
 
 const args = process.argv.slice(2).filter((arg) => arg !== "--");
 const flag = (name: string) => args.includes(name);
@@ -62,6 +69,8 @@ const valueOptions = [
   "--ash",
   "--attack",
   "--anim",
+  "--ammo",
+  "--left",
   "--enemy",
   "--ng",
   "--stat",
@@ -282,7 +291,7 @@ function predict(
       minPotentialPerRemainingLevel: null,
     },
     attack,
-    buffs: [],
+    buffs: getAmmoOffhandEffects(weapon, option("--left")),
   });
   const steps = (result.attackSteps ?? []).map((hits, i): Step => {
     const times: StepTimes | undefined = attack.stepTimes?.[i];
@@ -445,7 +454,16 @@ if (!found) {
   console.error(`No weapon ${positional[0]}`);
   process.exit(1);
 }
-const { weapon, level } = found;
+const ammoOption = option("--ammo")?.toLowerCase();
+const ammoGroup = ammoOption
+  ? ammo.find((group) => group.names.some((name) => name.toLowerCase() === ammoOption))
+  : undefined;
+if (ammoOption && !ammoGroup) {
+  console.error(`No ammunition ${option("--ammo")}`);
+  process.exit(1);
+}
+const weapon = ammoGroup ? withAmmo(found.weapon, ammoGroup) : found.weapon;
+const { level } = found;
 const enemyOption = option("--enemy");
 const target = getTarget(enemyOption == null ? undefined : Number(enemyOption));
 const predictions = getPredictions(weapon, level, target);

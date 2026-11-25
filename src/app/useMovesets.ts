@@ -655,8 +655,11 @@ interface BowShot {
  *   then every 99)
  * - light bows' (a51): 50 frames to the hit, then every 73 (its release cancelled 25 frames in; the
  *   TAE says 26), a roll at 42, a block at 46. Also the Harp Bow's (its a232 doesn't exist)
- * - greatbows' (a45): 155 frames to the hit, then every 220 (hits at 336, 558, 778, and 998 from a
- *   press at 181), a roll 78 frames into the release, a block 88
+ * - greatbows' (a45): 127 frames to the hit, then every 220, a roll 78 frames into the release, a
+ *   block 88. Logged 2026-11-24 with Radahn's Spears: the Greatbow's hits at 513, 737, and 958 from
+ *   a press at 386 (its release animation at 509, 734, 954), the Lion Greatbow's 126 frames after a
+ *   press, and 131 then every 225, 222, and 220 with R2 mashed. An earlier measurement (hits at 336,
+ *   558, 778, and 998 from a press at 181: 155 frames to the first) was wrong for the first shot
  * - crossbows' (a46: reloading, 39730, then the shot, 39700): unloaded, 75 frames to the hit, then
  *   every 110.5 (the Heavy Crossbow's hits at 1266, 1375, and 1487 from a press at 1191), a roll or
  *   block 40 frames into the shot. Also the Full Moon Crossbow's, whose own reload (a236) can be
@@ -692,10 +695,10 @@ const shortbowShot: BowShot = {
   block: (48 + 46) / 60,
 };
 const greatbowShot: BowShot = {
-  release: 153 / 60,
+  release: 125 / 60,
   cycle: 220 / 60,
-  roll: (153 + 78) / 60,
-  block: (153 + 88) / 60,
+  roll: (125 + 78) / 60,
+  block: (125 + 88) / 60,
 };
 const crossbowShot: BowShot = {
   release: 73 / 60,

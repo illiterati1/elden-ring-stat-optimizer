@@ -114,6 +114,13 @@ export interface Weapon {
   damageMultipliers?: Partial<Record<AttackPowerType, number>>;
 
   /**
+   * The ammunition's damage multipliers from a weapon held in the other hand, by its name: its
+   * passive applies to this ammunition too, on top of the firing weapon's own, e.g. a second Lion
+   * Greatbow's ×1.2 physical for Radahn's Spears (tested in game: 274 instead of 228)
+   */
+  ammoOffhandMultipliers?: Record<string, Partial<Record<AttackPowerType, number>>>;
+
+  /**
    * Damage multipliers against enemy types, e.g. the Golden Epitaph's ×1.3 against those who live in
    * death
    */

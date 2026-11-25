@@ -228,6 +228,21 @@ export interface WeaponRequestContext
 }
 
 /**
+ * @returns the damage multipliers a ranged weapon's ammunition gets from the off-hand weapon's
+ * passive, e.g. a second Lion Greatbow's ×1.2 physical for Radahn's Spears (the firing weapon's own
+ * is in its damageMultipliers)
+ */
+export function getAmmoOffhandEffects(
+  weapon: Weapon,
+  offhandName: string | undefined,
+): BuffEffect[] {
+  const multipliers = offhandName && weapon.ammoOffhandMultipliers?.[offhandName];
+  return multipliers
+    ? [{ damageRates: allDamageTypes.map((damageType) => multipliers[damageType] ?? 1) }]
+    : [];
+}
+
+/**
  * The picked buffs, split by what they apply to: all weapons, the weapon buff for other weapons,
  * weapons' own skills', and the off hand weapon's passive
  */
@@ -557,6 +572,9 @@ export function getWeaponRequestBuilder(context: WeaponRequestContext) {
             stackTier,
             health,
           ),
+          // A passive for the ammunition (the Lion Greatbow's for Radahn's Spears) counts from
+          // each hand, unlike other passives
+          ...getAmmoOffhandEffects(weapon, offhandBuff?.name),
           ...mainHand(weaponBuffApplies && !ownWeaponBuff ? weaponBuffEffects : []),
           // A skill attack that carries its own buff (the Moonlight Greatsword's swings) already
           // has it
