@@ -161,6 +161,7 @@ export default function App() {
     catalyst: catalystName,
     catalystUpgradeLevel,
     equipWeight,
+    buffSetups,
     upgradeLevels: savedUpgradeLevels,
     grips,
     showScaling,
@@ -252,8 +253,8 @@ export default function App() {
   // only to their own weapons
   // A weapon's passive (e.g. Freyja's Greatsword's for Redmane skills) applies in either hand, so
   // to the weapon itself too, but not twice when the off-hand weapon is the same one. Ones with a
-  // condition (e.g. the Madding Hand's, after madness nearby) are weapon effects, picked like unique
-  // buffs.
+  // condition (e.g. the Madding Hand's, after madness nearby) are active weapon effects, picked
+  // separately like other buffs.
   const passives = useMemo(
     () =>
       new Map(allBuffs.filter((buff) => buff.kind === "offhand").map((buff) => [buff.name, buff])),
@@ -1399,6 +1400,7 @@ export default function App() {
         catalystUpgradeLevel={catalystUpgradeLevel}
         equipWeight={equipWeight}
         health={health}
+        buffSetups={buffSetups}
         leftHandWeapon={
           attacks.some((attackName) => attackName.startsWith("Powerstance")) && offhandWeaponData
             ? offhandWeaponData.name

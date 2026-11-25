@@ -675,8 +675,8 @@ def main():
     merge_armor(buffs)
 
     # Off-hand weapons' passive effects (residentSpEffectId etc.), which apply in either hand. Ones
-    # with a condition (e.g. the Madding Hand's, after madness nearby) are unique weapon effects
-    # instead, picked like other unique buffs
+    # with a condition other than HP (e.g. the Madding Hand's, after madness nearby) are active
+    # weapon effects instead, with a picker of their own
     weapon_names = read_names(game_dir, "WeaponName")
     for weapon_id, row in sorted(param("EquipParamWeapon").items()):
         name = weapon_names.get(weapon_id)
@@ -691,8 +691,10 @@ def main():
         # firing them from that bow, not for another weapon, so it isn't an off-hand buff (TODO:
         # apply it to the bow's own Golden Arrow shots)
         effects = [effect for effect in effects if effect.get("categories") != [GOLDEN_ARROW_CATEGORY]]
-        # Conditional ones are picked separately (weapon effects), since they don't always apply
-        if name in NOTES or name in HP_CONDITIONS:
+        # Conditional ones are picked separately (active weapon effects), since they don't always
+        # apply. Ones that depend on HP (the Twinbird Kite Shield's) are passives, applied by the HP
+        # setting.
+        if name in NOTES:
             add("weaponEffect", name, effects, type="unique")
         else:
             add("offhand", name, effects, weight=round(row["weight"], 2))

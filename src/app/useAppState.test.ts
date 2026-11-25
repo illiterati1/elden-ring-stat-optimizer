@@ -77,6 +77,17 @@ describe("saved settings", () => {
         .selectedAmmo,
     ).toEqual(["arrow:Arrow", "greatarrow:Great Arrow", "greatarrow:Radahn's Spear"]);
   });
+
+  it("moves the Twinbird Kite Shield to the passives, in buffs and buff setups", () => {
+    const twinbird = ["talisman:Axe Talisman", "weaponEffect:Twinbird Kite Shield"];
+    const moved = ["talisman:Axe Talisman", "offhand:Twinbird Kite Shield"];
+    const state = parse({
+      buffs: twinbird,
+      buffSetups: [{ ...defaultAppState, name: "Low HP", buffs: twinbird }],
+    });
+    expect(state.buffs).toEqual(moved);
+    expect(state.buffSetups[0].buffs).toEqual(moved);
+  });
 });
 
 describe("saved limits", () => {

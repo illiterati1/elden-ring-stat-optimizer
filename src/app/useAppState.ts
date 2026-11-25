@@ -88,6 +88,15 @@ export interface ChainLimitSetting {
   readonly seconds: number;
 }
 
+/** A named set of buff settings the user saved, to load again later */
+export interface BuffSetup
+  extends Pick<
+    AppState,
+    "buffs" | "stackTier" | "catalyst" | "catalystUpgradeLevel" | "equipWeight" | "health"
+  > {
+  readonly name: string;
+}
+
 /** How a weapon is held */
 export type Grip = "1h" | "2h";
 
@@ -109,6 +118,8 @@ export interface AppState {
   readonly equipWeight: number;
   /** The character's HP percentage, for buffs that depend on it */
   readonly health: number;
+  /** Buff settings saved by name, in the order they were first saved */
+  readonly buffSetups: readonly BuffSetup[];
   /** The weapon upgrade levels to compare, on the regular scale (+25), each a row of its own */
   readonly upgradeLevels: readonly number[];
   /** One handed, two handed, or both, each a row of its own: at least one */
@@ -274,6 +285,7 @@ export const defaultAppState: AppState = {
   catalystUpgradeLevel: 25,
   equipWeight: minEquipWeight,
   health: 100,
+  buffSetups: [],
   upgradeLevels: [25],
   grips: ["1h"],
   showScaling: false,
@@ -388,6 +400,16 @@ function getStoredLevelLimit(stored: Record<string, unknown> | undefined): Level
   };
 }
 
+/** Buff keys saved under an earlier kind */
+const renamedBuffs: Record<string, string> = {
+  "weaponEffect:Twinbird Kite Shield": "offhand:Twinbird Kite Shield",
+};
+
+/** @returns buff keys saved by an earlier version, with renamed ones (renamedBuffs) updated */
+function getStoredBuffs(buffs: readonly string[]): string[] {
+  return buffs.map((key) => renamedBuffs[key] ?? key);
+}
+
 /** An attack saved by an earlier version, or undefined if it's one that's gone */
 function getStoredAttack(attack: string): AttackChoice | undefined {
   // Earlier versions had a custom motion value instead of the base attack (the base attack is
@@ -483,6 +505,12 @@ export function parseStoredAppState(json: string | null): AppState {
           ? ["greatarrow:Great Arrow", "greatarrow:Radahn's Spear"]
           : [key],
       ),
+      // The Twinbird Kite Shield was an active weapon effect before HP applied it as a passive
+      buffs: getStoredBuffs(stored.buffs ?? defaultAppState.buffs),
+      buffSetups: (stored.buffSetups ?? defaultAppState.buffSetups).map((setup) => ({
+        ...setup,
+        buffs: getStoredBuffs(setup.buffs),
+      })),
       // Pins from before several upgrade levels could be compared had the one level, and from
       // before both grips could be compared, the two handing setting
       pins: Array.isArray(stored.pins)

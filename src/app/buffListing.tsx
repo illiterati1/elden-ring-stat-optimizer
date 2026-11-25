@@ -14,7 +14,6 @@ export const typedKinds: [BuffKind, string][] = [
   ["spell", "Spells"],
   ["consumable", "Items"],
   ["spirit", "Spirit ashes"],
-  ["weaponEffect", "Weapon effects"],
 ];
 export const kindLabels = new Map(typedKinds);
 
@@ -45,8 +44,8 @@ export function groupBuffsByKind(buffs: readonly Buff[]) {
 }
 
 /**
- * @returns the consumables, spells, skills, spirit ashes, and weapon effects of a stacking group, as
- * its picker lists them: by kind (typedKinds), each kind's in order (compareBuffs), so weapons' own
+ * @returns the consumables, spells, skills, and spirit ashes of a stacking group, as its picker
+ * lists them: by kind (typedKinds), each kind's in order (compareBuffs), so weapons' own
  * skills' buffs come first
  */
 export function getTypedBuffs(byKind: ReadonlyMap<BuffKind, Buff[]>, type: BuffType) {

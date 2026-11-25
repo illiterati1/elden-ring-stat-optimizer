@@ -1,7 +1,8 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import {
   Autocomplete,
   Box,
+  Button,
   Checkbox,
   FormControlLabel,
   MenuItem,
@@ -13,7 +14,12 @@ import { getStatLabel } from "../optimizer/startingClasses.ts";
 import Section from "./Section.tsx";
 import DismissableNote from "./DismissableNote.tsx";
 import NumberTextField from "./NumberTextField.tsx";
-import { minEquipWeight, type AppState, type UpdateAppState } from "./useAppState.ts";
+import {
+  minEquipWeight,
+  type AppState,
+  type BuffSetup,
+  type UpdateAppState,
+} from "./useAppState.ts";
 import {
   buffsConflict,
   getBuffKey,
@@ -46,6 +52,7 @@ interface Props {
   catalystUpgradeLevel: AppState["catalystUpgradeLevel"];
   equipWeight: AppState["equipWeight"];
   health: AppState["health"];
+  buffSetups: AppState["buffSetups"];
   /** The weapon in the left hand when powerstancing, whose weight counts towards equip weight */
   leftHandWeapon: string | null;
   /** Names of the weapons picked by name or type, for buffs only some weapons get */
@@ -86,6 +93,90 @@ function scrollToSelected(id: string) {
   });
 }
 
+/** @returns true if the setups have the same settings (buffs in any order), whatever their names */
+function sameSetup(a: Omit<BuffSetup, "name">, b: Omit<BuffSetup, "name">) {
+  return (
+    a.buffs.length === b.buffs.length &&
+    a.buffs.every((key) => b.buffs.includes(key)) &&
+    a.stackTier === b.stackTier &&
+    a.catalyst === b.catalyst &&
+    a.catalystUpgradeLevel === b.catalystUpgradeLevel &&
+    a.equipWeight === b.equipWeight &&
+    a.health === b.health
+  );
+}
+
+/**
+ * Saves the current buff settings by name, and loads or deletes saved ones. The setup matching the
+ * current settings is shown as picked.
+ */
+function BuffSetupPicker({
+  current,
+  buffSetups,
+  onChange,
+}: {
+  current: Omit<BuffSetup, "name">;
+  buffSetups: AppState["buffSetups"];
+  onChange: UpdateAppState;
+}) {
+  const matching = buffSetups.find((setup) => sameSetup(setup, current)) ?? null;
+  const [name, setName] = useState(matching?.name ?? "");
+  const trimmed = name.trim();
+  const existing = buffSetups.find((setup) => setup.name === trimmed);
+  return (
+    <Box display="grid" gridTemplateColumns="1fr auto auto" gap={1} alignItems="center">
+      <Autocomplete
+        freeSolo
+        size="small"
+        options={buffSetups}
+        value={matching}
+        inputValue={name}
+        // Changing a loaded setup's buffs keeps its name, to update it
+        onInputChange={(_, value, reason) => {
+          if (reason !== "reset" || value) setName(value);
+        }}
+        getOptionLabel={(option) => (typeof option === "string" ? option : option.name)}
+        isOptionEqualToValue={(option, other) => option.name === other.name}
+        onChange={(_, setup) => {
+          if (setup && typeof setup !== "string") {
+            const { name: _name, ...settings } = setup;
+            onChange(settings);
+          }
+        }}
+        renderInput={(params) => <TextField {...params} label="Saved buff setup" />}
+      />
+      <Button
+        size="small"
+        variant="outlined"
+        disabled={!trimmed || (existing && sameSetup(existing, current))}
+        onClick={() =>
+          onChange({
+            // A setup saved again under its name keeps its place
+            buffSetups: existing
+              ? buffSetups.map((setup) =>
+                  setup === existing ? { ...current, name: trimmed } : setup,
+                )
+              : [...buffSetups, { ...current, name: trimmed }],
+          })
+        }
+      >
+        {existing ? "Update" : "Save"}
+      </Button>
+      <Button
+        size="small"
+        color="inherit"
+        disabled={!existing}
+        onClick={() => {
+          onChange({ buffSetups: buffSetups.filter((setup) => setup !== existing) });
+          setName("");
+        }}
+      >
+        Delete
+      </Button>
+    </Box>
+  );
+}
+
 /**
  * Pickers for talismans, armor, physick tears, consumables, spells, skills, spirit ashes, and
  * Godrick's Great Rune, which add stats and multiply damage, and enemy debuffs, which make the enemy
@@ -100,6 +191,7 @@ function BuffSettings({
   catalystUpgradeLevel,
   equipWeight,
   health,
+  buffSetups,
   leftHandWeapon,
   pickedWeapons,
   closedAlerts,
@@ -222,6 +314,18 @@ function BuffSettings({
   return (
     <Section id="buffs" title="Buffs">
       <Box display="grid" gap={1.5}>
+        <BuffSetupPicker
+          current={{
+            buffs: selectedBuffs,
+            stackTier,
+            catalyst,
+            catalystUpgradeLevel,
+            equipWeight,
+            health,
+          }}
+          buffSetups={buffSetups}
+          onChange={onChange}
+        />
         {multiPicker("Talismans", ["talisman"], maxTalismans, (newBuffs) =>
           setSelected(["talisman"], newBuffs),
         )}
@@ -253,11 +357,15 @@ function BuffSettings({
           renderInput={(params) => (
             <TextField
               {...params}
-              label="Off-hand weapon"
-              helperText="For its passive effect, which applies in either hand"
+              label="Passive weapon effects"
+              helperText="A weapon's passive effect. Will automatically be applied on selected weapons."
             />
           )}
         />
+        {/* Weapons' passive effects that only apply under a condition (e.g. the Madding Hand's) */}
+        {multiPicker("Active weapon effects", ["weaponEffect"], null, (newBuffs) =>
+          setGrouped(["weaponEffect"], newBuffs),
+        )}
         {byEquipWeight.length > 0 && (
           <NumberTextField
             label="Equip weight"
