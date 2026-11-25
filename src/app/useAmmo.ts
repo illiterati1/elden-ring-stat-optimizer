@@ -78,6 +78,13 @@ export function getAmmoLabel({ names }: AmmoGroup) {
 }
 
 /**
+ * Weapons whose bonus for some ammunition counts again from the other hand, as logged in game: a
+ * second Lion Greatbow's for Radahn's Spears does (274 per Radahn's Rain spear instead of 228), but a
+ * second Igon's Greatbow's for Igon's Harpoons doesn't (731 either way, 2026-11-24)
+ */
+const bonusesFromEitherHand = new Set(["Lion Greatbow"]);
+
+/**
  * A ranged weapon firing the given ammunition. The ammunition's base attack and status buildup are
  * added to the weapon's at every upgrade level, and scaled by the weapon like its own, as is any
  * extra status buildup the weapon gives it. A damage bonus for the weapon multiplies damage after
@@ -86,7 +93,8 @@ export function getAmmoLabel({ names }: AmmoGroup) {
 export function withAmmo(weapon: Weapon, group: AmmoGroup): Weapon {
   const bonus = group.weaponBonuses?.[weapon.weaponName];
   const offhandMultipliers = Object.entries(group.weaponBonuses ?? {}).flatMap(
-    ([name, { damageMultipliers }]) => (damageMultipliers ? [[name, damageMultipliers]] : []),
+    ([name, { damageMultipliers }]) =>
+      damageMultipliers && bonusesFromEitherHand.has(name) ? [[name, damageMultipliers]] : [],
   );
   return {
     ...(offhandMultipliers.length && {

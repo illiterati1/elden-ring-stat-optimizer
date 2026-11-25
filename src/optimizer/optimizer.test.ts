@@ -1102,6 +1102,13 @@ describe("bows", () => {
       offhandEffects.map(({ damageRates }) => damageRates?.[AttackPowerType.PHYSICAL]),
     ).toEqual([1.2]);
     expect(getAmmoOffhandEffects(lionSpear, "Erdtree Greatbow")).toEqual([]);
+    // A second Igon's Greatbow doesn't: its shot with Igon's Harpoons did 731 to the dummy
+    // either way
+    const igonHarpoon = withAmmo(
+      getWeapon("Igon's Greatbow"),
+      ammo.find((group) => group.names.includes("Igon's Harpoon"))!,
+    );
+    expect(getAmmoOffhandEffects(igonHarpoon, "Igon's Greatbow")).toEqual([]);
     // Only for the Lion Greatbow
     expect(unrounded("Erdtree Greatbow", "Radahn's Spear", 0)).toBeCloseTo(
       unrounded("Erdtree Greatbow", "Great Arrow", 0),
