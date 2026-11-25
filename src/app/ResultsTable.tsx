@@ -42,6 +42,7 @@ import type { AppState, SortBy, TooltipTimings, UpdateAppState } from "./useAppS
 import { maxSeries } from "./ValueChart.tsx";
 import { getPinChartKey, type Pin, type PinSettingLine } from "./pins.ts";
 import { countRender } from "./perfProbe.ts";
+import RowName from "./RowName.tsx";
 
 /** A pinned row, shown above the rest with its own attack's values */
 export interface PinnedRow {
@@ -1090,10 +1091,10 @@ const ResultRow = memo(function ResultRow({
       <TableCell>
         {result.url ? (
           <Link href={result.url} target="_blank" rel="noopener noreferrer" color="inherit">
-            {name}
+            <RowName name={name} />
           </Link>
         ) : (
-          name
+          <RowName name={name} />
         )}
       </TableCell>
       {result.applicable ? (

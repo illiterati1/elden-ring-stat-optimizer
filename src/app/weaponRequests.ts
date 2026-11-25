@@ -47,7 +47,7 @@ const skillDebuffs: Partial<Record<string, string>> = { "Shriek of Milos": "Shri
 /** A row's grip, in its name when it has a row with the other grip */
 const gripLabel = (twoHanding: boolean) => (twoHanding ? "2H" : "1H");
 
-/** Between a row's weapon and its attack in its name */
+/** Between a row's weapon and its attack in its name (non-breaking; RowName lets it wrap) */
 export const labelSeparator = "\u00a0·\u00a0";
 
 /** An attack's label with its grip before it, e.g. "2H R1" (kept together) */
@@ -606,7 +606,7 @@ export function getWeaponRequestBuilder(context: WeaponRequestContext) {
         ...(variant && { skillVariant: variant }),
         row: {
           id: getPinKey(weapon.name, variant?.short, choice),
-          // (kept together with the weapon's last word, so it doesn't wrap onto a line alone)
+          // (the results table and chart wrap it after the dot; see RowName)
           name: label ? name + labelSeparator + label : name,
         },
       };

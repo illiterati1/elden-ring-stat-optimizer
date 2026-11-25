@@ -9,6 +9,7 @@ import { getAllocationAtLevel, getValueAtLevel } from "./results.ts";
 import { allAttributes } from "../calculator/calculator.ts";
 import { getStatLabel } from "../optimizer/startingClasses.ts";
 import { countRender } from "./perfProbe.ts";
+import RowName from "./RowName.tsx";
 
 interface Props {
   /** Results to chart, in display order. Only the first few are shown. */
@@ -39,10 +40,6 @@ const gridColor = "#2e2a22";
 
 const height = 280;
 const margin = { top: 12, right: 16, bottom: 32, left: 48 };
-/** Room on the right for direct labels when there are few enough series */
-const labelWidth = 150;
-/** Narrowest plot area that still leaves room for direct labels; narrower, the legend alone names the lines */
-const minPlotWidthWithLabels = 400;
 /** Below this width (phones), the tooltip spans the top of the chart, above the finger, rather than following it */
 const narrowWidth = 600;
 
@@ -118,9 +115,7 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
   }
 
   const narrow = width < narrowWidth;
-  const directLabels =
-    series.length <= 4 && width - margin.left - margin.right - labelWidth >= minPlotWidthWithLabels;
-  const plotRight = width - margin.right - (directLabels ? labelWidth : 0);
+  const plotRight = width - margin.right;
   const plotBottom = height - margin.bottom;
 
   // By default, from the current level to a little past the furthest leveled weapon
@@ -167,19 +162,6 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
     }
     return points.map(([level, value], i) => `${i ? "L" : "M"}${x(level)},${y(value)}`).join("");
   });
-
-  // Direct labels at the end of each line, nudged apart so they don't overlap
-  const labels = series
-    .filter((result) => result.curve.values.length > 0 && result.curve.startLevel <= maxLevel)
-    .map((result, i) => ({
-      result,
-      i,
-      y: y(getValueAtLevel(result.curve, maxLevel) ?? result.curve.values.at(-1)!),
-    }))
-    .sort((a, b) => a.y - b.y);
-  for (let i = 1; i < labels.length; i++) {
-    labels[i].y = Math.max(labels[i].y, labels[i - 1].y + 14);
-  }
 
   const handlePointer = (evt: React.PointerEvent<SVGRectElement>) => {
     const bounds = evt.currentTarget.getBoundingClientRect();
@@ -313,23 +295,6 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
           />
         ))}
 
-        {directLabels &&
-          labels.map(({ result, y: labelY }) => (
-            <g key={result.weaponName}>
-              <circle
-                cx={plotRight + 8}
-                cy={labelY}
-                r={4}
-                fill={seriesColors[slots.get(result.weaponName)!]}
-              />
-              <text x={plotRight + 16} y={labelY} dy="0.32em" fontSize={11} fill={textPrimary}>
-                {result.weaponName.length > 20
-                  ? `${result.weaponName.slice(0, 19)}…`
-                  : result.weaponName}
-              </text>
-            </g>
-          ))}
-
         {hoverLevel != null && (
           <g pointerEvents="none">
             <line
@@ -375,7 +340,11 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
             position: "absolute",
             ...(narrow
               ? { top: 8, left: 8, right: 8 }
-              : { top: 40, left: Math.min(x(hoverLevel) + 24, width - 240) }),
+              : // Beside the cursor, on the side with more room (anchored on that side, so it
+              // isn't squeezed by the chart's edge)
+              x(hoverLevel) < width / 2
+              ? { top: 40, left: x(hoverLevel) + 24 }
+              : { top: 40, right: width - x(hoverLevel) + 24 }),
             bgcolor: colors.surfaceRaised,
             border: 1,
             borderColor: gridColor,
@@ -419,7 +388,7 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
                 }}
               />,
               <Typography key={`${result.weaponName}-name`} variant="caption" noWrap={narrow}>
-                {result.weaponName}
+                <RowName name={result.weaponName} />
               </Typography>,
               <Typography key={`${result.weaponName}-value`} variant="caption" align="right">
                 {Math.floor(value! + 1e-9)}
@@ -450,7 +419,9 @@ function ValueChart({ results, startLevel, valueLabel, range, onChange }: Props)
                 bgcolor: seriesColors[slots.get(result.weaponName)!],
               }}
             />
-            <Typography variant="caption">{result.weaponName}</Typography>
+            <Typography variant="caption">
+              <RowName name={result.weaponName} />
+            </Typography>
           </Box>
         ))}
       </Box>
