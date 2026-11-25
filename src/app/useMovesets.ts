@@ -136,20 +136,6 @@ export const stepStartDelay = 1 / 30;
  * 7 frames later while running.) Mounted R2s don't slow down: they start at their charging window
  * anyway (an Uchigatana's repeated every 94 standing still, 95 running, 96 here).
  */
-const rollingNote =
-  "Timed from the attack press: the next attack's time includes rolling again first";
-const crouchingNote =
-  "Timed from the attack press: the next attack's time includes crouching again first";
-const jumpingNote = "Timed from the jump press, not the attack press";
-export const attackTimingNotes: Partial<Record<string, string>> = {
-  "Rolling R1": rollingNote,
-  "Powerstance Rolling L1": rollingNote,
-  "Crouching R1": crouchingNote,
-  "Powerstance Crouching L1": crouchingNote,
-  "Jumping R1": jumpingNote,
-  "Jumping R2": jumpingNote,
-  "Powerstance Jumping L1": jumpingNote,
-};
 
 /**
  * Jumping attacks, from the jump press: the attack starts this long after it at the earliest (an
@@ -233,6 +219,26 @@ const crouchingAttacks: Partial<Record<AttackName, AttackName>> = {
   "Powerstance Crouching L1": "Powerstance Rolling L1",
 };
 
+/**
+ * The hits table's notes on where attacks are timed from: a jumping attack from the jump press, and
+ * a rolling or crouching attack from the roll or crouch press, with how long the roll or crouch
+ * takes until the attack is pressed (its start delay, then the attack's start into it)
+ */
+const movementNote = (movement: string, start: number) =>
+  `Timed from the ${movement} press, not the attack press: the ${movement} takes ` +
+  `${+(stepStartDelay + start).toFixed(2)}s until the attack can be pressed`;
+const crouchingNote = movementNote("crouch", crouchingAttackStart);
+const jumpingNote = "Timed from the jump press, not the attack press";
+export const attackTimingNotes: Partial<Record<string, string>> = {
+  "Rolling R1": movementNote("roll", rollingAttackStarts["Rolling R1"]!),
+  "Powerstance Rolling L1": movementNote("roll", rollingAttackStarts["Powerstance Rolling L1"]!),
+  "Crouching R1": crouchingNote,
+  "Powerstance Crouching L1": crouchingNote,
+  "Jumping R1": jumpingNote,
+  "Jumping R2": jumpingNote,
+  "Powerstance Jumping L1": jumpingNote,
+};
+
 /** Why an attack is left out with a time to dodge set: a roll can't start in time after it */
 export const tooSlowReason =
   "No attack can be performed quickly enough to roll within the time to dodge";
@@ -282,7 +288,15 @@ function getStepTimes(
         ...(repeat != null && { cycle: jumpAirTime + repeat }),
       };
     }
-    const lead = step.start ?? stepStartDelay;
+    // A rolling or crouching attack's from the roll or crouch press: the roll or crouch starts
+    // after the step start delay, the attack is pressed once it can start, and its animation starts
+    // after the step start delay again; repeated by rolling or crouching again at its roll or jump
+    // (crouch) cancel
+    const rollingStart = !mounted ? rollingAttackStarts[attack] : undefined;
+    const crouchingStart = crouchingAttacks[attack] != null ? crouchingAttackStart : undefined;
+    const movementStart = rollingStart ?? crouchingStart;
+    const lead =
+      (step.start ?? stepStartDelay) + (movementStart != null ? stepStartDelay + movementStart : 0);
     const cut = cutShort != null && i === stepCount - 1;
     // Its own button's cancel, or for R1 and R2, the right hand attack cancel if that comes first (tested in game:
     // the Miséricorde's and the Pike's two handed R2 chains go on at the right hand attack cancel, long before their
@@ -334,16 +348,14 @@ function getStepTimes(
             .filter((time): time is number => time != null)
             .sort((a, b) => a - b)[0]
         : undefined;
-    const rollingStart = rollingAttackStarts[attack];
-    const rolled =
-      rollingStart != null && !cut && !mounted && step.roll != null
-        ? step.roll + stepStartDelay + rollingStart
-        : undefined;
-    const crouched =
-      crouchingAttacks[attack] != null && !cut && step.jump != null
-        ? step.jump + stepStartDelay + crouchingAttackStart
-        : undefined;
-    const repeat = freed ?? rolled ?? crouched ?? own ?? rightHand ?? step.end;
+    const moved = cut
+      ? undefined
+      : rollingStart != null
+      ? step.roll
+      : crouchingStart != null
+      ? step.jump
+      : undefined;
+    const repeat = freed ?? moved ?? own ?? rightHand ?? step.end;
     return {
       lead,
       hits: step.hits.map((time) => lead + time),

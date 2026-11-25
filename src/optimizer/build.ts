@@ -599,7 +599,10 @@ export function getEarliestAttack(
 }
 
 export interface StepTimes {
-  /** Until its animation starts: a tapped R2's start, or else the step start delay */
+  /**
+   * Until its animation starts: a tapped R2's start, or else the step start delay; for a jumping,
+   * rolling or crouching attack, from the jump, roll or crouch press
+   */
   lead: number;
   hits: number[];
   /**

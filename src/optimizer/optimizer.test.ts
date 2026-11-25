@@ -7009,9 +7009,13 @@ describe("Ashes of War", () => {
     // Beast Claw, two handed
     const beastClaw = getWeapon("Beast Claw");
     expect(hits(25, 144.4, {}, true, beastClaw)).toEqual([307, 307, 307, 391, 391]);
-    expect(hits(25, 123.2, { str: 13, arc: 10 }, true, beastClaw)).toEqual([149, 149, 149, 199, 199]);
+    expect(hits(25, 123.2, { str: 13, arc: 10 }, true, beastClaw)).toEqual([
+      149, 149, 149, 199, 199,
+    ]);
     expect(hits(25, 123.2, { arc: 10 }, true, beastClaw)).toEqual([211, 211, 211, 294, 294]);
-    expect(hits(25, 123.2, { dex: 11, arc: 10 }, true, beastClaw)).toEqual([142, 142, 142, 188, 188]);
+    expect(hits(25, 123.2, { dex: 11, arc: 10 }, true, beastClaw)).toEqual([
+      142, 142, 142, 188, 188,
+    ]);
     // Hookclaws (Critical 110), two handed: its first hit at Str 99 / Arc 10 did 189
     const hookclaws = getWeapon("Hookclaws");
     expect(hits(25, 123.2, { str: 10 }, true, hookclaws)).toEqual([286, 286, 286, 334, 334]);
@@ -14306,8 +14310,10 @@ describe("timing coverage", () => {
     // Crouching R1, crouch, crouching R1 (L3 2209, hits 2260, 2348, 2435, 2523): 88, 87, 88 apart; its
     // crouch cancel (flag 32) is at 70.6, and the next one starts 15 into the crouch (fitted), 88
     const rolling = getAttackData(movesets, getWeapon("Greatsword"), "Rolling R1", true, 0.5)!;
-    expect(rolling.stepTimes![0].hits[0] * 60).toBeCloseTo(30, 0);
-    expect(rolling.stepTimes![0].earliest!.time * 60).toBeCloseTo(62, 0);
+    // (Timed from the roll press: the roll starts 2 frames after it, the attack is pressed 36 into
+    // the roll, and its animation starts 2 frames after that, 40 before the attack's own times)
+    expect(rolling.stepTimes![0].hits[0] * 60).toBeCloseTo(30 + 38, 0);
+    expect(rolling.stepTimes![0].earliest!.time * 60).toBeCloseTo(62 + 38, 0);
     expect(rolling.cycleTimes![0] * 60).toBeCloseTo(102, 0);
     // Two Daggers, powerstance rolling L1, roll, rolling L1 (b 1031, stamina taken 1099 and 1183): 84
     // frames apart; here it rolls at 44 and attacks from the roll at its left hand attack cancel, 38
@@ -14319,7 +14325,7 @@ describe("timing coverage", () => {
       false,
       0.5,
     )!;
-    expect(paired.stepTimes![0].hits[0] * 60).toBeCloseTo(22, 0);
+    expect(paired.stepTimes![0].hits[0] * 60).toBeCloseTo(62, 0);
     expect(paired.cycleTimes![0] * 60).toBeCloseTo(84, 0);
     // One handed Dagger, rolling R1, roll, rolling R1, stamina taken (roll, attack, roll, attack):
     // tapping B, 566, 620, 636, 690: the roll 16 after the attack, the attack 54 after the roll, 70
@@ -14327,12 +14333,13 @@ describe("timing coverage", () => {
     // until 0.333 s). A roll also takes its stamina as it starts. Holding B first gave 1320, 1376,
     // 1395, 1450: the roll 19 after, as a roll waits for B's release
     const dagger1h = getAttackData(movesets, getWeapon("Dagger"), "Rolling R1", false, 0.5)!;
-    expect(dagger1h.stepTimes![0].hits[0] * 60).toBeCloseTo(18, 0);
-    expect(dagger1h.stepTimes![0].roll! * 60).toBeCloseTo(32, 0);
+    expect(dagger1h.stepTimes![0].hits[0] * 60).toBeCloseTo(18 + 38, 0);
+    expect(dagger1h.stepTimes![0].roll! * 60).toBeCloseTo(32 + 38, 0);
     expect(dagger1h.cycleTimes![0] * 60).toBeCloseTo(70, 0);
     const crouching = getAttackData(movesets, getWeapon("Greatsword"), "Crouching R1", true, 0.5)!;
     expect(crouching.steps).toEqual(rolling.steps);
-    expect(crouching.stepTimes![0].hits[0] * 60).toBeCloseTo(34.6, 0);
+    // (from the crouch press: 51 frames in game, from standing)
+    expect(crouching.stepTimes![0].hits[0] * 60).toBeCloseTo(34.6 + 17, 0);
     expect(crouching.cycleTimes![0] * 60).toBeCloseTo(87.6, 0);
     // Weapons without a crouching animation of their own (most) are assumed to play the rolling one.
     // One handed Dagger, crouching R1, crouch, crouching R1 (stamina taken 385, 441, 499): 56 and 58
@@ -14342,8 +14349,11 @@ describe("timing coverage", () => {
     // the training dummy, 297 damage and 3 stance, as its rolling R1 here
     const dagger = (attack: AttackChoice) =>
       getAttackData(movesets, getWeapon("Dagger"), attack, false, 0.5)!.stepTimes![0].hits;
-    expect(dagger("Crouching R1")).toEqual(dagger("Rolling R1"));
-    expect(dagger("Crouching R1")[0] * 60).toBeCloseTo(18, 0);
+    // (the same hits after their animations start, after the crouch or roll)
+    expect(dagger("Crouching R1").map((time) => time - 17 / 60)).toEqual(
+      dagger("Rolling R1").map((time) => time - 38 / 60),
+    );
+    expect(dagger("Crouching R1")[0] * 60).toBeCloseTo(18 + 17, 0);
     const daggerBuild = optimizeBuild({
       weapon: getWeapon("Dagger"),
       regularUpgradeLevel: 25,
@@ -14372,7 +14382,7 @@ describe("timing coverage", () => {
     // the crouch, 69 (2 early, as the Dagger's). At +25 with 99 in every stat on the training dummy,
     // 429 damage and 5 stance, as here
     const longsword = getAttackData(movesets, getWeapon("Longsword"), "Crouching R1", false, 0.5)!;
-    expect(longsword.stepTimes![0].hits[0] * 60).toBeCloseTo(24, 0);
+    expect(longsword.stepTimes![0].hits[0] * 60).toBeCloseTo(24 + 17, 0);
     expect(longsword.cycleTimes![0] * 60).toBeCloseTo(69, 0);
     const longswordBuild = optimizeBuild({
       weapon: getWeapon("Longsword"),
@@ -14404,7 +14414,7 @@ describe("timing coverage", () => {
       false,
       0.5,
     )!;
-    expect(pairedCrouching.stepTimes![0].hits[0] * 60).toBeCloseTo(22, 0);
+    expect(pairedCrouching.stepTimes![0].hits[0] * 60).toBeCloseTo(22 + 17, 0);
     expect(pairedCrouching.cycleTimes![0] * 60).toBeCloseTo(67, 0);
     const pairedBuild = optimizeBuild({
       weapon: getWeapon("Dagger"),
@@ -14501,7 +14511,7 @@ describe("timing coverage", () => {
       false,
       0.5,
     )!;
-    expect(broadsword.stepTimes![0].hits[0] * 60).toBeCloseTo(20, 0);
+    expect(broadsword.stepTimes![0].hits[0] * 60).toBeCloseTo(20 + 17, 0);
     expect(broadsword.cycleTimes![0] * 60).toBeCloseTo(73, 0);
   });
 
