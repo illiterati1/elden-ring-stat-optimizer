@@ -6993,6 +6993,7 @@ describe("Ashes of War", () => {
       attributes: Partial<Attributes> = {},
       twoHanding = true,
       weapon = ironBall,
+      buffs: string[] = [],
     ) => {
       const [{ ash: weaponAsh }] = getAshAttacks(ashes, movesets, weapon, "Lifesteal Fist", true);
       if (!weaponAsh || !("attack" in weaponAsh)) throw new Error();
@@ -7011,6 +7012,13 @@ describe("Ashes of War", () => {
         physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
         attack: weaponAsh.attack,
+        buffs: getBuffEffects(
+          (
+            JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
+              .buffs as Buff[]
+          ).filter((buff) => buffs.includes(buff.name)),
+          3,
+        ),
       }).attackSteps![0].map((hit) => Math.floor(hit.damage));
     };
     expect(hits(25, 123.2)).toEqual([281, 281, 281, 341, 341]);
@@ -7020,6 +7028,13 @@ describe("Ashes of War", () => {
     expect(hits(25, 144.4)).toEqual([265, 265, 265, 323, 323]);
     expect(hits(25, 144.4, {}, false)).toEqual([265, 265, 265, 323, 323]);
     expect(hits(0, 144.4, {}, false)).toEqual([14, 14, 14, 21, 21]);
+    // The Dagger Talisman's ×1.16 (fitted) applies to its critical hits too: er-logger 2026-11-25,
+    // Occult Iron Ball +25, two handed, 99 in every stat, NG+1 dummy (238 and 278 without it)
+    const occultIronBall = getWeapon("Occult Iron Ball");
+    expect(hits(25, 144.4, {}, true, occultIronBall)).toEqual([238, 238, 238, 278, 278]);
+    expect(hits(25, 144.4, {}, true, occultIronBall, ["Dagger Talisman"])).toEqual([
+      277, 277, 277, 323, 323,
+    ]);
     // Clinging Bone (+10, its somber level for 25), one handed
     const clingingBone = getWeapon("Clinging Bone");
     expect(hits(25, 144.4, {}, false, clingingBone)).toEqual([299, 299, 299, 366, 366]);

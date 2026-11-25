@@ -10,7 +10,6 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 | # | Test | Calculated |
 |---|---|---|
 | 76 | Backstab with a Critical other than 100 or 130: Hookclaws +25 (Critical 110), one handed, 99 in every stat, NG training dummy (123.2), enemy aware | 209 and 1186 |
-| 77 | Dagger Talisman on a throw's critical hits: Lifesteal Fist on the Iron Ball +25, two handed, 99 in every stat, NG training dummy. The calculator applies it only to backstabs and ripostes | 281 ×3, 341 ×2 (the same as without it) |
 | 78 | Weapon buff on powerstance hits below 90% (AtkParam spEffectAtkPowerCorrectRate_byPoint, 2026-11-24; only Serpent Flails' 90% with Flare, O Serpent tested): Powerstance L1 chain (L1 repeatedly) with a Dagger +25 in each hand, both greased with Lightning Grease (one application each), 99 in every stat, NG training dummy. #1 and #4 get 88%, #2 and #3 90% | #1 270 ×3, #2 346 ×2, #3 354 ×2, #4 286 ×3 (without the grease 255, 331, 339, 272; at 100% it would be 274, 350, 358, 291) |
 | 79 | Same with a Beast Claw +25 in each hand, both greased: #2 gets 82% | #1 350 and 392, #2 286, 296, 327, #3 350 and 419, #4 752 (without the grease 335 and 377, 274, 284, 314, 335 and 404, 733; at 100%, #2 would be 293, 303, 333) |
 

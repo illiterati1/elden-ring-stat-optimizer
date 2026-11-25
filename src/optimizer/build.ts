@@ -282,6 +282,11 @@ export interface AttackDataHit {
   tickDelay?: number;
   /** True for a hit shown but not counted, e.g. one that only hits in some situations */
   notCounted?: boolean;
+  /**
+   * True for a skill's critical hit (AtkParam throwFlag 2, e.g. a throw's), which gets critical-hit
+   * buffs like the Dagger Talisman's (tested on Lifesteal Fist, 2026-11-25)
+   */
+  critical?: boolean;
   /** Flat stance damage, added to the stance motion value's */
   flatStance?: number;
   /** A weapon buff's flat attack by damage type (times its motion value), which doesn't scale */
@@ -438,7 +443,7 @@ function buffAppliesTo(effect: BuffEffect, hit: AttackDataHit, attack: AttackDat
     (!effect.hand || (effect.hand === "off") === !!hit.leftHand) &&
     (!effect.categories ||
       effect.categories.some((category) => hit.categories?.includes(category))) &&
-    (!effect.critical || !!attack?.critical) &&
+    (!effect.critical || !!attack?.critical || !!hit.critical) &&
     (!effect.firstHitOnly || !attack || hit === attack.steps[0]?.[0]) &&
     (!effect.physicalTypes || effect.physicalTypes.includes(hit.physicalType))
   );

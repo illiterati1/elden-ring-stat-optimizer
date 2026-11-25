@@ -1048,6 +1048,7 @@ function getSkillAttack(
     if (details?.tickDuration) hit.tickDuration = details.tickDuration;
     if (details?.tickDelay) hit.tickDelay = details.tickDelay;
     if (details?.notCounted) hit.notCounted = true;
+    if (details?.critical) hit.critical = true;
     if (details?.stance) hit.flatStance = details.stance;
     if (details?.hpDamage) hit.hpDamage = details.hpDamage;
     if (details?.categories) hit.categories = details.categories;
