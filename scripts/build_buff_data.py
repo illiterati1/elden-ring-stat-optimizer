@@ -483,6 +483,8 @@ def main():
                     "ticks": round(source["effectEndurance"] / source["motionInterval"]) + 1,
                     "interval": source["motionInterval"],
                     **({"flat": source["changeHpPoint"]} if source["changeHpPoint"] else {}),
+                    # Scaled by the enemy's hpBurnDamageRate (see build_enemy_data.py)
+                    **({"burn": True} if source["isHpBurnEffect"] else {}),
                 }
         # Effects that lower damage are debuffs on enemies, e.g. Greyoll's Roar, unless they're the
         # player's own equipment's (e.g. the Silver Tear Mask's ×0.95 physical)

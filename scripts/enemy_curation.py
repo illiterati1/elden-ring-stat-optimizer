@@ -92,6 +92,7 @@ def stats_key(enemy):
         enemy.get("stanceDamageRate", 1),
         enemy.get("stanceNote"),
         enemy.get("weakPartDamageRate", 1),
+        enemy.get("hpBurnDamageRate", 1),
         json.dumps(enemy.get("ngPlus")),
     )
 

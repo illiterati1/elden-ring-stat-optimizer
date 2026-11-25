@@ -40,6 +40,7 @@ export const pinSettingKeys = settingKeys(
   "enemyHp",
   "criticalDamageRate",
   "stanceDamageRate",
+  "hpBurnDamageRate",
   "enemyRipostes",
   "enemyTypes",
   "enemyInRealmOfShadow",

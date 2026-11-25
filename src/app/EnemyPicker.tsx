@@ -73,6 +73,7 @@ function EnemyPicker({ enemyArea, enemyKey, ngPlus, radahnBeaten, onChange }: Pr
       enemyHp: 0,
       criticalDamageRate: 1,
       stanceDamageRate: 1,
+      hpBurnDamageRate: 1,
       enemyRipostes: null,
       enemyTypes: [],
       defenses: {
@@ -103,6 +104,7 @@ function EnemyPicker({ enemyArea, enemyKey, ngPlus, radahnBeaten, onChange }: Pr
       enemyHp: stats.hp,
       criticalDamageRate: newEnemy.criticalDamageRate ?? 1,
       stanceDamageRate: newEnemy.stanceDamageRate ?? 1,
+      hpBurnDamageRate: newEnemy.hpBurnDamageRate ?? 1,
       enemyRipostes: newEnemy.ripostes,
       enemyTypes: newEnemy.types ?? [],
       defenses: {
@@ -213,6 +215,12 @@ function EnemyPicker({ enemyArea, enemyKey, ngPlus, radahnBeaten, onChange }: Pr
       {enemy?.weakPartDamageRate != null && (
         <Typography variant="body2" color="text.secondary">
           Takes {enemy.weakPartDamageRate}× damage on its weak spot
+        </Typography>
+      )}
+      {enemy?.hpBurnDamageRate != null && (
+        <Typography variant="body2" color="text.secondary">
+          Takes {Math.round((1 - enemy.hpBurnDamageRate) * 100)}% less damage from black flame and
+          Destined Death
         </Typography>
       )}
       {enemy?.riposteNotes &&

@@ -149,6 +149,8 @@ export interface BuildRequest {
   criticalDamageRate?: number;
   /** The enemy's stance damage multiplier, e.g. 0.2 for ancient dragons */
   stanceDamageRate?: number;
+  /** The enemy's multiplier for burns (HpDamage burn), e.g. 0.5 for Rellana (NpcParam hpBurnDamageRate) */
+  hpBurnDamageRate?: number;
   /** The enemy's types, for weapons and buffs that do more damage to them (e.g. dragons) */
   enemyTypes?: readonly EnemyType[];
   /** The Scadutree Blessing's damage multiplier (scadutreeBlessingRates), if it applies */
@@ -492,6 +494,25 @@ export interface HpDamage {
   flat?: number;
   /** Seconds between ticks, if known: overlapping effects' ticks then land together */
   interval?: number;
+  /**
+   * A burn (SpEffect isHpBurnEffect: black flame, Destined Death): its percentage and flat damage
+   * are scaled by the enemy's hpBurnDamageRate
+   */
+  burn?: boolean;
+}
+
+/**
+ * @returns a tick of a percentage of max HP damage plus its flat damage, unrounded. A burn's is
+ * scaled by the enemy's hpBurnDamageRate (eldenring.exe +4fc7d0 scales both parts). Tested in game
+ * (2026-11-24): The Queen's Black Flame's 0.1% + 1 ticked 22 on Rellana (43,743 HP, 50%), 17 on
+ * Chief Bloodfiend (34,652 HP, 50%) and 17 on Promised Consort Radahn (50,019 HP, 35%)
+ */
+function getTickDamage(
+  { rate, flat = 0, burn }: HpDamage,
+  enemyHp: number,
+  hpBurnDamageRate: number,
+) {
+  return (rate * enemyHp + flat) * (burn ? hpBurnDamageRate : 1);
 }
 
 /**
@@ -499,8 +520,8 @@ export interface HpDamage {
  * tick rounded down (tested in game on the training dummy's 74212 HP: black flame's 0.1% + 1 is 75
  * a tick, Poison Moth Flight's poisoned bonus's 5% + 250 is 3960)
  */
-export function getHpDamage({ rate, ticks, flat = 0 }: HpDamage, enemyHp: number) {
-  return ticks * Math.floor(rate * enemyHp + flat);
+export function getHpDamage(hpDamage: HpDamage, enemyHp: number, hpBurnDamageRate = 1) {
+  return hpDamage.ticks * Math.floor(getTickDamage(hpDamage, enemyHp, hpBurnDamageRate));
 }
 
 /**
@@ -516,6 +537,7 @@ export function getStepHpDamages(
   step: AttackDataHit[],
   times: StepTimes | undefined,
   enemyHp: number,
+  hpBurnDamageRate = 1,
 ): number[] {
   const hitTimes =
     times?.hitTimes?.length === step.length
@@ -530,11 +552,11 @@ export function getStepHpDamages(
     if (!hpDamage) return 0;
     const time = hitTimes?.[i];
     const { rate, ticks, flat = 0, interval } = hpDamage;
-    if (time == null || !interval) return getHpDamage(hpDamage, enemyHp);
-    const key = [hpDamage.label, rate, ticks, flat, interval].join();
+    if (time == null || !interval) return getHpDamage(hpDamage, enemyHp, hpBurnDamageRate);
+    const key = [hpDamage.label, rate, ticks, flat, interval, !!hpDamage.burn].join();
     let counts = ticksByEffect.get(key);
     if (!counts) ticksByEffect.set(key, (counts = new Map()));
-    const tickDamage = rate * enemyHp + flat;
+    const tickDamage = getTickDamage(hpDamage, enemyHp, hpBurnDamageRate);
     const first = Math.round(time / interval);
     let added = 0;
     for (let tick = first; tick < first + ticks; tick++) {
@@ -1260,10 +1282,13 @@ function getAttackSteps(
   enemyHp: number | undefined,
   hitStatusOf?: (hit: AttackDataHit) => StatusBuildup,
   stanceDamageRate = 1,
+  hpBurnDamageRate = 1,
 ): AttackResultHit[][] {
   return attack.steps.map((step, stepIndex) => {
     const hpDamages =
-      enemyHp != null ? getStepHpDamages(step, attack.stepTimes?.[stepIndex], enemyHp) : undefined;
+      enemyHp != null
+        ? getStepHpDamages(step, attack.stepTimes?.[stepIndex], enemyHp, hpBurnDamageRate)
+        : undefined;
     return step.map((hit, hitIndex) => {
       const status = getHitStatus(hit, attackPower, hitStatusOf);
       const damage = getHitDamageFor(hit);
@@ -1311,13 +1336,17 @@ function getAttackSteps(
  * @returns the damage of hits that do a percentage of the enemy's max HP, weighted across a chain
  * the same way as damage. It doesn't depend on stats, so it's added to the optimized value.
  */
-function getAttackHpDamage(attack: AttackData | undefined, enemyHp: number | undefined) {
+function getAttackHpDamage(
+  attack: AttackData | undefined,
+  enemyHp: number | undefined,
+  hpBurnDamageRate = 1,
+) {
   if (!attack || enemyHp == null) return 0;
   return attack.steps.reduce(
     (total, step, i) =>
       total +
       attack.weights[i] *
-        getStepHpDamages(step, attack.stepTimes?.[i], enemyHp).reduce(
+        getStepHpDamages(step, attack.stepTimes?.[i], enemyHp, hpBurnDamageRate).reduce(
           (sum, damage) => sum + damage,
           0,
         ),
@@ -1461,6 +1490,7 @@ export function optimizeBuild(
     enemyHp,
     criticalDamageRate = 1,
     stanceDamageRate = 1,
+    hpBurnDamageRate = 1,
     enemyTypes = [],
     scadutreeBlessingRate = 1,
     offhand,
@@ -1797,7 +1827,7 @@ export function optimizeBuild(
         );
   const curveIndex = curve.levels != null ? 0 : levels;
   const finalAttributes = getAllocation(curve.allocations, curveIndex);
-  const hpDamage = getAttackHpDamage(attack, enemyHp);
+  const hpDamage = getAttackHpDamage(attack, enemyHp, hpBurnDamageRate);
 
   const effectiveAttributes = adjustAttributesForTwoHanding({
     twoHanding,
@@ -1959,6 +1989,7 @@ export function optimizeBuild(
           enemyHp,
           hitStatusOf,
           stanceDamageRate,
+          hpBurnDamageRate,
         )
       : undefined;
   /**

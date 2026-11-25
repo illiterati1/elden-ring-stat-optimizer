@@ -188,6 +188,8 @@ export interface AppState {
   readonly criticalDamageRate: number;
   /** The picked enemy's stance damage multiplier (1 for most, e.g. 0.2 for ancient dragons) */
   readonly stanceDamageRate: number;
+  /** The picked enemy's multiplier for max-HP burns (1 for most, e.g. 0.5 for Rellana) */
+  readonly hpBurnDamageRate: number;
   /** The picked enemy's ripostes, to only offer those, or null without an enemy */
   readonly enemyRipostes: readonly string[] | null;
   /** The enemy's types, for weapons and buffs that do more damage to them (e.g. dragons) */
@@ -342,6 +344,7 @@ export const defaultAppState: AppState = {
   enemyHp: 0,
   criticalDamageRate: 1,
   stanceDamageRate: 1,
+  hpBurnDamageRate: 1,
   enemyRipostes: null,
   enemyTypes: [],
   enemyInRealmOfShadow: null,

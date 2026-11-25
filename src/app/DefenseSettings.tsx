@@ -76,6 +76,7 @@ function DefenseSettings({
       enemyKey: null,
       enemyInRealmOfShadow: null,
       criticalDamageRate: 1,
+      hpBurnDamageRate: 1,
       stanceDamageRate: (update.enemyTypes ?? enemyTypes).includes("ancientDragon") ? 0.2 : 1,
       enemyRipostes: null,
     });

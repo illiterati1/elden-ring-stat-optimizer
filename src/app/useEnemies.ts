@@ -30,6 +30,8 @@ export interface Enemy {
   stanceNote?: string;
   /** Damage multiplier on its weak spot from every attack, if noted (e.g. 3 for Smith Golems) */
   weakPartDamageRate?: number;
+  /** Multiplier for max-HP burns (black flame, Destined Death), if not 1 (NpcParam hpBurnDamageRate) */
+  hpBurnDamageRate?: number;
   /** The ripostes the player can do to it (e.g. ["Large Riposte"]), none if it can't be riposted */
   ripostes: string[];
   /** When some of its ripostes apply, e.g. { "Small Riposte": "when they fall from their horse" } */

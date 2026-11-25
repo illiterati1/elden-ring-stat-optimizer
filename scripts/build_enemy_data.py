@@ -1445,9 +1445,14 @@ def main():
                 if row["partsDamageType"] == 1 and row["weakPartsDamageRate"] >= WEAK_PART_NOTE_MIN_RATE
                 else 1
             )
+            # How much of max-HP burns (SpEffects with isHpBurnEffect: black flame, Destined Death) it
+            # takes, NpcParam hpBurnDamageRate (%): eldenring.exe +4fc7d0 multiplies such effects'
+            # changeHpRate and changeHpPoint by it. Tested in game (2026-11-24): The Queen's Black
+            # Flame ticked 22 on Rellana (50), 17 on Chief Bloodfiend (50) and Promised Consort Radahn (35)
+            hp_burn_rate = row["hpBurnDamageRate"] / 100
             key = (
                 name, tuple(defense), tuple(negation), hp, friendly, tuple(types), appearance, stance,
-                weak_part_rate, json.dumps(ng_plus),
+                weak_part_rate, hp_burn_rate, json.dumps(ng_plus),
             )
             riposte_override = next(
                 (ripostes for prefix, ripostes in RIPOSTE_NAME_OVERRIDES.items() if name.startswith(prefix)),
@@ -1478,6 +1483,7 @@ def main():
                     **({"stanceDamageRate": stance[0]} if stance[0] != 1 else {}),
                     **({"stanceNote": stance[1]} if stance[1] else {}),
                     **({"weakPartDamageRate": round(weak_part_rate, 2)} if weak_part_rate != 1 else {}),
+                    **({"hpBurnDamageRate": hp_burn_rate} if hp_burn_rate != 1 else {}),
                     "ripostes": riposte_override
                     or get_ripostes(model_id := int(model[1:]) if re.fullmatch(r"c\d{4}", model) else -1),
                     **(

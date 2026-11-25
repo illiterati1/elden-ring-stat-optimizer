@@ -179,6 +179,7 @@ export interface WeaponRequestContext
     | "physicalNegation"
     | "criticalDamageRate"
     | "stanceDamageRate"
+    | "hpBurnDamageRate"
     | "enemyTypes"
     | "offhandUpgradeLevel"
     | "catalystUpgradeLevel"
@@ -301,6 +302,7 @@ export function getWeaponRequestBuilder(context: WeaponRequestContext) {
     countedEnemyHp,
     criticalDamageRate,
     stanceDamageRate,
+    hpBurnDamageRate,
     enemyTypes,
     scadutreeBlessingRate,
     offhandWeaponData,
@@ -557,6 +559,7 @@ export function getWeaponRequestBuilder(context: WeaponRequestContext) {
         enemyHp: countedEnemyHp,
         criticalDamageRate,
         stanceDamageRate,
+        hpBurnDamageRate,
         enemyTypes,
         scadutreeBlessingRate,
         // A weapon with a unique skill that can also be buffed (the Bonny Butchering Knife) only

@@ -2935,6 +2935,8 @@ def main():
                         "ticks": round(float(effect["effectEndurance"]) / float(effect["motionInterval"])) + 1,
                         "interval": number(effect["motionInterval"]),
                         **({"flat": number(effect["changeHpPoint"])} if number(effect["changeHpPoint"]) else {}),
+                        # Scaled by the enemy's hpBurnDamageRate (see build_enemy_data.py)
+                        **({"burn": True} if effect["isHpBurnEffect"] == "1" else {}),
                     },
                 )
     # Skills' own weapon buffs: flat attack, and status from the effect their hits apply (like a
@@ -3180,6 +3182,7 @@ def main():
                     "ticks": round(float(effect["effectEndurance"]) / float(effect["motionInterval"])) + 1,
                     "flat": number(effect["changeHpPoint"]),
                     "interval": number(effect["motionInterval"]),
+                    **({"burn": True} if effect["isHpBurnEffect"] == "1" else {}),
                 },
             },
         ]

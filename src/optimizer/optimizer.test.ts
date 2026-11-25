@@ -51,6 +51,7 @@ import { getEnemyStats, type EnemyArea } from "../app/useEnemies.ts";
 import {
   getEquipWeightRate,
   getErrorResult,
+  getHpDamage,
   getUpkeepAtDex,
   optimizeBuild,
   scadutreeBlessingRates,
@@ -13441,6 +13442,7 @@ describe("Ashes of War", () => {
       ticks: 21,
       flat: 1,
       interval: 0.1,
+      burn: true,
     });
   });
 
@@ -14634,6 +14636,26 @@ describe("NG+ enemy stats", () => {
   // 43.7k in NG+ (journey 2), so a kill in an earlier journey counts. Without beating him: 35,208 in
   // NG+2, still 35,208 after beating him for the first time there, then 50,304 in NG+3 (it waits for
   // the next journey)
+  // In game (2026-11-24, Boss Arena mod, NG+1 with Radahn beaten): The Queen's Black Flame's burn
+  // (0.1% + 1, 21 ticks) ticked 22 on Rellana, 17 on Chief Bloodfiend and 17 on Promised Consort
+  // Radahn, scaled by their hpBurnDamageRate (50%, 50%, 35%). Poison Moth Flight's poisoned bonus
+  // isn't a burn (SpEffect 1621's isHpBurnEffect is off), so it isn't scaled
+  it("scales burns by the enemy's hpBurnDamageRate, as tested in game", () => {
+    const blackFlame = { label: "Black flame", rate: 0.001, ticks: 21, flat: 1, burn: true };
+    const tick = (npcParamId: number, rate: number) => {
+      const enemy = findEnemy(npcParamId);
+      expect(enemy.hpBurnDamageRate).toBe(rate);
+      return getHpDamage(blackFlame, getEnemyStats(enemy, 1, true).hp, enemy.hpBurnDamageRate) / 21;
+    };
+    expect(tick(53000082, 0.5)).toBe(22);
+    expect(tick(50810990, 0.5)).toBe(17);
+    expect(tick(52200089, 0.35)).toBe(17);
+    expect(findEnemy(59809090).hpBurnDamageRate).toBeUndefined();
+    expect(
+      getHpDamage({ label: "Poisoned bonus", rate: 0.05, ticks: 1, flat: 250 }, 43743, 0.5),
+    ).toBe(2437);
+  });
+
   it("raises HP from NG+ once Radahn is beaten, as tested in game", () => {
     const rellana = findEnemy(53000082);
     expect(rellana.ngPlus?.radahnHpRate).toBeCloseTo(1.367, 3);

@@ -15,6 +15,9 @@
 - **Human enemies' defenses:** NPC invaders and other human enemies (183 of them) have defenses 1–2
   higher than the datamining spreadsheet's, at every NG+ level. Which is right is untested.
 - **Fia's Champion (Staff):** its HP is 833, but 1,216 in the datamining spreadsheet.
+- **Stance-broken enemies:** hits on a stance-broken enemy do 1.2× damage, which isn't included.
+- **Unaware enemies:** hits on an enemy that hasn't noticed you do 1.2× damage, which isn't
+  included.
 - **Enemy status resistance:** enemies' status resistances aren't included, so status buildup
   can't be compared against them.
 - **Off by one:** some hits come out 1 lower than in game, mostly with stacked damage buffs or
