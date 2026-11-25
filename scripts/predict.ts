@@ -23,20 +23,21 @@
  *   --ng <n>           NG+ level: 0 or 1 (default 1, the dummy's defense 144.4; 123.2 in NG)
  *   --stat <n>         every stat (default 99)
  *   --str/--dex/--int/--fai/--arc <n>  one stat (overrides --stat for it)
+ *   --buff <names>     buffs from buffs.json (comma separated), e.g. "Holy Grease,Golden Vow"
  *   --json             print JSON instead
  *
  * Frames are at 60 fps. Each step's hits are from its press ("@56") and from its animation's start
  * ("anim 36"): a step's lead is the frames before its animation starts (the press's 2-frame delay,
  * plus a stance's opening or a jump's start before a chain's first step). Cancels are from the press.
  * Hits marked ~ have approximate times (projectiles); "(not counted)" ones are shown but not counted.
- * No buffs.
+ * No buffs unless --buff.
  */
 import { readFileSync } from "node:fs";
 import { allDamageTypes, AttackPowerType, type Attributes } from "../src/calculator/calculator.ts";
 import type { Weapon } from "../src/calculator/weapon.ts";
 import { decodeRegulationData } from "../src/regulationData.ts";
 import { optimizeBuild, maxSpecialUpgradeLevel } from "../src/optimizer/build.ts";
-import type { AttackData, StepTimes } from "../src/optimizer/build.ts";
+import type { AttackData, BuffEffect, StepTimes } from "../src/optimizer/build.ts";
 import {
   allAttacks,
   getAttackData,
@@ -70,6 +71,7 @@ const valueOptions = [
   "--attack",
   "--anim",
   "--ammo",
+  "--buff",
   "--left",
   "--enemy",
   "--ng",
@@ -89,6 +91,18 @@ if (positional.length !== 1) {
 }
 
 const ngPlus = Number(option("--ng") ?? 1);
+const buffNames =
+  option("--buff")
+    ?.split(",")
+    .map((name) => name.trim()) ?? [];
+const allBuffs = JSON.parse(readFileSync(new URL("../public/buffs.json", import.meta.url), "utf8"))
+  .buffs as { name: string; effects: BuffEffect[] }[];
+const buffEffects = buffNames.flatMap((name) => {
+  // Skills come last, e.g. Golden Vow is the incantation, not the skill
+  const buff = allBuffs.find((candidate) => candidate.name.toLowerCase() === name.toLowerCase());
+  if (!buff) throw new Error(`No buff named ${name}`);
+  return buff.effects;
+});
 const stat = Number(option("--stat") ?? 99);
 const twoHanding = flag("--2h");
 const json = flag("--json");
@@ -295,7 +309,7 @@ function predict(
       minPotentialPerRemainingLevel: null,
     },
     attack,
-    buffs: getAmmoOffhandEffects(weapon, option("--left")),
+    buffs: [...getAmmoOffhandEffects(weapon, option("--left")), ...buffEffects],
   });
   const steps = (result.attackSteps ?? []).map((hits, i): Step => {
     const times: StepTimes | undefined = attack.stepTimes?.[i];
@@ -487,7 +501,9 @@ if (json) {
   console.log(
     `${weapon.name} (+${level} on the regular scale), ${
       twoHanding ? "two" : "one"
-    } handed; ${stat} in every stat, NG+${ngPlus}, vs ${target.name}; no buffs`,
+    } handed; ${stat} in every stat, NG+${ngPlus}, vs ${target.name}; ${
+      buffNames.length ? buffNames.join(", ") : "no buffs"
+    }`,
   );
   console.log(predictions.map(format).join("\n\n") || "No attacks match");
 }

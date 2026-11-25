@@ -1901,6 +1901,55 @@ describe("attacks", () => {
     const stonebarb = buildResult("R1", effectsOf("Stonebarb Cracked Tear"));
     expect(stonebarb.curve.values[0]).toBeCloseTo(r1, 1);
     expect(stonebarb.attackStance).toBeCloseTo(buildResult("R1", []).attackStance! * 1.3);
+    // A grease on powerstance hits gets AtkParam spEffectAtkPowerCorrectRate_byPoint's rate (88% on
+    // a dagger's L1 #1 and #4, 90% on #2 and #3). Tested in game with er-logger (2026-11-25): a
+    // Dagger +25 in each hand, both with Holy Grease, 99 in every stat, on the NG+1 dummy (144.4),
+    // the L1 chain hits for 258, 329, 338 and 272
+    const greasedDaggers = optimizeBuild({
+      weapon: getWeapon("Dagger"),
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 144.4, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: getAttackData(movesets, getWeapon("Dagger"), "Powerstance L1", false, 0.5),
+      buffs: effectsOf("Holy Grease"),
+    });
+    // (#3's 337.x rounds down to 337, 1 under the game's)
+    expect(greasedDaggers.attackSteps!.map((step) => Math.floor(step[0].damage))).toEqual([
+      258, 329, 337, 272,
+    ]);
+    // 82% on a beast claw's L1 #2. Tested in game with er-logger (2026-11-25): a Beast Claw +25 in
+    // each hand, both with Lightning Grease, 99 in every stat, on the NG+1 dummy, the L1 chain hits
+    // for 333 and 374, 273, 282 and 312, 333 and 400, and 729
+    const greasedClaws = optimizeBuild({
+      weapon: getWeapon("Beast Claw"),
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 144.4, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: getAttackData(movesets, getWeapon("Beast Claw"), "Powerstance L1", false, 0.5),
+      buffs: effectsOf("Lightning Grease"),
+    });
+    // (#2's 3rd hit and #3's 2nd round down to 311 and 399, 1 under the game's)
+    expect(
+      greasedClaws.attackSteps!.map((step) => step.map((hit) => Math.floor(hit.damage))),
+    ).toEqual([[333, 374], [273, 282, 311], [333, 399], [729]]);
   });
 
   it("applies multipliers to hits that get none of a weapon buff", () => {
