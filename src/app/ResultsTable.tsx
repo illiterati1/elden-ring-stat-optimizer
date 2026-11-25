@@ -809,6 +809,10 @@ interface ResultRowProps extends RowAttack {
 /** Values per second of a one-off attack, noted briefly in the hits' timings */
 const oneOffNote = "Per second without the time to repeat it";
 
+/** A one-off attack's DPS, noted on the value (marked with an asterisk) */
+const oneOffDpsNote =
+  "This DPS isn't comparable to other attack types': it only counts the attack itself, not the time to run, backstep, block, or land a critical hit again";
+
 /**
  * Each attribute column group gets a border on its left, and the last group also gets one on its
  * right. The final stats start with the button to plan them, which has the left border instead.
@@ -1059,7 +1063,7 @@ const ResultRow = memo(function ResultRow({
     : pinHoverSx;
   const rowSx = assumed ? [baseRowSx, assumedRowSx].flat() : baseRowSx;
   // Notes on the value, shown above its breakdown
-  const valueNotes = [result.attackNote, result.buffNote]
+  const valueNotes = [result.attackNote, result.buffNote, showDps && oneOffAttack && oneOffDpsNote]
     .filter((note): note is string => !!note)
     .map((note) => (note.endsWith(".") ? note : `${note}.`));
   return (
