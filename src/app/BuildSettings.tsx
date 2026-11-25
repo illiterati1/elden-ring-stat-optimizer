@@ -30,7 +30,6 @@ import type { AppState, Grip, UpdateAppState } from "./useAppState.ts";
 import {
   damageTypeIcons,
   damageTypeLabels,
-  debug,
   objectiveOptions,
   physicalTypeLabels,
   statusTypes,
@@ -541,52 +540,48 @@ function BuildSettings({
         )}
 
         {/* Spell scaling isn't affected by damage multipliers */}
-        {debug && (
-          <>
-            <FormControlLabel
-              label="Scadutree Blessing"
-              title={
-                spellScaling
-                  ? "Doesn't apply to spell scaling"
-                  : scadutreeBlessingFromEnemy
-                  ? `Set by the enemy picked: ${
-                      scadutreeBlessing ? "it's" : "it isn't"
-                    } in the Realm of Shadow`
-                  : "The blessing's damage bonus, which applies in the Realm of Shadow"
-              }
-              sx={{ mr: 0, gridColumn: 1 }}
-              disabled={spellScaling || scadutreeBlessingFromEnemy}
-              control={
-                <Checkbox
-                  size="small"
-                  checked={scadutreeBlessing}
-                  onChange={(evt) => onChange({ scadutreeBlessing: evt.currentTarget.checked })}
-                />
-              }
+        <FormControlLabel
+          label="Scadutree Blessing"
+          title={
+            spellScaling
+              ? "Doesn't apply to spell scaling"
+              : scadutreeBlessingFromEnemy
+              ? `Set by the enemy picked: ${
+                  scadutreeBlessing ? "it's" : "it isn't"
+                } in the Realm of Shadow`
+              : "The blessing's damage bonus, which applies in the Realm of Shadow"
+          }
+          sx={{ mr: 0, gridColumn: 1 }}
+          disabled={spellScaling || scadutreeBlessingFromEnemy}
+          control={
+            <Checkbox
+              size="small"
+              checked={scadutreeBlessing}
+              onChange={(evt) => onChange({ scadutreeBlessing: evt.currentTarget.checked })}
             />
-            <FormControl fullWidth size="small" disabled={spellScaling}>
-              <InputLabel id="scadutreeBlessingLevelLabel">Blessing Level</InputLabel>
-              <Select
-                labelId="scadutreeBlessingLevelLabel"
-                label="Blessing Level"
-                value={scadutreeBlessingLevel}
-                onChange={(evt) => onChange({ scadutreeBlessingLevel: +evt.target.value })}
-              >
-                {scadutreeBlessingRates.map((rate, level) => (
-                  <MenuItem key={level} value={level}>
-                    +{level} ({rate}×)
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            {!spellScaling && scadutreeBlessingFromEnemy && (
-              <Typography variant="body2" color="text.secondary" gridColumn="1 / -1">
-                {scadutreeBlessing
-                  ? "The enemy picked is in the Realm of Shadow, so the blessing applies"
-                  : "The enemy picked isn't in the Realm of Shadow, so the blessing doesn't apply"}
-              </Typography>
-            )}
-          </>
+          }
+        />
+        <FormControl fullWidth size="small" disabled={spellScaling}>
+          <InputLabel id="scadutreeBlessingLevelLabel">Blessing Level</InputLabel>
+          <Select
+            labelId="scadutreeBlessingLevelLabel"
+            label="Blessing Level"
+            value={scadutreeBlessingLevel}
+            onChange={(evt) => onChange({ scadutreeBlessingLevel: +evt.target.value })}
+          >
+            {scadutreeBlessingRates.map((rate, level) => (
+              <MenuItem key={level} value={level}>
+                +{level} ({rate}×)
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        {!spellScaling && scadutreeBlessingFromEnemy && (
+          <Typography variant="body2" color="text.secondary" gridColumn="1 / -1">
+            {scadutreeBlessing
+              ? "The enemy picked is in the Realm of Shadow, so the blessing applies"
+              : "The enemy picked isn't in the Realm of Shadow, so the blessing doesn't apply"}
+          </Typography>
         )}
       </Box>
 
