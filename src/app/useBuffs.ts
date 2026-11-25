@@ -297,7 +297,7 @@ const categoryLabels: Record<number, string> = {
   118: "arrow and bolt effects",
   119: "thrown items",
   120: "two handed attacks",
-  121: "rolling and backstep attacks",
+  121: "rolling, crouching, and backstep attacks",
   122: "running attacks",
   123: "magma attacks",
   124: "storm attacks",
