@@ -1354,7 +1354,6 @@ export default function App() {
         showStancePerStamina={savedShowStancePerStamina}
         showPotential={showPotential}
         showRequirements={showRequirements}
-        closedAlerts={closedAlerts}
         onlyBuffable={onlyBuffable}
         weaponFilters={weaponFilters}
         weaponTypes={weaponTypes}

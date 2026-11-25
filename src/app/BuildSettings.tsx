@@ -1,6 +1,5 @@
 import { memo, useMemo, useState, type Key, type ReactNode } from "react";
 import {
-  Alert,
   Autocomplete,
   Box,
   Button,
@@ -57,7 +56,6 @@ interface Props {
   showStancePerStamina: AppState["showStancePerStamina"];
   showPotential: AppState["showPotential"];
   showRequirements: AppState["showRequirements"];
-  closedAlerts: AppState["closedAlerts"];
   onlyBuffable: AppState["onlyBuffable"];
   weaponFilters: AppState["weaponFilters"];
   objective: AppState["objective"];
@@ -382,7 +380,6 @@ function BuildSettings({
   showStancePerStamina,
   showPotential,
   showRequirements,
-  closedAlerts,
   onlyBuffable,
   weaponFilters,
   objective,
@@ -706,16 +703,6 @@ function BuildSettings({
       <CollapsibleGroup
         title={`Weapon types${weaponTypes.length > 0 ? ` (${weaponTypes.length} selected)` : ""}`}
       >
-        {!closedAlerts.includes("weaponTypes") && (
-          <Alert
-            severity="warning"
-            onClose={() => onChange({ closedAlerts: [...closedAlerts, "weaponTypes"] })}
-            sx={{ my: 1 }}
-          >
-            Every weapon of a checked type is calculated for each selected affinity, so checking
-            many types and affinities can make calculation slow.
-          </Alert>
-        )}
         <WeaponTypePicker
           weaponTypes={weaponTypes}
           onWeaponTypesChanged={(newWeaponTypes) => onChange({ weaponTypes: newWeaponTypes })}
