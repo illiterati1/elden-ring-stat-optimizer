@@ -1745,9 +1745,8 @@ BUFFED_R2_ANIMATIONS = (30600, 32600)
 BUFFED_R2_ANIMATION_COUNT = 100
 BUFFED_R2_BLOCK = 20
 # Skills timed by their throws' critical hit events, whose throw animation starts when the grab lands
-# (ANIMATION_SEQUENCES). Golden Crux's NPC grab (a923 40090, its hit 1.733 s in) isn't, until when its
-# grab lands is measured
-THROW_SKILLS = {"Lifesteal Fist"}
+# (ANIMATION_SEQUENCES)
+THROW_SKILLS = {"Lifesteal Fist", "Golden Crux"}
 # Skills whose main attack is several animations in a row, each from when it starts after the
 # first's start (measured in game): Prelate's Charge pressed once does its start (40000) and then its
 # finish (40004), without its charging loop (40003, while held): its initial attack 75 frames after
@@ -1766,6 +1765,12 @@ ANIMATION_SEQUENCES = {
     # L2 cancel goes on to #2, 96 frames in (measured in game: #1's hit 87 frames after L2, #2's 184,
     # the next #1's 368)
     ("Golden Crux", "#1"): [(40000, 0), (40004, 96 / 60)],
+    # Its NPC grab: the thrust (40000), then once it lands the throw (40090), whose critical hit is
+    # 1.733 s in, 84 frames in (er-logger, 2026-11-25, 3 grabs on Gideon Ofnir, by wall clock: 40090
+    # 84 to 85 frames into 40000, 2-3 after the thrust's window opens; its hit 103 to 104 frames into
+    # 40090, 189 and 190 after L2; L2 again 361 frames into 40090, 446 after the last L2's
+    # animation started)
+    ("Golden Crux", "NPC"): [(40000, 0), (40090, 84 / 60)],
     # Black Flame Tornado tapped: its start (40000), then its release (40001: a swing, then the
     # finisher 64 frames in) 78 frames in (measured in game on a Twinblade: its swings 68 and 84
     # frames after L2, the finisher 144; HIT_TIME_FITS has the second swing)

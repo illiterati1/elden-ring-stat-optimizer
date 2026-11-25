@@ -36,8 +36,6 @@ Nothing to compare yet; measure from the press.
   `scripts/check_animations.py`, from the Miséricorde's riposte and Godslayer's Greatsword's
   backstab).
 - Shields' mounted R2
-- Golden Crux's NPC grab (Greatsword of Damnation): when the grab lands after L2 (its throw
-  animation a923 40090's hit is 1.733 s in)
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
 - Spinning Chain's loop length

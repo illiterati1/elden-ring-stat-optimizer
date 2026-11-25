@@ -13163,9 +13163,24 @@ describe("Ashes of War", () => {
     // The Greatsword of Damnation's fixed skill: a chain of its thrust and bullet, and a version of
     // its grab, which only NPCs take. Tested in game on a +10 with 99 in every stat: on the training
     // dummy 1137 then 1386 (16.5 stance each); on Sir Gideon Ofnir (the Ashen Capital's) the grab 1810.
+    // With the Dagger Talisman (er-logger, 2026-11-25, on Gideon): 2085 (2519 while he was unaware,
+    // ×1.2 not modeled), hitting 189 and 190 frames after L2 (wall clock), L2 again 446 frames after
+    // the last L2's animation started
     const weapon = getWeapon("Greatsword of Damnation");
-    const build = (attack: AttackData, gideon: boolean) => {
-      const defense = [105.5, 139.1, 129.5, 103.1, 110.3];
+    const daggerTalisman = (
+      JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
+        .buffs as { name: string; effects: BuffEffect[] }[]
+    ).find((buff) => buff.name === "Dagger Talisman")!.effects;
+    // Gideon's defense in NG, or NG+1
+    const build = (
+      attack: AttackData,
+      gideon: boolean,
+      buffs: BuffEffect[] = [],
+      ngPlus = false,
+    ) => {
+      const defense = ngPlus
+        ? [126.6, 166.9, 155.4, 123.7, 132.4]
+        : [105.5, 139.1, 129.5, 103.1, 110.3];
       const negation = [25.5, 24.6, 19.2, 20.5, 17.8];
       return optimizeBuild({
         weapon,
@@ -13189,6 +13204,7 @@ describe("Ashes of War", () => {
           : { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
         attack,
+        buffs,
       }).attackSteps!.map((step) => step.map((hit) => [hit.damage, hit.stance]));
     };
     const versions = Object.fromEntries(
@@ -13200,6 +13216,10 @@ describe("Ashes of War", () => {
     expect(Object.keys(versions)).toEqual(["Golden Crux", "NPC"]);
     expect(build(versions["Golden Crux"], false)).toEqual([[[1137, 16.5]], [[1386, 16.5]]]);
     expect(build(versions["NPC"], true)[0][0][0]).toBe(1810);
+    expect(build(versions["NPC"], true, daggerTalisman, true)[0][0][0]).toBe(2084);
+    const [grab] = versions["NPC"].stepTimes!;
+    expect(grab.hitTimes!.map((time) => Math.round(time! * 60))).toEqual([190]);
+    expect(Math.round(grab.cycle! * 60)).toBe(446);
   });
 
   it("matches Savage Claws in game", () => {
