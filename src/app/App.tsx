@@ -1454,15 +1454,6 @@ export default function App() {
             known issues
           </Link>
           .
-          <Box
-            component="span"
-            sx={{ display: "none", "@media (hover: none)": { display: "inline" } }}
-          >
-            {/* Only on touch-first devices, i.e. phones and tablets */}
-            <br />
-            Apologies to mobile users, this was developed with a desktop in mind, so some text may
-            be cut off. This will be fixed in the future.
-          </Box>
         </Typography>
         {!closedAlerts.includes("levels") && (
           <Alert severity="warning" onClose={() => closeAlert("levels")} sx={{ mb: 3 }}>
