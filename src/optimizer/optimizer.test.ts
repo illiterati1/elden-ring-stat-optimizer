@@ -6994,7 +6994,14 @@ describe("Ashes of War", () => {
       twoHanding = true,
       weapon = ironBall,
       buffs: string[] = [],
+      crucibleKnight = false,
     ) => {
+      const crucibleKnightNegation: Partial<Record<AttackPowerType, number>> = {
+        [AttackPowerType.MAGIC]: 40,
+        [AttackPowerType.FIRE]: 20,
+        [AttackPowerType.LIGHTNING]: 20,
+        [AttackPowerType.HOLY]: 40,
+      };
       const [{ ash: weaponAsh }] = getAshAttacks(ashes, movesets, weapon, "Lifesteal Fist", true);
       if (!weaponAsh || !("attack" in weaponAsh)) throw new Error();
       return optimizeBuild({
@@ -7007,9 +7014,15 @@ describe("Ashes of War", () => {
         bonusAttributes: noBonus,
         objective: "totalAttack",
         defenses: Object.fromEntries(
-          allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
+          allDamageTypes.map((damageType) => [
+            damageType,
+            { defense, negation: (crucibleKnight && crucibleKnightNegation[damageType]) || 0 },
+          ]),
         ),
-        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        physicalNegation: crucibleKnight
+          ? { standard: 35, slash: 35, strike: 35, pierce: 35 }
+          : { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        ...(crucibleKnight && { criticalDamageRate: 0.7 }),
         limits: { ...noLimits, maxLevels: 0 },
         attack: weaponAsh.attack,
         buffs: getBuffEffects(
@@ -7034,6 +7047,12 @@ describe("Ashes of War", () => {
     expect(hits(25, 144.4, {}, true, occultIronBall)).toEqual([238, 238, 238, 278, 278]);
     expect(hits(25, 144.4, {}, true, occultIronBall, ["Dagger Talisman"])).toEqual([
       277, 277, 277, 323, 323,
+    ]);
+    // Crucible Knights' ×0.7 for critical hits applies to it too: er-logger 2026-11-25, the same
+    // with the Dagger Talisman on the Stormhill Evergaol one (NpcParam 25000010), NG+1 (122 defense,
+    // 35% physical negation), twice
+    expect(hits(25, 122, {}, true, occultIronBall, ["Dagger Talisman"], true)).toEqual([
+      124, 124, 124, 147, 147,
     ]);
     // Clinging Bone (+10, its somber level for 25), one handed
     const clingingBone = getWeapon("Clinging Bone");

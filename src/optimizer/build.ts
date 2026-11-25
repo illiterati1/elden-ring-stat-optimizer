@@ -284,7 +284,8 @@ export interface AttackDataHit {
   notCounted?: boolean;
   /**
    * True for a skill's critical hit (AtkParam throwFlag 2, e.g. a throw's), which gets critical-hit
-   * buffs like the Dagger Talisman's (tested on Lifesteal Fist, 2026-11-25)
+   * buffs like the Dagger Talisman's and enemies' critical damage rates (tested on Lifesteal Fist,
+   * 2026-11-25)
    */
   critical?: boolean;
   /** Flat stance damage, added to the stance motion value's */
@@ -1596,6 +1597,9 @@ export function optimizeBuild(
     : 1;
   const toHit = (hit: AttackDataHit, weight: number): AttackHit => {
     const offhandHit = usesOffhand && !!hit.leftHand;
+    // Some enemies take less damage from critical hits, a skill's throws' too (assumed to apply
+    // after defenses; Crucible Knights' ×0.7 tested on Lifesteal Fist, 2026-11-25)
+    const criticalRate = attack?.critical || hit.critical ? criticalDamageRate : 1;
     // Buffs that apply to this hit: multipliers multiply, and flat attack adds
     const applied = buffs.filter((effect) => buffAppliesTo(effect, hit, attack));
     const attackPowerRates = allDamageTypes.map((damageType) =>
@@ -1604,7 +1608,7 @@ export function optimizeBuild(
     const damageRates = allDamageTypes.map((damageType) =>
       applied.reduce(
         (rate, effect) => rate * (effect.damageRates?.[damageType] ?? 1),
-        (hit.damageRates?.[damageType] ?? 1) * (offhandHit ? offhandEnemyRate : 1),
+        (hit.damageRates?.[damageType] ?? 1) * (offhandHit ? offhandEnemyRate : 1) * criticalRate,
       ),
     );
     // Weapon buffs only apply to hits with the weapon, not e.g. a skill's projectiles. Spell buffs
@@ -1712,7 +1716,6 @@ export function optimizeBuild(
 
   const enemyRate =
     scadutreeBlessingRate *
-    (attack?.critical ? criticalDamageRate : 1) *
     getEnemyTypeRate(weapon.enemyTypeRates, enemyTypes);
   const options = {
     ...(fastLimit && { onlyLevels: fastLimit.levels }),
@@ -1739,8 +1742,8 @@ export function optimizeBuild(
     ...(attack?.needsRequirements && objective !== "spellScaling" && { needsRequirements: true }),
     ...(spellBuffWeapon && { spellBuffWeapon }),
     ...(offhandWeapon && { offhandWeapon }),
-    // Some enemies take less damage from critical hits (assumed to apply after defenses), some
-    // weapons do more to some enemy types, and the Scadutree Blessing raises damage to enemies
+    // Some weapons do more to some enemy types, and the Scadutree Blessing raises damage to enemies
+    // (enemies' critical hit rates are per hit, in toHit)
     damageMultipliers:
       enemyRate !== 1
         ? Object.fromEntries(

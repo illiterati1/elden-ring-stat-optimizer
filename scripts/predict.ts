@@ -124,6 +124,8 @@ interface Target {
   name: string;
   defenses: Record<AttackPowerType, { defense: number; negation: number }>;
   physicalNegation: { standard: number; slash: number; strike: number; pierce: number };
+  /** Its damage multiplier for critical hits, if not 1 (e.g. 0.7 for Crucible Knights) */
+  criticalDamageRate?: number;
 }
 
 /** @returns an enemy's defenses as the enemy picker sets them, or the dummy's if it isn't known */
@@ -159,6 +161,7 @@ function getTarget(npcParamId: number | undefined): Target {
       [AttackPowerType.HOLY]: { defense: holy, negation: holyN },
     } as Target["defenses"],
     physicalNegation: { standard, slash, strike, pierce },
+    ...(enemy.criticalDamageRate && { criticalDamageRate: enemy.criticalDamageRate }),
   };
 }
 
@@ -281,6 +284,7 @@ function predict(
     objective: "totalAttack",
     defenses: target.defenses,
     physicalNegation: target.physicalNegation,
+    criticalDamageRate: target.criticalDamageRate,
     limits: {
       maxLevels: 0,
       minGainPerLevel: null,
