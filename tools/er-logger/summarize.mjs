@@ -70,9 +70,13 @@ starts.forEach((s, i) => {
   if (!paying.length) return;
   const end = i + 1 < starts.length ? starts[i + 1].frame : Infinity;
   const drops = ev.filter(e => e.who === 'player' && e.field === 'stamina' && +e.note < 0 && e.frame >= s.frame && e.frame < end);
+  // The cost to match is the first cast's own drop, or the TAE's when it paid none (before the game
+  // counts the player as in combat), so a recast's drop isn't taken for the first cast's
+  const lastPaying = paying.at(-1)[0] + 2;
+  const cost = drops.length && drops[0].frame - s.frame <= lastPaying ? drops[0].note : String(-t.stamina.find(c => c > 0));
   let cast = s;
-  for (const d of drops.slice(1)) {
-    if (d.note !== drops[0].note || d.frame - cast.frame <= paying.at(-1)[0] + 2) continue;
+  for (const d of drops) {
+    if (d.note !== cost || d.frame - cast.frame <= lastPaying) continue;
     const frame = d.frame - Math.round(paying[0][0]);
     // its events from the drop on (until then they're the last cast's, e.g. its frostbite proc)
     cast = { ...s, frame, ms: d.ms - (d.frame - frame) * 1000 / 60, recast: true, from: d.frame };
