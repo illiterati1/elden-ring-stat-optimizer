@@ -203,8 +203,12 @@ const MOVESET_ANIMATIONS: Record<number, [AttackName, number]> = {
   30300: ["Rolling R1", 0],
   30310: ["Crouching R1", 0],
   30400: ["Backstep R1", 0],
+  // Jumping attacks play 31x70 at any press (31x71 after); 31x30 only before it, on a press 39+
+  // frames into the jump (logs 2026-11-22 22-55-09, 2026-11-26 15-03-59)
   31030: ["Jumping R1", 0],
+  31070: ["Jumping R1", 0],
   31230: ["Jumping R2", 0],
+  31270: ["Jumping R2", 0],
   30700: ["Guard Counter", 0],
   ...Object.fromEntries([0, 1, 2, 3, 4, 5].map((i) => [34000 + i * 10, ["Powerstance L1", i]])),
   34200: ["Powerstance Running L1", 0],

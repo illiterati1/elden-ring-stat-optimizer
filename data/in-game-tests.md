@@ -29,7 +29,11 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   character, log 2026-11-24 22-35-34) every hit was the lower kind, about ×1.474: the skill 793
   and 2659 (538 and 1809), R1 #2 1265 (857), R1 #1 1484 (838, also ×1.2 for the stance break, see
   "Not modeled"). Both bosses' params have every part's damage rate at 1, so if it's a body part,
-  the rate is in the model's hitboxes.
+  the rate is in the model's hitboxes. Rellana again (log 2026-11-26 15-03-59, same character): this
+  time every hit was the lower kind, about ×1.46: R1 #1 1078 (736), R1 #2 1102 (753), rolling R1
+  1315 (895), R2 1500 (1026, both R2s), charged R2 1946 (1333; 2335 = ×1.2 on a stance break), the
+  skill 693 and 2352 (473 and 1614), riposte 1238 and 3264 (1271 and 3363 last time). So it isn't
+  the attack either: the same R2 and riposte did the higher kind in the earlier fight.
 - Powerstance L1 chain with a Dagger +25 in each hand (log 2026-11-25 00-19-33): #4's 2nd and 3rd
   hits land at anim +38 and +42/43, 3 frames after the calculator's 35 and 40, though their TAE
   windows open at 34.8 and 39.8. All other hits are within 2 frames. Same with an Erdsteel Dagger
