@@ -3029,7 +3029,8 @@ def main():
         bullets_by_attack.setdefault(bullet["atkId_Bullet"], []).append(bullet)
     # A Bullet row's own physical type (atkAttribute, 254 for its AtkParam row's) replaces its AtkParam
     # row's. Tested in game: Storm Stomp's bullet (AtkParam 30300870, standard; Bullet 2280, slash)
-    # takes slash's negation (140 on Tree Sentinel, 35% slash, 10% standard), and Beast's Roar's
+    # takes slash's negation (140 on Tree Sentinel, 35% slash, 10% standard; 231, stance 10, on the
+    # training dummy with negations set per type, Quality Longsword +25 one and two handed), and Beast's Roar's
     # (30000841, strike; Bullet 2800, standard) did 619 on the training dummy with negations set per
     # type (strike would be 743), while Storm Blade's (both standard) took standard's. Only used when
     # every Bullet row with the attack agrees: Wave of Destruction's 303400605 (standard) is also

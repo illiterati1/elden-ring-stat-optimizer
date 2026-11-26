@@ -5,12 +5,6 @@ from the press that starts the attack (the skill's L2, or the first R1/R2), with
 soon as possible. Tested results go in the tests (`src/optimizer/optimizer.test.ts`) and the build
 scripts' comments; then remove them from here. `scripts/predict.ts` gives the calculated values.
 
-## Damage
-
-| # | Test | Calculated |
-|---|---|---|
-| 1 | Storm Stomp, Quality Broadsword +25, two handed, on the training dummy (negations set per type, slash ×1.1; NG+1, 99 in every stat). Its bullet is slash by its Bullet row (build_ash_data.py `bullet_types`), tested on Tree Sentinel | 231, stance 10 |
-
 ## Discrepancies to look into
 
 - Keen Watchdog's Greatsword +25 (4010225) with Ghostflame Call, one handed, on the training dummy,
