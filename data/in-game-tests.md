@@ -57,6 +57,11 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   the same log agrees: Scorpion Kite Shield +25 and Gilded Greatshield +25 taps only guarded, and
   their charged R2s matched (374, 33 stance, 27 stamina at anim 132; 695, 36, 37 at about 137,
   calculated 136). Thrusting shields (wepType 90) stay in.
+- Keen Backhand Blade +25 (64500225) jumping R2, two handed, on the training dummy, 99 in every
+  stat, NG+1 (log 2026-11-26 15-17-01). Damage, stance and stamina match (569 + 569, 11 stance
+  each, 13 + 14 stamina), but the hits land 45–49 frames after the jump press (R2 pressed 6–14
+  frames after it, five tries), where the calculator gives 42 for both. The two hits also land 1–2
+  frames apart (+45/+47, +45/+46), not together. Jumping R1 matched: 476 + 476, +36 and +37 (calculated 36).
 
 ## Not timed
 
