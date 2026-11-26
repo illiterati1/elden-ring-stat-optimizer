@@ -352,8 +352,19 @@ function AttackHits({
     })
     .sort((a, b) => a.time - b.time || a.index - b.index)
     .map(({ row }) => row);
-  // Each step's cancels, on its last hit to land
-  const lastRows = new Map(sortedHitRows.map((row, index) => [row.step, index]));
+  // Each step's cancels, on its last hit to land before any later step's first (e.g. not on
+  // Ghostflame Call's flames landing after the follow-up's swing), or on its first if none does
+  const firstRows = new Map<number, number>();
+  sortedHitRows.forEach((row, index) => {
+    if (!firstRows.has(row.step)) firstRows.set(row.step, index);
+  });
+  const lastRows = new Map<number, number>();
+  sortedHitRows.forEach((row, index) => {
+    const laterStep = Math.min(
+      ...[...firstRows].filter(([step]) => step > row.step).map(([, first]) => first),
+    );
+    if (index < laterStep || !lastRows.has(row.step)) lastRows.set(row.step, index);
+  });
   // Each step's early roll-outs (before its last hit, skipping the rest), on the last hit before
   // each (by row)
   const earlyRolls = new Map<number, number>();
