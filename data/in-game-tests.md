@@ -37,7 +37,8 @@ Nothing to compare yet; measure from the press.
 - Small and large ripostes' leads (press to animation start), and other classes' backstabs' and
   ripostes'. Taken as 4 frames for ripostes and 16 for backstabs (`CRITICAL_STARTS` in
   `scripts/check_animations.py`, from the Miséricorde's riposte and Godslayer's Greatsword's
-  backstab).
+  backstab). Backstab leads measured so far (er-logger): Greatsword 15, Flail 14, Fire Knight's
+  Shortsword (a20) 16, Blood Smithscript Dagger (a53) 15, Noble's Slender Sword (a23) 15.
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
@@ -53,4 +54,7 @@ Nothing to compare yet; measure from the press.
   Godslayer's Greatsword backstab's first hit did 446 instead of 346, ×1.2 before defenses (MV 52
   as 62.4). The second hit was unchanged (1525), presumably because the first hit had alerted the enemy.
   Flail +25 backstab (log 2026-11-25 18-51-18): same pattern, 1st hit 291 instead of 234, 2nd 1057 as
-  calculated.
+  calculated. Log 2026-11-25 18-56-33: Fire Knight's Shortsword backstab 1594 (1316 calculated) and
+  Blood Smithscript Dagger's 1212 (1009) with the dummy idle (its anim 20) beforehand; Noble's
+  Slender Sword's 1224 as calculated, started while the dummy was still in anim 5000 after the last
+  one. So the bonus seems to need the enemy idle (anim 20), not just any backstab.
