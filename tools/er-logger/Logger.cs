@@ -1,7 +1,7 @@
 // er-logger: polls Elden Ring's memory (read-only) about once per millisecond and logs every change
 // to a CSV, numbered by game frame. Ctrl+C to stop.
 //
-//   er-logger.exe [outdir] [--for seconds]   default outdir: %USERPROFILE%\Videos\er-logs
+//   er-logger.exe [outdir] [--for seconds]   default outdir: logs\ next to the exe (gitignored)
 //
 // Frames are counted from GameDataMan's play-time clock, which advances once per game frame;
 // gametime is that clock (ms since the log started), which also covers long frames.
@@ -46,7 +46,7 @@ public static class Logger {
         double runFor = double.MaxValue; var rest = new List<string>();
         for (int i = 0; i < args.Length; i++) { if (args[i] == "--for") runFor = double.Parse(args[++i], CultureInfo.InvariantCulture); else rest.Add(args[i]); }
         args = rest.ToArray();
-        string dir = args.Length > 0 ? args[0] : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Videos", "er-logs");
+        string dir = args.Length > 0 ? args[0] : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs");
         Directory.CreateDirectory(dir);
         while ((m = Mem.Attach()) == null) { Console.WriteLine("waiting for eldenring.exe..."); Thread.Sleep(2000); }
         wcm = m.Rip(m.Scan("48 8B 05 ?? ?? ?? ?? 48 85 C0 74 0F 48 39 88"), 3, 7);

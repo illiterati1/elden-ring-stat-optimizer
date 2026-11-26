@@ -1,7 +1,7 @@
 // Summarise an er-logger CSV: one line per player animation (attack), with the press that started it,
 // when stamina was spent, and each hit's damage and stance/buildup changes.
 //
-//   node summarize.mjs [log.csv]      default: newest log in %USERPROFILE%\Videos\er-logs
+//   node summarize.mjs [log.csv]      default: newest log in logs/ (the logger's default folder)
 //
 // Each attack is checked against its TAE hit windows (via tae_windows.py and the stat calculator's
 // TAE reader): stamina should drop on the frame the first window whose behavior costs stamina opens, by that
@@ -18,11 +18,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-// The logger's default folder, %USERPROFILE%\Videos\er-logs, as a WSL path
-const logDir = () => {
-  const run = (cmd, args) => execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-  return path.join(run('wslpath', [run('cmd.exe', ['/c', 'echo %USERPROFILE%'])]), 'Videos', 'er-logs');
-};
+// The logger's default folder: logs/ next to it
+const logDir = () => new URL('logs', import.meta.url).pathname;
 const argv = process.argv.slice(2);
 const file = argv[0] || (dir => path.join(dir, fs.readdirSync(dir).filter(f => f.endsWith('.csv')).sort().at(-1)))(logDir());
 const [header, ...lines] = fs.readFileSync(file, 'utf8').trim().split(/\r?\n/);

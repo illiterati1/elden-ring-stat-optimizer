@@ -26,7 +26,7 @@ It was written to check this calculator's attack timings and damage against the 
 
 ## Use
 
-    er-logger.exe [outdir] [--for seconds]       # default outdir: %USERPROFILE%\Videos\er-logs
+    er-logger.exe [outdir] [--for seconds]       # default outdir: logs\ next to the exe (gitignored)
     node summarize.mjs [log.csv]                 # default: newest log in that folder
 
 Log columns: `frame,ms,gametime,who,field,old,new,note`. Regenerating meters log drops, the first
