@@ -38,7 +38,11 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   negation is 20% (neutralDamageCutRate 0.8, same in the mod). Without that 20%, 172 / 0.8 × 1.5 =
   322.5, so the game seems to apply no negation: slash's (1.0), or none at all. The small riposte in
   the same log matched (2929 = 1953 × 1.5). Timing, stamina 10 and the buffered L2 repeat (82 frames)
-  matched.
+  matched. Settled as slash on Tree Sentinel (32510010, 10% standard, 35% slash; NG+1, 6,805 HP; log
+  2026-11-25 21-54-16): four stomps each did 140 and 10 stance. Calculated 195 with standard's 10%;
+  195 / 0.9 × 0.65 = 140.8 with slash's 35%; no negation would be 217. So the game takes this
+  bullet's physical damage as slash, though its AtkParam says standard (atkAttribute 3). Not known
+  yet: why, and whether other standard bullets do the same.
 
 
 ## Not timed
