@@ -4386,41 +4386,86 @@ describe("Ashes of War", () => {
   it("matches Spinning Gravity Thrust in game", () => {
     // Spinning Gravity Thrust is a chain: 5 hits, then 4. Tested in game on a Blood Sword Lance +25
     // with 99 in every stat on the training dummy: 144 four times and 693, then 144 three times and
-    // 761, with 3.85 stance (5.5 and 13.2 for the big hits) and 112 blood loss a hit
-    const weapon = getWeapon("Blood Sword Lance");
-    const result = getAshAttack(
-      ashes,
-      movesets,
-      weapon,
-      withFollowUp("Spinning Gravity Thrust", " chain"),
-      false,
-    );
-    if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const { attackSteps } = optimizeBuild({
-      weapon,
-      regularUpgradeLevel: 25,
-      twoHanding: false,
-      startLevel: 9,
-      currentLevel: 9,
-      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
-      bonusAttributes: noBonus,
-      objective: "totalAttack",
-      defenses: Object.fromEntries(
-        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
-      ),
-      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
-      limits: { ...noLimits, maxLevels: 0 },
-      attack: result.attack,
-    });
+    // 761, with 3.85 stance (5.5 and 13.2 for the big hits) and 112 blood loss a hit. And on a Heavy
+    // Greatsword +25, one handed, on the NG+1 training dummy (logs 2026-11-25 18-13-25 and 18-15-20):
+    // 185 four times and 873, then 185 three times and 957, with 4.2 stance (6 and 14.4)
+    const build = (name: string, defense: number) => {
+      const weapon = getWeapon(name);
+      const result = getAshAttack(
+        ashes,
+        movesets,
+        weapon,
+        withFollowUp("Spinning Gravity Thrust", " chain"),
+        false,
+      );
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+      }).attackSteps!;
+    };
     const small = [144, 3.85, expect.closeTo(111.9, 1)];
     expect(
-      attackSteps!.map((step) =>
+      build("Blood Sword Lance", 123.2).map((step) =>
         step.map((hit) => [hit.damage, hit.stance, hit.status[AttackPowerType.BLEED]]),
       ),
     ).toEqual([
       [small, small, small, small, [693, 5.5, expect.closeTo(111.9, 1)]],
       [small, small, small, [761, 13.2, expect.closeTo(111.9, 1)]],
     ]);
+    expect(
+      build("Heavy Greatsword", 144.4).map((step) =>
+        step.map((hit) => [hit.damage, expect.closeTo(hit.stance, 5)]),
+      ),
+    ).toEqual([
+      [
+        [185, 4.2],
+        [185, 4.2],
+        [185, 4.2],
+        [185, 4.2],
+        [873, 6],
+      ],
+      [
+        [185, 4.2],
+        [185, 4.2],
+        [185, 4.2],
+        [957, 14.4],
+      ],
+    ]);
+  });
+
+  it("times Spinning Gravity Thrust as in game", () => {
+    // Heavy Greatsword +25, one handed, on the training dummy (logs 2026-11-25 18-13-25 and
+    // 18-15-20), from each animation's start: #1's hits at 88, 98, 108, 118 and 128, each with a
+    // stamina window (3 a window, the last 17: 29), rolled out of at 242; #2's at 26, 36, 46 and 64
+    // (3 a window, the last 22: 31), rolled out of at 108, 2 frames after the earliest roll here
+    const result = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Heavy Greatsword"),
+      withFollowUp("Spinning Gravity Thrust", " chain"),
+      false,
+    );
+    if (!("attack" in result)) throw new Error(result.unavailableReason);
+    const frames = (time: number) => Math.round(time * 60);
+    const [first, second] = result.attack.stepTimes!;
+    expect(first.hits.map((hit) => frames(hit - first.lead))).toEqual([88, 98, 108, 118, 128]);
+    expect(second.hits.map((hit) => frames(hit - second.lead))).toEqual([26, 36, 46, 64]);
+    expect(frames(first.roll! - first.lead)).toBe(242);
+    expect(frames(second.roll! - second.lead)).toBe(106);
+    expect(result.attack.stamina).toEqual([29, 31]);
   });
 
   it("matches Spinning Slash in game", () => {
