@@ -52,8 +52,10 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   22-10-52): held, it raises the shield (anim 57038100), hits at anim +29 for 550 and 3.3 stance with
   no stamina cost, drains 1 stamina about every 6 frames while held, then does the charged hit at
   anim +140.5: 945 and 33 stance for 36 stamina, as calculated, but the calculator times it at anim
-  30 (the animation's first window; its costing window opens at 134). Not known: what the 550 hit is
-  (the calculator's uncharged mounted R2 is 689 and 11 stance, lead 24), and what a tap does. Other
+  30 (the animation's first window; its costing window opens at 134). The 550 hit is presumably a
+  charging hit (a hit while the attack charges), which the calculator doesn't model yet (see "Not
+  modeled"). Not known: what a tap does (the calculator's uncharged mounted R2 is 689 and 11
+  stance, lead 24). Other
   shields' uncharged mounted R2 was dropped as a guard (build_moveset_data.py SHIELD_TYPES); thrusting
   shields (wepType 90) were left in.
 
@@ -65,6 +67,9 @@ Nothing to compare yet; measure from the press.
 
 ## Not modeled
 
+- Charging hits: hits during a charged attack's charge, before its main hit. A Magic Carian
+  Thrusting Shield +25's held mounted R2 hit for 550 and 3.3 stance at anim +29, with no stamina
+  cost, before its charged hit at +140.5 (log 2026-11-25 22-10-52).
 - Hits on a stance-broken enemy (its anim 8700, before the riposte's 11060) did ×1.2 (in known-issues.md):
   Rellana took the skill's big hit at 2906 (2422 otherwise, log 2026-11-24 22-20-24), and Chief
   Bloodfiend took R1 #1 at 1484 (1257 expected, log 22-35-34). Godslayer's Greatsword, Boss Arena
