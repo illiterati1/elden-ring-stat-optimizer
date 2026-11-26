@@ -1652,15 +1652,17 @@ LOOP_FITS = {
         "opening": 193 / 60,
     },
     # Flails' Spinning Chain, Flail +25 on the training dummy (log 2026-11-25 00-53-07): L2 at 620
-    # starts 625040050 at once, which hits at 667 for no stamina; then its loop (625040051) from 687,
-    # a pass every 24 frames, each a hit a frame in and 6 stamina ("openingStamina" and "stamina")
+    # starts 625040050 at once, which hits at 667; then its loop (625040051) from 687, a pass every
+    # 24 frames, each a hit a frame in and 6 stamina ("stamina"). The opening costs 6 too, a frame
+    # before its hit (log 2026-11-25 18-31-44, three casts; that first log's opening was its first
+    # action, before the game counted the player as in combat) ("openingStamina")
     ("Spinning Chain", ""): {
         "openingHits": [(47 - 2) / 60],
         "loopFrom": 1,
         "hits": [1 / 60],
         "loop": 24 / 60,
         "opening": 67 / 60,
-        "openingStamina": [],
+        "openingStamina": [6],
         "stamina": [6],
     },
 }

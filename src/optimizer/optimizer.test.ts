@@ -10800,8 +10800,8 @@ describe("Ashes of War", () => {
 
   it("loops Spinning Chain as in game", () => {
     // Held, Flail +25 on the training dummy (log 2026-11-25 00-53-07): L2 starts its opening at
-    // once, which hits at 47 for no stamina, then its loop from 67, a pass every 24 frames, each a
-    // hit a frame in for 6 stamina
+    // once, which hits at 47 for 6 stamina, then its loop from 67, a pass every 24 frames, each a
+    // hit a frame in for 6 stamina (opening's stamina: log 2026-11-25 18-31-44)
     const result = getAshAttack(ashes, movesets, getWeapon("Flail"), "Spinning Chain", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
     const frames = (time: number) => Math.round(time * 60);
@@ -10811,7 +10811,7 @@ describe("Ashes of War", () => {
     expect(pass.hits.map(frames)).toEqual([1]);
     expect(result.attack.cycleTimes!.map(frames)).toEqual([67, 24]);
     expect(result.attack.repeatFrom).toBe(1);
-    expect(result.attack.stamina).toEqual([0, 6]);
+    expect(result.attack.stamina).toEqual([6, 6]);
   });
 
   it("matches Spinning Wheel in game", () => {
