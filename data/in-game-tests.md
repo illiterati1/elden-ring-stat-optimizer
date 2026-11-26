@@ -14,7 +14,9 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 - Spinning Chain's R2 follow-up (625040070), Flail +25 on the training dummy (log 2026-11-25
   18-31-44): its first hit (556) landed at anim+38, 4 frames into its window (34), where predict.ts
-  puts it. Its second (747) landed at anim+86, window 84. One try; maybe the chain's reach.
+  puts it. Its second (747) landed at anim+86, window 84. Two more tries (log 2026-11-25 18-43-27)
+  landed at anim+37 and +38, second hits +86. Maybe the chain's reach: one opening hit there also
+  landed at anim+48, 6 into its window (42), against the usual 44.
 
 - Godslayer's Greatsword +10 two handed on Rellana (53000082) in the Boss Arena mod, 99 in every
   stat, NG+1 with Radahn (43,743 HP), Scadutree Blessing 7 (×1.5) (log 2026-11-24 22-20-24). Most
