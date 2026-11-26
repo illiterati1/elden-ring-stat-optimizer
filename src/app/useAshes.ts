@@ -157,6 +157,8 @@ interface SkillPartTiming {
    */
   openingHits?: number[];
   loopFrom?: number;
+  /** For a loop with hits before its first pass, its opening's stamina costs, if measured */
+  openingStamina?: number[];
 }
 
 /**
@@ -340,13 +342,19 @@ function withSkillTiming(
   const cycleTimes = stepTimes.every((step) => step.cycle != null)
     ? stepTimes.map((step) => step.cycle!)
     : undefined;
-  const stamina = parts.map(({ label }) => {
-    const costs = getPartTiming(hits, skillRange, label, hands)?.stamina;
-    return costs?.reduce((sum, cost) => sum + chargedStamina(cost, staminaRate), 0);
-  });
+  const charged = (costs?: number[]) =>
+    costs?.reduce((sum, cost) => sum + chargedStamina(cost, staminaRate), 0);
+  const stamina = parts.map(({ label }) =>
+    charged(getPartTiming(hits, skillRange, label, hands)?.stamina),
+  );
+  // (unless its opening's was measured too)
+  const loop = split ? getPartTiming(hits, skillRange, parts[0].label, hands) : undefined;
+  const splitStamina = loop?.openingStamina &&
+    loop.stamina && [charged(loop.openingStamina)!, charged(loop.stamina)!];
   return {
     stepTimes,
     ...(cycleTimes && { cycleTimes }),
+    ...(splitStamina && { stamina: splitStamina }),
     ...(!split &&
       stamina.some((cost) => cost != null) && { stamina: stamina.map((cost) => cost ?? 0) }),
   };

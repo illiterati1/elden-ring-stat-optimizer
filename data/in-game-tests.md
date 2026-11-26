@@ -41,7 +41,6 @@ Nothing to compare yet; measure from the press.
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
-- Spinning Chain's loop length
 - How fast Feeble Lord's Frenzied Flame can be used again
 
 ## Not modeled

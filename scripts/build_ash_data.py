@@ -1651,6 +1651,18 @@ LOOP_FITS = {
         "loop": 60 / 60,
         "opening": 193 / 60,
     },
+    # Flails' Spinning Chain, Flail +25 on the training dummy (log 2026-11-25 00-53-07): L2 at 620
+    # starts 625040050 at once, which hits at 667 for no stamina; then its loop (625040051) from 687,
+    # a pass every 24 frames, each a hit a frame in and 6 stamina ("openingStamina" and "stamina")
+    ("Spinning Chain", ""): {
+        "openingHits": [(47 - 2) / 60],
+        "loopFrom": 1,
+        "hits": [1 / 60],
+        "loop": 24 / 60,
+        "opening": 67 / 60,
+        "openingStamina": [],
+        "stamina": [6],
+    },
 }
 # Hits of a loop with an opening (LOOP_FITS openingHits), in order, by the stance motion value of the
 # skill's hit to use (its hits differ only in stance): Spinning Wheel's downswing (302309903, 10), an
@@ -1658,6 +1670,8 @@ LOOP_FITS = {
 # a pass of its loop, the same
 LOOP_HIT_ORDERS = {
     ("Spinning Wheel", "Ghiza's Wheel"): [10, 30, *[10] * 4, *([15] * 2 + [10] * 6) * 2],
+    # Spinning Chain's one hit, in its opening and in each pass
+    **{("Spinning Chain", weapon): [85, 85] for weapon in ["Flail", "Nightrider Flail", "Chainlink Flail"]},
 }
 # Skills that are a stance (or a step) without hits of their own, whose attacks are R1s or R2s from it:
 # the stance's animation, and the follow-ups that start a chain (or are on their own), which start once
@@ -2643,8 +2657,10 @@ def get_skill_timing(
                 "hits": [round(time, 3) for time in fit["hits"]],
                 "loop": round(fit["loop"], 3),
                 **({"opening": round(fit["opening"], 3)} if "opening" in fit else {}),
-                # (an opening's own stamina isn't separated from its passes', so neither is given)
+                # (an opening's own stamina isn't separated from its passes' in the animations, so
+                # neither is given unless measured)
                 **({"stamina": timing["stamina"]} if "stamina" in timing and "openingHits" not in fit else {}),
+                **{key: fit[key] for key in ["stamina", "openingStamina"] if key in fit},
                 **(
                     {
                         "openingHits": [round(time, 3) for time in fit["openingHits"]],

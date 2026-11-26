@@ -10753,6 +10753,22 @@ describe("Ashes of War", () => {
     expect(charged.attack.steps.flat().some((hit) => hit.categories?.includes(111))).toBe(false);
   });
 
+  it("loops Spinning Chain as in game", () => {
+    // Held, Flail +25 on the training dummy (log 2026-11-25 00-53-07): L2 starts its opening at
+    // once, which hits at 47 for no stamina, then its loop from 67, a pass every 24 frames, each a
+    // hit a frame in for 6 stamina
+    const result = getAshAttack(ashes, movesets, getWeapon("Flail"), "Spinning Chain", false);
+    if (!("attack" in result)) throw new Error(result.unavailableReason);
+    const frames = (time: number) => Math.round(time * 60);
+    const [opening, pass] = result.attack.stepTimes!;
+    expect(result.attack.steps.map((step) => step.length)).toEqual([1, 1]);
+    expect(opening.hits.map(frames)).toEqual([47]);
+    expect(pass.hits.map(frames)).toEqual([1]);
+    expect(result.attack.cycleTimes!.map(frames)).toEqual([67, 24]);
+    expect(result.attack.repeatFrom).toBe(1);
+    expect(result.attack.stamina).toEqual([0, 6]);
+  });
+
   it("matches Spinning Wheel in game", () => {
     // Ghiza's Wheel's fixed skill loops while it's held: its opening (its downswing, 5 spins, and its
     // first loop's 8 hits) is counted once, then one pass of its loop (8 hits), the only part repeated
