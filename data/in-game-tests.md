@@ -37,9 +37,8 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 Nothing to compare yet; measure from the press.
 
-- Small ripostes' lead (press to animation start), and other classes' normal ripostes'. Taken
-  as 4 frames (`CRITICAL_STARTS` in `scripts/check_animations.py`, from the Miséricorde's riposte;
-  large ripostes measured 3-4).
+- Small ripostes' lead (press to animation start). Taken as 4 frames (`CRITICAL_STARTS` in
+  `scripts/check_animations.py`; normal and large ripostes measured 3-4).
 - Shields' mounted R2
 - Carian Retaliation
 

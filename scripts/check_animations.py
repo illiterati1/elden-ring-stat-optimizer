@@ -798,6 +798,8 @@ SHARED_ATTACK_ANIMATION_IDS = {
 # Iron Cleaver's 2nd). Large ripostes on Margit (2026-11-25, log 21-38-01) started 3-4 frames after:
 # Duelist Greataxe (a31) 4, Broadsword (a23) 3, Occult Iron Ball (a42) 3, and their hits landed
 # within 2 frames of the calculator's by wall clock (the logger's frames fall behind in boss fights).
+# Normal ripostes of the same three on Leonine Misbegotten (log 21-41-53): 4, 3 and 4 frames, hits
+# within 2 frames by wall clock, damage exact.
 # The small riposte isn't measured and is taken as the riposte's
 CRITICAL_ANIMATION_IDS = {"Backstab": 31710, "Riposte": 31700, "Small Riposte": 31720, "Large Riposte": 31750}
 CRITICAL_STARTS = {"Backstab": 16 / 60, "Riposte": 4 / 60, "Small Riposte": 4 / 60, "Large Riposte": 4 / 60}
