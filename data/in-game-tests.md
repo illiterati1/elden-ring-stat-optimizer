@@ -30,6 +30,12 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   lands at anim +33 and +32 (two tries), 4–5 frames after the calculator's 28, where its TAE window
   opens. Its 2nd hit (41) and all other hits are within 2 frames.
 
+- Hand Ballista +25 and Rabbath's Cannon +10, two handed (log 2026-11-25 20-58-48): their first hits
+  came later than calculated, 90 frames after the R2 (calculated 82) and 103 (88), though they fired
+  (the shot 37101 and its 40 stamina) at 82 and 90. Their next shots matched (263-264, 264-266). The
+  dummy may have been farther than in the earlier test (the ballista bolt flew 8 frames, the
+  cannon's 13). Damage 594 and 722.
+
 ## Not timed
 
 Nothing to compare yet; measure from the press.
@@ -39,13 +45,6 @@ Nothing to compare yet; measure from the press.
   The Godslayer's Greatsword large ripostes logged so far were in boss fights, where the logger's
   frames fall behind, so they don't count.
 - Shields' mounted R2
-- Bow and crossbow jump shots (Jumping R1): measured but not in the calculator ("no time"). Log
-  2026-11-25 19-51-14, frames from the jump's A press, dummy at close range: Longbow +25 two handed,
-  13 stamina at +40–42, Arrow hit +47–49 (281, as calculated); Pulley Crossbow +10, three bolts,
-  10 stamina each at +40, +49, +59 (as calculated), hits +49/50, +58/59, +67/68 (95 each, as
-  calculated). Hit frames include the arrow's flight, so they depend on distance.
-- Loaded shots of crossbows other than the Pulley Crossbow: assumed the same 34.5 frames from the
-  press to the bolt's hit (its 37010 raise is 24 frames on every crossbow)
 - Carian Retaliation
 - How fast Feeble Lord's Frenzied Flame can be used again
 

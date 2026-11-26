@@ -643,6 +643,8 @@ interface BowShot {
   cycle: number;
   roll: number;
   block: number;
+  /** Its hits' times depend on the distance (shown with ~) */
+  approximate?: true;
 }
 
 /**
@@ -703,17 +705,20 @@ const greatbowShot: BowShot = {
 };
 /**
  * A loaded crossbow's shot: raising it (a46's 37010, 24 frames; the Spread Crossbow's a235 has its
- * own, as long) and then the shot (37000), whose bolt hits 8.5 frames later at point blank (logged
- * on the Pulley Crossbow, 2026-11-25 20-00-45: the shot 24 frames after 37010, its first bolt
- * 34-35 frames after the press). The shot can be cancelled 40 frames in (its TAE). Its cycle is
- * the measured one with a reload each time, as when shooting again and again
+ * own, as long), then the shot (37000, 26 frames after the press), its bolt hitting 3 frames later
+ * at point blank. Approximate, as the bolt's flight depends on the distance: logged at 60 fps, 3-9
+ * frames after the shot starts (Heavy Crossbow, 2026-11-25 21-10-13), 8.5 (Pulley Crossbow,
+ * 20-00-45), 11 (Repeating Crossbow) and 13 (Spread Crossbow, 20-58-48). The shot can be cancelled
+ * 40 frames in (its TAE). Its cycle is the measured one with a reload each time, as when shooting
+ * again and again
  */
 const loadedCrossbowShot = (cycle: number, spacing?: number): BowShot => ({
-  release: (24 + 8.5) / 60,
+  release: 29 / 60 - stepStartDelay,
   ...(spacing && { spacing }),
   cycle,
   roll: (24 + 40) / 60,
   block: (24 + 40) / 60,
+  approximate: true,
 });
 const crossbowShot = loadedCrossbowShot(110.5 / 60);
 const pulleyCrossbowShot = loadedCrossbowShot(118.5 / 60, 10 / 60);
@@ -775,11 +780,13 @@ function getBowShotTimes(weapon: Weapon, count = 1): StepTimes | undefined {
   const shot = bowShots.get(weapon.weaponName);
   if (!shot) return undefined;
   const lead = stepStartDelay;
+  const hits = shot.spacing
+    ? Array.from({ length: count }, (_, i) => lead + shot.release + i * shot.spacing!)
+    : [lead + shot.release];
   return {
     lead,
-    hits: shot.spacing
-      ? Array.from({ length: count }, (_, i) => lead + shot.release + i * shot.spacing!)
-      : [lead + shot.release],
+    hits,
+    ...(shot.approximate && { hitTimes: hits, approximate: hits.map(() => true) }),
     earliest: { attack: "R1/R2", time: shot.cycle },
     rightHandAttack: shot.cycle,
     roll: shot.roll,
@@ -814,6 +821,98 @@ function getJumpLandingShotTimes(): StepTimes {
     earliest: { attack: "R1/R2", time: jumpLandingShotPair },
     rightHandAttack: jumpLandingShotPair,
     cycle: jumpLandingShotPair,
+  };
+}
+
+/**
+ * A jumping shot's timing from the jump press, with R1 pressed early in the jump: its (first) hit at
+ * point blank, the time between bolts fired one after another, when it lands, its landing's cancels
+ * (TAE), and when the next jump shot can start. A crossbow reloads after landing (R1 at its
+ * landing's attack cancel) and jumps at its reload's jump cancel; one jumping unloaded doesn't shoot
+ */
+interface JumpShot {
+  hit: number;
+  spacing?: number;
+  land: number;
+  landing: { rightHandAttack: number; roll: number; block: number };
+  cycle: number;
+}
+/**
+ * Logged at 60 fps (2026-11-25 20-32-11, from the jump press; its animation starts 1 frame later):
+ * - light bows' (a51; Shortbow, two handed): hit 37, landing (33071) at 50, a jump every 70-73
+ *   (landing's jump cancel 20). The Black Bow's and Ansbach's Longbow's (light bows' jump, see
+ *   jumpLandingShotWeapons; log 21-10-13, two handed): hit 33-36, landing at 52, a jump every 73-74
+ * - bows' (a44; Longbow, two handed): hit 48 (also 47-49 in log 19-51-14), landing at 53, a jump
+ *   every 99-100 (its jump cancel 46)
+ * - crossbows' (a46; Soldier's Crossbow): hit 53, landing (31071) at 52, R1 reloading at 80 (its
+ *   attack cancel 26), the next jump at 123 (the reload's jump cancel 40). The Repeating Crossbow's
+ *   the same (20-58-48: hits 53 with R1 12 frames after the jump, 55-57 with R1 later; reloads at 79,
+ *   jumps every 122-126). The Full Moon Crossbow's assumed the same
+ * - the Pulley Crossbow's (a233): bolts at 49.5, 59.5, and 69.5 (logs 19-51-14 and 20-58-48: 49-51,
+ *   58-60, 67-71), landing at 63-64, reloading at 89, the next jump at 155 (65-68 after the reload,
+ *   though its TAE's jump cancel is at 46)
+ * - the Spread Crossbow's (a235): hit 48-50 with R1 4-5 frames after the jump (log 21-10-13; 55-61
+ *   with R1 18-25 after it in 20-58-48), reloading at 81, a jump every 150 (69 after the reload: its
+ *   jump cancel 66)
+ */
+const lightBowJumpShot: JumpShot = {
+  hit: 37 / 60,
+  land: 50 / 60,
+  landing: { rightHandAttack: 10 / 60, roll: 20 / 60, block: 20 / 60 },
+  cycle: 71 / 60,
+};
+const bowJumpShot: JumpShot = {
+  hit: 48 / 60,
+  land: 53 / 60,
+  landing: { rightHandAttack: 38 / 60, roll: 46 / 60, block: 46 / 60 },
+  cycle: 100 / 60,
+};
+const crossbowLanding = { rightHandAttack: 26 / 60, roll: 34 / 60, block: 34 / 60 };
+const crossbowJumpShot: JumpShot = {
+  hit: 53 / 60,
+  land: 52 / 60,
+  landing: crossbowLanding,
+  cycle: 123 / 60,
+};
+const jumpShots = new Map<string, JumpShot>([
+  ...[...shortbowWeapons].map((name) => [name, lightBowJumpShot] as const),
+  ...["Black Bow", "Ansbach's Longbow"].map(
+    (name) =>
+      [name, { ...lightBowJumpShot, hit: 34.5 / 60, land: 52 / 60, cycle: 74 / 60 }] as const,
+  ),
+  ...["Longbow", "Horn Bow", "Erdtree Bow", "Serpent Bow", "Pulley Bow", "Albinauric Bow"].map(
+    (name) => [name, bowJumpShot] as const,
+  ),
+  ...[
+    "Soldier's Crossbow",
+    "Light Crossbow",
+    "Heavy Crossbow",
+    "Arbalest",
+    "Crepus's Black-Key Crossbow",
+    "Full Moon Crossbow",
+    "Repeating Crossbow",
+  ].map((name) => [name, crossbowJumpShot] as const),
+  [
+    "Pulley Crossbow",
+    { hit: 49.5 / 60, spacing: 10 / 60, land: 63 / 60, landing: crossbowLanding, cycle: 155 / 60 },
+  ],
+  ["Spread Crossbow", { ...crossbowJumpShot, hit: 49 / 60, cycle: 150 / 60 }],
+]);
+function getJumpShotTimes(weapon: Weapon, count = 1): StepTimes | undefined {
+  const shot = jumpShots.get(weapon.weaponName);
+  if (!shot) return undefined;
+  const rightHandAttack = shot.land + shot.landing.rightHandAttack;
+  return {
+    lead: jumpAttackStart + stepStartDelay,
+    hits: Array.from(
+      { length: shot.spacing ? count : 1 },
+      (_, i) => shot.hit + i * (shot.spacing ?? 0),
+    ),
+    earliest: { attack: "R1/R2", time: rightHandAttack },
+    rightHandAttack,
+    roll: shot.land + shot.landing.roll,
+    block: shot.land + shot.landing.block,
+    cycle: shot.cycle,
   };
 }
 
@@ -882,7 +981,7 @@ export function getAttackData(
       ...(twoHanding && !weapon.paired ? [120] : []),
     ];
     const shotTimes = jumpingShot
-      ? undefined
+      ? getJumpShotTimes(weapon, count)
       : jumpLandingShot
       ? getJumpLandingShotTimes()
       : getBowShotTimes(weapon, count);
@@ -891,13 +990,11 @@ export function getAttackData(
         categories.length ? { ...shotHit, categories } : shotHit,
       );
     // Each shot costs its ammunition's stamina, times the weapon's rate, rounded down (two for the
-    // jump shot and its landing shot). Bolts fired one after another each cost it: the Pulley
-    // Crossbow's three cost 10 each, standing or jumping (logged 2026-11-25 19-51-14 and 20-00-45)
-    const bolts = bowShots.get(weapon.weaponName)?.spacing ? count : 1;
+    // jump shot and its landing shot), or a several-bolt shot's own cost (the Pulley Crossbow's 30,
+    // the Spread Crossbow's 15, standing or jumping: see build_ammo_data.py)
+    const ammoStamina = weapon.ammoShots?.stamina ?? weapon.ammoStamina;
     const shotStamina =
-      weapon.ammoStamina != null
-        ? bolts * chargedStamina(weapon.ammoStamina, moveset.staminaRate)
-        : undefined;
+      ammoStamina != null ? chargedStamina(ammoStamina, moveset.staminaRate) : undefined;
     return withMoveStamina(attack, {
       ...(shotStamina != null && { stamina: [jumpLandingShot ? shotStamina * 2 : shotStamina] }),
       steps: [

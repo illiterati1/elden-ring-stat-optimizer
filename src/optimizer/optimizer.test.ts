@@ -831,11 +831,25 @@ describe("bows", () => {
     const [jumpHit, landingHit] = pair.stepTimes![0].hits;
     expect(Math.round(jumpHit * 60)).toBe(33);
     expect(Math.round((landingHit - jumpHit) * 60 * 2) / 2).toBe(56.5);
+    // Jump shots from the jump press (logged): a Shortbow's hit 37, a jump every 71; a Longbow's 48,
+    // every 100; a Soldier's Crossbow's 53, every 123 with a reload
+    for (const [name, hit, cycle] of [
+      ["Shortbow", 37, 71],
+      ["Longbow", 48, 100],
+      ["Soldier's Crossbow", 53, 123],
+      ["Pulley Crossbow", 49.5, 155],
+      ["Spread Crossbow", 49, 150],
+      ["Black Bow", 34.5, 74],
+    ] as const) {
+      const jump = getAttackData(movesets, getWeapon(name), "Jumping R1", true, 0.5)!;
+      expect(jump.stepTimes![0].hits[0] * 60).toBeCloseTo(hit);
+      expect(jump.cycleTimes![0] * 60).toBeCloseTo(cycle);
+    }
     // A Greatbow's hits 127 frames after the press, then every 220
     const great = getAttackData(movesets, getWeapon("Greatbow"), "Standard Shot", true, 0.5)!;
     expect(Math.round(great.stepTimes![0].hits[0] * 60)).toBe(127);
     expect(Math.round(great.cycleTimes![0] * 60)).toBe(220);
-    // A loaded crossbow's bolt hits 34.5 frames after the press; shooting again, with a reload each
+    // A loaded crossbow's bolt hits about 29 frames after the press (point blank); shooting again, with a reload each
     // time, the Heavy Crossbow's every 110.5 (an unloaded one's hits 75 frames after the press)
     const crossbow = getAttackData(
       movesets,
@@ -844,7 +858,8 @@ describe("bows", () => {
       true,
       0.5,
     )!;
-    expect(crossbow.stepTimes![0].hits[0] * 60).toBeCloseTo(34.5);
+    expect(crossbow.stepTimes![0].hits[0] * 60).toBeCloseTo(29);
+    expect(crossbow.stepTimes![0].approximate).toEqual([true]);
     expect(crossbow.cycleTimes![0] * 60).toBeCloseTo(110.5);
     // The Pulley Crossbow's 3 bolts 10 frames apart (logged loaded: 34-35, 44-45, and 54-55 frames
     // after the press), then every 118.5
@@ -855,16 +870,16 @@ describe("bows", () => {
       true,
       0.5,
     )!;
-    pulley.stepTimes![0].hits.forEach((time, i) => expect(time * 60).toBeCloseTo(34.5 + 10 * i));
+    pulley.stepTimes![0].hits.forEach((time, i) => expect(time * 60).toBeCloseTo(29 + 10 * i));
     expect(pulley.cycleTimes![0] * 60).toBeCloseTo(118.5);
     // The Spread Crossbow's every 137.5, the Repeating Crossbow's every 111 (unloaded: 95 and 74
     // frames to the first)
-    for (const [name, cycle] of [
-      ["Spread Crossbow", 137.5],
-      ["Repeating Crossbow", 111],
+    for (const [name, hit, cycle] of [
+      ["Spread Crossbow", 29, 137.5],
+      ["Repeating Crossbow", 29, 111],
     ] as const) {
       const shot = getAttackData(movesets, getWeapon(name), "Standard Shot", true, 0.5)!;
-      expect(shot.stepTimes![0].hits[0] * 60).toBeCloseTo(34.5);
+      expect(shot.stepTimes![0].hits[0] * 60).toBeCloseTo(hit);
       expect(shot.cycleTimes![0] * 60).toBeCloseTo(cycle);
     }
     // The Jar Cannon's 85 frames after its R2, then every 263.5 (measured in game: 406, then 491,
@@ -1058,6 +1073,17 @@ describe("bows", () => {
     );
     const attack = getAttackData(movesets, weapon, "Standard Shot", true, 0.5)!;
     expect(attack.steps[0].map((hit) => hit.statusMotionValue)).toEqual([100, 100, 100]);
+  });
+
+  it("charges a several-bolt shot's stamina (logged in game)", () => {
+    const bolt = ammo.find((group) => group.names.includes("Bolt"))!;
+    const stamina = (name: string, attack: "Standard Shot" | "Jumping R1") =>
+      getAttackData(movesets, withAmmo(getWeapon(name), bolt), attack, true, 0.5)!.stamina![0];
+    // The Pulley Crossbow's three bolts 10 each, the Spread Crossbow's 15 for the shot; a jump 10
+    expect(stamina("Pulley Crossbow", "Standard Shot")).toBe(30);
+    expect(stamina("Pulley Crossbow", "Jumping R1")).toBe(40);
+    expect(stamina("Spread Crossbow", "Standard Shot")).toBe(15);
+    expect(stamina("Spread Crossbow", "Jumping R1")).toBe(25);
   });
 
   it("matches the Erdtree Greatbow in game", () => {

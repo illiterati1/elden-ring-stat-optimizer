@@ -81,9 +81,15 @@ FLETCHED_SUFFIX = " (Fletched)"
 # The behavior judge ID of firing ammunition
 SHOT_JUDGE_ID = 300
 
-# Weapons that fire several bolts per shot: the behavior judge ID of the shot, and how many (None
-# for the shot's Bullet numShoot)
-MULTI_SHOT_WEAPONS = {"Spread Crossbow": (341, None), "Pulley Crossbow": (SHOT_JUDGE_ID, 3)}
+# Weapons that fire several bolts per shot: the behavior judge ID of the shot, how many (None for
+# the shot's Bullet numShoot), and the judge IDs whose stamina the shot costs (its shot animation's
+# attack windows, a judge's windows at the same time counted once). The Spread Crossbow's windows
+# (a235 37000) are judges 340, 341, and 342 at once, 5 stamina each (logged 2026-11-25 20-58-48:
+# 15); the Pulley Crossbow's (a233 37000) three of 310, 10 frames apart, 10 each (logged: 30)
+MULTI_SHOT_WEAPONS = {
+    "Spread Crossbow": (341, None, (340, 341, 342)),
+    "Pulley Crossbow": (SHOT_JUDGE_ID, 3, (310, 310, 310)),
+}
 
 # AtkParam atkAttribute values
 PHYSICAL_TYPES = {0: "slash", 1: "strike", 2: "pierce", 3: "standard"}
@@ -167,8 +173,14 @@ def main():
         if 100_000_000 <= int(row["id"]) < 200_000_000 and int(row["id"]) % 1000 == SHOT_JUDGE_ID
     }
 
-    def get_shots(row, judge_id, count):
-        """@returns how many bolts a shot fires, and their motion values"""
+    behavior_stamina = {
+        divmod(int(row["id"]) - 100_000_000, 1000): int(row["stamina"])
+        for row in behavior_rows
+        if 100_000_000 <= int(row["id"]) < 200_000_000
+    }
+
+    def get_shots(row, judge_id, count, stamina_judges):
+        """@returns how many bolts a shot fires, their motion values, and the shot's stamina"""
         bullet = bullets.get(bullet_behaviors.get((row["behaviorVariationId"], judge_id)))
         attack = bullet and game_attacks.attacks.get(int(bullet["atkId_Bullet"]))
         if not attack:
@@ -178,6 +190,9 @@ def main():
             "motionValue": float(attack["atkPhysCorrection"]),
             "statusMotionValue": float(attack["statusAilmentAtkPowerCorrectRate"]),
             "stanceMotionValue": float(attack["atkSuperArmorCorrection"]),
+            "stamina": sum(
+                behavior_stamina.get((row["behaviorVariationId"], judge), 0) for judge in stamina_judges
+            ),
         }
 
     def get_physical_type(row):
@@ -221,8 +236,8 @@ def main():
             if any(category in bonus for category in sub_categories)
         }
         if ammo_class == "bolt":
-            for weapon, (judge_id, count) in MULTI_SHOT_WEAPONS.items():
-                shots = get_shots(row, judge_id, count)
+            for weapon, (judge_id, count, stamina_judges) in MULTI_SHOT_WEAPONS.items():
+                shots = get_shots(row, judge_id, count, stamina_judges)
                 if shots:
                     bonuses.setdefault(weapon, {})["shots"] = shots
         ammo.append(

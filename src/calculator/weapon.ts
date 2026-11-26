@@ -15,6 +15,8 @@ export interface AmmoShots {
   motionValue: number;
   statusMotionValue: number;
   stanceMotionValue: number;
+  /** The shot's stamina cost, for all its bolts (before the weapon's stamina rate) */
+  stamina?: number;
 }
 
 /**
