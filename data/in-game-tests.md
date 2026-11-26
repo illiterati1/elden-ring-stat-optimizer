@@ -45,14 +45,15 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   yet: why, and whether other standard bullets do the same. Retested (log 2026-11-25 21-57-50): 17
   more stomps on Tree Sentinel, all 140. The same weapon's own standard hits there took standard's
   10% as calculated: two handed R1 651 and charged R2 1084 on the stance-broken Sentinel (542 and
-  904 × 1.2), so it's only the bullet.
+  904 × 1.2), so it's only the bullet. Not all standard bullets: Storm Blade's shockwave (AtkParam
+  300000410, also atkAttribute 3) took standard's 10% on Tree Sentinel, 749 as calculated, eight
+  times (log 2026-11-25 22-04-36).
 
 
 ## Not timed
 
 Nothing to compare yet; measure from the press.
 
-- Shields' mounted R2
 - Carian Retaliation
 
 ## Not modeled

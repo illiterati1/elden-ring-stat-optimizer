@@ -108,6 +108,14 @@ SHARED_ATTACKS = {
     "Mounted Charged R2/L2": (["Mounted Charged R2"], ["1h", "2h"]),
 }
 
+# A shield's mounted R2 is a guard: tapping it raises and lowers the shield, and only holding it
+# attacks (its charged R2). Tested in game: Buckler +25 taps and 69-frame holds only guarded (anims
+# 48038100 and 48038110); Black Steel Greatshield +25 held, 721 and 36 stance on Tree Sentinel at
+# 136 frames, as its charged R2 (log 2026-11-25 22-04-36)
+SHIELD_GUARD_ATTACKS = {"Mounted R2/L2"}
+# EquipParamWeapon wepType of small shields, medium shields and greatshields
+SHIELD_TYPES = {65, 67, 69}
+
 # Crouching attacks (from a crouch) and the rolling attacks they copy: the same hits (the same
 # behavior judges, so the same game rows; the sheet doesn't list them), in their own animations (see
 # check_animations.py's get_attack_animation)
@@ -542,6 +550,8 @@ def main():
                 (attack, [(None, column) for column in columns])
                 for attack, (columns, attack_hands) in SHARED_ATTACKS.items()
                 if hands in attack_hands
+                and not (attack in SHIELD_GUARD_ATTACKS and weapon in weapons
+                         and int(weapons[weapon]["wepType"]) in SHIELD_TYPES)
             ]
             for attack, keys in attack_keys:
                 steps = []
