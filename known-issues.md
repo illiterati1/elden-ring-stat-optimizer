@@ -4,9 +4,7 @@
   powerstanced weapon, not only a second Serpent Flail.
 - **Attacks that need extra movement:** time-scaled numbers are questionable for any attack that
   needs another action first, such as jumping, rolling, backstepping, running, or buffing.
-- **Untimed attacks:** shields' mounted R2, bow and crossbow jump shots, Carian Retaliation,
-  Spinning Chain's loop, and how often Feeble Lord's Frenzied Flame can be repeated haven't been
-  timed yet.
+- **Untimed attacks:** shields' mounted R2 and Carian Retaliation haven't been timed yet.
 - **Feint attacks:** the attacks that follow a cancelled charged R2 aren't included. The motion
   value spreadsheet has them for Thrusting Swords, Heavy Thrusting Swords, Curved Swords, Great
   Katanas, Perfume Bottles, Beast Claws, the Smithscript Cirque, Claws of Night, and the

@@ -43,7 +43,6 @@ Nothing to compare yet; measure from the press.
   frames fall behind, so they don't count.
 - Shields' mounted R2
 - Carian Retaliation
-- How fast Feeble Lord's Frenzied Flame can be used again
 
 ## Not modeled
 

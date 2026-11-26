@@ -1671,6 +1671,25 @@ LOOP_FITS = {
         "openingStamina": [6],
         "stamina": [6],
     },
+    # Nanaya's Torch's Feeble Lord's Frenzied Flame, held (log 2026-11-25 21-27-54, +10 on the
+    # training dummy, 69 a hit): its start (934040000) hits 50-53 frames in, then its stream
+    # (934040003) from 72 frames in (73 after the press), a pass every 77 frames while held, two hits
+    # in each (2 and 15-16 frames in: 5 passes' worth logged, at 2, 16, 79, 92, 156, 171), and 10
+    # stamina (and 3 FP) every ~19.5 frames: the start's at 50, the stream's when it starts and then
+    # 4 a pass. Only its windows of judges 6000 and 6006 land (0 and 14 frames into a pass, the
+    # start's 6000 at 50); 6002-6005 (the start's at 58 and 66, the pass's at 28-70) never hit the
+    # dummy, which isn't known why. Tapped again instead (L2 at once after the start's hit), it goes
+    # into the stream for one hit, then its end (934040004), and the next start begins 113 frames
+    # after the last: two hits per 113 frames, slower than holding it
+    ("Feeble Lord's Frenzied Flame", ""): {
+        "openingHits": [(54 - 2) / 60],
+        "loopFrom": 1,
+        "hits": [frame / 60 for frame in [2, 15.5]],
+        "loop": 77 / 60,
+        "opening": 73 / 60,
+        "openingStamina": [10, 10],
+        "stamina": [10, 10, 10, 10],
+    },
 }
 # Hits of a loop with an opening (LOOP_FITS openingHits), in order, by the stance motion value of the
 # skill's hit to use (its hits differ only in stance): Spinning Wheel's downswing (302309903, 10), an
@@ -1680,6 +1699,8 @@ LOOP_HIT_ORDERS = {
     ("Spinning Wheel", "Ghiza's Wheel"): [10, 30, *[10] * 4, *([15] * 2 + [10] * 6) * 2],
     # Spinning Chain's one hit, in its opening and in each pass
     **{("Spinning Chain", weapon): [85, 85] for weapon in ["Flail", "Nightrider Flail", "Chainlink Flail"]},
+    # Feeble Lord's Frenzied Flame's one hit: its start's, then each pass's two
+    ("Feeble Lord's Frenzied Flame", "Nanaya's Torch"): [0, 0, 0],
 }
 # Skills that are a stance (or a step) without hits of their own, whose attacks are R1s or R2s from it:
 # the stance's animation, and the follow-ups that start a chain (or are on their own), which start once

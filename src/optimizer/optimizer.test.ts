@@ -11992,7 +11992,27 @@ describe("Ashes of War", () => {
         ];
       },
     );
-    expect(results).toEqual([[undefined, [[[80, 1]]]]]);
+    expect(results).toEqual([
+      [
+        undefined,
+        [
+          [[80, 1]],
+          [
+            [80, 1],
+            [80, 1],
+          ],
+        ],
+      ],
+    ]);
+    // Held (er-logger, 2026-11-25, +10 on the training dummy, 69 a hit): its start's hit 53-54
+    // frames after L2, then its stream from 73, two hits a pass (2 and 15-16 frames in) every 77
+    // frames; 10 stamina for the start, 10 when the stream starts, then 40 a pass
+    const frames = (time: number) => Math.round(time * 60);
+    const ash = getAshAttack(ashes, movesets, weapon, "Lion's Claw", false);
+    if (!("attack" in ash)) throw new Error(ash.unavailableReason);
+    expect(ash.attack.stepTimes!.map((step) => step.hits.map(frames))).toEqual([[54], [2, 15]]);
+    expect(ash.attack.cycleTimes!.map(frames)).toEqual([73, 77]);
+    expect(ash.attack.stamina).toEqual([20, 40]);
   });
 
   it("matches Firebreather in game", () => {
