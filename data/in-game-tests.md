@@ -32,11 +32,6 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   opens. Its 2nd hit (41) and all other hits are within 2 frames. Retested (log 2026-11-25
   21-21-13): +33 and +32 again; damage and stance matched, #2's bleed 17 per hit (calculated 18).
 
-- Hand Ballista +25 and Rabbath's Cannon +10, two handed: damage 594 and 722 (logs 2026-11-25
-  20-58-48 and 21-23-48), but `scripts/predict.ts` gives 481 and 535 with its default bolt. Which
-  bolt was loaded isn't logged. Timing is settled: at point-blank range (log 21-23-48) the hits
-  landed 84 and 86 frames after the R2 (calculated 82 and 88). The earlier log's late hits (90 and
-  103) were the bolts' flight to a farther dummy.
 
 ## Not timed
 
