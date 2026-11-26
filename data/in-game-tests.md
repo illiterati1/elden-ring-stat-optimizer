@@ -41,7 +41,8 @@ Nothing to compare yet; measure from the press.
   Shortsword (a20) 16, Blood Smithscript Dagger (a53) 15, Noble's Slender Sword (a23) 15, Leda's Sword (a60) 16, Moonrithyll's Knight Sword
   (a26) 15, Banished Knight's Greatsword (a25) 16, Estoc (a27) 15, Queelign's Greatsword (a39) 15,
   Shamshir (a28) 15, Serpentbone Blade (a29) 14 and 16, Beastman's Cleaver (a40) 15, Smithscript
-  Cirque (a58) 15, Godskin Peeler (a24) 15, Iron Cleaver (a30) 14, Reed Great Katana (a61) 15.
+  Cirque (a58) 15, Godskin Peeler (a24) 15, Iron Cleaver (a30) 14, Reed Great Katana (a61) 15,
+  Longhaft Axe (a32) 15, Pickaxe (a32) 15, Stone Club (a33) 15.
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
@@ -60,4 +61,6 @@ Nothing to compare yet; measure from the press.
   calculated. Backstabs logged 2026-11-25 (18-56-33, 18-58-52, 19-00-47) did either ×1.2 or exactly
   the calculated damage, the same weapon both ways (Noble's Slender Sword 1469 or 1224), so the
   calculated backstab damage is right and the extra is this bonus when the dummy happened to be
-  unaware. Its awareness doesn't show in its animation (anim 20 before both kinds).
+  unaware. Its awareness doesn't show in its animation (anim 20 before both kinds). Not only
+  backstabs: a Longhaft Axe +25 R2 as the log's first action (2026-11-25 19-12-19) did 1142 and
+  15.84 stance instead of 948 and 13.2, so stance damage gets the ×1.2 too.
