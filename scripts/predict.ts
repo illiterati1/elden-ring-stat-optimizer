@@ -255,6 +255,9 @@ interface Hit {
   animFrame: number | null;
   approximate?: true;
   kind?: string;
+  /** For damage over time, how many times it ticks and the frames between ticks, if known */
+  ticks?: number;
+  tickInterval?: number;
   notCounted?: true;
 }
 interface Step {
@@ -369,6 +372,8 @@ function predict(
           animFrame: frame == null || lead == null ? null : frame - lead,
           ...(times?.approximate?.[j] && { approximate: true as const }),
           ...(hit.kind && { kind: hit.kind }),
+          ...(hit.tickCount != null && { ticks: hit.tickCount }),
+          ...(hit.tickInterval && { tickInterval: frames(hit.tickInterval) }),
           ...(hit.notCounted && { notCounted: true as const }),
         };
       }),
@@ -467,6 +472,10 @@ function format(prediction: Prediction): string {
             ? `  @${hit.frame}${hit.approximate ? "~" : ""} (anim ${hit.animFrame})`
             : "  (no time)"
         }${status.length ? `  ${status.join(", ")}` : ""}${hit.kind ? `  ${hit.kind}` : ""}${
+          hit.ticks != null
+            ? `  ×${hit.ticks}${hit.tickInterval ? ` every ${hit.tickInterval}` : ""}`
+            : ""
+        }${
           hit.notCounted ? "  (not counted)" : ""
         }`,
       );

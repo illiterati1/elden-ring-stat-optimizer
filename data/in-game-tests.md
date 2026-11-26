@@ -12,6 +12,12 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 ## Discrepancies to look into
 
+- Keen Watchdog's Greatsword +25 (4010225) with Ghostflame Call, one handed, on the training dummy,
+  OFFLINE ONLY (99 in every stat, NG+1, Shard of Alexander, Magic Scorpion Charm, four Rakshasa
+  pieces) (logs 2026-11-26 01-13-20 and 01-18-40). Each hit's damage and tick count matches (Flare
+  ×4 every 24 frames, Ground Fire ×10 every ~31; L2 + R1 2918, as predict.ts gives), but the R1
+  slash landed anim+57 and +58 (four R1s), where the calculator gives 54 (its window starts at 54).
+
 - Keen Highland Axe +25 (14100225) with Beast's Roar, one handed, on the training dummy, 99 in
   every stat, NG+1 (log 2026-11-26 00-13-18). With the axe's own ×1.1 passive for roars, the
   Shockwave did 681 (matches), but with the Roar Medallion and Shard of Alexander added it did 897,
