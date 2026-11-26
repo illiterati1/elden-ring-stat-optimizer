@@ -46,7 +46,7 @@ import {
   type AttackName,
   type Movesets,
 } from "../src/app/useMovesets.ts";
-import { getEnemyStats, type Enemy, type EnemyArea } from "../src/app/useEnemies.ts";
+import { getEnemyStats, trainingDummyArea, type Enemy, type EnemyArea } from "../src/app/useEnemies.ts";
 import { getAshAttacks, getAshChoices, parseAshChoice, type Ashes } from "../src/app/useAshes.ts";
 import type { SaveItems } from "../src/app/saveImport.ts";
 import { withAmmo, type AmmoGroup } from "../src/app/useAmmo.ts";
@@ -159,12 +159,16 @@ function getTarget(npcParamId: number | undefined): Target {
           .flatMap((area) => area.enemies)
           .find((enemy: Enemy) => enemy.npcParamIds.includes(npcParamId));
   if (!enemy) {
+    const [standard, slash, strike, pierce, ...elemental] = trainingDummyArea.enemies[0].negation;
     return {
       name: `${ngPlus > 0 ? "NG+1" : "NG"} dummy (${defense})`,
       defenses: Object.fromEntries(
-        allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
+        allDamageTypes.map((damageType, i) => [
+          damageType,
+          { defense, negation: i === 0 ? 0 : (elemental[i - 1] ?? 0) },
+        ]),
       ) as Target["defenses"],
-      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      physicalNegation: { standard, slash, strike, pierce },
     };
   }
   const [phys, mag, fire, lightning, holy] = getEnemyStats(enemy, ngPlus, false).defense.map(

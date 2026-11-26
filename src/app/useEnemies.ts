@@ -104,11 +104,14 @@ export function getAreaDefense(area: EnemyArea, ngPlus: number) {
 
 /**
  * The Boss Arena mod's training dummy (NpcParam 36600015, the only row the mod adds), used for in-game tests:
- * 9999 HP and 100 defenses × SpEffect 7200's 7.422 and 1.232, no negation. In NG+ its GameClearSpEffectID,
+ * 9999 HP and 100 defenses × SpEffect 7200's 7.422 and 1.232. Its negations were 0 until 2026-11-26 (tests
+ * before then had none); now they're set in the mod to a different negative value per type, so each damage
+ * type's share of a hit shows: damage cut rates standard 1.0, slash 1.1, strike 1.2, pierce 1.3, magic 1.05,
+ * fire 1.15, lightning 1.25, holy 1.35. In NG+ its GameClearSpEffectID,
  * 7400, multiplies them by 7.0 and 1.172 (the mod raises 7400's HP rate from vanilla's 3.434; the defense
  * tested in game in NG+1, the HP not). It's on the Commoner model, which takes the normal riposte. Only offered with ?debug.
  */
-const trainingDummyArea: EnemyArea = {
+export const trainingDummyArea: EnemyArea = {
   name: "Training Dummy",
   region: "Boss Arena (mod)",
   defense: [123.2, 123.2, 123.2, 123.2, 123.2],
@@ -119,7 +122,7 @@ const trainingDummyArea: EnemyArea = {
       npcParamIds: [36600015],
       hp: 74212,
       defense: [123.2, 123.2, 123.2, 123.2, 123.2],
-      negation: [0, 0, 0, 0, 0, 0, 0, 0],
+      negation: [0, -10, -20, -30, -5, -15, -25, -35],
       ngPlus: { hp: 519488.046, defense: [144.4, 144.4, 144.4, 144.4, 144.4] },
       ripostes: ["Riposte"],
     },
