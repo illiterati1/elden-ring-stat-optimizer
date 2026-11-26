@@ -30,7 +30,8 @@
  * ("anim 36"): a step's lead is the frames before its animation starts (the press's 2-frame delay,
  * plus a stance's opening or a jump's start before a chain's first step). Cancels are from the press.
  * Hits marked ~ have approximate times (projectiles); "(not counted)" ones are shown but not counted.
- * No buffs unless --buff.
+ * No buffs unless --buff, except the weapon's own passive (e.g. the Highland Axe's ×1.1 for roars),
+ * which the app applies too.
  */
 import { readFileSync } from "node:fs";
 import { allDamageTypes, AttackPowerType, type Attributes } from "../src/calculator/calculator.ts";
@@ -96,7 +97,7 @@ const buffNames =
     ?.split(",")
     .map((name) => name.trim()) ?? [];
 const allBuffs = JSON.parse(readFileSync(new URL("../public/buffs.json", import.meta.url), "utf8"))
-  .buffs as { name: string; effects: BuffEffect[] }[];
+  .buffs as { kind: string; name: string; effects: BuffEffect[] }[];
 const buffEffects = buffNames.flatMap((name) => {
   // Skills come last, e.g. Golden Vow is the incantation, not the skill
   const buff = allBuffs.find((candidate) => candidate.name.toLowerCase() === name.toLowerCase());
@@ -309,7 +310,7 @@ function predict(
       minPotentialPerRemainingLevel: null,
     },
     attack,
-    buffs: [...getAmmoOffhandEffects(weapon, option("--left")), ...buffEffects],
+    buffs: [...passiveEffects, ...getAmmoOffhandEffects(weapon, option("--left")), ...buffEffects],
   });
   const steps = (result.attackSteps ?? []).map((hits, i): Step => {
     const times: StepTimes | undefined = attack.stepTimes?.[i];
@@ -482,6 +483,9 @@ if (ammoOption && !ammoGroup) {
 }
 const weapon = ammoGroup ? withAmmo(found.weapon, ammoGroup) : found.weapon;
 const { level } = found;
+// The weapon's own passive, as App.tsx's passives apply it (e.g. the Highland Axe's ×1.1 for roars)
+const passive = allBuffs.find((buff) => buff.kind === "offhand" && buff.name === weapon.weaponName);
+const passiveEffects = passive?.effects ?? [];
 const enemyOption = option("--enemy");
 const target = getTarget(enemyOption == null ? undefined : Number(enemyOption));
 const predictions = getPredictions(weapon, level, target);
@@ -503,7 +507,7 @@ if (json) {
       twoHanding ? "two" : "one"
     } handed; ${stat} in every stat, NG+${ngPlus}, vs ${target.name}; ${
       buffNames.length ? buffNames.join(", ") : "no buffs"
-    }`,
+    }${passive?.effects.length ? `, plus its own passive` : ""}`,
   );
   console.log(predictions.map(format).join("\n\n") || "No attacks match");
 }
