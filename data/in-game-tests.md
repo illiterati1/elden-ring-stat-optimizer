@@ -25,10 +25,12 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   the rate is in the model's hitboxes.
 - Powerstance L1 chain with a Dagger +25 in each hand (log 2026-11-25 00-19-33): #4's 2nd and 3rd
   hits land at anim +38 and +42/43, 3 frames after the calculator's 35 and 40, though their TAE
-  windows open at 34.8 and 39.8. All other hits are within 2 frames.
+  windows open at 34.8 and 39.8. All other hits are within 2 frames. Same with an Erdsteel Dagger
+  +25 in each hand (log 2026-11-25 21-21-13): +38 and +42, +38 and +43. Damage matched.
 - Powerstance L1 chain with a Beast Claw +25 in each hand (log 2026-11-25 00-33-00): #3's 1st hit
   lands at anim +33 and +32 (two tries), 4–5 frames after the calculator's 28, where its TAE window
-  opens. Its 2nd hit (41) and all other hits are within 2 frames.
+  opens. Its 2nd hit (41) and all other hits are within 2 frames. Retested (log 2026-11-25
+  21-21-13): +33 and +32 again; damage and stance matched, #2's bleed 17 per hit (calculated 18).
 
 - Hand Ballista +25 and Rabbath's Cannon +10, two handed (log 2026-11-25 20-58-48): their first hits
   came later than calculated, 90 frames after the R2 (calculated 82) and 103 (88), though they fired
