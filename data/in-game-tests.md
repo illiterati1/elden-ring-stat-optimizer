@@ -37,10 +37,9 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 Nothing to compare yet; measure from the press.
 
-- Small and large ripostes' leads (press to animation start), and other classes' ripostes'. Taken
-  as 4 frames (`CRITICAL_STARTS` in `scripts/check_animations.py`, from the Miséricorde's riposte).
-  The Godslayer's Greatsword large ripostes logged so far were in boss fights, where the logger's
-  frames fall behind, so they don't count.
+- Small ripostes' lead (press to animation start), and other classes' normal ripostes'. Taken
+  as 4 frames (`CRITICAL_STARTS` in `scripts/check_animations.py`, from the Miséricorde's riposte;
+  large ripostes measured 3-4).
 - Shields' mounted R2
 - Carian Retaliation
 
