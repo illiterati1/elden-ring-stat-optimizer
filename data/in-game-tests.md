@@ -38,7 +38,8 @@ Nothing to compare yet; measure from the press.
   ripostes'. Taken as 4 frames for ripostes and 16 for backstabs (`CRITICAL_STARTS` in
   `scripts/check_animations.py`, from the Miséricorde's riposte and Godslayer's Greatsword's
   backstab). Backstab leads measured so far (er-logger): Greatsword 15, Flail 14, Fire Knight's
-  Shortsword (a20) 16, Blood Smithscript Dagger (a53) 15, Noble's Slender Sword (a23) 15.
+  Shortsword (a20) 16, Blood Smithscript Dagger (a53) 15, Noble's Slender Sword (a23) 15, Leda's Sword (a60) 16, Moonrithyll's Knight Sword
+  (a26) 15, Banished Knight's Greatsword (a25) 16.
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
