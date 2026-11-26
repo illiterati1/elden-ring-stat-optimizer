@@ -1907,6 +1907,13 @@ HIT_TIME_FITS = {
     # their windows open (34 and 84): Flail +25 on the training dummy, 7 tries over three logs
     # (2026-11-25 18-31-44, 18-43-27 and 18-46-03), each at 37-38 and 86-87
     ("Spinning Chain", "R2"): [38 / 60, 86 / 60],
+    # Hoarfrost Stomp's ice spikes hit the training dummy 45 to 49 frames into the animation, 3-7
+    # after the window that creates them (42), as they travel (Bullet 2260, 45 m/s). The shatter
+    # (2269) comes at the end of the frost cloud (2268, 0.9s), which the spikes' first burst (2261)
+    # makes as the travelling spike's 0.2s life ends: 42 + 12 + 54 = 108 frames in. Measured with
+    # er-logger on a Keen Clayman's Harpoon +25 (2026-11-25 23-47-08 and 23-50-21, 8 casts that hit):
+    # the shatter 106 to 108 frames in. Both are further away later.
+    ("Hoarfrost Stomp", ""): [47 / 60, 108 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index, or ALL_HITS. Only for hits without a travel time (a projectile that travels stays approximate,

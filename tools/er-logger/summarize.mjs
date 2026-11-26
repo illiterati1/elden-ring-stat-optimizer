@@ -58,6 +58,28 @@ try {
 let checked = 0;
 const badAttacks = new Set();
 
+// A skill used again before its animation ends (mashing L2) restarts the same animation, so the
+// logged animation never changes. Split such a run at each later stamina drop of the same cost as
+// its first, more than 2 frames after its last paying window (not a roll's, nor a multi-window
+// step's own drops): that starts a new cast, whose animation start is put the first paying window's
+// time before it (marked "recast"). Needs the TAE's stamina costs.
+const attacks = [];
+starts.forEach((s, i) => {
+  attacks.push(s);
+  const t = tae[s.key], paying = t && t.stamina ? t.windows.filter((w, j) => t.stamina[j] > 0) : [];
+  if (!paying.length) return;
+  const end = i + 1 < starts.length ? starts[i + 1].frame : Infinity;
+  const drops = ev.filter(e => e.who === 'player' && e.field === 'stamina' && +e.note < 0 && e.frame >= s.frame && e.frame < end);
+  let cast = s;
+  for (const d of drops.slice(1)) {
+    if (d.note !== drops[0].note || d.frame - cast.frame <= paying.at(-1)[0] + 2) continue;
+    const frame = d.frame - Math.round(paying[0][0]);
+    // its events from the drop on (until then they're the last cast's, e.g. its frostbite proc)
+    cast = { ...s, frame, ms: d.ms - (d.frame - frame) * 1000 / 60, recast: true, from: d.frame };
+    attacks.push(cast);
+  }
+});
+
 // Equipment changes (and the starting equipment), by name from the stat calculator's saveItems.json,
 // printed before the next animation's line
 let names = { weapons: {}, ashes: {} };
@@ -92,18 +114,19 @@ const showEquipment = upTo => {
   }
 };
 
-starts.forEach((s, i) => {
+attacks.forEach((s, i) => {
   showEquipment(s.frame);
-  const end = i + 1 < starts.length ? starts[i + 1].frame : Infinity;
+  const end = i + 1 < attacks.length ? attacks[i + 1].from ?? attacks[i + 1].frame : Infinity;
   const press = ev.filter(e => isPress(e) && e.frame <= s.frame).at(-1);
-  const seg = ev.filter(e => e.frame >= s.frame && e.frame < end);
+  const seg = ev.filter(e => e.frame >= (s.from ?? s.frame) && e.frame < end);
   const parts = [];
   const ref = press || s;
   s.press = press;
   const rel = press && ev.find(e => e.who === 'pad' && e.field === press.field && e.new === 'release' && e.frame > press.frame);
   const held = rel ? ` held ${rel.frame - press.frame}` : '';
   const a = s;
-  parts.push((press ? `${press.field} f${press.frame}${held} → anim ${s.new} ${off(press, a)}` : `anim ${s.new} f${a.frame}`));
+  parts.push((press ? `${press.field} f${press.frame}${held} → anim ${s.new} ${off(press, a)}` : `anim ${s.new} f${a.frame}`) +
+    (s.recast ? ' (recast)' : ''));
   const st = seg.find(e => e.who === 'player' && e.field === 'stamina' && +e.note < 0);
   const t = tae[s.key], windows = t && t.windows.length ? t.windows : null;
   if (st) {
