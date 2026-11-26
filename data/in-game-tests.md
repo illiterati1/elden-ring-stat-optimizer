@@ -12,12 +12,6 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 ## Discrepancies to look into
 
-- Spinning Chain's R2 follow-up (625040070), Flail +25 on the training dummy (log 2026-11-25
-  18-31-44): its first hit (556) landed at anim+38, 4 frames into its window (34), where predict.ts
-  puts it. Its second (747) landed at anim+86, window 84. Two more tries (log 2026-11-25 18-43-27)
-  landed at anim+37 and +38, second hits +86. Maybe the chain's reach: one opening hit there also
-  landed at anim+48, 6 into its window (42), against the usual 44.
-
 - Godslayer's Greatsword +10 two handed on Rellana (53000082) in the Boss Arena mod, 99 in every
   stat, NG+1 with Radahn (43,743 HP), Scadutree Blessing 7 (×1.5) (log 2026-11-24 22-20-24). Most
   hits match the calculator ×1.5: The Queen's Black Flame 711 and 2422 (473 and 1614), R2 1540
@@ -45,8 +39,6 @@ Nothing to compare yet; measure from the press.
   `scripts/check_animations.py`, from the Miséricorde's riposte and Godslayer's Greatsword's
   backstab).
 - Shields' mounted R2
-- Spinning Chain's roll out of its opening (625040050): predict.ts gives 2 frames from the press,
-  from the animation's roll window, not checked in game
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
 - How fast Feeble Lord's Frenzied Flame can be used again

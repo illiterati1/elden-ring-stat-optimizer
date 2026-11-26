@@ -1624,6 +1624,12 @@ CANCEL_FITS = {
     # the roll, and its window opens 24 frames later), 145. Assumed the same for every tier (one
     # animation's cancels)
     **{("Causality's Wrath", tier): {"roll": 143 / 60} for tier in ["Tier 1", "Tier 2", "Tier 3"]},
+    # Spinning Chain's opening (625040050) has no roll window: its roll cancel (0) is its loop's
+    # (625040051). Rolled out of in game (Flail +25, log 2026-11-25 18-46-03), L2 tapped, B pressed
+    # 64 and 66 frames into the opening: it ends at 67 into its last pass (625040052, a hit and 6
+    # stamina) and that pass's end (625040053), and the rolls start 70 and 73 into the opening, each a
+    # frame or two after B's release (so maybe a few frames sooner with B released sooner)
+    ("Spinning Chain", ""): {"roll": 70 / 60},
 }
 # Held skills timed as loops, measured in game at 60 fps (by skill and part): when each pass's hits
 # land in it ("hits"), how long each pass takes ("loop"), and how long until the first ("opening"),
@@ -1876,6 +1882,10 @@ HIT_TIME_FITS = {
     # after its window opens (67.8 into the animation), its second 129, 2 after its window (measured
     # in game on 2026-11-23 with er-logger, from a few steps away; it travels, so it's later further)
     ("I Command Thee, Kneel!", "#1"): [73 / 60, None],
+    # Spinning Chain's R2 follow-up's swings land 38 and 86 frames into its animation, 4 and 2 after
+    # their windows open (34 and 84): Flail +25 on the training dummy, 7 tries over three logs
+    # (2026-11-25 18-31-44, 18-43-27 and 18-46-03), each at 37-38 and 86-87
+    ("Spinning Chain", "R2"): [38 / 60, 86 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index, or ALL_HITS. Only for hits without a travel time (a projectile that travels stays approximate,
@@ -1890,6 +1900,7 @@ MEASURED_HIT_TIMES = {
     ("Swift Slash", "Charged"): {1},
     # Golden Land's explosion, an AoE (HIT_TIME_FITS)
     ("Golden Land", "#1"): {2},
+    ("Spinning Chain", "R2"): ALL_HITS,
     ("Euporia Vortex", "Luster Tier 1"): ALL_HITS,
     ("Euporia Vortex", "Luster Tier 2"): ALL_HITS,
 }
