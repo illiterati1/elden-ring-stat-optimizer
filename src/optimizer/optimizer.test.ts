@@ -3191,15 +3191,18 @@ describe("Ashes of War", () => {
   it("matches Charge Forth in game", () => {
     // Tested in game on a Spear +25 with 99 in every stat on the training dummy: four hits of 122 and
     // a final thrust of 748, and with the Godfrey Icon (×1.15 for charged skills) only the thrust
-    // gets it, 860. Releasing it early just does fewer hits.
+    // gets it, 860. Tapped, it's its early release: one hit and a thrust with less stance (er-logger,
+    // 2026-11-26, on a Quality Gargoyle's Halberd +25: 249 with 2.5 stance, then 1396 with 7.5)
     const weapon = getWeapon("Spear");
     const result = getAshAttack(ashes, movesets, weapon, "Charge Forth", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
+    const tap = getAshAttack(ashes, movesets, weapon, withFollowUp("Charge Forth", "Tap"), false);
+    if (!("attack" in tap)) throw new Error(tap.unavailableReason);
     const icon = (
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
         .buffs as Buff[]
     ).filter((buff) => buff.name === "Godfrey Icon");
-    const hits = (buffs: BuffEffect[]) =>
+    const hits = (buffs: BuffEffect[], attack = result.attack) =>
       optimizeBuild({
         weapon,
         regularUpgradeLevel: 25,
@@ -3214,13 +3217,20 @@ describe("Ashes of War", () => {
         ),
         physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
-        attack: result.attack,
+        attack,
         buffs,
       })
         .attackSteps!.flat()
-        .map((hit) => hit.damage);
-    expect(hits([])).toEqual([122, 122, 122, 122, 748]);
-    expect(hits(getBuffEffects(icon, 3))).toEqual([122, 122, 122, 122, 860]);
+        .map((hit) => [hit.damage, hit.stance]);
+    expect(hits([])).toEqual([
+      [122, 2.5],
+      [122, 2.5],
+      [122, 2.5],
+      [122, 2.5],
+      [748, 10],
+    ]);
+    expect(hits(getBuffEffects(icon, 3)).map(([damage]) => damage)).toEqual([122, 122, 122, 122, 860]);
+    expect(hits([], tap.attack).map(([, stance]) => stance)).toEqual([2.5, 7.5]);
   });
 
   it("matches Earthshaker and Eruption in game", () => {

@@ -18,7 +18,7 @@ the weapon in the "Unique Skill Weapon" column. The rest says which hit it is:
   - nothing, "[n]" (one of several hits), " - Part" (e.g. " - Bullet"), or "(Qualifier)": a hit of
     the main attack
   - "R1", "R2", "#2", "Charged", "1h R2 #1", ...: a follow-up, shown separately ("Early Release",
-    which just does fewer of the skill's hits, is left out)
+    which just does fewer of the skill's hits, is left out, except Charge Forth's: KEPT_FOLLOW_UPS)
   - "(Lacking FP)" and "(Far)" (an alternative of another hit): left out
 A bracketed prefix that isn't a weapon class is a version of the skill (e.g. "[Var1] Spinning Slash",
 "[Slow] Double Slash", "[Luster Tier 1] Euporia Vortex"), shown like a follow-up, labeled with it.
@@ -315,8 +315,14 @@ SHARED_FOLLOW_UPS = {
 # Skills whose main attack is one version of several, shown with its label: Shield Crash's hits are
 # its full charge (tested in game on a Blood Brass Shield +25); an empty label is the skill's name:
 # Euporia's Euporia Vortex, whose Luster Tier 1 and 2 versions are separate (tested in game at +25 with
-# 99 in every stat: 2040, 2530 with Luster Tier 1, 6921 and 61 stance with Tier 2)
-MAIN_LABELS = {"Shield Crash": "Fully charged", "Euporia Vortex": "", "Spinning Guillotine": ""}
+# 99 in every stat: 2040, 2530 with Luster Tier 1, 6921 and 61 stance with Tier 2), and Charge Forth,
+# whose tapped version is separate (KEPT_FOLLOW_UPS)
+MAIN_LABELS = {
+    "Shield Crash": "Fully charged",
+    "Euporia Vortex": "",
+    "Spinning Guillotine": "",
+    "Charge Forth": "",
+}
 
 # Skills whose main attack is part of each of its follow-ups, which are versions of the skill: the
 # Gazing Finger's Kowtower's Resentment's first swing, then a second swing and its projectile,
@@ -1160,6 +1166,11 @@ SKILL_SHEET_NAMES = {"Scattershot (Claws)": "Scattershot Throw"}
 # Follow-ups left out, by label
 DROPPED_FOLLOW_UPS = {"Early Release"}
 
+# Dropped follow-ups kept for a skill, relabeled: Charge Forth tapped is its "Early Release" rows, one
+# charging hit and a thrust with less stance (er-logger, 2026-11-26, a Quality Gargoyle's Halberd +25,
+# twice: 249 with 2.5 stance, then 1396 with 7.5, for 8 and 32 stamina; see ANIMATION_SEQUENCES)
+KEPT_FOLLOW_UPS = {"Charge Forth": {"Early Release": "Tap"}}
+
 # Hits the sheet labels wrongly, by AtkId, with their follow-up's label (None for the main attack):
 # Hoarah Loux's Earthshaker's second slam is a follow-up (a chain, like Earthshaker), and Scattershot
 # Throw's "#2" daggers are thrown with "#1"'s (tested in game on a Blood Smithscript Dagger +25: 960
@@ -1831,6 +1842,10 @@ ANIMATION_SEQUENCES = {
     # 40001 (whose hit it shares, so matching by hits would pick 40001): er-logger, 2026-11-26, a
     # Magic Dagger +25, twice: 35 stamina at its frame 71-72, its hit (1890, 30 stance) at 72-73
     ("Carian Sovereignty", "Uncharged #2"): [(40020, 0)],
+    # Charge Forth tapped: its charge (40000), then its early release (40001) 52 frames in, before
+    # the charge's first window (er-logger, 2026-11-26, a Gargoyle's Halberd, twice: the stamina and
+    # hit at 40001's frame 13-15 and 37-39, its windows' 14 and 38)
+    ("Charge Forth", "Tap"): [(40000, 0), (40001, 52 / 60)],
 }
 # Projectile hits' times measured in game, where the animations only say when the projectile is
 # created (by skill and part, each hit's from the animation's start, or None to use the animation's):
@@ -3125,8 +3140,8 @@ def main():
             label = ROW_FOLLOW_UPS[row["AtkId"]]
         if version:
             label = f"{version} {label}" if label else version
-        # Releasing a charged skill early just does fewer of its hits, so it's left out (Charge
-        # Forth's "Early Release" follow-up wasn't right in game)
+        label = KEPT_FOLLOW_UPS.get(match, {}).get(label, label)
+        # Releasing a charged skill early just does fewer of its hits, so it's left out
         if label in DROPPED_FOLLOW_UPS:
             continue
         # Lightning that spreads through water only hits a target standing in it (tested in game:
