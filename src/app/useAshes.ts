@@ -182,14 +182,23 @@ interface SkillStepPart {
   cutShort?: ChainLimit;
 }
 
+/** Twinblades' skill animation range, and the one they use for skills it lacks (see getPartTiming) */
+const TWINBLADE_SKILL_RANGE = 2400;
+const TWINBLADE_FALLBACK_RANGE = "300";
+
 /**
  * @returns a part's timing: its own for the hands (a follow-up for one or two handing only, keyed
  * "label|hands", e.g. War Cry's "R2 #1|2h"), or else its label's, for the weapon's animation range
- * or else the default one
+ * or else the default one. Twinblades' range (2400) falls back to their wepmotionOneHandId's (300)
+ * first: Double Slash, with no twinblade animations, plays 612040300 on Quality Twinned Knight
+ * Swords +25 (er-logger, 2026-11-26 17-37-47: hits 45 and 67 frames into #1, 49, 72 and 94 into #2)
  */
 function getPartTiming(hits: SkillHits, skillRange: number, label: string, hands?: "1h" | "2h") {
   const own = hits.timing?.[String(skillRange)] ?? {};
-  const fallback = hits.timing?.["0"] ?? {};
+  const fallback = {
+    ...hits.timing?.["0"],
+    ...(skillRange === TWINBLADE_SKILL_RANGE && hits.timing?.[TWINBLADE_FALLBACK_RANGE]),
+  };
   const handsKey = hands && `${label}|${hands}`;
   return (
     (handsKey && (own[handsKey] ?? fallback[handsKey])) ||

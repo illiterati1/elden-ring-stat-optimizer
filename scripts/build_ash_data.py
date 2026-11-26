@@ -315,13 +315,13 @@ SHARED_FOLLOW_UPS = {
 # Skills whose main attack is one version of several, shown with its label: Shield Crash's hits are
 # its full charge (tested in game on a Blood Brass Shield +25); an empty label is the skill's name:
 # Euporia's Euporia Vortex, whose Luster Tier 1 and 2 versions are separate (tested in game at +25 with
-# 99 in every stat: 2040, 2530 with Luster Tier 1, 6921 and 61 stance with Tier 2), and Charge Forth,
-# whose tapped version is separate (KEPT_FOLLOW_UPS)
+# 99 in every stat: 2040, 2530 with Luster Tier 1, 6921 and 61 stance with Tier 2), and Charge Forth's
+# full charge, whose tapped version is separate (KEPT_FOLLOW_UPS)
 MAIN_LABELS = {
     "Shield Crash": "Fully charged",
     "Euporia Vortex": "",
     "Spinning Guillotine": "",
-    "Charge Forth": "",
+    "Charge Forth": "Charged",
 }
 
 # Skills whose main attack is part of each of its follow-ups, which are versions of the skill: the
@@ -1169,7 +1169,7 @@ DROPPED_FOLLOW_UPS = {"Early Release"}
 # Dropped follow-ups kept for a skill, relabeled: Charge Forth tapped is its "Early Release" rows, one
 # charging hit and a thrust with less stance (er-logger, 2026-11-26, a Quality Gargoyle's Halberd +25,
 # twice: 249 with 2.5 stance, then 1396 with 7.5, for 8 and 32 stamina; see ANIMATION_SEQUENCES)
-KEPT_FOLLOW_UPS = {"Charge Forth": {"Early Release": "Tap"}}
+KEPT_FOLLOW_UPS = {"Charge Forth": {"Early Release": "Uncharged"}}
 
 # Hits the sheet labels wrongly, by AtkId, with their follow-up's label (None for the main attack):
 # Hoarah Loux's Earthshaker's second slam is a follow-up (a chain, like Earthshaker), and Scattershot
@@ -1569,7 +1569,8 @@ def parse_rest(rest):
 # follow-up or chain step) is an animation from 40000 (chain steps 40010, 40020, ...), with "Lacking
 # FP" versions 5 later (left out). Some weapon classes have their own, 100s apart: a weapon's
 # wepmotionOneHandId times 100 (e.g. 40200 for greatswords, tested in game: a Claymore's Sword Dance;
-# 40300 for spears), and twinblades' 42400 (a guess: Sword Dance's has the twinblade's rows), or else
+# 40300 for spears), and twinblades' 42400 (a guess: Sword Dance's has the twinblade's rows; without one, a twinblade
+# uses its wepmotionOneHandId's, 40300: tested in game, Double Slash, see useAshes.ts getPartTiming), or else
 # 40000's (e.g. Ice Spear on a Short Spear, tested in game).
 SKILL_ANIMATION_FILE_BASE = 600
 SKILL_ANIMATIONS = (40000, 45000)
@@ -1645,6 +1646,10 @@ CANCEL_FITS = {
     # stamina) and that pass's end (625040053), and the rolls start 70 and 73 into the opening, each a
     # frame or two after B's release (so maybe a few frames sooner with B released sooner)
     ("Spinning Chain", ""): {"roll": 70 / 60},
+    # Divine Beast Frost Stomp charged, L2 still held, is used again 125 frames into its animation,
+    # where its L2 cancel says 150 (er-logger, 2026-11-26 17-24-12, a Keen Clayman's Harpoon +25: the
+    # recast's charge animation, 883040000, 127 frames after the press)
+    ("Divine Beast Frost Stomp", "Charged"): {"L2": 125 / 60},
 }
 # Held skills timed as loops, measured in game at 60 fps (by skill and part): when each pass's hits
 # land in it ("hits"), how long each pass takes ("loop"), and how long until the first ("opening"),
@@ -1845,7 +1850,7 @@ ANIMATION_SEQUENCES = {
     # Charge Forth tapped: its charge (40000), then its early release (40001) 52 frames in, before
     # the charge's first window (er-logger, 2026-11-26, a Gargoyle's Halberd, twice: the stamina and
     # hit at 40001's frame 13-15 and 37-39, its windows' 14 and 38)
-    ("Charge Forth", "Tap"): [(40000, 0), (40001, 52 / 60)],
+    ("Charge Forth", "Uncharged"): [(40000, 0), (40001, 52 / 60)],
 }
 # Projectile hits' times measured in game, where the animations only say when the projectile is
 # created (by skill and part, each hit's from the animation's start, or None to use the animation's):
@@ -1930,6 +1935,10 @@ HIT_TIME_FITS = {
     # their windows open (34 and 84): Flail +25 on the training dummy, 7 tries over three logs
     # (2026-11-25 18-31-44, 18-43-27 and 18-46-03), each at 37-38 and 86-87
     ("Spinning Chain", "R2"): [38 / 60, 86 / 60],
+    # Chilling Mist's burst lands 70 frames into the animation, 3 after the swing (67), and its
+    # lingering cloud first ticks 113 in, then 156 (measured on 2026-11-26 with er-logger on a Magic
+    # Giant-Crusher +25 on the training dummy; the second tick's frost gave frostbite, ending them)
+    ("Chilling Mist", ""): [None, 70 / 60, 113 / 60],
     # Hoarfrost Stomp's ice spikes hit the training dummy 45 to 49 frames into the animation, 3-7
     # after the window that creates them (42), as they travel (Bullet 2260, 45 m/s). The shatter
     # (2269) comes at the end of the frost cloud (2268, 0.9s), which the spikes' first burst (2261)
@@ -1937,6 +1946,16 @@ HIT_TIME_FITS = {
     # er-logger on a Keen Clayman's Harpoon +25 (2026-11-25 23-47-08 and 23-50-21, 8 casts that hit):
     # the shatter 106 to 108 frames in. Both are further away later.
     ("Hoarfrost Stomp", ""): [47 / 60, 108 / 60],
+    # Divine Beast Frost Stomp's ice spikes and shatter land well after the window that creates them
+    # (8 frames into the uncharged animation, 86 into the charged one), as the spikes travel. Measured
+    # with er-logger on a Keen Clayman's Harpoon +25 on the training dummy (2026-11-26 17-24-12):
+    # uncharged, the spikes 9 and 14 frames in, the shatter 71 (57 after its spikes); charged, the
+    # spikes 107 and 91, the shatter 157 and 139 (50 and 48 after). Further away, both are later
+    # (uncharged spikes at 29 and 57 in logs 17-30-22 and 17-33-54); point blank, the spikes land on
+    # their window's frame (17-32-33 uncharged at 8, 17-33-54 charged at 86), so the spikes use the
+    # window (None) and the shatter its average gap after them (57 and 49)
+    ("Divine Beast Frost Stomp", "Uncharged"): [None, 65 / 60],
+    ("Divine Beast Frost Stomp", "Charged"): [None, 135 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index, or ALL_HITS. Only for hits without a travel time (a projectile that travels stays approximate,
@@ -1952,6 +1971,7 @@ MEASURED_HIT_TIMES = {
     # Golden Land's explosion, an AoE (HIT_TIME_FITS)
     ("Golden Land", "#1"): {2},
     ("Spinning Chain", "R2"): ALL_HITS,
+    ("Chilling Mist", ""): {1, 2},
     ("Euporia Vortex", "Luster Tier 1"): ALL_HITS,
     ("Euporia Vortex", "Luster Tier 2"): ALL_HITS,
 }

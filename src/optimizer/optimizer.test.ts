@@ -3196,7 +3196,7 @@ describe("Ashes of War", () => {
     const weapon = getWeapon("Spear");
     const result = getAshAttack(ashes, movesets, weapon, "Charge Forth", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const tap = getAshAttack(ashes, movesets, weapon, withFollowUp("Charge Forth", "Tap"), false);
+    const tap = getAshAttack(ashes, movesets, weapon, withFollowUp("Charge Forth", "Uncharged"), false);
     if (!("attack" in tap)) throw new Error(tap.unavailableReason);
     const icon = (
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))

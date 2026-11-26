@@ -7,6 +7,16 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 ## Discrepancies to look into
 
+- Quality Twinned Knight Swords +25 (10030325) with Double Slash, one handed, on the training
+  dummy (log 2026-11-26 17-37-47). Damage, stance and stamina match every step, and the hits land
+  at the calculated animation frames, except #1's second hit: 67 and 66 frames in, where its window
+  (612040300) opens at 64. On a Quality Gargoyle's Halberd +25 the same hit landed at 63. On a
+  Quality Uchigatana +25 (9000325, log 2026-11-26 17-45-25) everything matched too (587/691,
+  523/539/772, 1010), but #1's second hit landed 55 and 53 frames in, where its window opens at 52,
+  and #2's third 60 vs 58. On a Quality Beastman's Cleaver +25 (8080325, log 2026-11-26
+  17-47-10) everything matched (748/875, 669/688/971, 1236) and every hit landed within 1 frame,
+  except #2's first: 45 vs 42.
+
 - Magic Dagger +25 (1000825) with Carian Grandeur, one handed, on the training dummy, 99 in every
   stat, NG+1 (log 2026-11-26 16-43-34). Every level's damage, stance and stamina match (Level 1
   1320/20/30, Level 2 1890/30/40, Level 3 2400/45/60), and each hit lands at the calculated
