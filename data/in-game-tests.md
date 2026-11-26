@@ -52,3 +52,5 @@ Nothing to compare yet; measure from the press.
 - Hits on an unaware enemy (stealth), any hit, not only backstabs (in known-issues.md): a
   Godslayer's Greatsword backstab's first hit did 446 instead of 346, ×1.2 before defenses (MV 52
   as 62.4). The second hit was unchanged (1525), presumably because the first hit had alerted the enemy.
+  Flail +25 backstab (log 2026-11-25 18-51-18): same pattern, 1st hit 291 instead of 234, 2nd 1057 as
+  calculated.
