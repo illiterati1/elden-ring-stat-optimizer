@@ -31,14 +31,20 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   lands at anim +33 and +32 (two tries), 4–5 frames after the calculator's 28, where its TAE window
   opens. Its 2nd hit (41) and all other hits are within 2 frames. Retested (log 2026-11-25
   21-21-13): +33 and +32 again; damage and stance matched, #2's bleed 17 per hit (calculated 18).
+- Storm Stomp on a Quality Broadsword +25 two handed on Mini Midra (50500086) in the Boss Arena mod,
+  99 in every stat, NG+1 with Radahn (6,571 HP), Scadutree Blessing 7 (×1.5) (log 2026-11-25
+  21-46-02): eight stomps each did 323 and 10 stance. The calculator gives 172 (258 with ×1.5). Its
+  bullet (AtkParam 30300870) is standard physical (atkAttribute 3), and Mini Midra's standard
+  negation is 20% (neutralDamageCutRate 0.8, same in the mod). Without that 20%, 172 / 0.8 × 1.5 =
+  322.5, so the game seems to apply no negation: slash's (1.0), or none at all. The small riposte in
+  the same log matched (2929 = 1953 × 1.5). Timing, stamina 10 and the buffered L2 repeat (82 frames)
+  matched.
 
 
 ## Not timed
 
 Nothing to compare yet; measure from the press.
 
-- Small ripostes' lead (press to animation start). Taken as 4 frames (`CRITICAL_STARTS` in
-  `scripts/check_animations.py`; normal and large ripostes measured 3-4).
 - Shields' mounted R2
 - Carian Retaliation
 
