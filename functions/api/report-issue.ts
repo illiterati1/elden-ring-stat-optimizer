@@ -85,6 +85,8 @@ async function verifyTurnstile(token: string, secret: string, ip: string | null)
 
 export async function onRequestPost({ request, env }: { request: Request; env: Env }) {
   if (!env.GITHUB_TOKEN || !env.TURNSTILE_SECRET_KEY) {
+    const missing = (["GITHUB_TOKEN", "TURNSTILE_SECRET_KEY"] as const).filter((name) => !env[name]);
+    console.error("Bug reports disabled: missing or empty", missing.join(", "), "| env has:", Object.keys(env).join(", "));
     return json({ error: "Bug reports aren't set up on this site yet." }, 503);
   }
 
