@@ -39,6 +39,8 @@ Nothing to compare yet; measure from the press.
   `scripts/check_animations.py`, from the Miséricorde's riposte and Godslayer's Greatsword's
   backstab).
 - Shields' mounted R2
+- Spinning Chain's roll out of its opening (625040050): predict.ts gives 2 frames from the press,
+  from the animation's roll window, not checked in game
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
 - How fast Feeble Lord's Frenzied Flame can be used again
