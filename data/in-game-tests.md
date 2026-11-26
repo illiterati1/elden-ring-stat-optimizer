@@ -57,4 +57,7 @@ Nothing to compare yet; measure from the press.
   calculated. Log 2026-11-25 18-56-33: Fire Knight's Shortsword backstab 1594 (1316 calculated) and
   Blood Smithscript Dagger's 1212 (1009) with the dummy idle (its anim 20) beforehand; Noble's
   Slender Sword's 1224 as calculated, started while the dummy was still in anim 5000 after the last
-  one. So the bonus seems to need the enemy idle (anim 20), not just any backstab.
+  one. But log 2026-11-25 18-58-52: Noble's Slender Sword's backstab again 1224, after the dummy had
+  been idle (anim 20) for over a minute. So it isn't just the enemy's state: Noble's Slender Sword
+  (a23) gets no bonus, the Flail, Greatsword, Fire Knight's Shortsword (a20) and Blood Smithscript
+  Dagger (a53) do.
