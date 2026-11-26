@@ -40,7 +40,8 @@ Nothing to compare yet; measure from the press.
   backstab). Backstab leads measured so far (er-logger): Greatsword 15, Flail 14, Fire Knight's
   Shortsword (a20) 16, Blood Smithscript Dagger (a53) 15, Noble's Slender Sword (a23) 15, Leda's Sword (a60) 16, Moonrithyll's Knight Sword
   (a26) 15, Banished Knight's Greatsword (a25) 16, Estoc (a27) 15, Queelign's Greatsword (a39) 15,
-  Shamshir (a28) 15.
+  Shamshir (a28) 15, Serpentbone Blade (a29) 14 and 16, Beastman's Cleaver (a40) 15, Smithscript
+  Cirque (a58) 15.
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
