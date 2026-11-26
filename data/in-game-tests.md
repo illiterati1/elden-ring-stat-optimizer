@@ -48,7 +48,14 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   904 × 1.2), so it's only the bullet. Not all standard bullets: Storm Blade's shockwave (AtkParam
   300000410, also atkAttribute 3) took standard's 10% on Tree Sentinel, 749 as calculated, eight
   times (log 2026-11-25 22-04-36).
-
+- Thrusting shields' mounted R2 (Magic Carian Thrusting Shield +25 on Tree Sentinel, log 2026-11-25
+  22-10-52): held, it raises the shield (anim 57038100), hits at anim +29 for 550 and 3.3 stance with
+  no stamina cost, drains 1 stamina about every 6 frames while held, then does the charged hit at
+  anim +140.5: 945 and 33 stance for 36 stamina, as calculated, but the calculator times it at anim
+  30 (the animation's first window; its costing window opens at 134). Not known: what the 550 hit is
+  (the calculator's uncharged mounted R2 is 689 and 11 stance, lead 24), and what a tap does. Other
+  shields' uncharged mounted R2 was dropped as a guard (build_moveset_data.py SHIELD_TYPES); thrusting
+  shields (wepType 90) were left in.
 
 ## Not timed
 
