@@ -43,7 +43,8 @@ Nothing to compare yet; measure from the press.
   Shamshir (a28) 15, Serpentbone Blade (a29) 14 and 16, Beastman's Cleaver (a40) 15, Smithscript
   Cirque (a58) 15, Godskin Peeler (a24) 15, Iron Cleaver (a30) 14, Reed Great Katana (a61) 15,
   Longhaft Axe (a32) 15, Pickaxe (a32) 15, Stone Club (a33) 15, Treespear (a37) 15,
-  Giant-Crusher (a31) 15, Iron Spear (a36) 15.
+  Giant-Crusher (a31) 15, Iron Spear (a36) 15, Halo Scythe (a50) 14, Katar (a42) 15,
+  Lucerne (a38) 16.
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
