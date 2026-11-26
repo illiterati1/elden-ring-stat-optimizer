@@ -39,7 +39,13 @@ Nothing to compare yet; measure from the press.
   The Godslayer's Greatsword large ripostes logged so far were in boss fights, where the logger's
   frames fall behind, so they don't count.
 - Shields' mounted R2
-- Bow and crossbow jump shots (Jumping R1)
+- Bow and crossbow jump shots (Jumping R1): measured but not in the calculator ("no time"). Log
+  2026-11-25 19-51-14, frames from the jump's A press, dummy at close range: Longbow +25 two handed,
+  13 stamina at +40–42, Arrow hit +47–49 (281, as calculated); Pulley Crossbow +10, three bolts,
+  10 stamina each at +40, +49, +59 (as calculated), hits +49/50, +58/59, +67/68 (95 each, as
+  calculated). Hit frames include the arrow's flight, so they depend on distance.
+- Loaded shots of crossbows other than the Pulley Crossbow: assumed the same 34.5 frames from the
+  press to the bolt's hit (its 37010 raise is 24 frames on every crossbow)
 - Carian Retaliation
 - How fast Feeble Lord's Frenzied Flame can be used again
 

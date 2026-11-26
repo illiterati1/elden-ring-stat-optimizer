@@ -835,7 +835,8 @@ describe("bows", () => {
     const great = getAttackData(movesets, getWeapon("Greatbow"), "Standard Shot", true, 0.5)!;
     expect(Math.round(great.stepTimes![0].hits[0] * 60)).toBe(127);
     expect(Math.round(great.cycleTimes![0] * 60)).toBe(220);
-    // An unloaded Heavy Crossbow's hits 75 frames after the press, then every 110.5
+    // A loaded crossbow's bolt hits 34.5 frames after the press; shooting again, with a reload each
+    // time, the Heavy Crossbow's every 110.5 (an unloaded one's hits 75 frames after the press)
     const crossbow = getAttackData(
       movesets,
       getWeapon("Heavy Crossbow"),
@@ -843,9 +844,10 @@ describe("bows", () => {
       true,
       0.5,
     )!;
-    expect(Math.round(crossbow.stepTimes![0].hits[0] * 60)).toBe(75);
+    expect(crossbow.stepTimes![0].hits[0] * 60).toBeCloseTo(34.5);
     expect(crossbow.cycleTimes![0] * 60).toBeCloseTo(110.5);
-    // The Pulley Crossbow's 3 bolts 10 frames apart, the first 78 after the press, then every 118.5
+    // The Pulley Crossbow's 3 bolts 10 frames apart (logged loaded: 34-35, 44-45, and 54-55 frames
+    // after the press), then every 118.5
     const pulley = getAttackData(
       movesets,
       withAmmo(getWeapon("Pulley Crossbow"), ammo.find((group) => group.names.includes("Bolt"))!),
@@ -853,15 +855,16 @@ describe("bows", () => {
       true,
       0.5,
     )!;
-    expect(pulley.stepTimes![0].hits.map((time) => Math.round(time * 60))).toEqual([78, 88, 98]);
+    pulley.stepTimes![0].hits.forEach((time, i) => expect(time * 60).toBeCloseTo(34.5 + 10 * i));
     expect(pulley.cycleTimes![0] * 60).toBeCloseTo(118.5);
-    // The Spread Crossbow's 95 then every 137.5, the Repeating Crossbow's 74 then every 111
-    for (const [name, first, cycle] of [
-      ["Spread Crossbow", 95, 137.5],
-      ["Repeating Crossbow", 74, 111],
+    // The Spread Crossbow's every 137.5, the Repeating Crossbow's every 111 (unloaded: 95 and 74
+    // frames to the first)
+    for (const [name, cycle] of [
+      ["Spread Crossbow", 137.5],
+      ["Repeating Crossbow", 111],
     ] as const) {
       const shot = getAttackData(movesets, getWeapon(name), "Standard Shot", true, 0.5)!;
-      expect(Math.round(shot.stepTimes![0].hits[0] * 60)).toBe(first);
+      expect(shot.stepTimes![0].hits[0] * 60).toBeCloseTo(34.5);
       expect(shot.cycleTimes![0] * 60).toBeCloseTo(cycle);
     }
     // The Jar Cannon's 85 frames after its R2, then every 263.5 (measured in game: 406, then 491,

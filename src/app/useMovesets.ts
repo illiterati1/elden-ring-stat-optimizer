@@ -671,6 +671,7 @@ interface BowShot {
  *   (hits at 667, 805, and 942 from a press at 572)
  * - the Repeating Crossbow's (a935's reload): unloaded 74 frames to the hit, then every 111 (hits at
  *   274, 383, and 496 from a press at 200)
+ *   Crossbows' shots are timed loaded (loadedCrossbowShot); these unloaded times give their cycles
  * - ballistae's (a52: shot 37100): 85 frames to the hit, then every 263.5 (the Jar Cannon's hits at
  *   491, 755, and 1018 from an R2 at 406; its shot can be cancelled into another 180 frames in, so
  *   83 + 180), a roll or block 190 frames into the shot. The Hand Ballista and Rabbath's Cannon
@@ -700,31 +701,24 @@ const greatbowShot: BowShot = {
   roll: (125 + 78) / 60,
   block: (125 + 88) / 60,
 };
-const crossbowShot: BowShot = {
-  release: 73 / 60,
-  cycle: 110.5 / 60,
-  roll: (73 + 40) / 60,
-  block: (73 + 40) / 60,
-};
-const pulleyCrossbowShot: BowShot = {
-  release: 76 / 60,
-  spacing: 10 / 60,
-  cycle: 118.5 / 60,
-  roll: (76 + 40) / 60,
-  block: (76 + 40) / 60,
-};
-const spreadCrossbowShot: BowShot = {
-  release: 93 / 60,
-  cycle: 137.5 / 60,
-  roll: (93 + 40) / 60,
-  block: (93 + 40) / 60,
-};
-const repeatingCrossbowShot: BowShot = {
-  release: 72 / 60,
-  cycle: 111 / 60,
-  roll: (72 + 40) / 60,
-  block: (72 + 40) / 60,
-};
+/**
+ * A loaded crossbow's shot: raising it (a46's 37010, 24 frames; the Spread Crossbow's a235 has its
+ * own, as long) and then the shot (37000), whose bolt hits 8.5 frames later at point blank (logged
+ * on the Pulley Crossbow, 2026-11-25 20-00-45: the shot 24 frames after 37010, its first bolt
+ * 34-35 frames after the press). The shot can be cancelled 40 frames in (its TAE). Its cycle is
+ * the measured one with a reload each time, as when shooting again and again
+ */
+const loadedCrossbowShot = (cycle: number, spacing?: number): BowShot => ({
+  release: (24 + 8.5) / 60,
+  ...(spacing && { spacing }),
+  cycle,
+  roll: (24 + 40) / 60,
+  block: (24 + 40) / 60,
+});
+const crossbowShot = loadedCrossbowShot(110.5 / 60);
+const pulleyCrossbowShot = loadedCrossbowShot(118.5 / 60, 10 / 60);
+const spreadCrossbowShot = loadedCrossbowShot(137.5 / 60);
+const repeatingCrossbowShot = loadedCrossbowShot(111 / 60);
 const ballistaShot: BowShot = {
   release: 83 / 60,
   cycle: 263.5 / 60,
@@ -897,10 +891,12 @@ export function getAttackData(
         categories.length ? { ...shotHit, categories } : shotHit,
       );
     // Each shot costs its ammunition's stamina, times the weapon's rate, rounded down (two for the
-    // jump shot and its landing shot)
+    // jump shot and its landing shot). Bolts fired one after another each cost it: the Pulley
+    // Crossbow's three cost 10 each, standing or jumping (logged 2026-11-25 19-51-14 and 20-00-45)
+    const bolts = bowShots.get(weapon.weaponName)?.spacing ? count : 1;
     const shotStamina =
       weapon.ammoStamina != null
-        ? chargedStamina(weapon.ammoStamina, moveset.staminaRate)
+        ? bolts * chargedStamina(weapon.ammoStamina, moveset.staminaRate)
         : undefined;
     return withMoveStamina(attack, {
       ...(shotStamina != null && { stamina: [jumpLandingShot ? shotStamina * 2 : shotStamina] }),
