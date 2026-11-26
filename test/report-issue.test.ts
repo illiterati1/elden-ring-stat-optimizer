@@ -49,6 +49,14 @@ describe("report-issue function", () => {
     expect(issue.body).toContain('"str": 40');
   });
 
+  it("marks feature requests in the title and body", async () => {
+    const fetchMock = mockFetch();
+    await post({ ...valid, kind: "feature", title: "Add a stamina chart" });
+    const issue = JSON.parse(fetchMock.mock.calls[1][1]!.body as string);
+    expect(issue.title).toBe("Feature request: Add a stamina chart");
+    expect(issue.body).toContain("feature request form");
+  });
+
   it("doesn't file anything when verification fails", async () => {
     const fetchMock = mockFetch({ verified: false });
     const res = await post(valid);

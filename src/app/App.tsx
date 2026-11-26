@@ -148,6 +148,7 @@ export default function App() {
   countRender("App");
   const [appState, updateAppState] = useAppState();
   const [reportOpen, setReportOpen] = useState(false);
+  const [featureRequestOpen, setFeatureRequestOpen] = useState(false);
   // On touch devices, the settings are in a drawer opened from a menu button, closed with the back
   // button too
   const touch = useTouch();
@@ -1593,6 +1594,10 @@ export default function App() {
           <Link component="button" variant="body2" onClick={() => setReportOpen(true)}>
             Report it here
           </Link>
+          . Have an idea?{" "}
+          <Link component="button" variant="body2" onClick={() => setFeatureRequestOpen(true)}>
+            Request a feature
+          </Link>
           .
         </Typography>
         {touch && (
@@ -1628,8 +1633,15 @@ export default function App() {
           </>
         )}
         <ReportIssueDialog
+          kind="bug"
           open={reportOpen}
           onClose={() => setReportOpen(false)}
+          appState={appState}
+        />
+        <ReportIssueDialog
+          kind="feature"
+          open={featureRequestOpen}
+          onClose={() => setFeatureRequestOpen(false)}
           appState={appState}
         />
         <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 1 }}>

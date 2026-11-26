@@ -15,6 +15,8 @@ export interface Env {
 }
 
 export interface ReportRequest {
+  /** A bug report (the default) or a feature request */
+  kind?: "bug" | "feature";
   title: string;
   description: string;
   /** The reporter's saved settings, to reproduce the issue with, if they chose to include them */
@@ -49,10 +51,13 @@ function fenceFor(text: string) {
   return "`".repeat(Math.max(3, longest + 1));
 }
 
-export function formatIssueBody(description: string, settings: unknown) {
-  let body = `${neutralize(
-    description.trim(),
-  )}\n\n---\n_Filed from the website's bug report form._`;
+export function formatIssueBody(
+  description: string,
+  settings: unknown,
+  kind: "bug" | "feature" = "bug",
+) {
+  const form = kind === "feature" ? "feature request" : "bug report";
+  let body = `${neutralize(description.trim())}\n\n---\n_Filed from the website's ${form} form._`;
   if (settings !== undefined) {
     const settingsJson = JSON.stringify(settings, null, 2);
     if (settingsJson.length <= maxSettingsLength) {
@@ -115,6 +120,7 @@ export async function onRequestPost({ request, env }: { request: Request; env: E
     return json({ url: null });
   }
 
+  const kind = report.kind === "feature" ? "feature" : "bug";
   const repo = env.GITHUB_REPO ?? defaultRepo;
   const res = await fetch(`https://api.github.com/repos/${repo}/issues`, {
     method: "POST",
@@ -126,8 +132,8 @@ export async function onRequestPost({ request, env }: { request: Request; env: E
       "X-GitHub-Api-Version": "2022-11-28",
     },
     body: JSON.stringify({
-      title: neutralize(title),
-      body: formatIssueBody(description, report.settings),
+      title: (kind === "feature" ? "Feature request: " : "") + neutralize(title),
+      body: formatIssueBody(description, report.settings, kind),
     }),
   });
   if (!res.ok) {

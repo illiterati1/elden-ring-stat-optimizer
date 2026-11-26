@@ -16,9 +16,11 @@ import {
 import type { AppState } from "./useAppState.ts";
 
 interface Props {
+  /** A bug report or a feature request */
+  kind: "bug" | "feature";
   open: boolean;
   onClose: () => void;
-  /** The reporter's settings, sent along if they choose to, to reproduce the issue with */
+  /** The reporter's settings, sent along with a bug report if they choose to, to reproduce it with */
   appState: AppState;
 }
 
@@ -77,7 +79,8 @@ function loadTurnstile() {
  * A form that files a GitHub issue through the site's /api/report-issue function, as a bot account,
  * so reporters don't need a GitHub account
  */
-export default function ReportIssueDialog({ open, onClose, appState }: Props) {
+export default function ReportIssueDialog({ kind, open, onClose, appState }: Props) {
+  const feature = kind === "feature";
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [includeSettings, setIncludeSettings] = useState(true);
@@ -133,9 +136,10 @@ export default function ReportIssueDialog({ open, onClose, appState }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          kind,
           title,
           description,
-          settings: includeSettings ? appState : undefined,
+          settings: includeSettings && !feature ? appState : undefined,
           turnstileToken: token,
           website,
         }),
@@ -166,12 +170,12 @@ export default function ReportIssueDialog({ open, onClose, appState }: Props) {
 
   return (
     <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
-      <DialogTitle>Report a bug or inaccuracy</DialogTitle>
+      <DialogTitle>{feature ? "Request a feature" : "Report a bug or inaccuracy"}</DialogTitle>
       {filedUrl !== undefined ? (
         <>
           <DialogContent>
             <Typography>
-              Thanks, your report was filed
+              Thanks, your {feature ? "request" : "report"} was filed
               {filedUrl ? (
                 <>
                   {" "}
@@ -192,12 +196,14 @@ export default function ReportIssueDialog({ open, onClose, appState }: Props) {
         <>
           <DialogContent>
             <Typography variant="body2" color="text.secondary" mb={2}>
-              Reports are posted publicly as{" "}
+              {feature ? "Requests" : "Reports"} are posted publicly as{" "}
               <Link href={`${repoUrl}/issues`} target="_blank" rel="noopener noreferrer">
                 GitHub issues
               </Link>
-              , so don't include personal information. For an in-game test that disagrees with the
-              calculator, say what you did and the numbers you saw.
+              , so don't include personal information.
+              {feature
+                ? " Say what you'd like the calculator to do, and what it would help you with."
+                : " For an in-game test that disagrees with the calculator, say what you did and the numbers you saw."}
             </Typography>
             <TextField
               label="Title"
@@ -209,7 +215,7 @@ export default function ReportIssueDialog({ open, onClose, appState }: Props) {
               inputProps={{ maxLength: maxTitleLength }}
             />
             <TextField
-              label="What happened, and what did you expect?"
+              label={feature ? "What would you like?" : "What happened, and what did you expect?"}
               fullWidth
               multiline
               minRows={5}
@@ -232,16 +238,18 @@ export default function ReportIssueDialog({ open, onClose, appState }: Props) {
                 onChange={(event) => setWebsite(event.target.value)}
               />
             </Box>
-            <FormControlLabel
-              label="Include my calculator settings, to reproduce the issue"
-              control={
-                <Checkbox
-                  size="small"
-                  checked={includeSettings}
-                  onChange={(event) => setIncludeSettings(event.target.checked)}
-                />
-              }
-            />
+            {!feature && (
+              <FormControlLabel
+                label="Include my calculator settings, to reproduce the issue"
+                control={
+                  <Checkbox
+                    size="small"
+                    checked={includeSettings}
+                    onChange={(event) => setIncludeSettings(event.target.checked)}
+                  />
+                }
+              />
+            )}
             <Box ref={setWidgetContainer} mt={1} minHeight={65} />
             {error && (
               <Alert severity="error" sx={{ mt: 1 }}>
@@ -252,7 +260,7 @@ export default function ReportIssueDialog({ open, onClose, appState }: Props) {
           <DialogActions>
             <Button onClick={close}>Cancel</Button>
             <Button variant="contained" disabled={!canSubmit} onClick={submit}>
-              {submitting ? "Sending…" : "Send report"}
+              {submitting ? "Sending…" : feature ? "Send request" : "Send report"}
             </Button>
           </DialogActions>
         </>
