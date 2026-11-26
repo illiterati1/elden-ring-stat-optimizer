@@ -315,7 +315,7 @@ function FilterSettings({
       </Box>
 
       <Typography variant="body2" color="text.secondary" mt={1}>
-        Main physical damage type is any of
+        Physical damage type is any of
       </Typography>
       <Box display="flex" flexWrap="wrap" columnGap={3}>
         {allPhysicalTypes.map((physicalType) =>

@@ -153,4 +153,27 @@ describe("weapon filters", () => {
     expect(passesFilters(request("Longsword"), filters(["standard"]))).toBe(true);
     expect(passesFilters(request("Longsword"), filters(["slash"]))).toBe(false);
   });
+
+  it("filters by a chosen attack's hits' physical damage types, not the weapon's", () => {
+    const filters = (physicalTypes: WeaponFilters["physicalTypes"]) => ({
+      ...defaultWeaponFilters,
+      physicalTypes,
+    });
+    const magic = [0, 100, 0, 0, 0];
+    const attack = {
+      steps: [
+        [hit({ physicalType: "pierce" })],
+        // No physical damage, so its type doesn't count
+        [hit({ physicalType: "strike", motionValues: magic })],
+        // Not counted
+        [hit({ physicalType: "standard", notCounted: true })],
+      ],
+      weights: [1, 1, 1],
+      stanceBase: 10,
+    };
+    const uchigatana = request("Uchigatana", { attack });
+    expect(passesFilters(uchigatana, filters(["pierce"]))).toBe(true);
+    expect(passesFilters(uchigatana, filters(["slash"]))).toBe(false);
+    expect(passesFilters(uchigatana, filters(["strike", "standard"]))).toBe(false);
+  });
 });
