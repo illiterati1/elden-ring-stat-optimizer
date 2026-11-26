@@ -23,7 +23,8 @@
  *   --ng <n>           NG+ level: 0 or 1 (default 1, the dummy's defense 144.4; 123.2 in NG)
  *   --stat <n>         every stat (default 99)
  *   --str/--dex/--int/--fai/--arc <n>  one stat (overrides --stat for it)
- *   --buff <names>     buffs from buffs.json (comma separated), e.g. "Holy Grease,Golden Vow"
+ *   --buff <names>     buffs from buffs.json (comma separated), e.g. "Holy Grease,Golden Vow";
+ *                      "kind:name" picks one kind, e.g. "skill:Golden Vow" (the Ash of War)
  *   --json             print JSON instead
  *
  * Frames are at 60 fps. Each step's hits are from its press ("@56") and from its animation's start
@@ -98,10 +99,16 @@ const buffNames =
     .map((name) => name.trim()) ?? [];
 const allBuffs = JSON.parse(readFileSync(new URL("../public/buffs.json", import.meta.url), "utf8"))
   .buffs as { kind: string; name: string; effects: BuffEffect[] }[];
-const buffEffects = buffNames.flatMap((name) => {
-  // Skills come last, e.g. Golden Vow is the incantation, not the skill
-  const buff = allBuffs.find((candidate) => candidate.name.toLowerCase() === name.toLowerCase());
-  if (!buff) throw new Error(`No buff named ${name}`);
+const buffEffects = buffNames.flatMap((entry) => {
+  // "kind:name" picks one of several buffs with that name, e.g. "skill:Golden Vow" (the Ash of War)
+  // rather than the incantation, which a bare "Golden Vow" picks as it comes first
+  const [kind, name] = entry.includes(":") ? entry.split(":", 2) : [undefined, entry];
+  const buff = allBuffs.find(
+    (candidate) =>
+      candidate.name.toLowerCase() === name.trim().toLowerCase() &&
+      (!kind || candidate.kind === kind.trim().toLowerCase()),
+  );
+  if (!buff) throw new Error(`No buff named ${entry}`);
   return buff.effects;
 });
 const stat = Number(option("--stat") ?? 99);
