@@ -19,21 +19,6 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   where the calculator gives 900 (681 × 1.15 × 1.15). (The hit landing anim+43 to +49 vs the
   calculator's 42 is travel distance.)
 
-- Godslayer's Greatsword +10 two handed on Rellana (53000082) in the Boss Arena mod, 99 in every
-  stat, NG+1 with Radahn (43,743 HP), Scadutree Blessing 7 (×1.5) (log 2026-11-24 22-20-24). Most
-  hits match the calculator ×1.5: The Queen's Black Flame 711 and 2422 (473 and 1614), R2 1540
-  (1026), charged R2 2000 (1333), large riposte 1271 and 3363 (847 and 2242). But some hits did about
-  2.5% less: the skill's 693 and 2352 (on and off through the fight, at any HP), and all three R1s
-  1078 (736 × 1.5 = 1104). Not the boss's HP phase or animation (a 693 and a 711 both landed in
-  her anim 3008). What changes between them isn't known. On Chief Bloodfiend (50810990, same
-  character, log 2026-11-24 22-35-34) every hit was the lower kind, about ×1.474: the skill 793
-  and 2659 (538 and 1809), R1 #2 1265 (857), R1 #1 1484 (838, also ×1.2 for the stance break, see
-  "Not modeled"). Both bosses' params have every part's damage rate at 1, so if it's a body part,
-  the rate is in the model's hitboxes. Rellana again (log 2026-11-26 15-03-59, same character): this
-  time every hit was the lower kind, about ×1.46: R1 #1 1078 (736), R1 #2 1102 (753), rolling R1
-  1315 (895), R2 1500 (1026, both R2s), charged R2 1946 (1333; 2335 = ×1.2 on a stance break), the
-  skill 693 and 2352 (473 and 1614), riposte 1238 and 3264 (1271 and 3363 last time). So it isn't
-  the attack either: the same R2 and riposte did the higher kind in the earlier fight.
 - Powerstance L1 chain with a Dagger +25 in each hand (log 2026-11-25 00-19-33): #4's 2nd and 3rd
   hits land at anim +38 and +42/43, 3 frames after the calculator's 35 and 40, though their TAE
   windows open at 34.8 and 39.8. All other hits are within 2 frames. Same with an Erdsteel Dagger
@@ -70,13 +55,28 @@ Nothing to compare yet; measure from the press.
 - Carian Retaliation
 
 ## Not modeled
+
 - Charging hits: hits during a charged attack's charge, before its main hit. A Magic Carian
   Thrusting Shield +25's held mounted R2 hit for 550 and 3.3 stance at anim +29, with no stamina
   cost, before its charged hit at +140.5 (log 2026-11-25 22-10-52).
 - Hits on a stance-broken enemy (its anim 8700, before the riposte's 11060) did ×1.2 (in known-issues.md):
   Rellana took the skill's big hit at 2906 (2422 otherwise, log 2026-11-24 22-20-24), and Chief
-  Bloodfiend took R1 #1 at 1484 (1257 expected, log 22-35-34). Godslayer's Greatsword, Boss Arena
-  mod. Not known yet: whether it's always 1.2, and whether it applies to every hit or only the first.
+  Bloodfiend took R1 #1 at 1484 (1235 expected while wet, see below; log 22-35-34). Godslayer's
+  Greatsword, Boss Arena mod. Not known yet: whether it's always 1.2, and whether it applies to
+  every hit or only the first.
+- Wet enemies (in known-issues.md): a wet enemy takes fire ×0.9 and lightning ×1.1 after
+  negation, from the wet SpEffects (4010 refreshed every 0.06 s; 4511/4512/4600/4601 last 30 s,
+  4512 with wetConditionDepth 2; presumably water and rain, not checked which is which).
+  Godslayer's Greatsword +10 two handed (phys 750, fire 324), 99 in every stat, NG+1, Scadutree
+  Blessing 7 (×1.5), Boss Arena mod. Rellana (53000082, fire negation 25, so 32.5 wet) on
+  2026-11-26 (log 15-03-59), every hit wet; calculated wet × 1.5 in brackets: R1 #1 1078 (1077),
+  R1 #2 1102 (1102), rolling R1 1315 (1314), R2 1500 (1500), charged R2 1946 (1945), The Queen's
+  Black Flame 693 and 2352 (691 and 2352), riposte 1238 and 3264. Dry, the calculator × 1.5
+  matches: on 2026-11-24 (log 22-20-24) she was dry for the skill's 711 and 2422, R2 1540, charged
+  R2 2000 and riposte 1271 and 3363, and wet for the R1s' 1078 and some of the skill's 693 and
+  2352, on and off at any HP. Chief Bloodfiend (50810990, log 22-35-34) was wet throughout: R1 #2
+  1265 (1263 wet, 1286 dry). Which wet SpEffect each had wasn't logged; er-logger doesn't read
+  SpEffects.
 - Hits on an unaware enemy (stealth), any hit, not only backstabs (in known-issues.md): a
   Godslayer's Greatsword backstab's first hit did 446 instead of 346, ×1.2 before defenses (MV 52
   as 62.4). The second hit was unchanged (1525), presumably because the first hit had alerted the enemy.

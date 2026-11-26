@@ -18,6 +18,8 @@
 - **Stance-broken enemies:** hits on a stance-broken enemy do 1.2× damage, which isn't included.
 - **Unaware enemies:** hits on an enemy that hasn't noticed you do 1.2× damage, which isn't
   included.
+- **Wet enemies:** an enemy in water or rain takes 0.9× fire and 1.1× lightning damage, which
+  isn't included.
 - **Enemy status resistance:** enemies' status resistances aren't included, so status buildup
   can't be compared against them.
 - **Off by one:** some hits come out 1 lower than in game, mostly with stacked damage buffs or
