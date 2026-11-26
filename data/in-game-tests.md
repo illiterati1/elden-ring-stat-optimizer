@@ -42,7 +42,10 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   2026-11-25 21-54-16): four stomps each did 140 and 10 stance. Calculated 195 with standard's 10%;
   195 / 0.9 × 0.65 = 140.8 with slash's 35%; no negation would be 217. So the game takes this
   bullet's physical damage as slash, though its AtkParam says standard (atkAttribute 3). Not known
-  yet: why, and whether other standard bullets do the same.
+  yet: why, and whether other standard bullets do the same. Retested (log 2026-11-25 21-57-50): 17
+  more stomps on Tree Sentinel, all 140. The same weapon's own standard hits there took standard's
+  10% as calculated: two handed R1 651 and charged R2 1084 on the stance-broken Sentinel (542 and
+  904 × 1.2), so it's only the bullet.
 
 
 ## Not timed
