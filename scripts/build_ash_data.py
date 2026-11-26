@@ -1419,8 +1419,11 @@ def normalize(name):
     return re.sub(r"[^a-z0-9 ]", "", name.lower())
 
 
-def parse_hit(row, tick_bullets, hp_damage, attack_categories, hit_status):
-    """@returns a hit in the output format, or None for a hit that does nothing"""
+def parse_hit(row, tick_bullets, hp_damage, attack_categories, hit_status, bullet_types):
+    """
+    @param bullet_types physical types that projectiles' Bullet rows set for their AtkParam rows
+    @returns a hit in the output format, or None for a hit that does nothing
+    """
     motion_values = [number(row[field] or 0) for field in UNIQUE_MOTION_VALUE_FIELDS]
     flat = [number(row[field] or 0) for field in UNIQUE_FLAT_ATTACK_FIELDS]
     if (
@@ -1431,7 +1434,7 @@ def parse_hit(row, tick_bullets, hp_damage, attack_categories, hit_status):
         and row["AtkId"] not in STANCE_ONLY_ROWS
     ):
         return None
-    attribute = row["PhysAtkAttribute"]
+    attribute = bullet_types.get(row["AtkId"], row["PhysAtkAttribute"])
     physical_type = (
         WEAPON_TYPE
         if attribute == "253"
@@ -3024,6 +3027,19 @@ def main():
     bullets_by_attack = {}
     for bullet in bullets.values():
         bullets_by_attack.setdefault(bullet["atkId_Bullet"], []).append(bullet)
+    # A Bullet row's own physical type (atkAttribute, 254 for its AtkParam row's) replaces its AtkParam
+    # row's. Tested in game: Storm Stomp's bullet (AtkParam 30300870, standard; Bullet 2280, slash)
+    # takes slash's negation (140 on Tree Sentinel, 35% slash, 10% standard), and Beast's Roar's
+    # (30000841, strike; Bullet 2800, standard) did 619 on the training dummy with negations set per
+    # type (strike would be 743), while Storm Blade's (both standard) took standard's. Only used when
+    # every Bullet row with the attack agrees: Wave of Destruction's 303400605 (standard) is also
+    # Bullet 2273's (slash), but its bullets 3006-3019 (254) are standard and did 1424 there as
+    # calculated (log 2026-11-26 14-48-38).
+    bullet_types = {}
+    for attack_id, rows in bullets_by_attack.items():
+        attributes = {int(bullet["atkAttribute"]) for bullet in rows}
+        if len(attributes) == 1 and (attribute := attributes.pop()) in WEAPON_ATTRIBUTE_TYPES:
+            bullet_types[attack_id] = WEAPON_ATTRIBUTE_TYPES[attribute]
     spawned_status = {}
     for attack_id in sheet_attacks:
         for bullet in bullets_by_attack.get(attack_id, []):
@@ -3115,7 +3131,7 @@ def main():
         if "(Partial)" in name:
             continue
         repeats = NAME_REPEATS.get(name, ROW_REPEATS.get(row["AtkId"], 1))
-        hit = parse_hit(row, tick_bullets, hp_damage, attack_categories, hit_status)
+        hit = parse_hit(row, tick_bullets, hp_damage, attack_categories, hit_status, bullet_types)
         if hit is None or not repeats:
             continue
         # How much of a weapon buff's flat attack the hit gets (AtkParam

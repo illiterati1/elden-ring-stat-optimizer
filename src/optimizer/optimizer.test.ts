@@ -13735,8 +13735,9 @@ describe("Ashes of War", () => {
       attack: attack.attack,
     });
     expect(build.attackSteps!.map((step) => step.map((hit) => hit.kind))).toEqual([["Shockwave"]]);
-    // Its physical damage is all flat attack
-    expect(build.attackSteps![0][0].physicalType).toBe("strike");
+    // Its physical damage is all flat attack, standard: its Bullet row's type replaces the AtkParam
+    // row's strike (tested in game: 619 on the training dummy with strike ×1.2, standard ×1.0)
+    expect(build.attackSteps![0][0].physicalType).toBe("standard");
     expect(Math.floor(build.finalValue)).toBe(542);
     expect(build.attackStance).toBe(6);
   });

@@ -9,6 +9,7 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 | # | Test | Calculated |
 |---|---|---|
+| 1 | Storm Stomp, Quality Broadsword +25, two handed, on the training dummy (negations set per type, slash ×1.1; NG+1, 99 in every stat). Its bullet is slash by its Bullet row (build_ash_data.py `bullet_types`), tested on Tree Sentinel | 231, stance 10 |
 
 ## Discrepancies to look into
 
@@ -43,23 +44,6 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   lands at anim +33 and +32 (two tries), 4–5 frames after the calculator's 28, where its TAE window
   opens. Its 2nd hit (41) and all other hits are within 2 frames. Retested (log 2026-11-25
   21-21-13): +33 and +32 again; damage and stance matched, #2's bleed 17 per hit (calculated 18).
-- Storm Stomp on a Quality Broadsword +25 two handed on Mini Midra (50500086) in the Boss Arena mod,
-  99 in every stat, NG+1 with Radahn (6,571 HP), Scadutree Blessing 7 (×1.5) (log 2026-11-25
-  21-46-02): eight stomps each did 323 and 10 stance. The calculator gives 172 (258 with ×1.5). Its
-  bullet (AtkParam 30300870) is standard physical (atkAttribute 3), and Mini Midra's standard
-  negation is 20% (neutralDamageCutRate 0.8, same in the mod). Without that 20%, 172 / 0.8 × 1.5 =
-  322.5, so the game seems to apply no negation: slash's (1.0), or none at all. The small riposte in
-  the same log matched (2929 = 1953 × 1.5). Timing, stamina 10 and the buffered L2 repeat (82 frames)
-  matched. Settled as slash on Tree Sentinel (32510010, 10% standard, 35% slash; NG+1, 6,805 HP; log
-  2026-11-25 21-54-16): four stomps each did 140 and 10 stance. Calculated 195 with standard's 10%;
-  195 / 0.9 × 0.65 = 140.8 with slash's 35%; no negation would be 217. So the game takes this
-  bullet's physical damage as slash, though its AtkParam says standard (atkAttribute 3). Not known
-  yet: why, and whether other standard bullets do the same. Retested (log 2026-11-25 21-57-50): 17
-  more stomps on Tree Sentinel, all 140. The same weapon's own standard hits there took standard's
-  10% as calculated: two handed R1 651 and charged R2 1084 on the stance-broken Sentinel (542 and
-  904 × 1.2), so it's only the bullet. Not all standard bullets: Storm Blade's shockwave (AtkParam
-  300000410, also atkAttribute 3) took standard's 10% on Tree Sentinel, 749 as calculated, eight
-  times (log 2026-11-25 22-04-36).
 - Thrusting shields' mounted R2 (Magic Carian Thrusting Shield +25 on Tree Sentinel, log 2026-11-25
   22-10-52): held, it raises the shield (anim 57038100), hits at anim +29 for 550 and 3.3 stance with
   no stamina cost, drains 1 stamina about every 6 frames while held, then does the charged hit at
