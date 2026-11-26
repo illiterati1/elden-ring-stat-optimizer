@@ -15,8 +15,8 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 - Keen Highland Axe +25 (14100225) with Beast's Roar, one handed, on the training dummy, 99 in
   every stat, NG+1 (log 2026-11-26 00-13-18). With the axe's own ×1.1 passive for roars, the
   Shockwave did 681 (matches), but with the Roar Medallion and Shard of Alexander added it did 897,
-  where the calculator gives 900 (681 × 1.15 × 1.15). The hit landed anim+43 to +49 vs the
-  calculator's 42; maybe travel distance.
+  where the calculator gives 900 (681 × 1.15 × 1.15). (The hit landing anim+43 to +49 vs the
+  calculator's 42 is travel distance.)
 
 - Godslayer's Greatsword +10 two handed on Rellana (53000082) in the Boss Arena mod, 99 in every
   stat, NG+1 with Radahn (43,743 HP), Scadutree Blessing 7 (×1.5) (log 2026-11-24 22-20-24). Most
