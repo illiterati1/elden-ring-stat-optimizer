@@ -56,8 +56,9 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   charging hit (a hit while the attack charges), which the calculator doesn't model yet (see "Not
   modeled"). A tap is an attack (log 2026-11-25 22-15-17), unlike other shields' guard: the press
   raises the shield, and the release starts the thrust (anim 57038110) 23 frames after the press,
-  26 stamina and 11 stance at its anim +31, as calculated (lead 24, anim 32). It did 751 instead of
-  689, presumably a counter hit: it's pierce, and Tree Sentinel was attacking (its anim 3013). Other
+  26 stamina and 11 stance at its anim +31, as calculated (lead 24, anim 32). It did 751: 689
+  without buffs, and 720 with the Counterattack buff (pierce, and Tree Sentinel was attacking, its
+  anim 3013), so still 31 short. Not known why: maybe a bigger counter bonus on mounted attacks. Other
   shields' uncharged mounted R2 was dropped as a guard (build_moveset_data.py SHIELD_TYPES), and
   the same log agrees: Scorpion Kite Shield +25 and Gilded Greatshield +25 taps only guarded, and
   their charged R2s matched (374, 33 stance, 27 stamina at anim 132; 695, 36, 37 at about 137,
@@ -70,10 +71,6 @@ Nothing to compare yet; measure from the press.
 - Carian Retaliation
 
 ## Not modeled
-
-- Counter hits (pierce attacks on an attacking enemy, according to Brendan): a Magic Carian
-  Thrusting Shield +25's mounted R2 did 751 instead of 689 (×1.09) on Tree Sentinel during its
-  attack anim 3013 (log 2026-11-25 22-15-17).
 - Charging hits: hits during a charged attack's charge, before its main hit. A Magic Carian
   Thrusting Shield +25's held mounted R2 hit for 550 and 3.3 stance at anim +29, with no stamina
   cost, before its charged hit at +140.5 (log 2026-11-25 22-10-52).
