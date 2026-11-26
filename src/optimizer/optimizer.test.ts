@@ -2541,7 +2541,7 @@ describe("attacks", () => {
     // Tested in game: a Longsword +25 with 99 in every stat backstabs the training dummy for 1220,
     // the same two handed (no Strength bonus), and a Cold Dagger +25 for 1879 (its critical
     // multiplier is in the motion value, and applies to its physical and magic damage)
-    const backstab = (twoHanding: boolean, weapon = longsword) =>
+    const backstab = (twoHanding: boolean, weapon = longsword, defense = 123.2) =>
       optimizeBuild({
         weapon,
         regularUpgradeLevel: 25,
@@ -2552,7 +2552,7 @@ describe("attacks", () => {
         bonusAttributes: noBonus,
         objective: "totalAttack",
         defenses: Object.fromEntries(
-          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+          allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
         ),
         physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
@@ -2561,6 +2561,12 @@ describe("attacks", () => {
     expect(Math.floor(backstab(false).finalValue)).toBe(1220);
     expect(Math.floor(backstab(true).finalValue)).toBe(1220);
     expect(Math.floor(backstab(false, getWeapon("Cold Dagger")).finalValue)).toBe(1879);
+
+    // Two-hit backstabs (er-logger, 2026-11-25): a Stone Club +25's did 266 and 1181 on the
+    // NG+1 dummy (144.4 defense; the big hits above are capped at 90% of attack, so they don't show
+    // which). 32 weapons' backstabs matched like this, or ×1.2 when the dummy was unaware.
+    const stoneClub = backstab(false, getWeapon("Stone Club"), 144.4);
+    expect(stoneClub.attackSteps![0].map((hit) => Math.floor(hit.damage))).toEqual([266, 1181]);
 
     // A Longsword +25 large riposte on the Dragonbarrow Putrid Avatar (122 defense, 10% pierce
     // negation in the enemy picker) does 2199 in game

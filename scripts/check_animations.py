@@ -792,8 +792,10 @@ SHARED_ATTACK_ANIMATION_IDS = {
 # Critical hits' animations (the same one and two handed), and how long after the press each starts.
 # Tested in game (er-logger, 2026-11-23): Miséricorde's riposte (a23_031700) started 3-4 frames after
 # R1 (8 times), against 1 for an attack from standing, so 4 frames rather than the usual 2; and
-# Godslayer's Greatsword's backstab (a32_031710) 15 after (once), so 16. The small and large
-# ripostes aren't measured and are taken as the riposte's
+# Godslayer's Greatsword's backstab (a32_031710) 15 after (once), so 16. Backstabs of 32 weapons
+# in 27 animation files (2026-11-25) started 14-16 frames after (most 15), and every hit landed within
+# 2 frames of the calculator's except two 3 early after a 14-frame start (Serpentbone Blade's hit,
+# Iron Cleaver's 2nd). The small and large ripostes aren't measured and are taken as the riposte's
 CRITICAL_ANIMATION_IDS = {"Backstab": 31710, "Riposte": 31700, "Small Riposte": 31720, "Large Riposte": 31750}
 CRITICAL_STARTS = {"Backstab": 16 / 60, "Riposte": 4 / 60, "Small Riposte": 4 / 60, "Large Riposte": 4 / 60}
 

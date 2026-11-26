@@ -34,17 +34,10 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 Nothing to compare yet; measure from the press.
 
-- Small and large ripostes' leads (press to animation start), and other classes' backstabs' and
-  ripostes'. Taken as 4 frames for ripostes and 16 for backstabs (`CRITICAL_STARTS` in
-  `scripts/check_animations.py`, from the Miséricorde's riposte and Godslayer's Greatsword's
-  backstab). Backstab leads measured so far (er-logger): Greatsword 15, Flail 14, Fire Knight's
-  Shortsword (a20) 16, Blood Smithscript Dagger (a53) 15, Noble's Slender Sword (a23) 15, Leda's Sword (a60) 16, Moonrithyll's Knight Sword
-  (a26) 15, Banished Knight's Greatsword (a25) 16, Estoc (a27) 15, Queelign's Greatsword (a39) 15,
-  Shamshir (a28) 15, Serpentbone Blade (a29) 14 and 16, Beastman's Cleaver (a40) 15, Smithscript
-  Cirque (a58) 15, Godskin Peeler (a24) 15, Iron Cleaver (a30) 14, Reed Great Katana (a61) 15,
-  Longhaft Axe (a32) 15, Pickaxe (a32) 15, Stone Club (a33) 15, Treespear (a37) 15,
-  Giant-Crusher (a31) 15, Iron Spear (a36) 15, Halo Scythe (a50) 14, Katar (a42) 15,
-  Lucerne (a38) 16, Dane's Footwork (a55) 16, Venomous Fang (a22) 15, Beast Claw (a62) 15.
+- Small and large ripostes' leads (press to animation start), and other classes' ripostes'. Taken
+  as 4 frames (`CRITICAL_STARTS` in `scripts/check_animations.py`, from the Miséricorde's riposte).
+  The Godslayer's Greatsword large ripostes logged so far were in boss fights, where the logger's
+  frames fall behind, so they don't count.
 - Shields' mounted R2
 - Bow and crossbow jump shots (Jumping R1)
 - Carian Retaliation
