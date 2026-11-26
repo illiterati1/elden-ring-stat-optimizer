@@ -1,7 +1,7 @@
 import type { AttackPowerType } from "../calculator/calculator.ts";
 import type { Attribute } from "../calculator/attributes.ts";
 import { getAllocation, getAllocationCount } from "../optimizer/allocations.ts";
-import type { BuildResult, ValueCurve } from "../optimizer/build.ts";
+import type { BuildResult, StepTimes, ValueCurve } from "../optimizer/build.ts";
 import type { SortBy } from "./useAppState.ts";
 
 /**
@@ -57,6 +57,24 @@ export function getStancePerStamina(result: BuildResult, perSecond = false) {
 }
 
 /**
+ * When the attack can start again: the end of its chain (from the press, after a loop's opening), or
+ * sooner if its last step can be recast before its cycle ends (its effects don't stack). Undefined if
+ * a step's length isn't known.
+ */
+export function getChainTimes(stepTimes: readonly StepTimes[]) {
+  let chainTime: number | undefined = stepTimes[0]?.opening ?? 0;
+  for (const times of stepTimes) {
+    chainTime = chainTime != null && times.cycle != null ? chainTime + times.cycle : undefined;
+  }
+  const lastTimes = stepTimes[stepTimes.length - 1];
+  const recastTime =
+    chainTime != null && lastTimes?.recast != null && lastTimes.cycle != null
+      ? chainTime - lastTimes.cycle + lastTimes.recast
+      : undefined;
+  return { chainTime, recastTime };
+}
+
+/**
  * Sort keys where a higher number comes first by default
  */
 function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
@@ -82,6 +100,13 @@ function getSortKey(result: BuildResult, sortBy: SortBy, perSecond: boolean) {
       return getStancePerStamina(result, perSecond) ?? -Infinity;
     case "potential":
       return result.potential ?? -Infinity;
+    // The soonest the attack repeats (or its chain ends) first
+    case "repeatTime": {
+      if (!result.attackStepTimes) return -Infinity;
+      const { chainTime, recastTime } = getChainTimes(result.attackStepTimes);
+      const time = recastTime ?? chainTime;
+      return time != null ? -time : -Infinity;
+    }
     default:
       if (sortBy.startsWith("scaling:")) {
         return result.scaling[sortBy.slice("scaling:".length) as Attribute] ?? 0;

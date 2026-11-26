@@ -255,6 +255,7 @@ export type SortBy =
   | "damagePerStamina"
   | "stancePerStamina"
   | "potential"
+  | "repeatTime"
   | `status:${AttackPowerType}`
   | `scaling:${Attribute}`
   | `requirement:${Attribute}`;
@@ -271,6 +272,7 @@ function isSortBy(value: unknown): value is SortBy {
     value === "damagePerStamina" ||
     value === "stancePerStamina" ||
     value === "potential" ||
+    value === "repeatTime" ||
     (typeof value === "string" &&
       (/^status:\d+$/.test(value) || /^(scaling|requirement):(str|dex|int|fai|arc)$/.test(value)))
   );

@@ -34,7 +34,12 @@ import type { AttackResultHit, BuildResult, StepTimes } from "../optimizer/build
 import { getStatLabel, type Stats } from "../optimizer/startingClasses.ts";
 import type { ScalingSource } from "../optimizer/optimizer.ts";
 import { damageTypeLabels, limitReasonLabels, physicalTypeLabels, statusTypes } from "./uiUtils.ts";
-import { getDamagePerStamina, getStancePerStamina, getResultStatus } from "./results.ts";
+import {
+  getChainTimes,
+  getDamagePerStamina,
+  getStancePerStamina,
+  getResultStatus,
+} from "./results.ts";
 import { statusSortBy } from "./useAppState.ts";
 import BreakdownTable from "./BreakdownTable.tsx";
 import Details, { detailsBackground, tooltipCueSx } from "./Details.tsx";
@@ -310,13 +315,8 @@ function AttackHits({
     stepStarts.push(elapsed);
     elapsed = elapsed != null && times.cycle != null ? elapsed + times.cycle : undefined;
   }
-  const chainTime = stepTimes ? elapsed : undefined;
-  // When the attack can actually start again, if sooner than its cycle (its effects don't stack)
-  const lastTimes = stepTimes?.[stepTimes.length - 1];
-  const recastTime =
-    chainTime != null && lastTimes?.recast != null && lastTimes.cycle != null
-      ? chainTime - lastTimes.cycle + lastTimes.recast
-      : undefined;
+  // When the chain ends, and when the attack can actually start again, if sooner than its cycle
+  const { chainTime, recastTime } = stepTimes ? getChainTimes(stepTimes) : {};
   const at = (stepIndex: number, time: number | undefined) =>
     stepStarts[stepIndex] != null && time != null ? stepStarts[stepIndex]! + time : undefined;
   const hitRows = steps.flatMap((step, i) =>
@@ -1622,7 +1622,13 @@ function ResultsTable({
             </Tooltip>
           </TableCell>
         )}
-        {showHits && <TableCell rowSpan={headerRows}>Hits</TableCell>}
+        {showHits && (
+          <TableCell rowSpan={headerRows}>
+            <Tooltip title="Sort by when the attack repeats (or its chain ends), soonest first">
+              {sortLabel("repeatTime", "Hits", "asc")}
+            </Tooltip>
+          </TableCell>
+        )}
         {showStance && (
           <TableCell rowSpan={headerRows} align="right">
             <Tooltip
