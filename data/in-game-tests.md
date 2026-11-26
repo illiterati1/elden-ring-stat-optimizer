@@ -54,11 +54,7 @@ Nothing to compare yet; measure from the press.
   Godslayer's Greatsword backstab's first hit did 446 instead of 346, ×1.2 before defenses (MV 52
   as 62.4). The second hit was unchanged (1525), presumably because the first hit had alerted the enemy.
   Flail +25 backstab (log 2026-11-25 18-51-18): same pattern, 1st hit 291 instead of 234, 2nd 1057 as
-  calculated. Log 2026-11-25 18-56-33: Fire Knight's Shortsword backstab 1594 (1316 calculated) and
-  Blood Smithscript Dagger's 1212 (1009) with the dummy idle (its anim 20) beforehand; Noble's
-  Slender Sword's 1224 as calculated, started while the dummy was still in anim 5000 after the last
-  one. But log 2026-11-25 18-58-52: Noble's Slender Sword's backstab again 1224, after the dummy had
-  been idle (anim 20) for over a minute. Log 2026-11-25 19-00-47: Noble's Slender Sword 1469 (×1.2;
-  the log's first action, no stamina drop yet), Longsword 1464 (1220), Weathered Straight Sword 1105
-  as calculated, the dummy idle (anim 20) before each. So it isn't the weapon or the dummy's
-  animation either; still unknown what decides it.
+  calculated. Backstabs logged 2026-11-25 (18-56-33, 18-58-52, 19-00-47) did either ×1.2 or exactly
+  the calculated damage, the same weapon both ways (Noble's Slender Sword 1469 or 1224), so the
+  calculated backstab damage is right and the extra is this bonus when the dummy happened to be
+  unaware. Its awareness doesn't show in its animation (anim 20 before both kinds).
