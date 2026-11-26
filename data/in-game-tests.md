@@ -7,6 +7,19 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 ## Discrepancies to look into
 
+- Magic Dagger +25 (1000825) with Carian Grandeur, one handed, on the training dummy, 99 in every
+  stat, NG+1 (log 2026-11-26 16-43-34). Every level's damage, stance and stamina match (Level 1
+  1320/20/30, Level 2 1890/30/40, Level 3 2400/45/60), and each hit lands at the calculated
+  animation frame (30, 30, 159 vs 161). But on a tap (held 7-9 frames) the Level 1 animation
+  (666040001) started +56 from the press twice, where the calculator's lead is 59 (hit @86 vs @89).
+
+- Magic Dagger +25 (1000825) with Carian Sovereignty, one handed, on the training dummy, 99 in
+  every stat, NG+1 (log 2026-11-26 16-47-01). Damage, stance and stamina match for Uncharged #1
+  (1890/30/45), Uncharged #2 (885040020: 1890/30/35), Charged #1 (1704 + 953 bullet, 37 + 11, 60)
+  and Charged #2 (2400/45/45), and those hits land at the calculated animation frames (35 vs 34,
+  72-73 vs 72, 172/176, 72). But on a tap the uncharged release animation (885040001) starts +71
+  from the press (hit @106 vs @108), where the calculator's lead is 74.
+
 - Keen Watchdog's Greatsword +25 (4010225) with Ghostflame Call, one handed, on the training dummy,
   OFFLINE ONLY (99 in every stat, NG+1, Shard of Alexander, Magic Scorpion Charm, four Rakshasa
   pieces) (logs 2026-11-26 01-13-20 and 01-18-40). Each hit's damage and tick count matches (Flare

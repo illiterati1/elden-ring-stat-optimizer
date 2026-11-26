@@ -506,6 +506,7 @@ ROW_KINDS = {
     "301902912": "Ring",
     "301902921": "Ring",
     "301902922": "Ring",
+    "700000026": "Slash Wave",
     "700000150": "Slash Wave",
     "700000151": "Slash Wave",
     "700000152": "Slash Wave",
@@ -1826,6 +1827,10 @@ ANIMATION_SEQUENCES = {
     # in game on a Firespark Perfume Bottle: used again every 137 frames, 40001's quick L2 cancel 98
     # frames in; the charged 40000's is 212)
     ("Wall of Sparks", "Uncharged"): [(40000, 0), (40001, 36 / 60)],
+    # Carian Sovereignty's follow-up after an uncharged cast is 40020, not a repeat of the uncharged
+    # 40001 (whose hit it shares, so matching by hits would pick 40001): er-logger, 2026-11-26, a
+    # Magic Dagger +25, twice: 35 stamina at its frame 71-72, its hit (1890, 30 stance) at 72-73
+    ("Carian Sovereignty", "Uncharged #2"): [(40020, 0)],
 }
 # Projectile hits' times measured in game, where the animations only say when the projectile is
 # created (by skill and part, each hit's from the animation's start, or None to use the animation's):
