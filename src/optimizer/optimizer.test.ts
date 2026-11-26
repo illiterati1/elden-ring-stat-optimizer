@@ -13912,7 +13912,7 @@ describe("Ashes of War", () => {
     expect(build.attackSteps![0][1].stance).toBe(13);
   });
 
-  it("counts only the main attack, and shows ticks per second", () => {
+  it("counts only the main attack, and gives the ticks' interval", () => {
     const club = getWeapon("Large Club");
     const result = getAshAttack(ashes, movesets, club, "Eruption", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -13934,7 +13934,7 @@ describe("Ashes of War", () => {
     const ticks = build.attackSteps![0].filter((hit) => hit.tick);
     expect(ticks.length).toBeGreaterThan(0);
     // Lava ticks hit every second
-    for (const tick of ticks) expect(tick.perSecond).toBeCloseTo(tick.damage);
+    for (const tick of ticks) expect(tick.tickInterval).toBe(1);
     expect(result.attack.stepLabels![0]).toBe("Eruption");
   });
 });

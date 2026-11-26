@@ -788,8 +788,6 @@ export interface AttackResultHit {
   /** Unset for hits with no physical damage, e.g. a magic projectile */
   physicalType?: PhysicalType;
   kind?: string;
-  /** For damage over time, damage per second if the tick interval is known */
-  perSecond?: number;
   tick?: boolean;
   /** True for a hit shown but not counted in the totals */
   notCounted?: boolean;
@@ -1304,9 +1302,7 @@ function getAttackSteps(
           tick: true,
           ...(hit.tickInterval > 0 && { tickInterval: hit.tickInterval }),
           ...(hit.tickDuration && { tickDuration: hit.tickDuration }),
-          ...(getTicks(hit) != null && { tickCount: getTicks(hit) }),
-          ...(hit.tickInterval > 0 && { perSecond: damage / hit.tickInterval }),
-        }),
+          ...(getTicks(hit) != null && { tickCount: getTicks(hit) }),        }),
         stance:
           (((hit.stanceBase ?? attack.stanceBase) * hit.stanceMotionValue) / 100 +
             (hit.flatStance ?? 0)) *

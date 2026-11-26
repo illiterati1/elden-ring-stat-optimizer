@@ -397,15 +397,14 @@ function AttackHits({
   const showBlock = timings.block && rows.some((row) => row.block != null);
   const showMove = timings.move && rows.some((row) => row.move != null);
   const showNextChain = timings.nextChain && chainTime != null;
-  // Damage over time is shown per second, or per tick if its interval isn't known (just 0 for ticks
-  // that only build up status, e.g. Chilling Mist's cloud)
+  // Damage over time is shown per tick over its interval like status buildup, e.g. "64/0.5s", or
+  // just per tick if its interval isn't known (just 0 for ticks that only build up status, e.g.
+  // Chilling Mist's cloud)
   const formatHit = (hit: AttackResultHit) =>
     hit.damage === 0
       ? "0"
-      : hit.perSecond != null
-      ? `${formatValue(hit.perSecond)}/s`
       : hit.tick
-      ? `${formatValue(hit.damage)}/tick`
+      ? `${formatValue(hit.damage)}/${hit.tickInterval ? formatSeconds(hit.tickInterval) : "tick"}`
       : formatValue(hit.damage);
   // Damage of a percentage of the enemy's HP (e.g. black flame) follows the hit in parentheses
   // A hit that isn't counted (e.g. Dragonform Flame's ground fire) is in parentheses
@@ -526,6 +525,7 @@ function AttackHits({
                   </TableCell>
                   <TableCell sx={cellSx} align="right">
                     {formatHit(hit)}
+                    {hit.tick && hit.tickCount && hit.damage !== 0 ? ` (×${hit.tickCount})` : ""}
                   </TableCell>
                   {hpDamageLabel && (
                     <TableCell sx={cellSx} align="right">
