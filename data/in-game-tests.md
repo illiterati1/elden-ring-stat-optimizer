@@ -58,6 +58,7 @@ Nothing to compare yet; measure from the press.
   Blood Smithscript Dagger's 1212 (1009) with the dummy idle (its anim 20) beforehand; Noble's
   Slender Sword's 1224 as calculated, started while the dummy was still in anim 5000 after the last
   one. But log 2026-11-25 18-58-52: Noble's Slender Sword's backstab again 1224, after the dummy had
-  been idle (anim 20) for over a minute. So it isn't just the enemy's state: Noble's Slender Sword
-  (a23) gets no bonus, the Flail, Greatsword, Fire Knight's Shortsword (a20) and Blood Smithscript
-  Dagger (a53) do.
+  been idle (anim 20) for over a minute. Log 2026-11-25 19-00-47: Noble's Slender Sword 1469 (×1.2;
+  the log's first action, no stamina drop yet), Longsword 1464 (1220), Weathered Straight Sword 1105
+  as calculated, the dummy idle (anim 20) before each. So it isn't the weapon or the dummy's
+  animation either; still unknown what decides it.
