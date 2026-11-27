@@ -170,6 +170,15 @@ MOUNTED_CHARGE_RELEASES = {38110, 39110}
 # the charged one
 MOUNTED_CHARGED = {38100, 39100}
 
+# How long after its window opens a step's hits land, in seconds of real time, where tested in game
+# to be later than the window (the hitbox reaching the target), by (animation file, animation ID).
+# Tested with er-logger (2026-11-27, log 17-48-58) on the training dummy: a Serpent Flail's two
+# handed R1 #1 to #4 land 3.2, 2.2, 3.1 and 3.1 frames after their windows open, in the sweet spot
+# (754 and 848 for #1 and #4, ×1.125), while its two handed R2s land at theirs (0.3 and 0.1), before
+# it (856), as do its powerstance L1 #2's second hit and #3's first and its crouching L1's left hand
+# hit (0.5, 0.3 and 1)
+HIT_DELAYS = {(34, 32000): 3.2 / 60, (34, 32010): 2.2 / 60, (34, 32020): 3.1 / 60, (34, 32030): 3.1 / 60}
+
 # ChrActionFlag types that end an attack early: cancelling into an R1, R2, or L1 (the same
 # attack's next step, or the next attack), any right hand attack, or a roll (or backstep). The
 # first window of each is when that can start (or its early window's, EARLY_JUMP_TABLE_EVENT).
@@ -960,7 +969,8 @@ def get_timings(steps, param, moveset):
                 step_hits = len(attack_steps[index])
                 if anim_id in MOUNTED_CHARGED and 0 < step_hits < len(merged) and step_hits <= 2:
                     merged = merged[:step_hits - 1] + merged[-1:]
-                timing = {"hits": [round(real(hit["start"]), 3) for hit in merged]}
+                delay = HIT_DELAYS.get((file_number, anim_id), 0)
+                timing = {"hits": [round(real(hit["start"]) + delay, 3) for hit in merged]}
                 if attack in TAPPED_R2_ATTACKS:
                     charged_id = get_animation_id(TAPPED_R2_ATTACKS[attack], hands, index)
                     files = [n for n in (int(param["spAtkcategory"]), int(param["wepmotionCategory"])) if n]
@@ -1009,12 +1019,16 @@ def get_timings(steps, param, moveset):
                     costs = [hit.get("cost", 0) for hit in matched]
                     costs[0] += stamina - sum(costs)
                     timing["hitStamina"] = [round(cost, 2) for cost in costs]
-                # Each hit is in the sweet spot if its window opens in one: tested in game (er-logger,
-                # 2026-11-27), a Serpent Flail's powerstance L1 #2's second hit (window 31, sweet spot
-                # 32-34 at 30 fps) and #3's first (window 20, sweet spot 21-23) were without it
+                # Each hit is in the sweet spot if it lands in one (when its window opens, or
+                # HIT_DELAYS after): tested in game (er-logger, 2026-11-27), a Serpent Flail's
+                # powerstance L1 #2's second hit (window 31, sweet spot 32-34 at 30 fps) and #3's first
+                # (window 20, sweet spot 21-23) were without it
                 sweet_spots = steps.animations.get_sweet_spots(file_number, anim_id)
                 in_sweet_spot = [
-                    any(start - 0.001 <= hit["start"] < end - 0.001 for start, end in sweet_spots)
+                    any(
+                        real(start) - 0.001 <= real(hit["start"]) + delay < real(end) - 0.001
+                        for start, end in sweet_spots
+                    )
                     for hit in merged
                 ]
                 if in_sweet_spot and all(in_sweet_spot):

@@ -10428,8 +10428,8 @@ describe("Ashes of War", () => {
 
   it("gives flails' sweet spot only where their animations have it", () => {
     // The sweet spot is marked in the animations (check_animations.py's SWEET_SPOT_FLAG), and a hit
-    // has it if its window opens in one: most attacks do, but not backstabs, ripostes, Spinning
-    // Chain, or hits whose window opens a frame before it (the mounted R2s', the two handed R1 #1's).
+    // has it if it lands in one (HIT_DELAYS): most attacks do, but not backstabs, ripostes, Spinning
+    // Chain, or hits that land before it (the two handed R2s', and as calculated the mounted R2s').
     // Tested in game with 99 in every stat on a 123.2 defense target: the Flail +25's Spinning Chain
     // spin does 419 and its backstab matches, both without the bonus, and so do Spinning Chain's
     // follow-ups. A powerstance L1's hits each have their own (er-logger, 2026-11-27, see the
@@ -10442,6 +10442,14 @@ describe("Ashes of War", () => {
         .map((hit) => hit.damageRates);
     const sweetSpot = allDamageTypes.map(() => 1.125);
     expect(rates("R1")).toEqual([sweetSpot, sweetSpot, sweetSpot, sweetSpot]);
+    // Two handed, its R1s land late enough to be in it (HIT_DELAYS) and its R2s too early: tested
+    // in game with a Serpent Flail +10 (er-logger, 2026-11-27), 754, 763, 772 and 848, then 856 twice
+    const twoHanded = (attack: AttackChoice) =>
+      getAttackData(movesets, weapon, attack, true, 0.5)!
+        .steps.flat()
+        .map((hit) => hit.damageRates);
+    expect(twoHanded("R1")).toEqual([sweetSpot, sweetSpot, sweetSpot, sweetSpot]);
+    expect(twoHanded("R2")).toEqual([undefined, undefined]);
     expect(rates("Mounted R2/L2")).toEqual([undefined]);
     expect(rates("Mounted Charged R2/L2")).toEqual([undefined]);
     expect(rates("Powerstance L1")).toEqual([

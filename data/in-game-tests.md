@@ -5,11 +5,10 @@ from the press that starts the attack (the skill's L2, or the first R1/R2), with
 soon as possible. Tested results go in the tests (`src/optimizer/optimizer.test.ts`) and the build
 scripts' comments; then remove them from here. `scripts/predict.ts` gives the calculated values.
 
-- Flails' sweet spot (×1.125) is now only for hits whose window opens in it (tested on the
-  powerstance L1, log 2026-11-27 17-32-52). That drops it from hits whose window opens a frame
-  before it: two handed R1 #1 and #4 and both R2s, mounted R1 #2, mounted R2, mounted charged R2,
-  and the left hand's hit of powerstance rolling and crouching L1. Check one (e.g. a Flail +25's
-  two handed R1 #1 on the dummy) does the lower damage.
+- Flails' sweet spot (×1.125) is only for hits that land in it: when their window opens, or
+  check_animations.py's HIT_DELAYS after (tested: powerstance L1, crouching L1, two handed R1s and
+  R2s, logs 2026-11-27 17-32-52 and 17-48-58). Untested hits whose window opens a frame before it,
+  so calculated without it: mounted R1 #2, mounted R2, mounted charged R2. Check one on the dummy.
 
 ## Discrepancies to look into
 
