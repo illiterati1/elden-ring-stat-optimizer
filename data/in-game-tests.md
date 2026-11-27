@@ -90,7 +90,10 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 Nothing to compare yet; measure from the press.
 
-- Carian Retaliation
+- Carian Retaliation's cancels after a successful parry: the calculator uses the animation's own
+  (L2 52 frames from the press, roll 52), but in log 2026-11-27 14-55-41 the animation lasted at
+  least 143 frames after a parry (until a hit interrupted it) and 66 after a miss. Its swords' hit
+  times (122 and 125 frames into the animation) are from that one parry, whose moment isn't known.
 
 ## Not modeled
 

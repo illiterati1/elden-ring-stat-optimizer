@@ -1824,6 +1824,10 @@ JUMP_PLAYED_OFFSET = 40
 STEP_START_DELAY = 2 / 60
 # Skills not timed until they're measured
 UNTIMED_SKILLS = set()
+# Skills whose hits come from no window of theirs, so they can't be matched to an animation: timed
+# by their range's first animation instead, their hits' times measured (HIT_TIME_FITS). Carian
+# Retaliation's swords are fired by the parry (BehaviorParam_PC 2140, FIXED_FLAT_ROWS)
+UNWINDOWED_SKILLS = {"Carian Retaliation"}
 # The weapon's buffed R2s' animations (get_moveset_part_timing): one and two handed, from here
 BUFFED_R2_ANIMATIONS = (30600, 32600)
 BUFFED_R2_ANIMATION_COUNT = 100
@@ -1973,6 +1977,11 @@ HIT_TIME_FITS = {
     # they fired much later (f982, 433 frames into the cast). Measured with er-logger on a Magic
     # Beastman's Cleaver +25 on the training dummy (2026-11-26 18-21-39): 235 and stance 5 each
     ("Glintblade Phalanx", "#1"): [191 / 60, 191 / 60, 193 / 60, 193 / 60],
+    # Carian Retaliation's 3 swords, made by a parry (its window 8-20 frames into the animation),
+    # hit two at once 122 frames into the animation and the third at 125. Measured with er-logger
+    # on a Magic Sun Realm Shield +25 (2026-11-27 14-55-41, one parry, NpcParam 41301030: 182 and
+    # stance 3 each, as calculated); when the parried attack landed in the window isn't known
+    ("Carian Retaliation", ""): [122 / 60, 122 / 60, 125 / 60],
     # Divine Beast Frost Stomp's ice spikes and shatter land well after the window that creates them
     # (8 frames into the uncharged animation, 86 into the charged one), as the spikes travel. Measured
     # with er-logger on a Keen Clayman's Harpoon +25 on the training dummy (2026-11-26 17-24-12):
@@ -2524,6 +2533,10 @@ def get_skill_timing(
                     break
             if best:
                 break
+        if not best and name in UNWINDOWED_SKILLS and not label:
+            first = [anim for anim in sorted(animation_hits) if anim % 10 == 0]
+            best = (0, next((anim for anim in first if range_of(anim) == skill_range), first[0]))
+            loose = False
         if not best:
             # Measured instead, where its hits can't be matched to its animations (LOOP_FITS)
             fit = LOOP_FITS.get((name, label))
