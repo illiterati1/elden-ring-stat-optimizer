@@ -428,8 +428,14 @@ export function getWeaponRequestBuilder(context: WeaponRequestContext) {
         : weaponBuff?.kind === "skill" && weaponBuffApplies && buffedR2Skills.has(weaponBuff.name)
         ? weaponBuff.name
         : undefined;
+    // A powerstance attack with an off hand weapon it powerstances with (not a paired weapon,
+    // which is both)
+    const offhand =
+      attack.startsWith("Powerstance") && offhandWeaponData ? offhandWeaponData : undefined;
+    const offhandMismatch = !!offhand && !powerstancesWith(weapon, offhand);
+    const usesOffhand = !!offhand && !offhandMismatch;
     // (or for a skill that changes the weapon's own attacks, e.g. Flare, O Serpent's R2s, that
-    // attack with the skill's hits added)
+    // attack with the skill's hits added, the left hand's only if it's the same weapon)
     const skillChain =
       attackActive && r2Skill && attack !== ashAttack && attack !== "Standard Shot"
         ? getAshAttack(
@@ -441,6 +447,7 @@ export function getWeaponRequestBuilder(context: WeaponRequestContext) {
             chainWeight,
             sumChains,
             limit,
+            usesOffhand ? offhand.weaponName : undefined,
           )
         : undefined;
     const uniqueSkillChain =
@@ -510,12 +517,6 @@ export function getWeaponRequestBuilder(context: WeaponRequestContext) {
           : chosenAttackData && chosenAttackData === uniqueSkillChain
           ? r2Skill
           : undefined;
-      // A powerstance attack with an off hand weapon it powerstances with (not a paired weapon,
-      // which is both)
-      const offhand =
-        attack.startsWith("Powerstance") && offhandWeaponData ? offhandWeaponData : undefined;
-      const offhandMismatch = !!offhand && !powerstancesWith(weapon, offhand);
-      const usesOffhand = !!offhand && !offhandMismatch;
       // Weapon buffs on the main weapon only apply to its own hits then
       const mainHand = (effects: BuffEffect[]) =>
         usesOffhand ? effects.map((effect) => ({ ...effect, hand: "main" as const })) : effects;

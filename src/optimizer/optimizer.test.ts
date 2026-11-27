@@ -3203,7 +3203,13 @@ describe("Ashes of War", () => {
     const weapon = getWeapon("Spear");
     const result = getAshAttack(ashes, movesets, weapon, "Charge Forth", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const tap = getAshAttack(ashes, movesets, weapon, withFollowUp("Charge Forth", "Uncharged"), false);
+    const tap = getAshAttack(
+      ashes,
+      movesets,
+      weapon,
+      withFollowUp("Charge Forth", "Uncharged"),
+      false,
+    );
     if (!("attack" in tap)) throw new Error(tap.unavailableReason);
     const icon = (
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
@@ -3236,7 +3242,9 @@ describe("Ashes of War", () => {
       [122, 2.5],
       [748, 10],
     ]);
-    expect(hits(getBuffEffects(icon, 3)).map(([damage]) => damage)).toEqual([122, 122, 122, 122, 860]);
+    expect(hits(getBuffEffects(icon, 3)).map(([damage]) => damage)).toEqual([
+      122, 122, 122, 122, 860,
+    ]);
     expect(hits([], tap.attack).map(([, stance]) => stance)).toEqual([2.5, 7.5]);
   });
 
@@ -10268,10 +10276,22 @@ describe("Ashes of War", () => {
     for (const attack of ["Running R2", "Charged R2", "Jumping R2", "Rolling R1"]) {
       expect(kinds(changed(attack))).toEqual([["Weapon", "Explosion"]]);
     }
-    // Powerstanced, the left flail's too: the L1 chain's #1 (the right's) and #2 (the left's)
-    expect(kinds(changed("Powerstance L1"))).toEqual([
+    // Powerstanced, the left flail's too: the L1 chain's #1 (the right's) and #2 (the left's), and
+    // the chain goes on to its end, each flail's hits without the fire after its explosion
+    const l1 = changed("Powerstance L1");
+    expect(kinds(l1)).toEqual([
       ["Weapon", "Weapon (left)", "Explosion"],
       ["Weapon", "Weapon (left)", "Explosion (left)"],
+      ["Weapon", "Weapon (left)"],
+      ["Weapon (left)", "Weapon", "Weapon (left)"],
+    ]);
+    const buffed = (attack: AttackData) =>
+      attack.steps.map((step) => step.filter((hit) => !hit.kind).map((hit) => !!hit.buffAttack));
+    expect(buffed(l1)).toEqual([
+      [true, true],
+      [false, true],
+      [false, false],
+      [false, false, false],
     ]);
     // A jumping attack's explosions are in the animation the game plays (034570 for the powerstance
     // jumping L1), after its swings: tested in game with er-logger, the swings 49 frames after the
@@ -10300,6 +10320,42 @@ describe("Ashes of War", () => {
     ]);
     expect(kinds(changed("Powerstance Rolling L1"))).toEqual([
       ["Weapon", "Weapon (left)", "Explosion (left)", "Explosion"],
+    ]);
+    // Powerstanced with another flail, only the right's has the buff: the left's hits are without
+    // its fire or explosion, and the L1 chain goes on to its end, the right's explosion on #1
+    const withFlail = (attack: string) => {
+      const result = getAshAttack(
+        ashes,
+        movesets,
+        weapon,
+        withFollowUp("Flare, O Serpent", `${attack} chain`),
+        false,
+        0.5,
+        false,
+        undefined,
+        "Flail",
+      );
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return result.attack;
+    };
+    const mixedL1 = withFlail("Powerstance L1");
+    expect(kinds(mixedL1)).toEqual([
+      ["Weapon", "Weapon (left)", "Explosion"],
+      ["Weapon", "Weapon (left)"],
+      ["Weapon", "Weapon (left)"],
+      ["Weapon (left)", "Weapon", "Weapon (left)"],
+    ]);
+    expect(buffed(mixedL1)).toEqual([
+      [true, false],
+      [false, false],
+      [false, false],
+      [false, false, false],
+    ]);
+    expect(kinds(withFlail("Powerstance Rolling L1"))).toEqual([
+      ["Weapon", "Weapon (left)", "Explosion"],
+    ]);
+    expect(kinds(withFlail("Powerstance Jumping L1"))).toEqual([
+      ["Weapon", "Weapon (left)", "Explosion"],
     ]);
     expect(
       kinds(changed("Powerstance Running L1"))[0].filter((kind) => kind.startsWith("Explosion")),
@@ -10361,7 +10417,9 @@ describe("Ashes of War", () => {
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
         .buffs as Buff[]
     ).find((candidate) => candidate.kind === "counter")!;
-    expect(counter.effects).toEqual([{ damageRates: [1.3, 1, 1, 1, 1], physicalTypes: ["pierce"] }]);
+    expect(counter.effects).toEqual([
+      { damageRates: [1.3, 1, 1, 1, 1], physicalTypes: ["pierce"] },
+    ]);
   });
 
   it("gives flails' sweet spot only where their animations have it", () => {

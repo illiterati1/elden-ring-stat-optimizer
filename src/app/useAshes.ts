@@ -958,6 +958,8 @@ export function getAshAttack(
   sumChains = false,
   /** For chains (the skill's own, or the weapon's it changes), how far they go */
   limit?: ChainLimit,
+  /** For a powerstance attack, the left hand's weapon */
+  offhandName?: string,
 ): AshAttack {
   const result = getSkillAttack(
     ashes,
@@ -968,6 +970,7 @@ export function getAshAttack(
     chainWeight,
     sumChains,
     limit,
+    offhandName,
   );
   // A skill can't be used at all without the weapon's requirements
   return "attack" in result
@@ -985,6 +988,7 @@ function getSkillAttack(
   chainWeight: number,
   sumChains: boolean,
   limit?: ChainLimit,
+  offhandName?: string,
 ): AshAttack {
   const [ash, countedFollowUp] = parseAshChoice(choice);
   const info = ashes.weapons[weapon.weaponName];
@@ -1227,7 +1231,12 @@ function getSkillAttack(
   // buff and the skill's hits for that attack
   if (weaponAttackSkills.has(skill) && counted?.endsWith(chainSuffix)) {
     const attackName = counted.slice(0, -chainSuffix.length);
-    const extraHits = hits.extraHits?.[`${attackName}|${twoHanding ? "2h" : "1h"}`];
+    // Powerstanced with another weapon (e.g. a Serpent Flail with a Flail), the buff is only on the
+    // right hand's: the left's hits are without it
+    const leftBuffed = !offhandName || offhandName === weapon.weaponName;
+    const extraHits = hits.extraHits?.[`${attackName}|${twoHanding ? "2h" : "1h"}`]?.map((step) =>
+      step.filter(({ left }) => leftBuffed || !left),
+    );
     const weaponAttack =
       extraHits && (allAttacks as readonly string[]).includes(attackName)
         ? getAttackData(
@@ -1244,23 +1253,32 @@ function getSkillAttack(
     if (!extraHits || !weaponAttack || cast == null) {
       return { unavailableReason: `${skill} doesn't change the ${attackName}` };
     }
-    // Only the steps until each weapon's has been spent, cast again before each time
-    const stepCount = Math.min(extraHits.length, weaponAttack.steps.length);
-    const withBuff = (hit: AttackDataHit) => ({
+    // Only the steps until each weapon's has been spent, cast again before each time, but a
+    // powerstance chain goes on to its end (the Powerstance L1's explosions are on #1 and #2)
+    const powerstance = attackName.startsWith("Powerstance");
+    const stepCount = powerstance
+      ? weaponAttack.steps.length
+      : Math.min(extraHits.length, weaponAttack.steps.length);
+    // Each weapon's fire is spent with its explosion: its hits in later steps are without it
+    const explodedAt = (leftHand: boolean) => {
+      const at = extraHits.findIndex((step) => step.some(({ left }) => !!left === leftHand));
+      return at < 0 ? Infinity : at;
+    };
+    const lastBuffed = { right: explodedAt(false), left: leftBuffed ? explodedAt(true) : -1 };
+    const withBuff = (hit: AttackDataHit, i: number) => ({
       ...hit,
-      ...(skillBuff && {
-        buffAttack: skillBuff.map((value) => (value * (hit.buffMotionValue ?? 100)) / 100),
-      }),
+      ...(skillBuff &&
+        i <= lastBuffed[hit.leftHand ? "left" : "right"] && {
+          buffAttack: skillBuff.map((value) => (value * (hit.buffMotionValue ?? 100)) / 100),
+        }),
     });
     const versionHits = (label: string) =>
       countedHits(followUps.find((followUp) => followUp.label === label)?.hits ?? []);
-    // TODO: only count the left hand weapon's (powerstancing) when it's the same weapon, e.g. a second
-    // Serpent Flail, and stop the chain earlier without them (e.g. after the L1 chain's #1)
     const steps = weaponAttack.steps
       .slice(0, stepCount)
       .map((step, i) => [
-        ...step.map(withBuff),
-        ...extraHits[i].flatMap(({ hit, left }) =>
+        ...step.map((hit) => withBuff(hit, i)),
+        ...(extraHits[i] ?? []).flatMap(({ hit, left }) =>
           versionHits(hit).map((extra) => ({ ...toHit(extra), ...(left && { leftHand: true }) })),
         ),
       ]);
@@ -1272,7 +1290,7 @@ function getSkillAttack(
           : step.hits.length === weaponHits
           ? step.hits
           : [step.hits[0], ...Array(weaponHits - 1).fill(undefined)];
-      const extraTimes = extraHits[i].flatMap(({ hit, time }) =>
+      const extraTimes = (extraHits[i] ?? []).flatMap(({ hit, time }) =>
         versionHits(hit).map(() => step.lead + time),
       );
       const last = i === stepCount - 1;
@@ -1325,7 +1343,9 @@ function getSkillAttack(
         ...ownBuff,
         ...notedHit,
         // TODO: the note's wording is to be decided
-        note: `With ${skill} cast before each, until each weapon's fire is spent, then cast again as soon as possible`,
+        note: powerstance
+          ? `With ${skill} cast before each, each weapon's fire spent with its explosion, then cast again as soon as possible`
+          : `With ${skill} cast before each, until each weapon's fire is spent, then cast again as soon as possible`,
       },
     };
   }
