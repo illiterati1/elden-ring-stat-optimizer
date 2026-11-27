@@ -10353,6 +10353,17 @@ describe("Ashes of War", () => {
     expect(buff.weapons).toEqual({ "Serpent Flail": [{ flat: [0, 0, 90, 0, 0], group: 162 }] });
   });
 
+  it("gives counterattacks the enemies' counter window, ×1.3 pierce", () => {
+    // Enemies' attack animations apply SpEffect 31 (×1.3), the player's 45 (×1.15). Tested in game: a
+    // Magic Carian Thrusting Shield +25's mounted R2 tap does 751 to Tree Sentinel during its attack
+    // (689 otherwise; ×1.15 would be 720)
+    const counter = (
+      JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
+        .buffs as Buff[]
+    ).find((candidate) => candidate.kind === "counter")!;
+    expect(counter.effects).toEqual([{ damageRates: [1.3, 1, 1, 1, 1], physicalTypes: ["pierce"] }]);
+  });
+
   it("gives flails' sweet spot only where their animations have it", () => {
     // The sweet spot is marked in the animations (check_animations.py's SWEET_SPOT_FLAG): most
     // attacks have it, but not backstabs, ripostes, or Spinning Chain (mounted charged R2s' charged

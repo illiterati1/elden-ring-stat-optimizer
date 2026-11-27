@@ -263,8 +263,11 @@ CRITICAL_ONLY = {"Dagger Talisman"}
 # getEquipWeightRate in src/optimizer/build.ts)
 EQUIP_WEIGHT_SCALED = {"Blue Dancer Charm"}
 # Counterattacks: the counter window's effect (attacking characters take more pierce damage,
-# thrustDamageCutRate; the player's attack animations apply it), as the "Counterattack" buff
-COUNTER_EFFECT = 45
+# thrustDamageCutRate), as the "Counterattack" buff. Enemies' attack animations apply 31 (×1.3; in
+# c2140, c3010, c3060 and c3251's, never 45), the player's 45 (×1.15). Tested in game: a Magic
+# Carian Thrusting Shield +25's mounted R2 tap does 751 to Tree Sentinel during its anim 3013 (31 at
+# 88-106 frames in), 689 without it: ×1.3 on its pierce part, not ×1.15's 720
+COUNTER_EFFECT = 31
 # Buffs that only apply to pierce counterattacks, not in the data
 PIERCE_COUNTER_ONLY = {"Spear Talisman"}
 

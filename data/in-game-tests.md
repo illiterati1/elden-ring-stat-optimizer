@@ -67,12 +67,8 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   the log's first hit; see "Not modeled"). A tap is an attack (log 2026-11-25 22-15-17), unlike other
   shields' guard: the press raises the shield, and the release starts the thrust (anim 57038110) 23
   frames after the press, 26 stamina and 11 stance at its anim +31, as calculated (lead 24, anim
-  32). It did 751: 689 without buffs, and 720 with the Counterattack buff (SpEffect 45, pierce
-  ×1.15). Pierce ×1.3 fits 751 (750-751, splitting 689 into about 205.5 physical and 483.9 magic):
-  Tree Sentinel's anim 3013, which it was in, puts SpEffect 31 (thrustDamageCutRate 1.3) on itself
-  88-106 frames in (c3251.tae), as do most of its attacks (3000-3039). 45 is the player's own
-  attacks' (every attack animation but the unused a938's, which have 31). So enemies' counter window
-  is probably ×1.3, and Counterattack should be 31's, not 45's; not changed yet. Other
+  32). It did 751 during Tree Sentinel's attack (anim 3013), as calculated with the Counterattack
+  buff, now enemies' counter window (SpEffect 31, pierce ×1.3; it was the player's 45, ×1.15). Other
   shields' uncharged mounted R2 was dropped as a guard (build_moveset_data.py SHIELD_TYPES), and
   the same log agrees: Scorpion Kite Shield +25 and Gilded Greatshield +25 taps only guarded, and
   their charged R2s matched (374, 33 stance, 27 stamina at anim 132; 695, 36, 37 at about 137,
