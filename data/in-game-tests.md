@@ -7,6 +7,21 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 ## Discrepancies to look into
 
+- Flame Art Bloodfiend's Arm +25 (12530525) with Eruption, one handed, on the training dummy (log
+  2026-11-26 17-56-45). Damage (1076, 1320, lava 158), stance (18.75, 9, lava 5 then 3) and
+  stamina (30 at 65-66 then 20 at 121-122, 50 in all) match, and the two big hits land 66-67 and
+  122 frames into the animation. The lava's ticks start later than the calculated 124 (marked
+  approximate): its stance-5 tick lands at 135, then the stance-3 ticks at 155, 216-217, 277 and
+  337 (about every 61, four of them as calculated). Three casts agree.
+- Flame Art Greatsword +25 (4000525) with Flame Skewer, one handed, on the training dummy (log
+  2026-11-26 18-00-31). #1 matches (45 stamina at 52, 1507, stance 24, hit 52-53) and #2's damage,
+  stance and stamina match (798, 15, 22 at 36), but #2's hit lands 40-41 frames into its
+  animation, not the calculated 36 (marked approximate). Two casts agree.
+
+- Occult Giant-Crusher +25 (23111225) with Earthshaker, one handed, on the training dummy (log
+  2026-11-26 17-52-21). Damage, stance and stamina match both steps (#1's 42 is two drops, 32 then
+  10 at about frame 91), and #1's hits land at the calculated frames. #2's hit lands 49-52 frames into its animation, 5-8 after the calculated 44 (three casts); its
+  45 stamina drops at 40-42, 2-4 frames before the TAE window.
 - Quality Twinned Knight Swords +25 (10030325) with Double Slash, one handed, on the training
   dummy (log 2026-11-26 17-37-47). Damage, stance and stamina match every step, and the hits land
   at the calculated animation frames, except #1's second hit: 67 and 66 frames in, where its window
