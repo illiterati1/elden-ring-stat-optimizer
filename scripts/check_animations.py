@@ -672,6 +672,7 @@ class Steps:
                     "judge": hit_judge,
                     "atk": atk_id,
                     "mvs": get_motion_values(atk),
+                    "stance": float(atk["atkSuperArmorCorrection"]),
                     "bullet": event_type == BULLET_EVENT,
                     "index": attack_index,
                     "source": get_hit_source(atk),
@@ -923,7 +924,8 @@ def get_timings(steps, param, moveset):
       - hitStamina: for steps of more than one hit, what each of the moveset's hits costs (its
         windows', matched by motion value, with any windows that aren't hits on the first), if they
         can all be matched
-      - sweetSpot: true if every hit's window opens in a sweet spot (SWEET_SPOT_FLAG, flails')
+      - sweetSpot: true if every hit's window opens in a sweet spot (SWEET_SPOT_FLAG, flails'), or
+        whether each does (by hit) if only some do
     Each is left out if the animation doesn't allow it (e.g. jumping attacks, which end on landing)
     """
     timings = {}
@@ -1007,12 +1009,18 @@ def get_timings(steps, param, moveset):
                     costs = [hit.get("cost", 0) for hit in matched]
                     costs[0] += stamina - sum(costs)
                     timing["hitStamina"] = [round(cost, 2) for cost in costs]
+                # Each hit is in the sweet spot if its window opens in one: tested in game (er-logger,
+                # 2026-11-27), a Serpent Flail's powerstance L1 #2's second hit (window 31, sweet spot
+                # 32-34 at 30 fps) and #3's first (window 20, sweet spot 21-23) were without it
                 sweet_spots = steps.animations.get_sweet_spots(file_number, anim_id)
-                if sweet_spots and all(
-                    any(start < hit["end"] and end > hit["start"] for start, end in sweet_spots)
+                in_sweet_spot = [
+                    any(start - 0.001 <= hit["start"] < end - 0.001 for start, end in sweet_spots)
                     for hit in merged
-                ):
+                ]
+                if in_sweet_spot and all(in_sweet_spot):
                     timing["sweetSpot"] = True
+                elif any(in_sweet_spot):
+                    timing["sweetSpot"] = in_sweet_spot
                 step_timings.append(timing)
             if step_timings:
                 timings.setdefault(hands, {})[attack] = step_timings
@@ -1023,8 +1031,11 @@ def match_hits(step, merged):
     """
     @param step a moveset step's hits
     @param merged the hits the step's windows make (Steps.get_step)
-    @returns the merged hit for each of the moveset's hits, matched by motion value (right hand hits
-    first, so equal ones split one each), or None if they don't all match
+    @returns the merged hit for each of the moveset's hits, matched by motion value and, where that
+    tells them apart, stance motion value (then right hand hits first, so equal ones split one each),
+    or None if they don't all match. E.g. a powerstance L1 #1's two 92s are the left hand's 805 with
+    40 stance, then the right's 800 with 80: tested in game (er-logger, 2026-11-27) with a Serpent
+    Flail +10 and a Flail +25, its first hit the Flail's, with its bleed
     """
     if len(merged) != len(step):
         return None
@@ -1032,7 +1043,10 @@ def match_hits(step, merged):
     matched = []
     for hit in step:
         motion_value = max(hit[0]) if isinstance(hit[0], list) else hit[0]
-        match = next((other for other in pool if main_mv(other["mvs"]) == motion_value), None)
+        same_mv = [other for other in pool if main_mv(other["mvs"]) == motion_value]
+        match = next((other for other in same_mv if other["stance"] == hit[2]), None) or next(
+            iter(same_mv), None
+        )
         if match is None:
             return None
         pool.remove(match)
@@ -1046,7 +1060,8 @@ def get_shared_hits(steps, param, moveset):
     @param moveset a weapon's build_moveset_data.py output
     @returns for each powerstance and mounted attack's step (the sheet's shared columns, which
     aren't matched to game rows otherwise), its hits matched to the moveset's by motion value, by
-    hands and attack ({ "1h": { attack: [step hits or None] } }). Each hit is { "judge": behavior
+    hands and attack ({ "1h": { attack: [step hits or None] } }). Each hit is { "order": its place
+    among the step's hits in the animation (the moveset's may be in another order), "judge": behavior
     judge ID or False, for the left hand's weapon's hits (AttackBehavior Source; e.g. the Longsword's
     powerstance L1 1's second hit; never for hand-to-hand arts), "buffMotionValue": its AtkParam
     spEffectAtkPowerCorrectRate_byPoint, as text }, e.g. 90 for most powerstance hits (tested: two Serpent
@@ -1070,6 +1085,7 @@ def get_shared_hits(steps, param, moveset):
                 marks.append(
                     [
                         {
+                            "order": merged.index(match),
                             "judge": match["judge"] if match["leftHand"] and both_weapons else False,
                             "buffMotionValue": steps.game.attacks[match["atk"]][
                                 "spEffectAtkPowerCorrectRate_byPoint"

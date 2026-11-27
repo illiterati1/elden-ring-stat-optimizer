@@ -37,7 +37,7 @@ start (flags 103 and 104: a quick skill, SwordArtsParam artsSpeedType 1, at the 
 second),
 "stamina": what the step costs, "leftStamina": how much of that the left hand's weapon costs
 (powerstance attacks), "sweetSpot": true if its hits are in
-a flail's sweet spot (×1.125 damage) }], each left out if the animation doesn't allow it (or costs
+a flail's sweet spot (×1.125 damage), or whether each is if only some are }], each left out if the animation doesn't allow it (or costs
 nothing, or has no sweet spot).
 "leftHandRows" has the weapon's own motion value, stance motion value, and stamina cost for each
 behavior judge ID of the left hand's powerstance hits ({ judge: [motion value, stance, stamina] }, see
@@ -676,18 +676,11 @@ def main():
                         if len(hit) > 4 and hit[4].get("kind") in renames:
                             hit[4] = {**hit[4], "kind": renames[hit[4]["kind"]]}
         if timings is not None and weapon in weapons:
-            timing = get_timings(timings, weapons[weapon], entry)
-            if timing:
-                entry["timing"] = timing
-            # Crouching attacks that hit differently from the rolling attack aren't known
-            for hands in ["1h", "2h"]:
-                for crouching, rolling in CROUCHING_ATTACKS.items():
-                    hand_timing = timing.get(hands, {})
-                    if rolling in hand_timing and crouching not in hand_timing:
-                        del entry[hands][crouching]
             # Powerstance and mounted hits matched to the animations' rows: how much of a weapon
             # buff's flat attack each gets, and powerstance hits with the left hand's weapon, for an
-            # off hand weapon of another kind
+            # off hand weapon of another kind. Their hits are put in the animation's order, for its
+            # timings (the sheet's may differ, e.g. a powerstance L1 #4's 102s: tested in game,
+            # er-logger 2026-11-27, the left hand's 100 stance hit lands before the right's 40)
             for hands, attacks in get_shared_hits(timings, weapons[weapon], entry).items():
                 for attack, marks in attacks.items():
                     for step, step_marks in zip(entry[hands][attack], marks):
@@ -701,6 +694,17 @@ def main():
                                 details.update(leftHand=True, judge=mark["judge"])
                             if details:
                                 step[i] = [*hit[:4], details]
+                        if step_marks:
+                            step[:] = [hit for _, hit in sorted(zip((m["order"] for m in step_marks), step), key=lambda pair: pair[0])]
+            timing = get_timings(timings, weapons[weapon], entry)
+            if timing:
+                entry["timing"] = timing
+            # Crouching attacks that hit differently from the rolling attack aren't known
+            for hands in ["1h", "2h"]:
+                for crouching, rolling in CROUCHING_ATTACKS.items():
+                    hand_timing = timing.get(hands, {})
+                    if rolling in hand_timing and crouching not in hand_timing:
+                        del entry[hands][crouching]
         output[weapon] = entry
 
     # Each weapon's own rows for the left hand's powerstance hits, for when it's in the left hand

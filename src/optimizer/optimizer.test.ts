@@ -10280,10 +10280,10 @@ describe("Ashes of War", () => {
     // the chain goes on to its end, each flail's hits without the fire after its explosion
     const l1 = changed("Powerstance L1");
     expect(kinds(l1)).toEqual([
-      ["Weapon", "Weapon (left)", "Explosion"],
+      ["Weapon (left)", "Weapon", "Explosion"],
       ["Weapon", "Weapon (left)", "Explosion (left)"],
       ["Weapon", "Weapon (left)"],
-      ["Weapon (left)", "Weapon", "Weapon (left)"],
+      ["Weapon (left)", "Weapon (left)", "Weapon"],
     ]);
     const buffed = (attack: AttackData) =>
       attack.steps.map((step) => step.filter((hit) => !hit.kind).map((hit) => !!hit.buffAttack));
@@ -10316,13 +10316,17 @@ describe("Ashes of War", () => {
       { steps: 1 },
     );
     expect("attack" in cutL1 && kinds(cutL1.attack)).toEqual([
-      ["Weapon", "Weapon (left)", "Explosion"],
+      ["Weapon (left)", "Weapon", "Explosion"],
     ]);
     expect(kinds(changed("Powerstance Rolling L1"))).toEqual([
-      ["Weapon", "Weapon (left)", "Explosion (left)", "Explosion"],
+      ["Weapon (left)", "Weapon", "Explosion (left)", "Explosion"],
     ]);
     // Powerstanced with another flail, only the right's has the buff: the left's hits are without
-    // its fire or explosion, and the L1 chain goes on to its end, the right's explosion on #1
+    // its fire or explosion, and the L1 chain goes on to its end, the right's explosion on #1.
+    // Tested in game (er-logger, 2026-11-27) with a Serpent Flail +10 and a Flail +25, 99 in every
+    // stat, on the NG+1 training dummy: #1 599 (the Flail's, with 32 bleed), 753 and the explosion
+    // 609; #2 673 and 547; #3 614 and 633; #4 281, 683 and 742, all as calculated (the left's hits
+    // first in #1 and #4, and each hit's sweet spot its own)
     const withFlail = (attack: string) => {
       const result = getAshAttack(
         ashes,
@@ -10340,19 +10344,19 @@ describe("Ashes of War", () => {
     };
     const mixedL1 = withFlail("Powerstance L1");
     expect(kinds(mixedL1)).toEqual([
-      ["Weapon", "Weapon (left)", "Explosion"],
+      ["Weapon (left)", "Weapon", "Explosion"],
       ["Weapon", "Weapon (left)"],
       ["Weapon", "Weapon (left)"],
-      ["Weapon (left)", "Weapon", "Weapon (left)"],
+      ["Weapon (left)", "Weapon (left)", "Weapon"],
     ]);
     expect(buffed(mixedL1)).toEqual([
-      [true, false],
+      [false, true],
       [false, false],
       [false, false],
       [false, false, false],
     ]);
     expect(kinds(withFlail("Powerstance Rolling L1"))).toEqual([
-      ["Weapon", "Weapon (left)", "Explosion"],
+      ["Weapon (left)", "Weapon", "Explosion"],
     ]);
     expect(kinds(withFlail("Powerstance Jumping L1"))).toEqual([
       ["Weapon", "Weapon (left)", "Explosion"],
@@ -10423,12 +10427,14 @@ describe("Ashes of War", () => {
   });
 
   it("gives flails' sweet spot only where their animations have it", () => {
-    // The sweet spot is marked in the animations (check_animations.py's SWEET_SPOT_FLAG): most
-    // attacks have it, but not backstabs, ripostes, or Spinning Chain (mounted charged R2s' charged
-    // hit has it, though their charging hit doesn't, which the moveset leaves out). Tested
-    // in game with 99 in every stat on a 123.2 defense target: the Flail +25's Spinning Chain spin
-    // does 419 and its backstab matches, both without the bonus, and so do Spinning Chain's
-    // follow-ups
+    // The sweet spot is marked in the animations (check_animations.py's SWEET_SPOT_FLAG), and a hit
+    // has it if its window opens in one: most attacks do, but not backstabs, ripostes, Spinning
+    // Chain, or hits whose window opens a frame before it (the mounted R2s', the two handed R1 #1's).
+    // Tested in game with 99 in every stat on a 123.2 defense target: the Flail +25's Spinning Chain
+    // spin does 419 and its backstab matches, both without the bonus, and so do Spinning Chain's
+    // follow-ups. A powerstance L1's hits each have their own (er-logger, 2026-11-27, see the
+    // Serpent Flail's): #2's second (window 31, sweet spot 32-34 at 30 fps) and #3's first (window
+    // 20, sweet spot 21-23) are without it
     const weapon = getWeapon("Flail");
     const rates = (attack: AttackChoice) =>
       getAttackData(movesets, weapon, attack, false, 0.5)!
@@ -10436,8 +10442,19 @@ describe("Ashes of War", () => {
         .map((hit) => hit.damageRates);
     const sweetSpot = allDamageTypes.map(() => 1.125);
     expect(rates("R1")).toEqual([sweetSpot, sweetSpot, sweetSpot, sweetSpot]);
-    expect(rates("Mounted R2/L2")).toEqual([sweetSpot]);
-    expect(rates("Mounted Charged R2/L2")).toEqual([sweetSpot]);
+    expect(rates("Mounted R2/L2")).toEqual([undefined]);
+    expect(rates("Mounted Charged R2/L2")).toEqual([undefined]);
+    expect(rates("Powerstance L1")).toEqual([
+      sweetSpot,
+      sweetSpot,
+      sweetSpot,
+      undefined,
+      undefined,
+      sweetSpot,
+      sweetSpot,
+      sweetSpot,
+      sweetSpot,
+    ]);
     expect(rates("Backstab")).toEqual([undefined, undefined]);
     const spin = getAshAttack(ashes, movesets, weapon, "Spinning Chain", false);
     if (!("attack" in spin)) throw new Error(spin.unavailableReason);
@@ -14243,8 +14260,8 @@ describe("powerstance off hand weapons", () => {
       mainGauche.map((step) => step.map((hit) => [Math.floor(hit.damage), hit.stance])),
     ).toEqual([
       [
-        [377, 2.4],
         [320, 1.8],
+        [377, 2.4],
       ],
       [
         [352, 2.4],
@@ -14264,7 +14281,7 @@ describe("powerstance off hand weapons", () => {
     // Each hit shows its own stamina (its attack windows'): the Rapier's 5 a swing, and the
     // Main-gauche's own 3 (3.3, rounded down)
     expect(mainGauche.map((step) => step.map((hit) => hit.stamina))).toEqual([
-      [5, 3],
+      [3, 5],
       [5, 5, 5],
       [3, 5],
       [3, 5, 3],

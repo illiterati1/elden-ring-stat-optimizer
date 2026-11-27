@@ -435,6 +435,10 @@ export function limitChainLength(
  */
 const flailSweetSpotRate = 1.125;
 
+/** @returns whether a step's hit is in its sweet spot (StepTiming sweetSpot) */
+const inSweetSpot = (sweetSpot: true | boolean[] | undefined, hit: number) =>
+  sweetSpot === true || !!sweetSpot?.[hit];
+
 /** Attacks that are always one handed, whatever the two handing setting */
 const oneHandedAttacks: ReadonlySet<string> = new Set([
   "Powerstance L1",
@@ -485,8 +489,11 @@ export interface StepTiming {
   leftStamina?: number;
   /** For steps of more than one hit, what each of the moveset's hits costs */
   hitStamina?: number[];
-  /** True if its hits are in a flail's sweet spot (flailSweetSpotRate) */
-  sweetSpot?: true;
+  /**
+   * True if its hits are in a flail's sweet spot (flailSweetSpotRate), or whether each is (by hit)
+   * if only some are
+   */
+  sweetSpot?: true | boolean[];
   /** When it can be cancelled into each of R1, R2, and L1 that it can */
   cancels?: Partial<Record<"R1" | "R2" | "L1", number>>;
   /** Without an R1/R2 cancel (rightHandAttack), when the animation ends */
@@ -1051,7 +1058,7 @@ export function getAttackData(
   const totalWeight = rawWeights.reduce((sum, weight) => sum + weight, 0);
   return withMoveStamina(attack, {
     steps: steps.map((step, stepIndex) =>
-      step.map(([motionValue, statusMotionValue, stanceMotionValue, physicalType, details]) => ({
+      step.map(([motionValue, statusMotionValue, stanceMotionValue, physicalType, details], hitIndex) => ({
         ...(details?.flat && { flatAttack: details.flat }),
         ...(details?.kind && { kind: details.kind }),
         ...(details?.noTwoHandBonus && { noTwoHandBonus: true }),
@@ -1060,8 +1067,8 @@ export function getAttackData(
         ...(details?.buffMotionValue != null && { buffMotionValue: details.buffMotionValue }),
         ...(details?.leftHand && { leftHand: true }),
         ...(details?.judge != null && { judge: details.judge }),
-        // A flail's weapon hits are counted at its sweet spot, where the step has one
-        ...(timing?.[stepIndex]?.sweetSpot &&
+        // A flail's weapon hits are counted at its sweet spot, where their windows open in one
+        ...(inSweetSpot(timing?.[stepIndex]?.sweetSpot, hitIndex) &&
           !details?.kind && { damageRates: allDamageTypes.map(() => flailSweetSpotRate) }),
         ...(Array.isArray(motionValue)
           ? { motionValue: Math.max(...motionValue), motionValues: motionValue }
