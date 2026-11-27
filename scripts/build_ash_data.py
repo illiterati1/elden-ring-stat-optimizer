@@ -374,7 +374,7 @@ HIT_ROWS = {"300729002"}
 # Wolf's Assault's "bullet" is the explosion when it lands
 ROW_KINDS = {
     "300406910": "Explosion",
-    "302404900": "Fire",
+    "302404900": "Flame",
     "302404901": "Ground Fire",
     "300000591": "Ground Fire",
     # Black Flame Tornado's loops and finisher: AoEs around the player
