@@ -49,7 +49,27 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   every stat, NG+1 (log 2026-11-26 00-13-18). With the axe's own ×1.1 passive for roars, the
   Shockwave did 681 (matches), but with the Roar Medallion and Shard of Alexander added it did 897,
   where the calculator gives 900 (681 × 1.15 × 1.15). (The hit landing anim+43 to +49 vs the
-  calculator's 42 is travel distance.)
+  calculator's 42 is travel distance.) Retested (log 2026-11-27 16-43-09): 681 with no talismans,
+  780 with the Roar Medallion and 780 with the Shard of Alexander (calculator 783 each), 897 with
+  both (calculator 900). So the
+  first ×1.15 gives only ×1.145 on top of the axe's ×1.1 (780 = 619.1 × 1.26, not × 1.265), and
+  the second gives a full ×1.15 (897 = 780 × 1.15). Each ×1.15 alone matches on a Keen Dagger
+  +25 with Beast's Roar (586 → 674, log 2026-11-27 16-36-45), and so does the axe's ×1.1 alone
+  from the left hand (586 → 645), so it's only the axe's passive combined with a talisman. Same on
+  the Keen Dagger with a Highland Axe +25 in the left hand (log 2026-11-27 16-48-21): 739 twice
+  with one ×1.15 talisman (calculator 741), 850 with both (calculator 853). Both weapons give
+  ×1.26 for the passive and one talisman together (739/586, 780/619.1), not 1.1 × 1.15 = 1.265.
+  Adding four Rakshasa pieces (log 2026-11-27 16-51-45): 698 with the passive alone (matches), 799
+  with the Roar Medallion (calculator 803), 920 with both talismans (setup assumed) (calculator
+  923), so the first talisman again gives ×1.145 (799/698). Without the axe (log 2026-11-27
+  16-55-22, setups assumed from the numbers): 674 with one talisman, 774 with both (calculator
+  775), 730 with Rakshasa and one (matches), 838 with Rakshasa and both (calculator 839), all
+  within 1, so the gap needs the axe's passive together with a talisman. Golden Vow (the skill's,
+  ×1.115, cast from a Sacred Highland Axe +25 in the left hand) with the passive matches: 719 (log
+  2026-11-27 16-58-36), as does Rakshasa with it (above), and Frostbite (×1.2) with it: 774 (log
+  2026-11-27 17-00-33). The
+  SpEffects are plain *AttackRate rows: the axe's 5141000 (×1.1, categories 106/116), the Roar
+  Medallion's 321900 (×1.15, 106/116) and the Shard's 312310 (×1.15, 112/111).
 
 - Powerstance L1 chain with a Dagger +25 in each hand (log 2026-11-25 00-19-33): #4's 2nd and 3rd
   hits land at anim +38 and +42/43, 3 frames after the calculator's 35 and 40, though their TAE
