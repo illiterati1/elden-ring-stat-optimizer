@@ -342,48 +342,53 @@ function AttackHits({
       };
     }),
   );
+  type HitRow = (typeof hitRows)[number];
   // In order of when they hit (a hit without a time stays after the one before it), e.g. a
-  // projectile landing after the next step's swing, and numbered in that order
+  // projectile landing after the next step's swing, for which hit each step's cancels go on
   let previousTime = -Infinity;
-  const sortedHitRows = hitRows
+  const timedHitRows = hitRows
     .map((row, index) => {
       previousTime = row.hitAt ?? previousTime;
       return { row, time: previousTime, index };
     })
-    .sort((a, b) => a.time - b.time || a.index - b.index)
-    .map(({ row }) => row);
+    .sort((a, b) => a.time - b.time || a.index - b.index);
+  const hitsByTime = timedHitRows.map(({ row }) => row);
   // Each step's cancels, on its last hit to land before any later step's first (e.g. not on
   // Ghostflame Call's flames landing after the follow-up's swing), or on its first if none does
   const firstRows = new Map<number, number>();
-  sortedHitRows.forEach((row, index) => {
+  hitsByTime.forEach((row, index) => {
     if (!firstRows.has(row.step)) firstRows.set(row.step, index);
   });
-  const lastRows = new Map<number, number>();
-  sortedHitRows.forEach((row, index) => {
+  const lastRows = new Map<number, HitRow>();
+  hitsByTime.forEach((row, index) => {
     const laterStep = Math.min(
       ...[...firstRows].filter(([step]) => step > row.step).map(([, first]) => first),
     );
-    if (index < laterStep || !lastRows.has(row.step)) lastRows.set(row.step, index);
+    if (index < laterStep || !lastRows.has(row.step)) lastRows.set(row.step, row);
   });
   // Each step's early roll-outs (before its last hit, skipping the rest), on the last hit before
-  // each (by row)
-  const earlyRolls = new Map<number, number>();
+  // each
+  const earlyRolls = new Map<HitRow, number>();
   stepTimes?.forEach((times, step) => {
     for (const time of times?.earlyRolls ?? []) {
-      let before: number | undefined;
-      sortedHitRows.forEach((row, index) => {
+      let before: HitRow | undefined;
+      hitsByTime.forEach((row) => {
         if (row.step === step && row.hitAt != null && row.hitAt <= (at(step, time) ?? -Infinity)) {
-          before = index;
+          before = row;
         }
       });
       if (before != null && !earlyRolls.has(before)) earlyRolls.set(before, at(step, time)!);
     }
   });
-  // Each hit numbered within its step in that order ("step.hit")
+  // Shown by step, each step's hits in the order they land, and numbered in that order ("step.hit"),
+  // even when a step's hit lands after the next step's (Glintblade Phalanx's blades after its R2)
+  const sortedHitRows = timedHitRows
+    .sort((a, b) => a.row.step - b.row.step || a.time - b.time || a.index - b.index)
+    .map(({ row }) => row);
   const hitNumbers = new Map<number, number>();
-  const rows = sortedHitRows.map((row, index) => {
+  const rows = sortedHitRows.map((row) => {
     const times = stepTimes?.[row.step];
-    const last = lastRows.get(row.step) === index;
+    const last = lastRows.get(row.step) === row;
     const number = (hitNumbers.get(row.step) ?? 0) + 1;
     hitNumbers.set(row.step, number);
     return {
@@ -395,9 +400,9 @@ function AttackHits({
           : undefined,
       // (a window open since before the last hit shows only when it opens)
       roll:
-        earlyRolls.get(index) ??
+        earlyRolls.get(row) ??
         (last && !times?.earlyRollStaysOpen ? at(row.step, times?.roll) : undefined),
-      earlyRoll: earlyRolls.has(index),
+      earlyRoll: earlyRolls.has(row),
       block: last ? at(row.step, times?.block) : undefined,
       move: last ? at(row.step, times?.move) : undefined,
     };
