@@ -1947,6 +1947,12 @@ HIT_TIME_FITS = {
     # er-logger on a Keen Clayman's Harpoon +25 (2026-11-25 23-47-08 and 23-50-21, 8 casts that hit):
     # the shatter 106 to 108 frames in. Both are further away later.
     ("Hoarfrost Stomp", ""): [47 / 60, 108 / 60],
+    # Glintblade Phalanx's 4 glintblades hover over the player and fire at the next attack, not when
+    # they're made: with the R2 follow-up at its earliest (92 frames after the cast's animation
+    # starts), they hit in two pairs 100-102 frames into the R2, 191-193 into the cast. Left alone,
+    # they fired much later (f982, 433 frames into the cast). Measured with er-logger on a Magic
+    # Beastman's Cleaver +25 on the training dummy (2026-11-26 18-21-39): 235 and stance 5 each
+    ("Glintblade Phalanx", "#1"): [191 / 60, 191 / 60, 193 / 60, 193 / 60],
     # Divine Beast Frost Stomp's ice spikes and shatter land well after the window that creates them
     # (8 frames into the uncharged animation, 86 into the charged one), as the spikes travel. Measured
     # with er-logger on a Keen Clayman's Harpoon +25 on the training dummy (2026-11-26 17-24-12):
