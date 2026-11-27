@@ -1979,6 +1979,13 @@ describe("attacks", () => {
     expect(
       greasedClaws.attackSteps!.map((step) => step.map((hit) => Math.floor(hit.damage))),
     ).toEqual([[333, 374], [273, 282, 311], [333, 399], [729]]);
+    // Blood loss in game (er-logger, 2026-11-25): 29 a hit, #2's 17 (40% of 45 in 32-bit floats,
+    // 17.999998), then 45
+    expect(
+      greasedClaws.attackSteps!.map((step) =>
+        step.map((hit) => Math.floor(hit.status[AttackPowerType.BLEED]!)),
+      ),
+    ).toEqual([[29, 29], [17, 17, 17], [29, 29], [45]]);
   });
 
   it("applies multipliers to hits that get none of a weapon buff", () => {
@@ -8512,11 +8519,12 @@ describe("Ashes of War", () => {
         step.map((hit) => [Math.floor(hit.damage), hit.stance, hit.status[AttackPowerType.BLEED]]),
       ),
     ).toEqual([
+      // (blood loss in 32-bit floats, as the game computes it)
       [
-        [851, 10.12, 101.64],
-        [226, 8, 64.68],
+        [851, 10.12, expect.closeTo(101.64, 4)],
+        [226, 8, expect.closeTo(64.68, 4)],
       ],
-      [[851, 13.2, 101.64]],
+      [[851, 13.2, expect.closeTo(101.64, 4)]],
     ]);
   });
 
@@ -10347,7 +10355,8 @@ describe("Ashes of War", () => {
 
   it("gives flails' sweet spot only where their animations have it", () => {
     // The sweet spot is marked in the animations (check_animations.py's SWEET_SPOT_FLAG): most
-    // attacks have it, but not backstabs, ripostes, mounted charged R2s, or Spinning Chain. Tested
+    // attacks have it, but not backstabs, ripostes, or Spinning Chain (mounted charged R2s' charged
+    // hit has it, though their charging hit doesn't, which the moveset leaves out). Tested
     // in game with 99 in every stat on a 123.2 defense target: the Flail +25's Spinning Chain spin
     // does 419 and its backstab matches, both without the bonus, and so do Spinning Chain's
     // follow-ups
@@ -10359,7 +10368,7 @@ describe("Ashes of War", () => {
     const sweetSpot = allDamageTypes.map(() => 1.125);
     expect(rates("R1")).toEqual([sweetSpot, sweetSpot, sweetSpot, sweetSpot]);
     expect(rates("Mounted R2/L2")).toEqual([sweetSpot]);
-    expect(rates("Mounted Charged R2/L2")).toEqual([undefined]);
+    expect(rates("Mounted Charged R2/L2")).toEqual([sweetSpot]);
     expect(rates("Backstab")).toEqual([undefined, undefined]);
     const spin = getAshAttack(ashes, movesets, weapon, "Spinning Chain", false);
     if (!("attack" in spin)) throw new Error(spin.unavailableReason);
@@ -13399,7 +13408,8 @@ describe("Ashes of War", () => {
 
   it("matches Savage Claws in game", () => {
     // Tested in game on the Beast Claw (fully upgraded) with 99 in every stat on the training dummy:
-    // 325, 330, 289, 294, 299, and 442, with 4, 4, 2, 2, 2, and 8 stance and 27 blood loss each
+    // 325, 330, 289, 294, 299, and 442, with 4, 4, 2, 2, 2, and 8 stance and 26 blood loss each
+    // (er-logger, 2026-11-23: every hit 26, the game's 60% of 45 in 32-bit floats rounding down)
     const weapon = getWeapon("Beast Claw");
     const result = getAshAttack(ashes, movesets, weapon, "Savage Claws", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -13420,14 +13430,18 @@ describe("Ashes of War", () => {
       attack: result.attack,
     });
     expect(
-      attackSteps![0].map((hit) => [hit.damage, hit.stance, hit.status[AttackPowerType.BLEED]]),
+      attackSteps![0].map((hit) => [
+        hit.damage,
+        hit.stance,
+        Math.floor(hit.status[AttackPowerType.BLEED]!),
+      ]),
     ).toEqual([
-      [325, 4, 27],
-      [330, 4, 27],
-      [289, 2, 27],
-      [294, 2, 27],
-      [299, 2, 27],
-      [442, 8, 27],
+      [325, 4, 26],
+      [330, 4, 26],
+      [289, 2, 26],
+      [294, 2, 26],
+      [299, 2, 26],
+      [442, 8, 26],
     ]);
   });
 
@@ -14322,7 +14336,9 @@ describe("powerstance off hand weapons", () => {
       false,
       0.5,
     )!;
-    expect(charged.stepTimes![0].hits[1] * 60).toBeCloseTo(132, 0);
+    // (its charging hit, a hit while it charges, isn't in the moveset)
+    expect(charged.stepTimes![0].hits).toHaveLength(1);
+    expect(charged.stepTimes![0].hits[0] * 60).toBeCloseTo(132, 0);
     expect(r2.stepTimes![0].earliest).toEqual({
       attack: "R2/L2",
       time: expect.closeTo(0.6 + 1),

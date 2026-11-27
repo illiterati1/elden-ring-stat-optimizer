@@ -369,7 +369,8 @@ function predict(
             .filter(([, value]) => value)
             .map(([type, value]) => [
               STATUS_NAMES[Number(type) as AttackPowerType] ?? type,
-              Math.round(value!),
+              // Rounded down, as the game and the app's Hits column do
+              Math.floor(value! + 1e-9),
             ]),
         );
         return {

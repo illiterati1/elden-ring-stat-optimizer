@@ -1042,9 +1042,13 @@ function getHitStatus(
   const status: StatusBuildup = {};
   const hitStatus = hitStatusOf?.(hit) ?? {};
   const power = hit.statusAttackPower ?? attackPower;
+  // The game multiplies in 32-bit floats by the rate as a fraction, then rounds down: 40% of 45 is
+  // 45 × 0.39999998 = 17.999998, so 17 (tested in game: a Beast Claw +25's powerstance L1 #2 builds
+  // up 17 blood loss a hit, and Savage Claws' 60% 26, not 27)
+  const rate = Math.fround(hit.statusMotionValue * Math.fround(0.01));
   for (const statusType of allStatusTypes) {
     const buildup =
-      ((power[statusType] ?? 0) * hit.statusMotionValue) / 100 + (hitStatus[statusType] ?? 0);
+      Math.fround((power[statusType] ?? 0) * rate) + (hitStatus[statusType] ?? 0);
     if (buildup) status[statusType] = buildup;
   }
   return status;

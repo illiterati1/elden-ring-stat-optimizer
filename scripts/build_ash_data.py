@@ -1992,6 +1992,13 @@ HIT_TIME_FITS = {
     # window (None) and the shatter its average gap after them (57 and 49)
     ("Divine Beast Frost Stomp", "Uncharged"): [None, 65 / 60],
     ("Divine Beast Frost Stomp", "Charged"): [None, 135 / 60],
+    # Eruption's lava comes from a chain of bullets fired from its window (124 frames into the
+    # animation): a probe (2012, 0.05s) makes the first tick (2013), whose area grows over 0.2s and
+    # reaches the dummy 135 frames in; when its 0.3s ends it drops 5 globs (2018) that fall and leave
+    # lava (2019), which first ticks 155 frames in, then about every 61 (every 1s for 5s). Measured
+    # with er-logger on a Flame Art Bloodfiend's Arm +25 on the training dummy (2026-11-26 17-56-45,
+    # three casts)
+    ("Eruption", ""): [None, None, 135 / 60, 155 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index, or ALL_HITS. Only for hits without a travel time (a projectile that travels stays approximate,
@@ -2963,9 +2970,26 @@ def main():
         }
 
     # Projectile ticks' intervals (dmgHitRecordLifeTime)
-    # and how long they last (the bullet's life), if known
+    # and how long they last (the bullet's life), if known. Several bullets can share an attack: the
+    # ones a player behavior fires (or their bullets spawn) come first, since the others are never
+    # fired, e.g. Eruption's lava (30000042): 2019 lasts 5s, spawned by its falling globs (tested in
+    # game: 5 ticks), and 2015 4s, which nothing spawns
+    bullet_list = read_csv(os.path.join(data_dir, "Bullet-vanilla.csv"))
+    bullets_by_id = {int(bullet["id"]): bullet for bullet in bullet_list}
+    pending = [
+        int(row["refId"])
+        for row in read_csv(os.path.join(data_dir, "BehaviorParam_PC-vanilla.csv"))
+        if row["refType"] == "1"
+    ]
+    fired = set()
+    while pending:
+        bullet = bullets_by_id.get(pending.pop())
+        if bullet is None or int(bullet["id"]) in fired:
+            continue
+        fired.add(int(bullet["id"]))
+        pending += [int(bullet[field]) for field in ("HitBulletID", "intervalCreateBulletId") if int(bullet[field]) > 0]
     tick_bullets = {}
-    for bullet in read_csv(os.path.join(data_dir, "Bullet-vanilla.csv")):
+    for bullet in sorted(bullet_list, key=lambda bullet: int(bullet["id"]) not in fired):
         interval = float(bullet["dmgHitRecordLifeTime"])
         if interval > 0:
             life = float(bullet["life"])

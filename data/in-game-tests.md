@@ -7,12 +7,6 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 ## Discrepancies to look into
 
-- Flame Art Bloodfiend's Arm +25 (12530525) with Eruption, one handed, on the training dummy (log
-  2026-11-26 17-56-45). Damage (1076, 1320, lava 158), stance (18.75, 9, lava 5 then 3) and
-  stamina (30 at 65-66 then 20 at 121-122, 50 in all) match, and the two big hits land 66-67 and
-  122 frames into the animation. The lava's ticks start later than the calculated 124 (marked
-  approximate): its stance-5 tick lands at 135, then the stance-3 ticks at 155, 216-217, 277 and
-  337 (about every 61, four of them as calculated). Three casts agree.
 - Flame Art Greatsword +25 (4000525) with Flame Skewer, one handed, on the training dummy (log
   2026-11-26 18-00-31). #1 matches (45 stamina at 52, 1507, stance 24, hit 52-53) and #2's damage,
   stance and stamina match (798, 15, 22 at 36), but #2's hit lands 40-41 frames into its
@@ -64,18 +58,21 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 - Powerstance L1 chain with a Beast Claw +25 in each hand (log 2026-11-25 00-33-00): #3's 1st hit
   lands at anim +33 and +32 (two tries), 4–5 frames after the calculator's 28, where its TAE window
   opens. Its 2nd hit (41) and all other hits are within 2 frames. Retested (log 2026-11-25
-  21-21-13): +33 and +32 again; damage and stance matched, #2's bleed 17 per hit (calculated 18).
+  21-21-13): +33 and +32 again; damage, stance and bleed matched.
 - Thrusting shields' mounted R2 (Magic Carian Thrusting Shield +25 on Tree Sentinel, log 2026-11-25
-  22-10-52): held, it raises the shield (anim 57038100), hits at anim +29 for 550 and 3.3 stance with
-  no stamina cost, drains 1 stamina about every 6 frames while held, then does the charged hit at
-  anim +140.5: 945 and 33 stance for 36 stamina, as calculated, but the calculator times it at anim
-  30 (the animation's first window; its costing window opens at 134). The 550 hit is presumably a
-  charging hit (a hit while the attack charges), which the calculator doesn't model yet (see "Not
-  modeled"). A tap is an attack (log 2026-11-25 22-15-17), unlike other shields' guard: the press
-  raises the shield, and the release starts the thrust (anim 57038110) 23 frames after the press,
-  26 stamina and 11 stance at its anim +31, as calculated (lead 24, anim 32). It did 751: 689
-  without buffs, and 720 with the Counterattack buff (pierce, and Tree Sentinel was attacking, its
-  anim 3013), so still 31 short. Not known why: maybe a bigger counter bonus on mounted attacks. Other
+  22-10-52): held, it raises the shield (anim 57038100), then does the charged hit at anim +140.5:
+  945 and 33 stance for 36 stamina, as calculated, but 6 frames after its window (134, the
+  calculator's time). The 550 and 3.3 stance at anim +29 before it, with no stamina cost, is its
+  charging hit (window judge 630, AtkParam 6100630, MV 90: 434, and 550 with the unaware ×1.2, as
+  the log's first hit; see "Not modeled"). A tap is an attack (log 2026-11-25 22-15-17), unlike other
+  shields' guard: the press raises the shield, and the release starts the thrust (anim 57038110) 23
+  frames after the press, 26 stamina and 11 stance at its anim +31, as calculated (lead 24, anim
+  32). It did 751: 689 without buffs, and 720 with the Counterattack buff (SpEffect 45, pierce
+  ×1.15). Pierce ×1.3 fits 751 (750-751, splitting 689 into about 205.5 physical and 483.9 magic):
+  Tree Sentinel's anim 3013, which it was in, puts SpEffect 31 (thrustDamageCutRate 1.3) on itself
+  88-106 frames in (c3251.tae), as do most of its attacks (3000-3039). 45 is the player's own
+  attacks' (every attack animation but the unused a938's, which have 31). So enemies' counter window
+  is probably ×1.3, and Counterattack should be 31's, not 45's; not changed yet. Other
   shields' uncharged mounted R2 was dropped as a guard (build_moveset_data.py SHIELD_TYPES), and
   the same log agrees: Scorpion Kite Shield +25 and Gilded Greatshield +25 taps only guarded, and
   their charged R2s matched (374, 33 stance, 27 stamina at anim 132; 695, 36, 37 at about 137,
@@ -99,7 +96,8 @@ Nothing to compare yet; measure from the press.
 
 - Charging hits: hits during a charged attack's charge, before its main hit. A Magic Carian
   Thrusting Shield +25's held mounted R2 hit for 550 and 3.3 stance at anim +29, with no stamina
-  cost, before its charged hit at +140.5 (log 2026-11-25 22-10-52).
+  cost, before its charged hit at +140.5 (log 2026-11-25 22-10-52): MV 90, ×1.2 as the enemy was
+  unaware. The moveset leaves these out (check_animations.py get_timings times only the charged hit).
 - Hits on a stance-broken enemy (its anim 8700, before the riposte's 11060) did ×1.2 (in known-issues.md):
   Rellana took the skill's big hit at 2906 (2422 otherwise, log 2026-11-24 22-20-24), and Chief
   Bloodfiend took R1 #1 at 1484 (1235 expected while wet, see below; log 22-35-34). Godslayer's

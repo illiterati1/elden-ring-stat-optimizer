@@ -950,6 +950,14 @@ def get_timings(steps, param, moveset):
                     return steps.animations.to_real_time(file_number, anim_id, time)
 
                 cancels = {name: real(time) for name, time in cancels.items()}
+                # A mounted charged attack's charging hit (a hit while it charges) repeats, and the
+                # moveset may leave it out: its hits are the last window, the charged hit, after the
+                # first if it has two, as main compares them (tested in game: a Magic Carian Thrusting
+                # Shield +25's charged mounted R2 hits 140 frames into its animation, not at its
+                # charging hit's 30)
+                step_hits = len(attack_steps[index])
+                if anim_id in MOUNTED_CHARGED and 0 < step_hits < len(merged) and step_hits <= 2:
+                    merged = merged[:step_hits - 1] + merged[-1:]
                 timing = {"hits": [round(real(hit["start"]), 3) for hit in merged]}
                 if attack in TAPPED_R2_ATTACKS:
                     charged_id = get_animation_id(TAPPED_R2_ATTACKS[attack], hands, index)
