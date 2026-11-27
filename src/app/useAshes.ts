@@ -15,6 +15,7 @@ import {
   getAttackData,
   limitChainLength,
   tooSlowReason,
+  getStanceBase,
   stepStartDelay,
   type AttackName,
   type ChainLimit,
@@ -1111,7 +1112,7 @@ function getSkillAttack(
       shown: true,
     };
   }
-  const stanceBase = weapon.ammoStance ?? movesets[weapon.weaponName]?.stance ?? 0;
+  const stanceBase = getStanceBase(movesets, weapon);
   const skillRange = info.skillRange ?? 0;
   // Each call's timing, with its weapon's stamina rate
   const timingOf = (parts: SkillStepPart[]) =>

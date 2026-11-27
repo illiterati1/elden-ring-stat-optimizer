@@ -21,6 +21,9 @@ from <Game>/msg/engus/item-msgbnd-dcx and item_dlc02-msgbnd-dcx, unpacked with W
 
 Output format, keyed by base weapon name:
   { "Longsword": { "stance": 5, "type": 0, "1h": { "R1": [[hit, ...], ...], ... }, "2h": { ... } } }
+"affinityStance" is the base stance damage of the weapon's other affinities, if not the standard
+affinity's (EquipParamWeapon saWeaponDamage: the Black Steel Greathammer's 7 for every affinity but
+standard's 7.5, tested in game with Flame Art and Flaming Strike #2's 300 stance motion value: 21).
 "timing" has each attack step's timing from the game's animations, if <Game>/chr/c0000.anibnd.dcx
 has been unpacked (see check_animations.py's get_timings), by hands and attack like the attacks: [{
 "start": for tapped R2s, seconds from the press until the step starts, "hits": [seconds when each
@@ -508,6 +511,7 @@ def main():
     game_dir = sys.argv[1]
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     weapons = read_weapons(game_dir, project_dir)
+    weapon_rows = read_weapon_rows(project_dir)
     motion = read_tab(project_dir, "MotionValues")
     status = read_tab(project_dir, "StatusMVs")
     stance = read_tab(project_dir, "PoiseMVs")
@@ -531,6 +535,15 @@ def main():
         }
         if weapon not in weapons:
             print(f"Warning: no game data for {weapon}, assuming standard physical damage")
+        else:
+            affinity_stances = {
+                float(weapon_rows[int(weapons[weapon]["id"]) + affinity * 100]["saWeaponDamage"])
+                for affinity in range(1, 13)
+                if int(weapons[weapon]["id"]) + affinity * 100 in weapon_rows
+            }
+            if affinity_stances and affinity_stances != {float(weapons[weapon]["saWeaponDamage"])}:
+                assert len(affinity_stances) == 1, (weapon, affinity_stances)
+                entry["affinityStance"] = affinity_stances.pop()
         # A ranged weapon's stamina rate, for its shots' (its ammunition's) cost
         if (
             weapon in weapons

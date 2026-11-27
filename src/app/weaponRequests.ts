@@ -28,6 +28,7 @@ import { getBuffEffects, isWeaponOnlyBuff, type Buff } from "./useBuffs.ts";
 import {
   canTwoHand,
   getAttackData,
+  getStanceBase,
   tooSlowReason,
   withOffhandRows,
   type ChainLimit,
@@ -596,7 +597,7 @@ export function getWeaponRequestBuilder(context: WeaponRequestContext) {
           offhand: {
             weapon: offhand,
             regularUpgradeLevel: offhandUpgradeLevel,
-            stanceBase: movesets[offhand.weaponName]?.stance ?? 0,
+            stanceBase: getStanceBase(movesets, offhand),
           },
         }),
         // Unless the skill's buff is the one picked, e.g. War Cry's R2s with War Cry
