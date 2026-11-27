@@ -3,6 +3,7 @@ import type { SaveCharacter } from "./saveFile.ts";
 import type { Weapon } from "../calculator/weapon.ts";
 import {
   getGearUpdate,
+  type GearSelection,
   getImportedGear,
   getSaveGrip,
   type ImportedGear,
@@ -36,8 +37,24 @@ describe("getGearUpdate", () => {
     radahnBeaten: true,
   };
 
+  const none: GearSelection = {
+    buffs: [],
+    upgradeLevels: [],
+    affinityIds: [],
+    ashesOfWar: [],
+    selectedAmmo: [],
+  };
+
   test("sets everything without earlier gear, keeping buffs the save doesn't decide", () => {
-    expect(getGearUpdate(gear, null, ["talisman:Old", "armor:Old", "consumable:Grease"])).toEqual({
+    expect(
+      getGearUpdate(gear, null, {
+        buffs: ["talisman:Old", "armor:Old", "consumable:Grease"],
+        upgradeLevels: [10],
+        affinityIds: [5],
+        ashesOfWar: ["Lion's Claw"],
+        selectedAmmo: ["bolt:Bolt"],
+      }),
+    ).toEqual({
       startingClass: "Hero",
       stats: gear.stats,
       selectedWeapons: ["Longsword", "Dagger"],
@@ -57,9 +74,9 @@ describe("getGearUpdate", () => {
   });
 
   test("only changes what changed since the earlier gear", () => {
-    expect(getGearUpdate(gear, gear, [])).toEqual({});
+    expect(getGearUpdate(gear, gear, none)).toEqual({});
     const levelled = { ...gear, stats: { ...gear.stats, vig: 61 } };
-    expect(getGearUpdate(levelled, gear, [])).toEqual({
+    expect(getGearUpdate(levelled, gear, none)).toEqual({
       startingClass: "Hero",
       stats: levelled.stats,
     });
@@ -67,16 +84,43 @@ describe("getGearUpdate", () => {
       ...gear,
       weapons: [{ weaponName: "Longsword", affinityId: 1, upgradeLevel: 24 }],
     };
-    expect(getGearUpdate(upgraded, gear, [])).toMatchObject({
+    expect(getGearUpdate(upgraded, gear, none)).toMatchObject({
       selectedWeapons: ["Longsword"],
       upgradeLevels: [24],
     });
-    expect(getGearUpdate(upgraded, gear, [])).not.toHaveProperty("buffs");
-    expect(getGearUpdate({ ...gear, ngPlus: 2 }, gear, [])).toEqual({ ngPlus: 2 });
+    expect(getGearUpdate(upgraded, gear, none)).not.toHaveProperty("buffs");
+    expect(getGearUpdate({ ...gear, ngPlus: 2 }, gear, none)).toEqual({ ngPlus: 2 });
+  });
+
+  test("adds the save's levels, affinities, skills, and ammunition to the selected ones", () => {
+    const changed = {
+      ...gear,
+      weapons: [{ weaponName: "Claymore", affinityId: 3, upgradeLevel: 20 }],
+      ashesOfWar: ["Lion's Claw"],
+      ammo: ["arrow:Arrow", "arrow:Fire Arrow"],
+    };
+    const selected: GearSelection = {
+      buffs: [],
+      upgradeLevels: [25],
+      affinityIds: [1],
+      ashesOfWar: ["Square Off"],
+      selectedAmmo: ["arrow:Arrow"],
+    };
+    expect(getGearUpdate(changed, gear, selected)).toMatchObject({
+      selectedWeapons: ["Claymore"],
+      affinityIds: [1, 3],
+      upgradeLevels: [25, 20],
+      ashesOfWar: ["Square Off", "Lion's Claw"],
+      selectedAmmo: ["arrow:Arrow", "arrow:Fire Arrow"],
+    });
   });
 
   test("keeps the ammunition and NG+ when the save has none", () => {
-    const update = getGearUpdate({ ...gear, ammo: [], ngPlus: null, radahnBeaten: null }, null, []);
+    const update = getGearUpdate(
+      { ...gear, ammo: [], ngPlus: null, radahnBeaten: null },
+      null,
+      none,
+    );
     expect(update).not.toHaveProperty("selectedAmmo");
     expect(update).not.toHaveProperty("ngPlus");
     expect(update).not.toHaveProperty("radahnBeaten");

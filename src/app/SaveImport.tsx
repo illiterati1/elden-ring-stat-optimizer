@@ -16,6 +16,7 @@ import {
   getGearUpdate,
   getImportedGear,
   getSaveGrip,
+  type GearSelection,
   type ImportedGear,
   type SaveImportData,
   type SaveItems,
@@ -24,7 +25,7 @@ import { getNgPlusLabel, maxNgPlus } from "./useEnemies.ts";
 import { loadRememberedSave, storeRememberedSave, type RememberedSave } from "./rememberedSave.ts";
 import Section from "./Section.tsx";
 import { desktopOs, type DesktopOs } from "./mobile.ts";
-import type { AppState, UpdateAppState } from "./useAppState.ts";
+import type { UpdateAppState } from "./useAppState.ts";
 
 /** Chrome and Edge's File System Access API, which TypeScript's DOM types don't have yet */
 declare global {
@@ -109,7 +110,8 @@ function loadSaveItems() {
 interface Props {
   /** Undefined until the weapons, buffs, and Ashes of War have loaded */
   data: Omit<SaveImportData, "items"> | undefined;
-  selectedBuffs: AppState["buffs"];
+  /** The settings a live update adds the save's gear to */
+  selected: GearSelection;
   onChange: UpdateAppState;
 }
 
@@ -128,7 +130,7 @@ interface OpenSave {
  * grip. A save opened with live updates is remembered, and reopened on later visits (right away if
  * the browser still allows reading it, otherwise with a click).
  */
-function SaveImport({ data, selectedBuffs, onChange }: Props) {
+function SaveImport({ data, selected, onChange }: Props) {
   const [save, setSave] = useState<OpenSave | null>(null);
   const [slot, setSlot] = useState<number | null>(null);
   const [liveUpdates, setLiveUpdates] = useState(true);
@@ -140,8 +142,8 @@ function SaveImport({ data, selectedBuffs, onChange }: Props) {
   /** The gear last imported, so live updates only change what the save changed */
   const lastGear = useRef<ImportedGear | null>(null);
   // The latest of these for reads that finish later
-  const latest = useRef({ data, items, selectedBuffs, onChange });
-  latest.current = { data, items, selectedBuffs, onChange };
+  const latest = useRef({ data, items, selected, onChange });
+  latest.current = { data, items, selected, onChange };
   /** The open save's handle and live updates setting, remembered with each import */
   const handleRef = useRef<FileSystemFileHandle | undefined>();
   const liveUpdatesRef = useRef(liveUpdates);
@@ -155,10 +157,10 @@ function SaveImport({ data, selectedBuffs, onChange }: Props) {
     everything: boolean,
     loadedItems = latest.current.items,
   ) => {
-    const { data: current, selectedBuffs: buffs, onChange: change } = latest.current;
+    const { data: current, selected: settings, onChange: change } = latest.current;
     if (!current || !loadedItems) return;
     const gear = getImportedGear(importedCharacter, { ...current, items: loadedItems });
-    const update = getGearUpdate(gear, everything ? null : lastGear.current, buffs);
+    const update = getGearUpdate(gear, everything ? null : lastGear.current, settings);
     if (everything) update.grips = [getSaveGrip(importedCharacter)];
     lastGear.current = gear;
     if (Object.keys(update).length) change(update);

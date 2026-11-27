@@ -1321,13 +1321,24 @@ export default function App() {
       ? "No damage"
       : `No ${damageTypeLabels.get(objective as AttackPowerType)} damage`;
 
+  const saveImportSelection = useMemo(
+    () => ({
+      buffs: selectedBuffKeys,
+      upgradeLevels: savedUpgradeLevels,
+      affinityIds,
+      ashesOfWar: savedAshesOfWar,
+      selectedAmmo,
+    }),
+    [selectedBuffKeys, savedUpgradeLevels, affinityIds, savedAshesOfWar, selectedAmmo],
+  );
+
   const settings = (
     <Stack spacing={2}>
       {/* No save file to open on a phone or tablet */}
       {!isMobile && (
         <SaveImport
           data={saveImportData}
-          selectedBuffs={selectedBuffKeys}
+          selected={saveImportSelection}
           onChange={updateAppState}
         />
       )}

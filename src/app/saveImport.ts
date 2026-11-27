@@ -218,16 +218,29 @@ export type GearUpdate = { -readonly [K in keyof AppState]?: AppState[K] };
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
+/** The current settings that a gear update keeps some of */
+export type GearSelection = Pick<
+  AppState,
+  "buffs" | "upgradeLevels" | "affinityIds" | "ashesOfWar" | "selectedAmmo"
+>;
+
 /**
  * @param previous the gear last imported, to only change what changed since (e.g. weapons added to
  * compare stay until the save's weapons change), or null to set everything
+ * @param selected the current settings: buffs the save doesn't decide are kept, and when only
+ * changing what changed, the save's upgrade levels, affinities, Ashes of War, and ammunition are
+ * added to the selected ones rather than replacing them
  * @returns the settings to change for the gear
  */
 export function getGearUpdate(
   gear: ImportedGear,
   previous: ImportedGear | null,
-  selectedBuffs: readonly string[],
+  selected: GearSelection,
 ): GearUpdate {
+  const unique = <T>(values: readonly T[]) => [...new Set(values)];
+  /** The save's values, with the selected ones too when only changing what changed */
+  const merge = <T>(current: readonly T[], saved: readonly T[]) =>
+    unique(previous ? [...current, ...saved] : saved);
   const update: GearUpdate = {};
   if (
     !previous ||
@@ -243,11 +256,16 @@ export function getGearUpdate(
       !same(previous.weapons, gear.weapons) ||
       !same(previous.ashesOfWar, gear.ashesOfWar))
   ) {
-    const unique = <T>(values: T[]) => [...new Set(values)];
     update.selectedWeapons = unique(gear.weapons.map((weapon) => weapon.weaponName));
-    update.affinityIds = unique(gear.weapons.map((weapon) => weapon.affinityId));
-    update.upgradeLevels = unique(gear.weapons.map((weapon) => weapon.upgradeLevel));
-    update.ashesOfWar = gear.ashesOfWar;
+    update.affinityIds = merge(
+      selected.affinityIds,
+      gear.weapons.map((weapon) => weapon.affinityId),
+    );
+    update.upgradeLevels = merge(
+      selected.upgradeLevels,
+      gear.weapons.map((weapon) => weapon.upgradeLevel),
+    );
+    update.ashesOfWar = merge(selected.ashesOfWar, gear.ashesOfWar);
   }
   if (!previous || !same(previous.offhand, gear.offhand)) {
     update.offhandWeapon = gear.offhand?.weaponName ?? null;
@@ -257,7 +275,7 @@ export function getGearUpdate(
   }
   if (!previous || !same(previous.buffs, gear.buffs)) {
     update.buffs = [
-      ...selectedBuffs.filter((key) => !gearBuffKinds.has(key.slice(0, key.indexOf(":")))),
+      ...selected.buffs.filter((key) => !gearBuffKinds.has(key.slice(0, key.indexOf(":")))),
       ...gear.buffs,
     ];
   }
@@ -266,7 +284,7 @@ export function getGearUpdate(
     if (gear.catalyst) update.catalystUpgradeLevel = gear.catalyst.upgradeLevel;
   }
   if (gear.ammo.length && (!previous || !same(previous.ammo, gear.ammo))) {
-    update.selectedAmmo = gear.ammo;
+    update.selectedAmmo = merge(selected.selectedAmmo, gear.ammo);
   }
   if (!previous || previous.scadutreeBlessingLevel !== gear.scadutreeBlessingLevel) {
     update.scadutreeBlessingLevel = gear.scadutreeBlessingLevel;
