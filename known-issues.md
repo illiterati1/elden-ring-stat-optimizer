@@ -1,7 +1,9 @@
 # Known issues
 
-- **Powerstancing with Flare, O Serpent:** the left-hand weapon's explosions are counted for any
-  powerstanced weapon, not only a second Serpent Flail.
+- **Flail sweet spot:** a flail hit does 1.125× damage only if it lands early in its swing, and
+  when it lands depends on the swing and the distance to the enemy. Hits are assumed to land as
+  they did on the training dummy, where tested. Untested hits that may land just before the sweet
+  spot (mounted R1 #2, mounted R2, mounted charged R2) are counted without it.
 - **Attacks that need extra movement:** time-scaled numbers are questionable for any attack that
   needs another action first, such as jumping, rolling, backstepping, running, or buffing.
 - **Untimed attacks:** Carian Retaliation hasn't been timed yet.
