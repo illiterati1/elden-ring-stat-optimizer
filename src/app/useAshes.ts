@@ -287,8 +287,14 @@ function getSkillStepTimes(
         timing.rightHandAttack,
       );
       // A one-off is over once anything can follow it: an attack (another skill included), a roll,
-      // blocking, or moving
-      const oneOffEnd = [
+      // blocking, or moving, but not before its last hit lands (Carian Retaliation's swords hit
+      // 122-125 frames in, well after its own cancels, which are for a missed parry)
+      const lastHit = Math.max(
+        ...[...(ownTimes ?? []), ...timing.hits]
+          .filter((time): time is number => time != null)
+          .map((time) => lead + time),
+      );
+      const followEnd = [
         earliest?.time,
         next?.time,
         ...[timing.roll, timing.block, timing.move].map((time) =>
@@ -297,6 +303,7 @@ function getSkillStepTimes(
       ]
         .filter((time): time is number => time != null)
         .sort((a, b) => a - b)[0];
+      const oneOffEnd = followEnd != null ? Math.max(followEnd, lastHit) : undefined;
       const cutEnd =
         cutShort &&
         ("seconds" in cutShort ? [timing.roll] : [timing.roll, timing.block, timing.move])
@@ -769,12 +776,14 @@ function getBuiltInSkills(ashes: Ashes) {
 const separateFollowUpSkills: ReadonlySet<string> = new Set(["Revenge of the Night"]);
 
 /**
- * Versions of skills that can't be used again right after themselves, by "skill|follow-up label":
- * their values per second last until anything can follow them, like one-off attacks
- * (oneOffAttacks). Euporia Vortex's Luster Tiers use up the luster they need, so the next press is
- * the plain skill; Causality's Wrath has to be cast twice before even its Tier 1.
+ * Versions of skills that can't be used again right after themselves, by "skill|follow-up label"
+ * ("skill|" for the skill itself): their values per second last until anything can follow them,
+ * like one-off attacks (oneOffAttacks). Carian Retaliation needs an enemy's attack to parry each
+ * time. Euporia Vortex's Luster Tiers use up the luster they need, so the next press is the plain
+ * skill; Causality's Wrath has to be cast twice before even its Tier 1.
  */
 const oneOffFollowUps: ReadonlySet<string> = new Set([
+  "Carian Retaliation|",
   "Euporia Vortex|Luster Tier 1",
   "Euporia Vortex|Luster Tier 2",
   "Causality's Wrath|Tier 1",
@@ -1452,7 +1461,7 @@ function getSkillAttack(
       ...timingOf(
         followUp
           ? [{ label: "", next: getFollowUpButton(followUp.label) }, { label: followUp.label }]
-          : [{ label: "" }],
+          : [{ label: "", ...(oneOffFollowUps.has(`${skill}|`) && { oneOff: true }) }],
       ),
     },
   };
