@@ -1986,7 +1986,8 @@ HIT_TIME_FITS = {
     # Wall of Sparks's explosion lands 137 frames after L2 tapped (ANIMATION_SEQUENCES), 174 charged
     # Swift Slash's vacuum hits the dummy 60 frames after L2 tapped, 84 charged, about 24 frames after
     # its slash (36 and 61: 3-4 frames after its window opens, here 32 and 58). Measured in game on a
-    # Keen Backhand Blade +25 at the usual test distance; the vacuum flies, so further away it's later
+    # Keen Backhand Blade +25 at the usual test distance (60-61 and 83-84 on a Keen Reverse-Bladed
+    # Sword +25, log 2026-11-27 22-28-06); the vacuum flies, so further away it's later
     # (the uncharged one's from its release, 24 frames after L2)
     ("Swift Slash", "Uncharged"): [None, 36 / 60],
     ("Swift Slash", "Charged"): [None, 82 / 60],

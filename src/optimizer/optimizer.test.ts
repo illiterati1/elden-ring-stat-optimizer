@@ -5762,17 +5762,17 @@ describe("Ashes of War", () => {
       ).filter((buff) => buff.name === "Godfrey Icon"),
       3,
     );
-    const build = (followUp: string, buffs: BuffEffect[] = []) => {
+    const build = (followUp: string, buffs: BuffEffect[] = [], on = weapon, ng1 = false) => {
       const result = getAshAttack(
         ashes,
         movesets,
-        weapon,
+        on,
         withFollowUp("Swift Slash", followUp),
         false,
       );
       if (!("attack" in result)) throw new Error(result.unavailableReason);
       return optimizeBuild({
-        weapon,
+        weapon: on,
         regularUpgradeLevel: 25,
         twoHanding: false,
         startLevel: 9,
@@ -5781,9 +5781,14 @@ describe("Ashes of War", () => {
         bonusAttributes: noBonus,
         objective: "totalAttack",
         defenses: Object.fromEntries(
-          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+          allDamageTypes.map((damageType) => [
+            damageType,
+            { defense: ng1 ? 144.4 : 123.2, negation: 0 },
+          ]),
         ),
-        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        physicalNegation: ng1
+          ? { standard: 0, slash: -10, strike: -20, pierce: -30 }
+          : { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
         attack: result.attack,
         buffs,
@@ -5840,6 +5845,45 @@ describe("Ashes of War", () => {
     };
     expect(hitFrames("Uncharged")).toEqual([32, 60]);
     expect(hitFrames("Charged")).toEqual([58, 84]);
+    // And with er-logger on a Keen Reverse-Bladed Sword +25, one-handed, on the NG+1 dummy (log
+    // 2026-11-27 22-28-06): uncharged 452 then 631, charged 528 (15 stance) then 894, 5 stance
+    // otherwise, all as here; 30 and 50 stamina. Frames from L2: uncharged, the slash 33-35 and the
+    // vacuum 60-61 (32 and 60 here); charged, the slash 63-64, 6 frames into its window (58 here),
+    // and the vacuum 83-84 (84). One charged slash missed and only its vacuum hit, so the dummy was
+    // at the edge of its reach, which may be why it landed later than on the Backhand Blade. B
+    // mashed, a roll 80 frames after L2 uncharged, 112-114 charged (80 and 112 here)
+    const reverse = getWeapon("Keen Reverse-Bladed Sword");
+    expect(build("Uncharged", [], reverse, true)).toEqual([
+      [
+        [452, 5, undefined],
+        [631, 5, undefined],
+      ],
+    ]);
+    expect(build("Charged", [], reverse, true)).toEqual([
+      [
+        [528, 15, undefined],
+        [894, 5, undefined],
+      ],
+    ]);
+    for (const [followUp, stamina, hits, roll] of [
+      ["Uncharged", 30, [32, 60], 80],
+      ["Charged", 50, [58, 84], 112],
+    ] as const) {
+      const result = getAshAttack(
+        ashes,
+        movesets,
+        reverse,
+        withFollowUp("Swift Slash", followUp),
+        false,
+      );
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      const step = result.attack.stepTimes![0];
+      expect({
+        stamina: result.attack.stamina,
+        hits: step.hitTimes!.map((time) => Math.round(time! * 60)),
+        roll: Math.round(step.roll! * 60),
+      }).toEqual({ stamina: [stamina], hits, roll });
+    }
   });
 
   it("matches Sword Dance in game", () => {
