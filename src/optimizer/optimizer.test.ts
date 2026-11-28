@@ -3115,8 +3115,8 @@ describe("Ashes of War", () => {
     );
     // Kick: 45, its 30 flat physical times 4 for the upgrade level, without stat scaling, and 6 stance
     expect(skillSteps("Kick")).toMatchObject([[{ damage: 45, stance: 6 }]]);
-    // Lightning Ram: one hit of 551 (it can be chained indefinitely, so one counts)
-    expect(skillSteps("Lightning Ram")).toMatchObject([[{ damage: 551 }]]);
+    // Lightning Ram: one hit of 551 a ram, then its recast, which chains into itself indefinitely
+    expect(skillSteps("Lightning Ram")).toMatchObject([[{ damage: 551 }], [{ damage: 551 }]]);
     // Lightning Slash: the stomp 96, the slash 921 with its own 85 lightning weapon buff, and the
     // bullet 554 (1571 in total; its water AoE only hits in water)
     expect(skillSteps("Lightning Slash")[0].map((hit) => hit.damage)).toEqual([96, 921, 554]);

@@ -376,6 +376,7 @@ function withSkillTiming(
  * into the skill again)
  */
 const chainRepeatSteps: Partial<Record<string, number>> = {
+  "Lightning Ram": 2,
   "Storm Blade": 2,
   "Surge of Faith": 2,
 };
@@ -497,6 +498,7 @@ const chainSkills: ReadonlySet<string> = new Set([
   "Revenger's Blade",
   "Savage Lion's Claw",
   "Shadow Sunflower Headbutt",
+  "Lightning Ram",
   "Shield Strike",
   "Shriek of Milos",
   "Solitary Moon Slash",

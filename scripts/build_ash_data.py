@@ -282,9 +282,7 @@ MAIN_HIT_KINDS = {
 # main hits to keep. Blind Spot's animations (a876) each hit once, 40080-40082 with AtkParam
 # 600000180 and 40083 with 600000181 (tested in game: one hit, 813 on a Backhand Blade +25 with 99 in
 # every stat).
-# Lightning Ram's two rows are a ram and the next one, which can be chained indefinitely, so only one
-# counts (tested in game: one hit of 551 on a Longsword +25 with 99 in every stat).
-MAIN_HIT_COUNTS = {"Blind Spot": 1, "Lightning Ram": 1}
+MAIN_HIT_COUNTS = {"Blind Spot": 1}
 
 # Skills charged to repeat hits, split into a follow-up for each charge, with how many of each kind
 # of main hit it does. Tested in game: Black Flame Tornado does its finisher alone when tapped, and at
@@ -1232,6 +1230,8 @@ ROW_FOLLOW_UPS = {
     "305000110": "Tier 2",
     "305000100": "Tier 3",
     "300405910": "#2",
+    # Lightning Ram's recast (ROW_FOLLOW_UPS, MAIN_CHAINS)
+    "300000711": "#2",
     "600000122": None,
     "600000123": None,
     "600001002": None,
@@ -1317,6 +1317,9 @@ MAIN_CHAINS = {
     "Dynastic Sickleplay": ("", None),
     "Storm Kick": ("", ["R2"]),
     "Red Bear Hunt": ("", None),
+    # Its first ram, then its recast (its own row, ROW_FOLLOW_UPS), which chains into itself
+    # indefinitely (tested in game: 551 a ram on a Longsword +25 with 99 in every stat)
+    "Lightning Ram": ("", None),
 }
 
 # Skills whose main attack's hits of a kind are a version of their own, by label: the Greatsword of
@@ -1886,6 +1889,10 @@ ANIMATION_SEQUENCES = {
     # the charge's first window (er-logger, 2026-11-26, a Gargoyle's Halberd, twice: the stamina and
     # hit at 40001's frame 13-15 and 37-39, its windows' 14 and 38)
     ("Charge Forth", "Uncharged"): [(40000, 0), (40001, 52 / 60)],
+    # Lightning Ram's recast is 40010, with the same hit as the first ram's 40000 (er-logger,
+    # 2026-11-27 18-37-18, a Lightning Uchigatana +25: 18 stamina at its frame 10, its hit at 11,
+    # recast 41-48 frames after the last press; the first ram's at 80 and 81, recast 109 after)
+    ("Lightning Ram", "#2"): [(40010, 0)],
 }
 # Projectile hits' times measured in game, where the animations only say when the projectile is
 # created (by skill and part, each hit's from the animation's start, or None to use the animation's):
