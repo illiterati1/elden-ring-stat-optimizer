@@ -5244,31 +5244,61 @@ describe("Ashes of War", () => {
 
   it("matches Stamp (Upward Cut) in game", () => {
     // Tested in game on Great Stars +25 with 99 in every stat on the training dummy: one hit of 1464,
-    // with 42 stance and 55 blood loss
-    const weapon = getWeapon("Great Stars");
-    const result = getAshAttack(ashes, movesets, weapon, "Stamp (Upward Cut)", false);
-    if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const { attackSteps } = optimizeBuild({
-      weapon,
-      regularUpgradeLevel: 25,
-      twoHanding: false,
-      startLevel: 9,
-      currentLevel: 9,
-      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
-      bonusAttributes: noBonus,
-      objective: "totalAttack",
-      defenses: Object.fromEntries(
-        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
-      ),
-      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
-      limits: { ...noLimits, maxLevels: 0 },
-      attack: result.attack,
-    });
-    expect(
-      attackSteps!.map((step) =>
+    // with 42 stance and 55 blood loss. On a Heavy Giant-Crusher +25 on the NG+1 dummy (log
+    // 2026-11-27 22-01-30, three upward cuts): 2154 with 45 stance; 64 stamina at its animation's
+    // 53-54 (54 here); the hit landing 56 frames after the R2 press (56 here, its window). The stamp
+    // (#1, 40000) took an R2 pressed 21 frames into it (23 after L2) without delay, so its R2 opens
+    // by then (20 here): the upward cut came out 25 after L2 and hit 79 after it (R2 22 and the hit
+    // 78 here, pressed as soon as it opens). L2 buffered in the upward cut (#2) started the stamp 141
+    // frames into it, 142 pressed late (140 here), and a roll pressed 132 frames in came out at 133
+    // (132 here). Rolls buffered in the stamp alone came out 57-58 frames into it, 59-60 after L2 (58
+    // here)
+    const upwardCut = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Heavy Giant-Crusher"),
+      "Stamp (Upward Cut)",
+      false,
+    );
+    if (!("attack" in upwardCut)) throw new Error(upwardCut.unavailableReason);
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const { stepTimes, cycleTimes, stamina } = upwardCut.attack;
+    expect({
+      hits: stepTimes!.map((step) => step.hits.map(frames)),
+      cycles: cycleTimes!.map(frames),
+      rolls: stepTimes!.map((step) => frames(step.roll!)),
+      stamina,
+    }).toEqual({ hits: [[], [56]], cycles: [22, 142], rolls: [58, 134], stamina: [0, 64] });
+    const build = (name: string, ng1 = false) => {
+      const weapon = getWeapon(name);
+      const result = getAshAttack(ashes, movesets, weapon, "Stamp (Upward Cut)", false);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [
+            damageType,
+            { defense: ng1 ? 144.4 : 123.2, negation: 0 },
+          ]),
+        ),
+        physicalNegation: ng1
+          ? { standard: 0, slash: -10, strike: -20, pierce: -30 }
+          : { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+      }).attackSteps!.map((step) =>
         step.map((hit) => [hit.damage, hit.stance, hit.status[AttackPowerType.BLEED]]),
-      ),
-    ).toEqual([[], [[1464, 42, 55]]]);
+      );
+    };
+    expect(build("Great Stars")).toEqual([[], [[1464, 42, 55]]]);
+    expect(build("Heavy Giant-Crusher", true)).toEqual([[], [[2154, 45, undefined]]]);
   });
 
   it("matches Stamp (Sweep) in game", () => {
