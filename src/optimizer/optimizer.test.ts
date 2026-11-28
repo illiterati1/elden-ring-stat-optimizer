@@ -3984,7 +3984,10 @@ describe("Ashes of War", () => {
 
   it("matches Repeating Thrust in game", () => {
     // Tested in game on a Bloody Longsword +25 with 99 in every stat on the training dummy: 534, 266,
-    // 266, and 640, with 10, 2, 2, and 5 stance and 118, 59, 59, and 118 blood loss
+    // 266, and 640, with 10, 2, 2, and 5 stance and 118, 59, 59, and 118 blood loss. Also as
+    // calculated on the NG+1 dummy (log 2026-11-27 19-40-18): a Keen Uchigatana +25's 669, 332, 332
+    // and 807 at 40, 64, 74 and 96 frames into its animation, and a Keen Great Katana +25's (609040200)
+    // 858, 428, 428 and 1026 at 51, 75, 85 and 107, both 33 stamina (7, 7, 7, 12)
     const weapon = getWeapon("Bloody Longsword");
     const result = getAshAttack(ashes, movesets, weapon, "Repeating Thrust", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -4174,7 +4177,9 @@ describe("Ashes of War", () => {
 
   it("matches Prayerful Strike in game", () => {
     // Tested in game on Great Stars (fully upgraded) with 99 in every stat on the training dummy: one
-    // hit of 1600, 42 stance, and 55 blood loss
+    // hit of 1600, 42 stance, and 55 blood loss. Also as calculated on a Sacred Mace +25 on the NG+1
+    // dummy (log 2026-11-27 19-31-24): 1945 and 39 stance, 100-101 frames into its animation, 42
+    // stamina
     const weapon = getWeapon("Great Stars");
     const result = getAshAttack(ashes, movesets, weapon, "Prayerful Strike", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -4201,7 +4206,10 @@ describe("Ashes of War", () => {
 
   it("matches Raging Beast in game", () => {
     // Raging Beast is a chain: the leap, then its R2 (two hits). Tested in game on the Beast Claw
-    // (fully upgraded) with 99 in every stat on the training dummy: 679, then 299 and 759
+    // (fully upgraded) with 99 in every stat on the training dummy: 679, then 299 and 759. Also as
+    // calculated on a Keen Beast Claw +25 on the NG+1 dummy (log 2026-11-27 19-38-00): 745 (6 stance,
+    // 45 bleed) 54-56 frames into the leap, then 325 and 838 at 46-47 and 72-75, 15 then 30 (10, 20)
+    // stamina, and the R2 after it 590 at 40-43, 19 stamina
     const weapon = getWeapon("Beast Claw");
     const result = getAshAttack(
       ashes,

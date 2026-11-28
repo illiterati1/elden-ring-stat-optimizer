@@ -12,6 +12,34 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 ## Discrepancies to look into
 
+- Flame Art Great Mace +25 (12060525) with Prelate's Charge, one handed, tapped, on the training
+  dummy (log 2026-11-27 19-34-36, L2 held 7 frames). Damage and stamina match (1055, ticks of 5,
+  ground fire 248 every ~60, 864; 31, 4, 4, 4, 31), and the initial attack lands at 74, but the
+  finish (40004) starts ~107 frames after the press and its final attack ~143 (by wall clock; the
+  logger's frames lagged), not the calculated 111 and 147 (from an earlier Great Mace test). Tap it
+  with a few hold lengths to see whether the finish's start depends on the release.
+
+- Quality Guardian's Swordspear +25 (18110325) with Phantom Slash, one handed, on the training
+  dummy (log 2026-11-27 18-58-14). Damage and stance match (#1 976/8 and 917/7.5, #2 1005/8 and
+  955/7.75), stamina too (15: 5 at 1, then 10 at 97 in #1 and 86 in #2), and #1's hits land
+  67-68 and 106 frames in (calculated ~66 and 104; one cast's phantom hit 59), #2's phantom 56-57
+  (calculated ~57). But #2's slash lands 89 frames in, two casts, not the calculated 86, 3 frames
+  after its window opens.
+
+- Keen Great Katana +25 (66500225) with Overhead Stance, one handed, on the training dummy (log
+  2026-11-27 18-54-00). The R2 (878040070) matches in damage, stance and bleed (619/5.5/38,
+  708/5.5/41, 761/11/46), stamina (20 at 34, 56 and 100 from its animation's start, 60 in all) and
+  FP (10 at 34). But its hits land 36, 60 and 100-101 frames in, both times, not the calculated 34,
+  56 and 100: the second hit is 4 frames after its window opens. The stance R1 (1136/11/55 at 25)
+  and the R1 after it (61030000, 735/10.18/55 at 33) match (log 2026-11-27 18-51-18).
+
+- Lightning Uchigatana +25 (9000625) with Lightning Slash, one handed, on the training dummy (log
+  2026-11-27 18-43-43). Damage, stance, bleed and stamina match (158/2, 1260/15 with 45 bleed,
+  771/10; 10 then 15 stamina), and the stomp and slash land 38 and 80-81 frames in, as calculated.
+  But the projectile (Bolt) hit 108 frames in, four casts, not the calculated ~98 (its window opens
+  at 98). An R1 pressed during the skill's recovery (29030010, the chain's step 2) did 691, the
+  calculated value with the skill's 85 lightning buff still on, about 4 seconds after the slash.
+
 - Sacred Bloodfiend's Arm +25 (12530725) with Golden Land, one handed, on the training dummy (log
   2026-11-27 18-01-24). #1 matches (45 stamina, 35 at 74 then 10 at 110; 1126, 593 and the 1346
   explosion at 75, 111, 143-144), and #2's damage and stamina match (1710, stance 7.5; 35). But
@@ -85,7 +113,7 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   ×1.115, cast from a Sacred Highland Axe +25 in the left hand) with the passive matches: 719 (log
   2026-11-27 16-58-36), as does Rakshasa with it (above), and Frostbite (×1.2) with it: 774 (log
   2026-11-27 17-00-33). The
-  SpEffects are plain *AttackRate rows: the axe's 5141000 (×1.1, categories 106/116), the Roar
+  SpEffects are plain \*AttackRate rows: the axe's 5141000 (×1.1, categories 106/116), the Roar
   Medallion's 321900 (×1.15, 106/116) and the Shard's 312310 (×1.15, 112/111).
 
 - Powerstance L1 chain with a Dagger +25 in each hand (log 2026-11-25 00-19-33): #4's 2nd and 3rd
