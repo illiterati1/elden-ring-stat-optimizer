@@ -5054,7 +5054,11 @@ describe("Ashes of War", () => {
     // 84-86, 6 stamina at 48 and 72, then its loop from 82-83, a pass every 76 frames, spins 33-35
     // and 71-72 into it, 6 stamina each. Was one hit per 48 frames (the opening's two windows' gap,
     // twice) for 12 stamina. Its R2 follow-up's swings at 27 and 88 into its animation (one try;
-    // its windows open at 18 and 84), 13 stamina each
+    // its windows open at 18 and 84), 13 stamina each. Its R1 follow-up (log 2026-11-27 21-20-52,
+    // three tries, from the opening and from the loop with L2 held): 620 / 4 and 907 / 5.5 at 35-36
+    // and 71-73 into its animation (windows 30 and 64), 9 stamina each. L2 tapped and rolled out of,
+    // the opening goes on to its end (611040053) and rolls 127 and 129 frames after L2, both spins
+    // landing
     const frames = (seconds: number) => Math.round(seconds * 60);
     const glaive = getWeapon("Glaive");
     const timed = (choice: string) => {
@@ -5064,6 +5068,7 @@ describe("Ashes of War", () => {
       return {
         hits: stepTimes!.map((step) => (step.hitTimes ?? step.hits).map((time) => frames(time!))),
         cycles: cycleTimes?.map(frames),
+        roll: stepTimes![0].roll != null ? frames(stepTimes![0].roll) : undefined,
         stamina,
       };
     };
@@ -5073,7 +5078,12 @@ describe("Ashes of War", () => {
         [34, 72],
       ],
       cycles: [82, 76],
+      roll: 128,
       stamina: [12, 12],
+    });
+    expect(timed(withFollowUp("Spinning Strikes", "R1"))).toMatchObject({
+      hits: [[37, 74]],
+      stamina: [18],
     });
     expect(timed(withFollowUp("Spinning Strikes", "R2"))).toMatchObject({
       hits: [[29, 90]],

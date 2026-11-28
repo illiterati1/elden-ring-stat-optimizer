@@ -1690,9 +1690,12 @@ CANCEL_FITS = {
     # stamina) and that pass's end (625040053), and the rolls start 70 and 73 into the opening, each a
     # frame or two after B's release (so maybe a few frames sooner with B released sooner)
     ("Spinning Chain", ""): {"roll": 70 / 60},
-    # Spinning Strikes' roll cancel is likewise its loop's (611040051, 0): its opening's (611040050)
-    # roll window opens 80 frames in, with its second spin (not tested in game)
-    ("Spinning Strikes", ""): {"roll": 80 / 60},
+    # Spinning Strikes' roll cancel is likewise its loop's (611040051, 0). Its opening's (611040050)
+    # roll window opens 80 frames in, but rolled out of in game (Quality Glaive +25, log 2026-11-27
+    # 21-20-52, L2 tapped, B mashed through the opening, twice) it goes on to its end (611040053) 82
+    # frames in instead, both its spins landing, and the roll starts at that end's roll cancel (42),
+    # 127 and 129 frames after L2
+    ("Spinning Strikes", ""): {"roll": (128 - 2) / 60},
     # Divine Beast Frost Stomp charged, L2 still held, is used again 125 frames into its animation,
     # where its L2 cancel says 150 (er-logger, 2026-11-26 17-24-12, a Keen Clayman's Harpoon +25: the
     # recast's charge animation, 883040000, 127 frames after the press)
@@ -2031,6 +2034,10 @@ HIT_TIME_FITS = {
     # (log 2026-11-27 21-12-36). Its first swing is a wide sweep (its window is open 18-32), so it
     # likely reaches the dummy that late
     ("Spinning Strikes", "R2"): [27 / 60, 88 / 60],
+    # Its R1 follow-up's (611040060) land 35-36 and 71-73 frames into its animation, 5 and 8 after
+    # their windows open (30 and 64): Quality Glaive +25, three tries (log 2026-11-27 21-20-52), from
+    # its opening and from its loop
+    ("Spinning Strikes", "R1"): [35 / 60, 72 / 60],
     # Chilling Mist's burst lands 70 frames into the animation, 3 after the swing (67), and its
     # lingering cloud first ticks 113 in, then 156 (measured on 2026-11-26 with er-logger on a Magic
     # Giant-Crusher +25 on the training dummy; the second tick's frost gave frostbite, ending them)
@@ -2091,6 +2098,7 @@ MEASURED_HIT_TIMES = {
     # Golden Land's explosion, an AoE (HIT_TIME_FITS)
     ("Golden Land", "#1"): {2},
     ("Spinning Chain", "R2"): ALL_HITS,
+    ("Spinning Strikes", "R1"): ALL_HITS,
     ("Spinning Strikes", "R2"): ALL_HITS,
     ("Chilling Mist", ""): {1, 2},
     ("Euporia Vortex", "Luster Tier 1"): ALL_HITS,
