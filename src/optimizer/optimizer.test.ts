@@ -5376,9 +5376,34 @@ describe("Ashes of War", () => {
     // (on the jump or the landing, not both) 231 with 5 stance, and the thrust 1139 with 20 stance and
     // 118 blood loss; with the Enraged Divine Beast talisman (×1.1 for its storm skills) 254, and 1507
     // in all. Two handed, the whirlwind gets two handing's bonus (238) but the thrust doesn't
-    // (isDisableBothHandsAtkBonus), 1139.
-    const weapon = getWeapon("Bloody Spear");
-    const build = (buffs: BuffEffect[] = [], twoHanding = false) => {
+    // (isDisableBothHandsAtkBonus), 1139. On a Quality Banished Knight's Halberd +25 on the NG+1
+    // dummy (log 2026-11-27 22-05-25, four casts): 238 with 5 stance and 1828 with 20; 10 stamina at
+    // the whirlwind's window, then 20 at the thrust's; the whirlwind 49 frames after L2 (5 after its
+    // window opens, as it grows: HIT_TIME_FITS) and the thrust 107 (106 here). L2 buffered in it
+    // started the next cast 197 frames after the last press (196 here). Rolls released 162 and 160
+    // frames in came out 2 frames later, so its roll opens by then (142 here, not tested sooner)
+    const timing = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Banished Knight's Quality Halberd"),
+      "Storm Assault",
+      false,
+    );
+    if (!("attack" in timing)) throw new Error(timing.unavailableReason);
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const { stepTimes, cycleTimes, stamina } = timing.attack;
+    expect({
+      hits: stepTimes!.map((step) => step.hitTimes!.map((time) => frames(time!))),
+      cycles: cycleTimes!.map(frames),
+      rolls: stepTimes!.map((step) => frames(step.roll!)),
+      stamina,
+    }).toEqual({ hits: [[49, 106]], cycles: [196], rolls: [142], stamina: [30] });
+    const build = (
+      buffs: BuffEffect[] = [],
+      twoHanding = false,
+      weapon = getWeapon("Bloody Spear"),
+      ng1 = false,
+    ) => {
       const result = getAshAttack(ashes, movesets, weapon, "Storm Assault", twoHanding);
       if (!("attack" in result)) throw new Error(result.unavailableReason);
       return optimizeBuild({
@@ -5391,9 +5416,14 @@ describe("Ashes of War", () => {
         bonusAttributes: noBonus,
         objective: "totalAttack",
         defenses: Object.fromEntries(
-          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+          allDamageTypes.map((damageType) => [
+            damageType,
+            { defense: ng1 ? 144.4 : 123.2, negation: 0 },
+          ]),
         ),
-        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        physicalNegation: ng1
+          ? { standard: 0, slash: -10, strike: -20, pierce: -30 }
+          : { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
         attack: result.attack,
         buffs,
@@ -5418,6 +5448,14 @@ describe("Ashes of War", () => {
     expect(buffed.attackSteps![0][0].damage).toBe(254);
     expect(buffed.finalValue).toBe(1507);
     expect(build([], true).attackSteps![0].map((hit) => hit.damage)).toEqual([238, 1139]);
+    expect(
+      build([], false, getWeapon("Banished Knight's Quality Halberd"), true).attackSteps![0].map(
+        (hit) => [hit.damage, hit.stance],
+      ),
+    ).toEqual([
+      [238, 5],
+      [1828, 20],
+    ]);
   });
 
   it("matches Storm Blade in game", () => {

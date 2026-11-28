@@ -10,6 +10,9 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   R2s, logs 2026-11-27 17-32-52 and 17-48-58). Untested hits whose window opens a frame before it,
   so calculated without it: mounted R1 #2, mounted R2, mounted charged R2. Check one on the dummy.
 
+- Storm Assault's roll opens 142 frames after L2 (calculated; tested only by 160, log 2026-11-27
+  22-05-25 on a Banished Knight's Halberd). Buffer a roll (B released early) during it.
+
 ## Discrepancies to look into
 
 - Flame Art Great Mace +25 (12060525) with Prelate's Charge, one handed, tapped, on the training

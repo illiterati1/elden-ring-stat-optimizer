@@ -2090,6 +2090,10 @@ HIT_TIME_FITS = {
     ("Sacred Ring of Light", "#1"): [None, 123 / 60],
     ("Sacred Ring of Light", "#2"): [None, 95 / 60],
     ("Sacred Ring of Light", "#3"): [None, 107 / 60],
+    # Storm Assault's jump whirlwind (Bullet 2600) hits the dummy 5 frames after its window opens, as
+    # it grows from 0.1 to 1.7 m over its 0.06s spreadTime (er-logger, 2026-11-27 22-05-25, a Quality
+    # Banished Knight's Halberd +25, four casts: 49 frames after L2, 47 into the animation)
+    ("Storm Assault", ""): [47 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index, or ALL_HITS. Only for hits without a travel time (a projectile that travels stays approximate,
@@ -2104,6 +2108,8 @@ MEASURED_HIT_TIMES = {
     ("Swift Slash", "Charged"): {1},
     # Golden Land's explosion, an AoE (HIT_TIME_FITS)
     ("Golden Land", "#1"): {2},
+    # Storm Assault's jump whirlwind, an AoE around the player (HIT_TIME_FITS)
+    ("Storm Assault", ""): {0},
     ("Spinning Chain", "R2"): ALL_HITS,
     ("Spinning Strikes", "R1"): ALL_HITS,
     ("Spinning Strikes", "R2"): ALL_HITS,
