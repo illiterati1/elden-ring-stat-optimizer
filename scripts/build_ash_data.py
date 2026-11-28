@@ -266,6 +266,8 @@ MERGED_TICKS = {"War Cry": {"Charged R2 #1": 3, "Charged R2 #2": 2}}
 # stat: the tush 1584 close, the shockwave 1132 further away), so only the close hit counts, and so
 # does the Staff of the Avatar's and Rotten Staff's Erdtree Slam (tested in game on a Rotten Staff +10
 # with 99 in every stat: the tush 1441 with 36 stance, or the shockwave 1169; its "?" row doesn't hit).
+# Their shockwaves are shown but not counted (NOT_COUNTED_ROWS; Ground Slam tested in game on a Heavy
+# Great Katana +25 with 99 in every stat: the tush 1902 with 36 stance, or the shockwave 1050 with 12).
 # Lifesteal Fist's grab doesn't do damage itself once it lands (only 5 stance), only the confirmed
 # grab's hits: 5, like in game (er-logger, 2026-11-23).
 MAIN_HIT_KINDS = {
@@ -674,6 +676,14 @@ NOT_COUNTED_ROWS = {
     # projectile hits, growing to 1 m in 0.2s) doesn't hit the target its projectile did (tested in
     # game on Rennala's second phase: 831, the projectile's alone)
     "303208906",
+    # Ground Slam's, Golden Slam's and Erdtree Slam's shockwaves, which hit instead of their tushes when
+    # the enemy is further off (MAIN_HIT_KINDS)
+    "300000791",
+    "300000796",
+    "300000802",
+    "300000806",
+    "302307902",
+    "302307906",
 }
 
 # Hits left out of the hits and total but whose damage is shown in the skill's note, by AtkId: the
@@ -3480,7 +3490,11 @@ def main():
     for name, kinds in MAIN_HIT_KINDS.items():
         versions = [skills[name]["generic"], *skills[name]["classes"].values(), *skills[name]["unique"].values()]
         for hits in filter(None, versions):
-            hits["main"] = [hit for hit in hits["main"] if len(hit) > 4 and hit[4].get("kind") in kinds]
+            hits["main"] = [
+                hit
+                for hit in hits["main"]
+                if len(hit) > 4 and (hit[4].get("kind") in kinds or hit[4].get("notCounted"))
+            ]
 
     for name, count in MAIN_HIT_COUNTS.items():
         versions = [skills[name]["generic"], *skills[name]["classes"].values(), *skills[name]["unique"].values()]

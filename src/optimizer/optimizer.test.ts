@@ -3461,7 +3461,7 @@ describe("Ashes of War", () => {
 
   it("matches Golden Slam and Ground Slam in game", () => {
     // Tested in game on a Greatsword +25 with 99 in every stat: one hit, 1584 close (the tush) or
-    // 1132 further away (the shockwave); the close one counts
+    // 1132 further away (the shockwave); the close one counts, and the shockwave is shown but not counted
     const weapon = getWeapon("Greatsword");
     const result = getAshAttack(ashes, movesets, weapon, "Golden Slam", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
@@ -3481,11 +3481,20 @@ describe("Ashes of War", () => {
       limits: { ...noLimits, maxLevels: 0 },
       attack: result.attack,
     });
-    expect(attackSteps).toMatchObject([[{ damage: 1584, kind: "Tush" }]]);
-    // Ground Slam is the same: only its tush counts
+    expect(attackSteps).toMatchObject([
+      [
+        { damage: 1584, kind: "Tush" },
+        { damage: 1132, kind: "Shockwave", notCounted: true },
+      ],
+    ]);
+    // Ground Slam is the same: only its tush counts, and its shockwave is shown but not counted
+    // (tested in game on a Heavy Great Katana +25 with 99 in every stat: 1902 and 36 stance close,
+    // or 1050 and 12 further away)
     const groundSlam = getAshAttack(ashes, movesets, weapon, "Ground Slam", false);
     if (!("attack" in groundSlam)) throw new Error(groundSlam.unavailableReason);
-    expect(groundSlam.attack.steps).toMatchObject([[{ kind: "Tush" }]]);
+    expect(groundSlam.attack.steps).toMatchObject([
+      [{ kind: "Tush" }, { kind: "Shockwave", notCounted: true }],
+    ]);
     // So is the Rotten Staff's Erdtree Slam: tested in game at +10 with 99 in every stat, 1441 with 36
     // stance close (the tush), or 1169 further away (the shockwave)
     const staff = getWeapon("Rotten Staff");
@@ -3508,7 +3517,12 @@ describe("Ashes of War", () => {
         limits: { ...noLimits, maxLevels: 0 },
         attack: erdtreeSlam.attack,
       }).attackSteps,
-    ).toMatchObject([[{ damage: 1441, stance: 36, kind: "Tush" }]]);
+    ).toMatchObject([
+      [
+        { damage: 1441, stance: 36, kind: "Tush" },
+        { damage: 1169, kind: "Shockwave", notCounted: true },
+      ],
+    ]);
     // The Staff of the Avatar's is right in game too at +10 with 99 in every stat: 2175 with 36 stance
     const avatar = getWeapon("Staff of the Avatar");
     const avatarSlam = getAshAttack(ashes, movesets, avatar, "Lion's Claw", false);
@@ -3530,7 +3544,13 @@ describe("Ashes of War", () => {
         limits: { ...noLimits, maxLevels: 0 },
         attack: avatarSlam.attack,
       }).attackSteps,
-    ).toMatchObject([[{ damage: 2175, stance: 36, kind: "Tush" }]]);
+    ).toMatchObject([
+      [
+        { damage: 2175, stance: 36, kind: "Tush" },
+        // Its shockwave isn't tested in game
+        { damage: 1801, kind: "Shockwave", notCounted: true },
+      ],
+    ]);
   });
 
   it("matches Gravitas in game", () => {
@@ -6189,13 +6209,13 @@ describe("Ashes of War", () => {
     // Breaker's 135 (its shockwave 8 after: 143 in game)
     expect(
       times("Claymore", "Golden Slam").stepTimes![0].hitTimes!.map((time) => frames(time!)),
-    ).toEqual([128]);
+    ).toEqual([128, 130]);
     expect(
       times("Marika's Hammer", "Gold Breaker").stepTimes![0].hitTimes!.map((time) => frames(time!)),
     ).toEqual([135, 141]);
     expect(
       times("Club", "Ground Slam").stepTimes![0].hitTimes!.map((time) => frames(time!)),
-    ).toEqual([108]);
+    ).toEqual([108, 110]);
     // Prelate's Charge pressed once: its start, then its finish (measured in game on a Great Mace: the
     // initial attack 75 frames after the press, the final attack 147), its ground fire's first burn
     // measured (122), and its stamina each window's (30, 4, 4, 4, and 30, times the Great Mace's
