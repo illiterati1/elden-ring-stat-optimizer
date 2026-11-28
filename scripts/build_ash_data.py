@@ -1690,6 +1690,9 @@ CANCEL_FITS = {
     # stamina) and that pass's end (625040053), and the rolls start 70 and 73 into the opening, each a
     # frame or two after B's release (so maybe a few frames sooner with B released sooner)
     ("Spinning Chain", ""): {"roll": 70 / 60},
+    # Spinning Strikes' roll cancel is likewise its loop's (611040051, 0): its opening's (611040050)
+    # roll window opens 80 frames in, with its second spin (not tested in game)
+    ("Spinning Strikes", ""): {"roll": 80 / 60},
     # Divine Beast Frost Stomp charged, L2 still held, is used again 125 frames into its animation,
     # where its L2 cancel says 150 (er-logger, 2026-11-26 17-24-12, a Keen Clayman's Harpoon +25: the
     # recast's charge animation, 883040000, 127 frames after the press)
@@ -1739,6 +1742,23 @@ LOOP_FITS = {
         "openingStamina": [6],
         "stamina": [6],
     },
+    # Spinning Strikes, Quality Glaive +25 on the training dummy (log 2026-11-27 21-12-36, three
+    # casts): its opening (611040050) spins twice, hitting 50-51 and 84-86 frames after L2 (the second
+    # once its loop has started: the opening's second window, at 70, doesn't land, and its loop's
+    # first does, only in its first pass), 6 stamina at 48 and 72 (the first cast's only the second,
+    # before the game counted the player as in combat). Its loop (611040051) starts 82-83 frames
+    # after L2, a pass every 76 frames, its spins hitting 33-35 and 71-72 frames in, each 6 stamina
+    # (and 2 FP) 6 frames before. Its third window, at 0, never lands after the first pass (it
+    # continues the swing of the one at 66). Every hit the same, 925 with 5.6 stance
+    ("Spinning Strikes", ""): {
+        "openingHits": [(50 - 2) / 60, (85 - 2) / 60],
+        "loopFrom": 2,
+        "hits": [34 / 60, 71.5 / 60],
+        "loop": 76 / 60,
+        "opening": 82 / 60,
+        "openingStamina": [6, 6],
+        "stamina": [6, 6],
+    },
     # Nanaya's Torch's Feeble Lord's Frenzied Flame, held (log 2026-11-25 21-27-54, +10 on the
     # training dummy, 69 a hit): its start (934040000) hits 50-53 frames in, then its stream
     # (934040003) from 72 frames in (73 after the press), a pass every 77 frames while held, two hits
@@ -1769,6 +1789,8 @@ LOOP_HIT_ORDERS = {
     **{("Spinning Chain", weapon): [85, 85] for weapon in ["Flail", "Nightrider Flail", "Chainlink Flail"]},
     # Feeble Lord's Frenzied Flame's one hit: its start's, then each pass's two
     ("Feeble Lord's Frenzied Flame", "Nanaya's Torch"): [0, 0, 0],
+    # Spinning Strikes' one hit (every weapon's, None), twice in its opening and twice in each pass
+    ("Spinning Strikes", None): [112] * 4,
 }
 # Skills that are a stance (or a step) without hits of their own, whose attacks are R1s or R2s from it:
 # the stance's animation, and the follow-ups that start a chain (or are on their own), which start once
@@ -2004,6 +2026,11 @@ HIT_TIME_FITS = {
     # their windows open (34 and 84): Flail +25 on the training dummy, 7 tries over three logs
     # (2026-11-25 18-31-44, 18-43-27 and 18-46-03), each at 37-38 and 86-87
     ("Spinning Chain", "R2"): [38 / 60, 86 / 60],
+    # Spinning Strikes' R2 follow-up's swings land 27 and 88 frames into its animation (611040070), 9
+    # and 4 after their windows open (18 and 84): Quality Glaive +25 on the training dummy, one try
+    # (log 2026-11-27 21-12-36). Its first swing is a wide sweep (its window is open 18-32), so it
+    # likely reaches the dummy that late
+    ("Spinning Strikes", "R2"): [27 / 60, 88 / 60],
     # Chilling Mist's burst lands 70 frames into the animation, 3 after the swing (67), and its
     # lingering cloud first ticks 113 in, then 156 (measured on 2026-11-26 with er-logger on a Magic
     # Giant-Crusher +25 on the training dummy; the second tick's frost gave frostbite, ending them)
@@ -2064,6 +2091,7 @@ MEASURED_HIT_TIMES = {
     # Golden Land's explosion, an AoE (HIT_TIME_FITS)
     ("Golden Land", "#1"): {2},
     ("Spinning Chain", "R2"): ALL_HITS,
+    ("Spinning Strikes", "R2"): ALL_HITS,
     ("Chilling Mist", ""): {1, 2},
     ("Euporia Vortex", "Luster Tier 1"): ALL_HITS,
     ("Euporia Vortex", "Luster Tier 2"): ALL_HITS,
@@ -3632,7 +3660,7 @@ def main():
     for (name, weapon), note in VERSION_NOTES.items():
         skills[name]["unique"][weapon]["note"] = note
     for (name, weapon), stances in LOOP_HIT_ORDERS.items():
-        version = skills[name]["unique"][weapon]
+        version = skills[name]["generic"] if weapon is None else skills[name]["unique"][weapon]
         by_stance = {hit[2]: hit for hit in version["main"]}
         version["main"] = [copy.deepcopy(by_stance[stance]) for stance in stances]
     for (name, weapon, label), (flat, count) in FOLLOW_UP_BUFFS.items():

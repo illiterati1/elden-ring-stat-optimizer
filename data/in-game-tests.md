@@ -9,6 +9,13 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   check_animations.py's HIT_DELAYS after (tested: powerstance L1, crouching L1, two handed R1s and
   R2s, logs 2026-11-27 17-32-52 and 17-48-58). Untested hits whose window opens a frame before it,
   so calculated without it: mounted R1 #2, mounted R2, mounted charged R2. Check one on the dummy.
+- Spinning Strikes' R1 follow-up (611040060, calculated 620 and 907 on a Quality Glaive +25, hits
+  at 32 and 66 from R1, 18 stamina). On the Glaive (log 2026-11-27 21-12-36) an R1 2 frames after
+  letting go of L2 ended the skill (611040053, 22 frames later, at its loop's next cancel window,
+  38 frames into a pass) instead; an R2 at that window's end (44 into a pass) started the R2
+  follow-up at once, and R2s mashed earlier in a pass with L2 held also ended it. Press R1 inside
+  the window. Also untested: its opening's roll (calculated 82 frames after L2, its 611040050's
+  window).
 
 ## Discrepancies to look into
 

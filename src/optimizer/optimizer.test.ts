@@ -5038,7 +5038,47 @@ describe("Ashes of War", () => {
         step.map((hit) => [hit.damage, hit.stance, hit.status[AttackPowerType.BLEED]]),
       );
     };
-    expect(build("Spinning Strikes")).toEqual([[[717, 5.6, 55]]]);
+    // Its opening's two spins, then a pass of its loop's two (LOOP_HIT_ORDERS)
+    expect(build("Spinning Strikes")).toEqual([
+      [
+        [717, 5.6, 55],
+        [717, 5.6, 55],
+      ],
+      [
+        [717, 5.6, 55],
+        [717, 5.6, 55],
+      ],
+    ]);
+    // Timed in game on a Quality Glaive +25 (er-logger 2026-11-27 21-12-36, three casts; 925 a hit
+    // with 5.6 stance on the NG+1 dummy, as calculated), from L2: the opening's spins at 50-51 and
+    // 84-86, 6 stamina at 48 and 72, then its loop from 82-83, a pass every 76 frames, spins 33-35
+    // and 71-72 into it, 6 stamina each. Was one hit per 48 frames (the opening's two windows' gap,
+    // twice) for 12 stamina. Its R2 follow-up's swings at 27 and 88 into its animation (one try;
+    // its windows open at 18 and 84), 13 stamina each
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const glaive = getWeapon("Glaive");
+    const timed = (choice: string) => {
+      const result = getAshAttack(ashes, movesets, glaive, choice, false);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      const { stepTimes, cycleTimes, stamina } = result.attack;
+      return {
+        hits: stepTimes!.map((step) => (step.hitTimes ?? step.hits).map((time) => frames(time!))),
+        cycles: cycleTimes?.map(frames),
+        stamina,
+      };
+    };
+    expect(timed("Spinning Strikes")).toEqual({
+      hits: [
+        [50, 85],
+        [34, 72],
+      ],
+      cycles: [82, 76],
+      stamina: [12, 12],
+    });
+    expect(timed(withFollowUp("Spinning Strikes", "R2"))).toMatchObject({
+      hits: [[29, 90]],
+      stamina: [26],
+    });
     expect(build(withFollowUp("Spinning Strikes", "R1"))).toEqual([
       [
         [481, 4, 55],
