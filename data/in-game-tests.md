@@ -10,12 +10,6 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   R2s, logs 2026-11-27 17-32-52 and 17-48-58). Untested hits whose window opens a frame before it,
   so calculated without it: mounted R1 #2, mounted R2, mounted charged R2. Check one on the dummy.
 
-- Heavy thrusting swords' skill animations: like light greatswords (wepmotionOneHandId 3,
-  wepmotionBothHandId 10), so calculated with each skill's 40000s, not the spears' 40300s (a Keen
-  Milady plays Spinning Slash's 40000, log 2026-11-27 20-57-36). Check Impaling Thrust on a Great
-  Épée +25, one handed: the logger should show animation 6xx040000, the hit 47 frames after the
-  press and the earliest roll 77 (its 40300 would be ~52 and 88).
-
 ## Discrepancies to look into
 
 - Flame Art Great Mace +25 (12060525) with Prelate's Charge, one handed, tapped, on the training

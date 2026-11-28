@@ -4756,6 +4756,40 @@ describe("Ashes of War", () => {
     expect(steps).toEqual(damage);
   });
 
+  it("matches Impaling Thrust on a heavy thrusting sword in game", () => {
+    // Great Épée +25, one handed, 99 in every stat, on the NG+1 training dummy (log 2026-11-27
+    // 21-08-52): it plays the skill's 40000 (601040000), not the spears' 40300, like Spinning
+    // Slash on a Keen Milady. From the animation's start: 1473 (33 stance) at 46 and 45 (45 here),
+    // stamina 41 at 45; the next L2's animation 101 frames after the first's (103 here); a roll
+    // (B released 74 frames in) started 77 frames in (75 here; the spears' 40300 would be ~86)
+    const weapon = getWeapon("Great Épée");
+    const result = getAshAttack(ashes, movesets, weapon, "Impaling Thrust", false);
+    if (!("attack" in result)) throw new Error(result.unavailableReason);
+    const { attack } = result;
+    const frames = (time: number) => Math.round(time * 60);
+    const [step] = attack.stepTimes!;
+    expect(step.hits.map((hit) => frames(hit - step.lead))).toEqual([45]);
+    expect(attack.cycleTimes!.map(frames)).toEqual([103]);
+    expect(attack.stamina).toEqual([41]);
+    const steps = optimizeBuild({
+      weapon,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 144.4, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: -10, strike: -20, pierce: -30 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack,
+    }).attackSteps!.map((step) => step.map((hit) => [hit.damage, hit.stance]));
+    expect(steps).toEqual([[[1473, 33]]]);
+  });
+
   it("lists each version of a weapon's fixed skill", () => {
     const variants = (name: string) =>
       getAshAttacks(ashes, movesets, getWeapon(name), "Lion's Claw", false).map(
