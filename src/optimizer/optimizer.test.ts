@@ -13531,33 +13531,42 @@ describe("Ashes of War", () => {
   it("matches Savage Claws in game", () => {
     // Tested in game on the Beast Claw (fully upgraded) with 99 in every stat on the training dummy:
     // 325, 330, 289, 294, 299, and 442, with 4, 4, 2, 2, 2, and 8 stance and 26 blood loss each
-    // (er-logger, 2026-11-23: every hit 26, the game's 60% of 45 in 32-bit floats rounding down)
-    const weapon = getWeapon("Beast Claw");
-    const result = getAshAttack(ashes, movesets, weapon, "Savage Claws", false);
-    if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const { attackSteps } = optimizeBuild({
-      weapon,
-      regularUpgradeLevel: 25,
-      twoHanding: false,
-      startLevel: 9,
-      currentLevel: 9,
-      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
-      bonusAttributes: noBonus,
-      objective: "totalAttack",
-      defenses: Object.fromEntries(
-        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
-      ),
-      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
-      limits: { ...noLimits, maxLevels: 0 },
-      attack: result.attack,
-    });
-    expect(
-      attackSteps![0].map((hit) => [
-        hit.damage,
-        hit.stance,
-        Math.floor(hit.status[AttackPowerType.BLEED]!),
-      ]),
-    ).toEqual([
+    // (er-logger, 2026-11-23: every hit 26, the game's 60% of 45 in 32-bit floats rounding down).
+    // Also on a Quality Beast Claw +25, one-handed, on the NG+1 dummy (144.4; er-logger
+    // 2026-11-27 20-16-27): 397, 403, 353, 359, 365, and 540, same stance and blood loss, in the
+    // windows opening at animation frames 34, 48, 64, 82, 104, and 142 (stamina at 34, 36 frames
+    // after L2), and the recast's animation started 191 frames after the first L2 (190 here). The
+    // dummy took slash ×1.1 by then (its negations were set in the mod on 2026-11-26)
+    const build = (weaponName: string, defense: number, slashNegation = 0) => {
+      const weapon = getWeapon(weaponName);
+      const result = getAshAttack(ashes, movesets, weapon, "Savage Claws", false);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      const { attackSteps } = optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: slashNegation, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+      });
+      return {
+        attack: result.attack,
+        hits: attackSteps![0].map((hit) => [
+          hit.damage,
+          hit.stance,
+          Math.floor(hit.status[AttackPowerType.BLEED]!),
+        ]),
+      };
+    };
+    expect(build("Beast Claw", 123.2).hits).toEqual([
       [325, 4, 26],
       [330, 4, 26],
       [289, 2, 26],
@@ -13565,6 +13574,20 @@ describe("Ashes of War", () => {
       [299, 2, 26],
       [442, 8, 26],
     ]);
+    const quality = build("Quality Beast Claw", 144.4, -10);
+    expect(quality.hits).toEqual([
+      [397, 4, 26],
+      [403, 4, 26],
+      [353, 2, 26],
+      [359, 2, 26],
+      [365, 2, 26],
+      [540, 8, 26],
+    ]);
+    const [step] = quality.attack.stepTimes!;
+    expect(step.hitTimes!.map((time) => Math.round(time! * 60))).toEqual([
+      36, 50, 66, 84, 106, 144,
+    ]);
+    expect(Math.round(step.cycle! * 60)).toBe(190);
   });
 
   it("matches Sacred Ring of Light in game", () => {
