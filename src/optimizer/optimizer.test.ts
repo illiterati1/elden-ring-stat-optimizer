@@ -4296,36 +4296,64 @@ describe("Ashes of War", () => {
 
   it("matches Savage Lion's Claw in game", () => {
     // Savage Lion's Claw is a chain: the spin, then its follow-up (two hits). Tested in game on Great
-    // Stars +25 with 99 in every stat on the training dummy: 1328, then 413 and 1055
-    const weapon = getWeapon("Great Stars");
-    const result = getAshAttack(
-      ashes,
-      movesets,
-      weapon,
-      withFollowUp("Savage Lion's Claw", " chain"),
-      false,
-    );
-    if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const { attackSteps } = optimizeBuild({
-      weapon,
-      regularUpgradeLevel: 25,
-      twoHanding: false,
-      startLevel: 9,
-      currentLevel: 9,
-      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
-      bonusAttributes: noBonus,
-      objective: "totalAttack",
-      defenses: Object.fromEntries(
-        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
-      ),
-      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
-      limits: { ...noLimits, maxLevels: 0 },
-      attack: result.attack,
-    });
-    expect(attackSteps!.map((step) => step.map((hit) => hit.damage))).toEqual([
+    // Stars +25 with 99 in every stat on the training dummy: 1328, then 413 and 1055. Also on a
+    // Heavy Uchigatana +25, one-handed, on the NG+1 dummy (144.4, slash ×1.1; er-logger 2026-11-27
+    // 20-22-29): 1179 with 12.5 stance, then 331 and 922 with 10 and 20 stance, 45 blood loss each,
+    // in the windows opening at animation frames 90, then 32 and 68; stamina 37 at 90, then 20 at
+    // 32 and 30 at 68 (50), and the follow-up 10 FP
+    const build = (weaponName: string, defense: number, slashNegation = 0) => {
+      const weapon = getWeapon(weaponName);
+      const result = getAshAttack(
+        ashes,
+        movesets,
+        weapon,
+        withFollowUp("Savage Lion's Claw", " chain"),
+        false,
+      );
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      const { attackSteps } = optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: slashNegation, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+      });
+      return {
+        attack: result.attack,
+        hits: attackSteps!.map((step) =>
+          step.map((hit) => [
+            hit.damage,
+            hit.stance,
+            Math.floor(hit.status[AttackPowerType.BLEED] ?? 0),
+          ]),
+        ),
+      };
+    };
+    expect(build("Great Stars", 123.2).hits.map((step) => step.map(([damage]) => damage))).toEqual([
       [1328],
       [413, 1055],
     ]);
+    const heavy = build("Heavy Uchigatana", 144.4, -10);
+    expect(heavy.hits).toEqual([
+      [[1179, 12.5, 45]],
+      [
+        [331, 10, 45],
+        [922, 20, 45],
+      ],
+    ]);
+    expect(
+      heavy.attack.stepTimes!.map((step) => step.hitTimes!.map((time) => Math.round(time! * 60))),
+    ).toEqual([[92], [34, 70]]);
+    expect(heavy.attack.stamina).toEqual([37, 50]);
   });
 
   it("matches Scattershot Throw in game", () => {
