@@ -4271,9 +4271,12 @@ describe("Ashes of War", () => {
     const weapon = getWeapon("Beast Crest Heater Shield");
     const result = getAshAttack(ashes, movesets, weapon, "Carian Retaliation", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
-    // A one-off: each use needs an enemy's attack to parry, so its values per second last until its
-    // last sword hits (125 frames into the animation), not until it could be used again
-    expect(result.attack.cycleTimes![0]).toBeCloseTo(127 / 60, 2);
+    // A one-off: each use needs an enemy's attack to parry, so its values per second last until
+    // anything can follow it, its R1/R2 cancel 48 frames from the press. A successful parry keeps
+    // the animation's cancels: rolled out 50-52 frames into it after two parries and a miss
+    // (er-logger 2026-11-27 20-41-54; roll cancel 50 here)
+    expect(result.attack.cycleTimes![0]).toBeCloseTo(48 / 60, 2);
+    expect(result.attack.stepTimes![0].roll).toBeCloseTo(52 / 60, 2);
     const { attackSteps } = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,

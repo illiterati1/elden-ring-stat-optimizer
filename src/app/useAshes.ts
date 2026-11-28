@@ -287,14 +287,8 @@ function getSkillStepTimes(
         timing.rightHandAttack,
       );
       // A one-off is over once anything can follow it: an attack (another skill included), a roll,
-      // blocking, or moving, but not before its last hit lands (Carian Retaliation's swords hit
-      // 122-125 frames in, well after its own cancels, which are for a missed parry)
-      const lastHit = Math.max(
-        ...[...(ownTimes ?? []), ...timing.hits]
-          .filter((time): time is number => time != null)
-          .map((time) => lead + time),
-      );
-      const followEnd = [
+      // blocking, or moving
+      const oneOffEnd = [
         earliest?.time,
         next?.time,
         ...[timing.roll, timing.block, timing.move].map((time) =>
@@ -303,7 +297,6 @@ function getSkillStepTimes(
       ]
         .filter((time): time is number => time != null)
         .sort((a, b) => a - b)[0];
-      const oneOffEnd = followEnd != null ? Math.max(followEnd, lastHit) : undefined;
       const cutEnd =
         cutShort &&
         ("seconds" in cutShort ? [timing.roll] : [timing.roll, timing.block, timing.move])
@@ -779,7 +772,9 @@ const separateFollowUpSkills: ReadonlySet<string> = new Set(["Revenge of the Nig
  * Versions of skills that can't be used again right after themselves, by "skill|follow-up label"
  * ("skill|" for the skill itself): their values per second last until anything can follow them,
  * like one-off attacks (oneOffAttacks). Carian Retaliation needs an enemy's attack to parry each
- * time. Euporia Vortex's Luster Tiers use up the luster they need, so the next press is the plain
+ * time; a successful parry keeps the animation's own cancels (er-logger 2026-11-27 20-41-54, Magic
+ * Sun Realm Shield +25: rolled out 50-52 frames into the animation after two parries and a miss,
+ * its roll cancel 50), though its swords hit long after (122-125). Euporia Vortex's Luster Tiers use up the luster they need, so the next press is the plain
  * skill; Causality's Wrath has to be cast twice before even its Tier 1.
  */
 const oneOffFollowUps: ReadonlySet<string> = new Set([
