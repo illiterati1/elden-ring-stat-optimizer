@@ -377,6 +377,7 @@ function withSkillTiming(
  */
 const chainRepeatSteps: Partial<Record<string, number>> = {
   "Lightning Ram": 2,
+  "Sacred Ring of Light": 2,
   "Storm Blade": 2,
   "Surge of Faith": 2,
 };
@@ -494,6 +495,7 @@ const chainSkills: ReadonlySet<string> = new Set([
   "Raging Beast",
   "Rancor Slash",
   "Red Bear Hunt",
+  "Sacred Ring of Light",
   "Regal Roar",
   "Revenger's Blade",
   "Savage Lion's Claw",

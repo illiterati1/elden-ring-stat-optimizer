@@ -1320,6 +1320,10 @@ MAIN_CHAINS = {
     # Its first ram, then its recast (its own row, ROW_FOLLOW_UPS), which chains into itself
     # indefinitely (tested in game: 551 a ram on a Longsword +25 with 99 in every stat)
     "Lightning Ram": ("", None),
+    # Its first cast, then its recasts (#2 and #3, the same hits), which go back and forth between two
+    # animations (ANIMATION_SEQUENCES; tested in game on the Sacred Scythe +25 with 99 in every stat: 406 the
+    # swing and 911 the ring each cast)
+    "Sacred Ring of Light": ("", None),
 }
 
 # Skills whose main attack's hits of a kind are a version of their own, by label: the Greatsword of
@@ -1897,6 +1901,12 @@ ANIMATION_SEQUENCES = {
     # 2026-11-27 18-37-18, a Lightning Uchigatana +25: 18 stamina at its frame 10, its hit at 11,
     # recast 41-48 frames after the last press; the first ram's at 80 and 81, recast 109 after)
     ("Lightning Ram", "#2"): [(40010, 0)],
+    # Sacred Ring of Light's recasts are 40010 and 40020, then 40010 again, and so on, each with the
+    # first cast's (40000's) swing and ring (er-logger, 2026-11-27 20-06-29, the Sacred Scythe +25,
+    # L2 mashed: 40010 starts 80 frames into 40000, 40020 51-52 into 40010, 40010 64 into 40020,
+    # each one's L2 cancel; 10 stamina at each ring's window, 76, 48, and 60 frames in)
+    ("Sacred Ring of Light", "#2"): [(40010, 0)],
+    ("Sacred Ring of Light", "#3"): [(40020, 0)],
 }
 # Projectile hits' times measured in game, where the animations only say when the projectile is
 # created (by skill and part, each hit's from the animation's start, or None to use the animation's):
@@ -2023,6 +2033,12 @@ HIT_TIME_FITS = {
     # with er-logger on a Flame Art Bloodfiend's Arm +25 on the training dummy (2026-11-26 17-56-45,
     # three casts)
     ("Eruption", ""): [None, None, 135 / 60, 155 / 60],
+    # Sacred Ring of Light's ring hits the dummy 47 frames after its window opens, at point blank
+    # (later from further away), during the next cast (er-logger, 2026-11-27 20-06-29, the Sacred
+    # Scythe +25: 123 frames into 40000, 94-96 into 40010, 107-108 into 40020)
+    ("Sacred Ring of Light", "#1"): [None, 123 / 60],
+    ("Sacred Ring of Light", "#2"): [None, 95 / 60],
+    ("Sacred Ring of Light", "#3"): [None, 107 / 60],
 }
 # Projectiles' (or AoEs') hit times that are measured, not approximate, by skill and part: each hit's
 # index, or ALL_HITS. Only for hits without a travel time (a projectile that travels stays approximate,

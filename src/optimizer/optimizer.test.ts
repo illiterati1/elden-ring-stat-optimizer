@@ -13569,10 +13569,25 @@ describe("Ashes of War", () => {
 
   it("matches Sacred Ring of Light in game", () => {
     // Tested in game on a Scythe +25 with 99 in every stat on the training dummy: the swing 348 and
-    // the ring 620, with 5 and 3 stance
+    // the ring 620, with 5 and 3 stance. Mashed (er-logger, 2026-11-27 20-06-29, the Sacred Scythe
+    // +25: 406 and 911 a cast): the first cast (40000), then recasts going back and forth between
+    // 40010 and 40020, each starting 80, 52, and 64 frames after the last's press (+2). Each ring
+    // hits 47 frames after its window opens at point blank, during the next cast: 125, 97, and 109
+    // after its press. The swing is logged 4-5, 0-1 and 2 frames after its window (70, 42, 54 here)
     const weapon = getWeapon("Scythe");
     const result = getAshAttack(ashes, movesets, weapon, "Sacred Ring of Light", false);
     if (!("attack" in result)) throw new Error(result.unavailableReason);
+    expect(result.attack.repeatFrom).toBe(1);
+    expect(result.attack.cycleTimes!.map((time) => Math.round(time * 60))).toEqual([80, 52, 64]);
+    expect(
+      result.attack.stepTimes!.map(({ hits, hitTimes }) =>
+        hits.map((time, i) => Math.round((hitTimes?.[i] ?? time) * 60)),
+      ),
+    ).toEqual([
+      [70, 125],
+      [42, 97],
+      [54, 109],
+    ]);
     const { attackSteps } = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,
