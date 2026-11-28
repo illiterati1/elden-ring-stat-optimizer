@@ -5268,7 +5268,7 @@ describe("Ashes of War", () => {
       attackSteps!.map((step) =>
         step.map((hit) => [hit.damage, hit.stance, hit.status[AttackPowerType.BLEED]]),
       ),
-    ).toEqual([[[1464, 42, 55]]]);
+    ).toEqual([[], [[1464, 42, 55]]]);
   });
 
   it("matches Stamp (Sweep) in game", () => {
@@ -5276,11 +5276,11 @@ describe("Ashes of War", () => {
     // 10.5 and 17.5 stance and 55 blood loss each. On a Heavy Giant-Crusher +25 on the NG+1 dummy (log
     // 2026-11-27 21-37-25, five sweeps): 892 and 1116, with 11.25 and 18.75 stance; 19 stamina at its
     // animation's 38 and 45 at 54 (64 at its ×1.295 rate); the hits landing 42-43 and 58-59 frames
-    // after the R2 press (40 and 56 here, their windows). The stance (40200) only takes R2 from 36: an
-    // R2 pressed 34 frames after L2 came out 36 after it (40 here, with the press's delay), its hits
-    // 76 and 93 after L2 (78 and 94 here). L2 buffered in the sweep started the stance 141 frames into
-    // it (140 here), and a roll 134 (132 here). Rolls from the stance alone came out 57-58 frames
-    // into it, before its roll window (64); the app doesn't time those
+    // after the R2 press (40 and 56 here, their windows). The stamp (#1, 40200) only takes R2 from
+    // 36: an R2 pressed 34 frames after L2 came out 36 after it (38 here, the R2 press then), its
+    // hits 76 and 93 after L2 (78 and 94 here). L2 buffered in the sweep (#2) started the stamp 141
+    // frames into it (140 here), and a roll 134 (132 here). Rolls from the stamp came out 57-58
+    // frames into it (60 after L2), before its roll window (64; 66 after L2 here)
     const sweep = getAshAttack(
       ashes,
       movesets,
@@ -5292,11 +5292,11 @@ describe("Ashes of War", () => {
     const frames = (seconds: number) => Math.round(seconds * 60);
     const { stepTimes, cycleTimes, stamina } = sweep.attack;
     expect({
-      hits: stepTimes![0].hits.map(frames),
+      hits: stepTimes!.map((step) => step.hits.map(frames)),
       cycles: cycleTimes!.map(frames),
-      roll: frames(stepTimes![0].roll!),
+      rolls: stepTimes!.map((step) => frames(step.roll!)),
       stamina,
-    }).toEqual({ hits: [78, 94], cycles: [180], roll: 172, stamina: [64] });
+    }).toEqual({ hits: [[], [40, 56]], cycles: [38, 142], rolls: [66, 134], stamina: [0, 64] });
     const build = (name: string, ng1 = false) => {
       const weapon = getWeapon(name);
       const result = getAshAttack(ashes, movesets, weapon, "Stamp (Sweep)", false);
@@ -5326,12 +5326,14 @@ describe("Ashes of War", () => {
       );
     };
     expect(build("Great Stars")).toEqual([
+      [],
       [
         [601, 10.5, 55],
         [755, 17.5, 55],
       ],
     ]);
     expect(build("Heavy Giant-Crusher", true)).toEqual([
+      [],
       [
         [892, 11.25, undefined],
         [1116, 18.75, undefined],

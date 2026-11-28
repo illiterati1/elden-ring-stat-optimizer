@@ -319,8 +319,9 @@ function AttackHits({
   const { chainTime, recastTime } = stepTimes ? getChainTimes(stepTimes) : {};
   const at = (stepIndex: number, time: number | undefined) =>
     stepStarts[stepIndex] != null && time != null ? stepStarts[stepIndex]! + time : undefined;
+  // (a step without hits, e.g. Stamp's stamp, has a row of its own for its cancels)
   const hitRows = steps.flatMap((step, i) =>
-    step.map((hit, j) => {
+    (step.length ? step : [undefined]).map((hit: AttackResultHit | undefined, j) => {
       const times = stepTimes?.[i];
       // Each hit's own time if known, or if the animations have as many, or else the step's first's
       const ownTimes = times?.hitTimes?.length === step.length ? times.hitTimes : undefined;
@@ -342,7 +343,7 @@ function AttackHits({
       };
     }),
   );
-  type HitRow = (typeof hitRows)[number];
+  type HitRow = typeof hitRows[number];
   // In order of when they hit (a hit without a time stays after the one before it), e.g. a
   // projectile landing after the next step's swing, for which hit each step's cancels go on
   let previousTime = -Infinity;
@@ -432,6 +433,7 @@ function AttackHits({
   // shown in the tooltip
   // Repeated hits are shown once with how many there are, e.g. "619 + 125×4"
   const formatStep = (step: AttackResultHit[]) => {
+    if (!step.length) return "–";
     const damaging = step.filter((hit) => hit.damage > 0);
     const counts = new Map<string, number>();
     for (const text of (damaging.length ? damaging : step).map(formatHitWithHpDamage)) {
@@ -440,13 +442,13 @@ function AttackHits({
     return [...counts].map(([text, count]) => (count > 1 ? `${text}×${count}` : text)).join(" + ");
   };
   const statusTypesShown = [...statusTypes].filter(([statusType]) =>
-    rows.some(({ hit }) => hit.status[statusType]),
+    rows.some(({ hit }) => hit?.status[statusType]),
   );
   // Only attacks with projectiles, area attacks, etc. need a column saying which hits they are
-  const showKind = rows.some(({ hit }) => hit.kind);
+  const showKind = rows.some(({ hit }) => hit?.kind);
   // Each step's stamina cost, on its first hit
-  const showStaminaColumn = rows.some(({ hit }) => hit.stamina != null);
-  const hpDamageLabel = rows.find(({ hit }) => hit.hpDamage)?.hit.hpDamage!.label;
+  const showStaminaColumn = rows.some(({ hit }) => hit?.stamina != null);
+  const hpDamageLabel = rows.find(({ hit }) => hit?.hpDamage)?.hit!.hpDamage!.label;
   const cellSx = { color: "inherit", px: 1, py: 0.25 };
   // The hit's label stays in view when the table scrolls sideways (in the drawer on touch devices)
   const labelCellSx = {
@@ -535,25 +537,27 @@ function AttackHits({
               ({ label, hit, hitAt, approximate, earliest, roll, earlyRoll, block, move }) => (
                 <TableRow key={label}>
                   <TableCell sx={labelCellSx}>{label}</TableCell>
-                  {showKind && <TableCell sx={cellSx}>{hit.kind ?? "Weapon"}</TableCell>}
+                  {showKind && (
+                    <TableCell sx={cellSx}>{hit ? hit.kind ?? "Weapon" : "–"}</TableCell>
+                  )}
                   <TableCell sx={cellSx}>
-                    {hit.physicalType ? physicalTypeLabels[hit.physicalType] : "–"}
+                    {hit?.physicalType ? physicalTypeLabels[hit.physicalType] : "–"}
                   </TableCell>
                   <TableCell sx={cellSx} align="right">
-                    {formatHit(hit)}
-                    {hit.tick && hit.tickCount && hit.damage !== 0 ? ` (×${hit.tickCount})` : ""}
+                    {hit ? formatHit(hit) : "–"}
+                    {hit?.tick && hit.tickCount && hit.damage !== 0 ? ` (×${hit.tickCount})` : ""}
                   </TableCell>
                   {hpDamageLabel && (
                     <TableCell sx={cellSx} align="right">
-                      {hit.hpDamage ? formatValue(hit.hpDamage.damage) : "–"}
+                      {hit?.hpDamage ? formatValue(hit.hpDamage.damage) : "–"}
                     </TableCell>
                   )}
                   <TableCell sx={cellSx} align="right">
-                    {formatStance(hit.stance)}
+                    {hit ? formatStance(hit.stance) : "–"}
                   </TableCell>
                   {showStaminaColumn && (
                     <TableCell sx={cellSx} align="right">
-                      {hit.stamina != null
+                      {hit?.stamina != null
                         ? hit.moveStamina
                           ? `${formatStamina(hit.stamina)} (${formatStamina(
                               hit.stamina - hit.moveStamina.stamina,
@@ -566,7 +570,7 @@ function AttackHits({
                   )}
                   {statusTypesShown.map(([statusType]) => (
                     <TableCell key={statusType} sx={cellSx} align="right">
-                      {hit.status[statusType] ? formatStatus(hit, hit.status[statusType]!) : "–"}
+                      {hit?.status[statusType] ? formatStatus(hit, hit.status[statusType]!) : "–"}
                     </TableCell>
                   ))}
                   {showHitTimes && (

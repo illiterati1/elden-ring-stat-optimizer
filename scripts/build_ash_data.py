@@ -1824,13 +1824,15 @@ STANCE_OPENINGS = {
     "Muleta": (40050, ["R1", "R2 #1", "Charged R2 #1"]),
     "Moon-and-Fire Stance": (40050, ["R1 #1", "R2"]),
     "Wing Stance": (40050, ["R1", "R2"]),
-    # Stamp's stance (40000) has no hits; its R2 opens 36 frames in, and the sweep or upward cut (40010)
-    # follows. Tested in game (er-logger 2026-11-27 21-37-25, Stamp (Sweep) on a Heavy Giant-Crusher,
-    # whose stance is 40200): R2 pressed 33 frames into the stance came out 35 into it
-    "Stamp (Sweep)": (40000, [""]),
-    "Stamp (Upward Cut)": (40000, [""]),
 }
 STANCE_ONCE = {("Muleta", "R2 #1"), ("Muleta", "Charged R2 #1"), ("Wing Stance", "R1")}
+# Skills whose L2 is a step of its own without hits, its attack an R2 from it: the step's animation.
+# Each is a chain (like MAIN_CHAINS): "#1" the step (no hits, timed by the animation's cancels, the
+# range's own if it has one), "#2" its main attack. Tested in game (er-logger 2026-11-27 21-37-25,
+# Stamp (Sweep) on a Heavy Giant-Crusher, whose stamp is 40200): the stamp takes R2 from 36 frames
+# in (an R2 pressed 33 frames in came out 35 in), and rolls alone came out 57-58 frames in, before
+# its roll window (64)
+STANCE_STEPS = {"Stamp (Sweep)": 40000, "Stamp (Upward Cut)": 40000}
 # Skills whose buff changes some of the weapon's own attacks while it lasts (useAshes.ts
 # weaponAttackSkills), so it has to be applied again: the SpEffect that lasts as long as it does.
 # Each version gets its "upkeep": how long casting it takes (from the press until any attack can
@@ -2933,17 +2935,37 @@ def get_skill_timing(
     unmatched = [
         part
         for part in parts
-        if part[1] and not any(animation_hits and part_timing(part[1], part[2], r) for r in ranges)
+        if part[1]
+        and not (name in STANCE_STEPS and part[1] == "#1")
+        and not any(animation_hits and part_timing(part[1], part[2], r) for r in ranges)
     ]
     moveset_timings = (
         get_moveset_timings(steps, [number, *weapon_files], variation, unmatched, behaviors, bullets)
         if unmatched and weapon_files
         else {}
     )
+    def stance_step_timing(skill_range):
+        """@returns a STANCE_STEPS step's timing: no hits, and its animation's cancels"""
+        stance = STANCE_STEPS[name]
+        if animations.get_windows(number, stance + skill_range) is not None:
+            stance += skill_range
+        cancels = get_l2_cancels(animations.get_cancels(number, stance), quick_l2)
+        return {
+            "hits": [],
+            **{
+                cancel: round(animations.to_real_time(number, stance, cancels[cancel]), 3)
+                for cancel in ["L2", "R1", "R2", "rightHandAttack", "roll", "block", "move"]
+                if cancel in cancels
+            },
+        }
+
     result = {}
     for skill_range in ranges:
         by_part = {}
         for key, label, part_hits, hands in parts:
+            if name in STANCE_STEPS and label == "#1":
+                by_part[key] = stance_step_timing(skill_range)
+                continue
             timing = part_timing(label, part_hits, skill_range) if animation_hits else None
             timing = timing or moveset_timings.get(key)
             if timing:
@@ -3569,6 +3591,14 @@ def main():
                     shared = [shared[0]] * count
                 for follow_up in hits["followUps"][1:]:
                     follow_up["hits"] = [*follow_up["hits"], *copy.deepcopy(shared)]
+            hits["main"] = []
+
+    for name in STANCE_STEPS:
+        versions = [skills[name]["generic"], *skills[name]["classes"].values(), *skills[name]["unique"].values()]
+        for hits in filter(None, versions):
+            hits["followUps"] = [{"label": "#1", "hits": []}, {"label": "#2", "hits": hits["main"]}] + hits[
+                "followUps"
+            ]
             hits["main"] = []
 
     for name, kinds in MAIN_HIT_KINDS.items():

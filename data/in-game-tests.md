@@ -9,9 +9,9 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   check_animations.py's HIT_DELAYS after (tested: powerstance L1, crouching L1, two handed R1s and
   R2s, logs 2026-11-27 17-32-52 and 17-48-58). Untested hits whose window opens a frame before it,
   so calculated without it: mounted R1 #2, mounted R2, mounted charged R2. Check one on the dummy.
-- Stamp (Upward Cut)'s stance: its R2 opens 20 frames in (Stamp (Sweep)'s at 36, tested), so with
-  R2 buffered after L2 the upward cut starts 24 frames after L2 and hits at 78 (anim 54), its next
-  L2 at 164. Any weapon it mounts on.
+- Stamp (Upward Cut)'s stamp (#1): its R2 opens 20 frames in (Stamp (Sweep)'s at 36, tested), so
+  the upward cut (#2) hits 78 frames after L2 (anim 54), and the next L2 at 164; a roll from the
+  stamp alone 58 after L2. Any weapon it mounts on.
 
 ## Discrepancies to look into
 

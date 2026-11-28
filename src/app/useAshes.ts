@@ -433,9 +433,15 @@ function getSkillHits(
 /**
  * Skills that are a stance (or a step) whose chain's attacks are R2s from it, though not labeled
  * "R2 ...", used again with L2: the first attack starts after the stance (build_ash_data.py
- * STANCE_OPENINGS). Tested in game: Dynast's Finesse
+ * STANCE_OPENINGS), or the stance is the chain's first step, without hits (STANCE_STEPS). Tested in
+ * game: Dynast's Finesse, and Stamp (Sweep)
  */
-const stanceR2Skills: ReadonlySet<string> = new Set(["Dynast's Finesse", "Dynastic Sickleplay"]);
+const stanceR2Skills: ReadonlySet<string> = new Set([
+  "Dynast's Finesse",
+  "Dynastic Sickleplay",
+  "Stamp (Sweep)",
+  "Stamp (Upward Cut)",
+]);
 
 /**
  * Stances' attacks (or chains, by their first step) that go back to it with its button, not through
@@ -505,6 +511,8 @@ const chainSkills: ReadonlySet<string> = new Set([
   "Shriek of Milos",
   "Solitary Moon Slash",
   "Spinning Gravity Thrust",
+  "Stamp (Sweep)",
+  "Stamp (Upward Cut)",
   "Storm Kick",
   "Surge of Faith",
   "Spinning Slash",
@@ -1209,7 +1217,11 @@ function getSkillAttack(
       motionValues[AttackPowerType.PHYSICAL] *= buff.physicalRate;
       return { ...result, motionValue: Math.max(...motionValues), motionValues };
     };
-    const rawWeights = steps.map((_, i) => chainWeight ** i);
+    // (a step without hits, e.g. Stamp's stamp, isn't in the average: the weighting starts after it)
+    const hitless = steps.filter((followUp) => !followUp.hits.length).length;
+    const rawWeights = steps.map((followUp, i) =>
+      followUp.hits.length ? chainWeight ** (i - hitless) : 0,
+    );
     const totalWeight = rawWeights.reduce((sum, weight) => sum + weight, 0);
     return {
       skill,

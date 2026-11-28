@@ -445,7 +445,8 @@ function buffAppliesTo(effect: BuffEffect, hit: AttackDataHit, attack: AttackDat
     (!effect.categories ||
       effect.categories.some((category) => hit.categories?.includes(category))) &&
     (!effect.critical || !!attack?.critical || !!hit.critical) &&
-    (!effect.firstHitOnly || !attack || hit === attack.steps[0]?.[0]) &&
+    // (the first step with hits': a stance step without any, e.g. Stamp's stamp, comes first)
+    (!effect.firstHitOnly || !attack || hit === attack.steps.find((step) => step.length)?.[0]) &&
     (!effect.physicalTypes || effect.physicalTypes.includes(hit.physicalType))
   );
 }
@@ -1047,8 +1048,7 @@ function getHitStatus(
   // up 17 blood loss a hit, and Savage Claws' 60% 26, not 27)
   const rate = Math.fround(hit.statusMotionValue * Math.fround(0.01));
   for (const statusType of allStatusTypes) {
-    const buildup =
-      Math.fround((power[statusType] ?? 0) * rate) + (hitStatus[statusType] ?? 0);
+    const buildup = Math.fround((power[statusType] ?? 0) * rate) + (hitStatus[statusType] ?? 0);
     if (buildup) status[statusType] = buildup;
   }
   return status;
@@ -1306,7 +1306,8 @@ function getAttackSteps(
           tick: true,
           ...(hit.tickInterval > 0 && { tickInterval: hit.tickInterval }),
           ...(hit.tickDuration && { tickDuration: hit.tickDuration }),
-          ...(getTicks(hit) != null && { tickCount: getTicks(hit) }),        }),
+          ...(getTicks(hit) != null && { tickCount: getTicks(hit) }),
+        }),
         stance:
           (((hit.stanceBase ?? attack.stanceBase) * hit.stanceMotionValue) / 100 +
             (hit.flatStance ?? 0)) *
@@ -1714,9 +1715,7 @@ export function optimizeBuild(
       )
     : null;
 
-  const enemyRate =
-    scadutreeBlessingRate *
-    getEnemyTypeRate(weapon.enemyTypeRates, enemyTypes);
+  const enemyRate = scadutreeBlessingRate * getEnemyTypeRate(weapon.enemyTypeRates, enemyTypes);
   const options = {
     ...(fastLimit && { onlyLevels: fastLimit.levels }),
     weapon,
