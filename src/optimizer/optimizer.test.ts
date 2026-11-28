@@ -5168,8 +5168,31 @@ describe("Ashes of War", () => {
 
   it("matches Square Off in game", () => {
     // Tested in game on a Bloody Longsword +25 with 99 in every stat on the training dummy: the R1 1149
-    // with 30 stance, the R2 1379 with 40, 2000 with Rellana's Cameo (×1.45), and 118 blood loss each
-    const weapon = getWeapon("Bloody Longsword");
+    // with 30 stance, the R2 1379 with 40, 2000 with Rellana's Cameo (×1.45), and 118 blood loss each.
+    // On a Broadsword +25 (log 2026-11-27 21-29-35, R1 twice, R2 once, each from the stance's loop):
+    // the R1 1084 with 30 stance, landing 32 frames after its press, 24 stamina at 31 (its TAE window);
+    // the R2 1692 with 39.78, landing 51 after its press (50 here), 41 stamina at 51 (TAE 50). Rolls
+    // buffered from 47 and 66 after the press came out 77 after the R1 and 98 after the R2 (76 and
+    // 96 here, their windows). An R1 pressed 72 after the R1 was a plain R1 (earliest 70 here)
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const timed = (followUp: string) => {
+      const result = getAshAttack(
+        ashes,
+        movesets,
+        getWeapon("Broadsword"),
+        withFollowUp("Square Off", followUp),
+        false,
+      );
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      const { stepTimes, stamina } = result.attack;
+      return {
+        hits: stepTimes![0].hits.map(frames),
+        roll: frames(stepTimes![0].roll!),
+        stamina,
+      };
+    };
+    expect(timed("R1")).toEqual({ hits: [32], roll: 76, stamina: [24] });
+    expect(timed("R2")).toEqual({ hits: [50], roll: 96, stamina: [41] });
     const cameo = getBuffEffects(
       (
         JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
@@ -5177,7 +5200,9 @@ describe("Ashes of War", () => {
       ).filter((buff) => buff.name === "Rellana's Cameo"),
       3,
     );
-    const build = (followUp: string, buffs: BuffEffect[] = []) => {
+    // The Broadsword was tested on the dummy with its negations (slash -10, strike -20, pierce -30)
+    const build = (followUp: string, buffs: BuffEffect[] = [], name = "Bloody Longsword") => {
+      const weapon = getWeapon(name);
       const result = getAshAttack(
         ashes,
         movesets,
@@ -5198,7 +5223,10 @@ describe("Ashes of War", () => {
         defenses: Object.fromEntries(
           allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
         ),
-        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        physicalNegation:
+          name === "Broadsword"
+            ? { standard: 0, slash: -10, strike: -20, pierce: -30 }
+            : { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
         attack: result.attack,
         buffs,
@@ -5210,6 +5238,8 @@ describe("Ashes of War", () => {
     expect(build("R1")).toEqual([[[1149, 30, bleed]]]);
     expect(build("R2")).toEqual([[[1379, 40, bleed]]]);
     expect(build("R2", cameo)).toEqual([[[2000, 40, bleed]]]);
+    expect(build("R1", [], "Broadsword")).toEqual([[[1084, 30, undefined]]]);
+    expect(build("R2", [], "Broadsword")).toEqual([[[1692, 40, undefined]]]);
   });
 
   it("matches Stamp (Upward Cut) in game", () => {
