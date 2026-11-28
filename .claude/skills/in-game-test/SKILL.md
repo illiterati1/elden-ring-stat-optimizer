@@ -9,6 +9,13 @@ The user tests the calculator's predictions in game and reports raw numbers. You
 with what the calculator says, find why any differ, fix the data or code, lock the result into a
 test, and update the to-do lists.
 
+**Invoked with no argument:** check the newest er-logger log. Run
+`node tools/er-logger/summarize.mjs` (it picks the newest CSV in `tools/er-logger/logs/`), work out
+from its equipment line and animations what was tested, then follow the workflow below. Get the
+calculator's numbers with `npx vite-node scripts/predict.ts -- <weapon ID> --ash <ID> --anim <IDs>`.
+Pass the save's buffs (see CLAUDE.local.md). predict.ts already includes the dummy's negations; a
+test's `optimizeBuild` call needs them passed in (e.g. pierce -30).
+
 ## Where things live
 
 - `data/in-game-tests.md` — predictions not yet checked in game, numbered (#), by section: Timing,
