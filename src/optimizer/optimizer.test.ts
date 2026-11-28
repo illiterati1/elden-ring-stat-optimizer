@@ -5648,16 +5648,19 @@ describe("Ashes of War", () => {
   });
 
   it("matches Stormcaller in game", () => {
-    const build = (name: string, chain: string) => {
-      const weapon = getWeapon(name);
+    const attackOn = (name: string, chain: string) => {
       const result = getAshAttack(
         ashes,
         movesets,
-        weapon,
+        getWeapon(name),
         withFollowUp("Stormcaller", `${chain} chain`),
         false,
       );
       if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return result.attack;
+    };
+    const build = (name: string, chain: string, ngPlus = false) => {
+      const weapon = getWeapon(name);
       return optimizeBuild({
         weapon,
         regularUpgradeLevel: 25,
@@ -5668,11 +5671,17 @@ describe("Ashes of War", () => {
         bonusAttributes: noBonus,
         objective: "totalAttack",
         defenses: Object.fromEntries(
-          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+          allDamageTypes.map((damageType) => [
+            damageType,
+            { defense: ngPlus ? 144.4 : 123.2, negation: 0 },
+          ]),
         ),
-        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        // The NG+1 dummy's
+        physicalNegation: ngPlus
+          ? { standard: 0, slash: -10, strike: -20, pierce: -30 }
+          : { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
-        attack: result.attack,
+        attack: attackOn(name, chain),
       }).attackSteps!.map((step) => step.map((hit) => [hit.damage, hit.stance, hit.status]));
     };
     // Tested in game at +25 with 99 in every stat on the training dummy: on a Longsword 441, 453, and
@@ -5707,6 +5716,41 @@ describe("Ashes of War", () => {
         [191, 191],
       ].map((step) => step.map((damage) => [damage, 5, {}])),
     );
+    // On a Quality Falchion +25 (a curved sword) on the NG+1 dummy (log 2026-11-27 22-22-21): 539,
+    // 554 and 576, then 583 and 598, then 621 and 711, the same stance, and 10 stamina a swing but
+    // #3's last, 15 (30, 20 and 25 a step)
+    expect(build("Quality Falchion", "", true)).toEqual(
+      [
+        [
+          [539, 12],
+          [554, 5],
+          [576, 5],
+        ],
+        [
+          [583, 5],
+          [598, 5],
+        ],
+        [
+          [621, 5],
+          [711, 5],
+        ],
+      ].map((step) => step.map(([damage, stance]) => [damage, stance, {}])),
+    );
+    const falchion = attackOn("Quality Falchion", "");
+    expect(falchion.stamina).toEqual([30, 20, 25]);
+    // Its timing, frames from the press (taking the press 2 frames before the animation, as L2 was
+    // mashed): the hits 52-53, 90 and 130-131, then 53 and 76, then 51-53 and 73-76 (50, 88 and 130,
+    // then 52 and 74, then 52 and 75 here: their windows open there, the hits landing 0-3 frames in);
+    // the steps 136 and 80 apart (twice), then 125 (137, 80 and 126 here); B mashed, a roll 146-150 after
+    // #1 (149 here), 88-99 after #2 (98 here), and 104 after #3 (106 here)
+    const frames = (seconds: number | undefined) => Math.round(seconds! * 60);
+    expect(falchion.stepTimes!.map((step) => (step.hitTimes ?? step.hits).map(frames))).toEqual([
+      [50, 88, 130],
+      [52, 74],
+      [52, 75],
+    ]);
+    expect(falchion.cycleTimes!.map(frames)).toEqual([137, 80, 126]);
+    expect(falchion.stepTimes!.map((step) => frames(step.roll))).toEqual([149, 98, 106]);
   });
 
   it("matches Swift Slash in game", () => {
