@@ -5273,34 +5273,68 @@ describe("Ashes of War", () => {
 
   it("matches Stamp (Sweep) in game", () => {
     // Tested in game on Great Stars +25 with 99 in every stat on the training dummy: 601 and 755, with
-    // 10.5 and 17.5 stance and 55 blood loss each
-    const weapon = getWeapon("Great Stars");
-    const result = getAshAttack(ashes, movesets, weapon, "Stamp (Sweep)", false);
-    if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const { attackSteps } = optimizeBuild({
-      weapon,
-      regularUpgradeLevel: 25,
-      twoHanding: false,
-      startLevel: 9,
-      currentLevel: 9,
-      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
-      bonusAttributes: noBonus,
-      objective: "totalAttack",
-      defenses: Object.fromEntries(
-        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
-      ),
-      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
-      limits: { ...noLimits, maxLevels: 0 },
-      attack: result.attack,
-    });
-    expect(
-      attackSteps!.map((step) =>
+    // 10.5 and 17.5 stance and 55 blood loss each. On a Heavy Giant-Crusher +25 on the NG+1 dummy (log
+    // 2026-11-27 21-37-25, five sweeps): 892 and 1116, with 11.25 and 18.75 stance; 19 stamina at its
+    // animation's 38 and 45 at 54 (64 at its ×1.295 rate); the hits landing 42-43 and 58-59 frames
+    // after the R2 press (40 and 56 here, their windows). The stance (40200) only takes R2 from 36: an
+    // R2 pressed 34 frames after L2 came out 36 after it (40 here, with the press's delay), its hits
+    // 76 and 93 after L2 (78 and 94 here). L2 buffered in the sweep started the stance 141 frames into
+    // it (140 here), and a roll 134 (132 here). Rolls from the stance alone came out 57-58 frames
+    // into it, before its roll window (64); the app doesn't time those
+    const sweep = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Heavy Giant-Crusher"),
+      "Stamp (Sweep)",
+      false,
+    );
+    if (!("attack" in sweep)) throw new Error(sweep.unavailableReason);
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const { stepTimes, cycleTimes, stamina } = sweep.attack;
+    expect({
+      hits: stepTimes![0].hits.map(frames),
+      cycles: cycleTimes!.map(frames),
+      roll: frames(stepTimes![0].roll!),
+      stamina,
+    }).toEqual({ hits: [78, 94], cycles: [180], roll: 172, stamina: [64] });
+    const build = (name: string, ng1 = false) => {
+      const weapon = getWeapon(name);
+      const result = getAshAttack(ashes, movesets, weapon, "Stamp (Sweep)", false);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [
+            damageType,
+            { defense: ng1 ? 144.4 : 123.2, negation: 0 },
+          ]),
+        ),
+        physicalNegation: ng1
+          ? { standard: 0, slash: -10, strike: -20, pierce: -30 }
+          : { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+      }).attackSteps!.map((step) =>
         step.map((hit) => [hit.damage, hit.stance, hit.status[AttackPowerType.BLEED]]),
-      ),
-    ).toEqual([
+      );
+    };
+    expect(build("Great Stars")).toEqual([
       [
         [601, 10.5, 55],
         [755, 17.5, 55],
+      ],
+    ]);
+    expect(build("Heavy Giant-Crusher", true)).toEqual([
+      [
+        [892, 11.25, undefined],
+        [1116, 18.75, undefined],
       ],
     ]);
   });

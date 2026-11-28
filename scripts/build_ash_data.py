@@ -1824,6 +1824,11 @@ STANCE_OPENINGS = {
     "Muleta": (40050, ["R1", "R2 #1", "Charged R2 #1"]),
     "Moon-and-Fire Stance": (40050, ["R1 #1", "R2"]),
     "Wing Stance": (40050, ["R1", "R2"]),
+    # Stamp's stance (40000) has no hits; its R2 opens 36 frames in, and the sweep or upward cut (40010)
+    # follows. Tested in game (er-logger 2026-11-27 21-37-25, Stamp (Sweep) on a Heavy Giant-Crusher,
+    # whose stance is 40200): R2 pressed 33 frames into the stance came out 35 into it
+    "Stamp (Sweep)": (40000, [""]),
+    "Stamp (Upward Cut)": (40000, [""]),
 }
 STANCE_ONCE = {("Muleta", "R2 #1"), ("Muleta", "Charged R2 #1"), ("Wing Stance", "R1")}
 # Skills whose buff changes some of the weapon's own attacks while it lasts (useAshes.ts
@@ -2943,9 +2948,12 @@ def get_skill_timing(
             timing = timing or moveset_timings.get(key)
             if timing:
                 by_part[key] = timing
-        # A stance's first attacks start after the stance (STANCE_OPENINGS)
-        if name in STANCE_OPENINGS and skill_range == 0:
+        # A stance's first attacks start after the stance (STANCE_OPENINGS), the range's own if it has
+        # one (e.g. Stamp's 40200 for colossal weapons)
+        if name in STANCE_OPENINGS:
             stance, firsts = STANCE_OPENINGS[name]
+            if animations.get_windows(number, stance + skill_range) is not None:
+                stance += skill_range
             stance_cancels = animations.get_cancels(number, stance)
             for first in firsts:
                 button = "R1" if first.startswith("R1") else "R2"
