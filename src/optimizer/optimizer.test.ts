@@ -13639,6 +13639,17 @@ describe("Ashes of War", () => {
     expect(inseparable.attackSteps![0].map((hit) => Math.floor(hit.damage))).toEqual([524, 939]);
     expect(inseparable.finalValue).toBe(1463);
     expect(inseparable.attackStance).toBe(18.5);
+    // Mashed on a Sacred Uchigatana +25 (er-logger): each recast's animation starts 145-147 frames
+    // after the last one's
+    const uchigatana = getAshAttack(
+      ashes,
+      movesets,
+      getWeapon("Sacred Uchigatana"),
+      "Sacred Blade",
+      false,
+    );
+    if (!("attack" in uchigatana)) throw new Error(uchigatana.unavailableReason);
+    expect(Math.round(uchigatana.attack.cycleTimes![0] * 60)).toBe(147);
 
     // The optimizer agrees with brute force when hits' attack is added up before defenses
     const weapon = getWeapon("Sacred Longsword");

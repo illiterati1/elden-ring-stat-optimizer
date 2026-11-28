@@ -1684,6 +1684,10 @@ CANCEL_FITS = {
     # where its L2 cancel says 150 (er-logger, 2026-11-26 17-24-12, a Keen Clayman's Harpoon +25: the
     # recast's charge animation, 883040000, 127 frames after the press)
     ("Divine Beast Frost Stomp", "Charged"): {"L2": 125 / 60},
+    # Sacred Blade mashed (er-logger, Sacred Uchigatana +25, logs 2026-11-27 19-57-05 and 20-01-02):
+    # each buffered recast's animation starts 145-147 frames after the last one's, where its L2
+    # cancel (146.7 into its animation, plus the press's 2-frame delay) says 149: fitted to 147
+    ("Sacred Blade", ""): {"L2": 145 / 60},
 }
 # Held skills timed as loops, measured in game at 60 fps (by skill and part): when each pass's hits
 # land in it ("hits"), how long each pass takes ("loop"), and how long until the first ("opening"),
