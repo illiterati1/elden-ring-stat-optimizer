@@ -4519,6 +4519,35 @@ describe("Ashes of War", () => {
         .buffs as Buff[]
     ).filter((buff) => buff.name === "Smithing Talisman");
     expect(build(getBuffEffects(talisman, 3)).attackSteps![0][0].damage).toBe(677);
+    // And with er-logger on an Occult Pike +25 on the NG+1 training dummy (144.4 defense, -30%
+    // pierce negation; log 2026-11-27 20-50-35): 833 with 25 stance, or 1249 with 37.5 on a headshot (×1.5 both). It
+    // takes 28 stamina 70 frames into the animation, lands 75 to 84 in as the lance flies (79 from
+    // the press here, HIT_TIME_FITS), and can be used again every 143 frames (144 here)
+    const occultPike = getWeapon("Occult Pike");
+    const pikeResult = getAshAttack(ashes, movesets, occultPike, "Spectral Lance", false);
+    if (!("attack" in pikeResult)) throw new Error(pikeResult.unavailableReason);
+    const frames = (seconds: number | undefined) => Math.round(seconds! * 60);
+    expect(pikeResult.attack.stepTimes![0].hitTimes!.map(frames)).toEqual([79]);
+    expect(frames(pikeResult.attack.cycleTimes![0])).toBe(144);
+    const pike = optimizeBuild({
+      weapon: occultPike,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 144.4, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: -10, strike: -20, pierce: -30 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack: pikeResult.attack,
+    });
+    expect(pike.attackSteps!.map((step) => step.map((hit) => [hit.damage, hit.stance]))).toEqual([
+      [[833, 25]],
+    ]);
   });
 
   it("matches Spinning Gravity Thrust in game", () => {

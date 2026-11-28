@@ -1115,7 +1115,9 @@ VERSION_NOTES = {
 
 SKILL_NOTES = {
     "Rolling Sparks": "Counts a single explosion: bigger enemies can take more, and more sparks",
-    "Spectral Lance": "The lance aims for the head, so headshots will likely make it do more in practice",
+    # Tested in game on an Occult Pike (log 2026-11-27 20-50-35): 1249 and 37.5 stance on a headshot,
+    # 833 and 25 otherwise
+    "Spectral Lance": "The lance aims for the head: a headshot does ×1.5 damage and stance",
     "Wall of Sparks": "Counts a single explosion: it can do more, and some sparks",
     ("Wall of Sparks", "Charged"): (
         "Counts a single explosion: it can do more, and some sparks, and its second, farther wall's"
@@ -1990,6 +1992,10 @@ HIT_TIME_FITS = {
     # after its window opens (67.8 into the animation), its second 129, 2 after its window (measured
     # in game on 2026-11-23 with er-logger, from a few steps away; it travels, so it's later further)
     ("I Command Thee, Kneel!", "#1"): [73 / 60, None],
+    # Spectral Lance's lance hits the dummy 75 to 84 frames into the animation, 5 to 14 after it's
+    # thrown (70), as it flies (measured with er-logger on an Occult Pike +25 on the training dummy,
+    # 2026-11-27 20-50-35, five hits: 77, 82, 77, 75, 77; the distance varied)
+    ("Spectral Lance", ""): [77 / 60],
     # Spinning Chain's R2 follow-up's swings land 38 and 86 frames into its animation, 4 and 2 after
     # their windows open (34 and 84): Flail +25 on the training dummy, 7 tries over three logs
     # (2026-11-25 18-31-44, 18-43-27 and 18-46-03), each at 37-38 and 86-87
