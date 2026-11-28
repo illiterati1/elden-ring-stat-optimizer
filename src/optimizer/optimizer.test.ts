@@ -5464,22 +5464,28 @@ describe("Ashes of War", () => {
     // 314 with 3.25 stance and 118 blood loss, and the projectile 832 with 7.5; with the Enraged Divine
     // Beast talisman 346 and 915, then 353 and 915, and 359 and 915. It's a chain, each slash firing the projectile: then 320 with 3.3
     // stance and 832, and 327 with 3.35 stance and 832, looping over those two in game.
-    const weapon = getWeapon("Bloody Longsword");
-    const result = getAshAttack(
-      ashes,
-      movesets,
-      weapon,
-      withFollowUp("Storm Blade", " chain"),
-      false,
-    );
-    if (!("attack" in result)) throw new Error(result.unavailableReason);
+    // On a Quality Falchion +25 (a curved sword) on the NG+1 dummy (log 2026-11-27 22-16-34): 346 and
+    // 818, 353 and 818, and 360 and 818, with the same stance, 20 stamina a step. The slash takes the
+    // weapon's physical type, so the dummy's -10% slash negation shows on the Falchion's, not on the
+    // Longsword's (standard).
+    const attackOn = (weaponName: string) => {
+      const result = getAshAttack(
+        ashes,
+        movesets,
+        getWeapon(weaponName),
+        withFollowUp("Storm Blade", " chain"),
+        false,
+      );
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      return result.attack;
+    };
     const talisman = (
       JSON.parse(readFileSync(new URL("../../public/buffs.json", import.meta.url), "utf8"))
         .buffs as Buff[]
     ).filter((buff) => buff.name === "Enraged Divine Beast");
-    const build = (buffs: BuffEffect[] = []) =>
+    const build = (buffs: BuffEffect[] = [], weaponName = "Bloody Longsword", defense = 123.2) =>
       optimizeBuild({
-        weapon,
+        weapon: getWeapon(weaponName),
         regularUpgradeLevel: 25,
         twoHanding: false,
         startLevel: 9,
@@ -5488,11 +5494,12 @@ describe("Ashes of War", () => {
         bonusAttributes: noBonus,
         objective: "totalAttack",
         defenses: Object.fromEntries(
-          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+          allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
         ),
-        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        // The dummy's
+        physicalNegation: { standard: 0, slash: -10, strike: -20, pierce: -30 },
         limits: { ...noLimits, maxLevels: 0 },
-        attack: result.attack,
+        attack: attackOn(weaponName),
         buffs,
       }).attackSteps!.map((step) =>
         step.map((hit) => [hit.damage, hit.stance, hit.status[AttackPowerType.BLEED]]),
@@ -5519,6 +5526,33 @@ describe("Ashes of War", () => {
       [353, 915],
       [359, 915],
     ]);
+    expect(build([], "Quality Falchion", 144.4)).toEqual([
+      [
+        [346, 3.25, undefined],
+        [818, 7.5, undefined],
+      ],
+      [
+        [353, 3.3, undefined],
+        [818, 7.5, undefined],
+      ],
+      [
+        [360, 3.35, undefined],
+        [818, 7.5, undefined],
+      ],
+    ]);
+    // The Falchion's timing, frames from the press (taking the press 2 frames before the animation,
+    // as the presses were buffered): the slashes 47, 44-45 and 40 (45, 42 and 38 here: their windows
+    // open there, the hits landing 2-3 frames in), the shockwaves 49, 46-47 and 42; the steps 62, 66
+    // and 55 apart, then 66 back to #2 (63, 66, 56 and 66 here), and a roll 83 after #3 (82 here)
+    const frames = (seconds: number | undefined) => Math.round(seconds! * 60);
+    const falchion = attackOn("Quality Falchion");
+    expect(falchion.stepTimes!.map((step) => (step.hitTimes ?? step.hits).map(frames))).toEqual([
+      [45, 49],
+      [42, 46],
+      [38, 42],
+    ]);
+    expect(falchion.cycleTimes!.map(frames)).toEqual([63, 66, 56]);
+    expect(frames(falchion.stepTimes![2].roll)).toBe(82);
   });
 
   it("matches Prelate's Charge on other affinities in game", () => {
