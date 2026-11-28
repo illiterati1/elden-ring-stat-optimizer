@@ -5106,11 +5106,29 @@ describe("Ashes of War", () => {
   it("matches Spinning Weapon in game", () => {
     // Tested in game at +25 with 99 in every stat on the training dummy: on a Longsword 312, 246 five
     // times, and 312, with 2 stance each; on the Staff of the Guilty 74, 51 five times, and 74, with
-    // 1.2 stance and 22.5 blood loss each
-    const build = (name: string) => {
+    // 1.2 stance and 22.5 blood loss each. On a Digger's Staff +25 on the NG+1 dummy (log 2026-11-27
+    // 21-25-54, four casts): 77, 48 five times, and 77, 1.2 stance each, landing 46, 60, 74, 88,
+    // 102, 116 and 130 frames after L2 (±1), stamina 38; the next L2's animation 161 and 160 frames
+    // after the last's, and a roll 166 after L2
+    const frames = (seconds: number) => Math.round(seconds * 60);
+    const build = (name: string, ng1 = false) => {
       const weapon = getWeapon(name);
       const result = getAshAttack(ashes, movesets, weapon, "Spinning Weapon", false);
       if (!("attack" in result)) throw new Error(result.unavailableReason);
+      if (ng1) {
+        const { stepTimes, cycleTimes, stamina } = result.attack;
+        expect({
+          hits: stepTimes![0].hits.map(frames),
+          cycles: cycleTimes!.map(frames),
+          roll: frames(stepTimes![0].roll!),
+          stamina,
+        }).toEqual({
+          hits: [46, 60, 74, 88, 102, 116, 130],
+          cycles: [160],
+          roll: 166,
+          stamina: [38],
+        });
+      }
       return optimizeBuild({
         weapon,
         regularUpgradeLevel: 25,
@@ -5121,13 +5139,21 @@ describe("Ashes of War", () => {
         bonusAttributes: noBonus,
         objective: "totalAttack",
         defenses: Object.fromEntries(
-          allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
+          allDamageTypes.map((damageType) => [
+            damageType,
+            { defense: ng1 ? 144.4 : 123.2, negation: 0 },
+          ]),
         ),
-        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+        physicalNegation: ng1
+          ? { standard: 0, slash: -10, strike: -20, pierce: -30 }
+          : { standard: 0, slash: 0, strike: 0, pierce: 0 },
         limits: { ...noLimits, maxLevels: 0 },
         attack: result.attack,
       }).attackSteps!.map((step) => step.map((hit) => [hit.damage, hit.stance, hit.status]));
     };
+    expect(build("Digger's Staff", true)).toEqual([
+      [77, 48, 48, 48, 48, 48, 77].map((damage) => [damage, 1.2, {}]),
+    ]);
     expect(build("Longsword")).toEqual([
       [312, 246, 246, 246, 246, 246, 312].map((damage) => [damage, 2, {}]),
     ]);
