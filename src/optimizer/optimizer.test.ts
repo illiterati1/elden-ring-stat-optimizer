@@ -5382,7 +5382,7 @@ describe("Ashes of War", () => {
     // window opens, as it grows: HIT_TIME_FITS) and the thrust 107 (106 here). L2 buffered in it
     // started the next cast 197 frames after the last press (196 here). Rolls (B mashed) came out
     // 164 frames after L2 (164 here: its second roll window, CANCEL_FITS), none released at 137 or
-    // 150
+    // 150; again in log 2026-11-27 22-14-29: none released at 142 or 152, then 164
     const timing = getAshAttack(
       ashes,
       movesets,
