@@ -12,6 +12,12 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
 
 ## Discrepancies to look into
 
+- Sacred Bloodfiend's Arm +25 (12530725) with Golden Land, one handed, on the training dummy (log
+  2026-11-27 18-01-24). #1 matches (45 stamina, 35 at 74 then 10 at 110; 1126, 593 and the 1346
+  explosion at 75, 111, 143-144), and #2's damage and stamina match (1710, stance 7.5; 35). But
+  #2's hit lands 52 frames into its animation by wall clock (50 game frames), not the calculated
+  44, and its stamina drops at 41-44, as with Earthshaker's #2 (both are anim 662040010).
+
 - Flame Art Greatsword +25 (4000525) with Flame Skewer, one handed, on the training dummy (log
   2026-11-26 18-00-31). #1 matches (45 stamina at 52, 1507, stance 24, hit 52-53) and #2's damage,
   stance and stamina match (798, 15, 22 at 36), but #2's hit lands 40-41 frames into its
@@ -21,6 +27,12 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   2026-11-26 17-52-21). Damage, stance and stamina match both steps (#1's 42 is two drops, 32 then
   10 at about frame 91), and #1's hits land at the calculated frames. #2's hit lands 49-52 frames into its animation, 5-8 after the calculated 44 (three casts); its
   45 stamina drops at 40-42, 2-4 frames before the TAE window.
+- Heavy Great Katana +25 (66500125) with Earthshaker, one handed, on the training dummy (log
+  2026-11-27 18-24-28). Damage, stance and stamina match both steps (1321 and 1501, stance 20,
+  25 each), and #2 (718040010) lands 76-77 frames in, as calculated. But #1 (718040000) cast from
+  idle hits 118-121 frames in (five casts), inside the window that opens at 92, not the calculated
+  123; its stamina drops at 117-120, before the 123.3 window. Only a buffered recast hit at 124.
+  The Initial Roar's 15 stance and the Roar Ticks didn't show as separate hits.
 - Quality Twinned Knight Swords +25 (10030325) with Double Slash, one handed, on the training
   dummy (log 2026-11-26 17-37-47). Damage, stance and stamina match every step, and the hits land
   at the calculated animation frames, except #1's second hit: 67 and 66 frames in, where its window
