@@ -148,6 +148,9 @@ interface Target {
   physicalNegation: { standard: number; slash: number; strike: number; pierce: number };
   /** Its damage multiplier for critical hits, if not 1 (e.g. 0.7 for Crucible Knights) */
   criticalDamageRate?: number;
+  /** Its max HP, for percentage of max HP damage (e.g. Poison Moth Flight's poisoned bonus) */
+  hp: number;
+  hpBurnDamageRate?: number;
 }
 
 /** @returns an enemy's defenses as the enemy picker sets them, or the dummy's if it isn't known */
@@ -159,7 +162,8 @@ function getTarget(npcParamId: number | undefined): Target {
           .flatMap((area) => area.enemies)
           .find((enemy: Enemy) => enemy.npcParamIds.includes(npcParamId));
   if (!enemy) {
-    const [standard, slash, strike, pierce, ...elemental] = trainingDummyArea.enemies[0].negation;
+    const dummy = trainingDummyArea.enemies[0];
+    const [standard, slash, strike, pierce, ...elemental] = dummy.negation;
     return {
       name: `${ngPlus > 0 ? "NG+1" : "NG"} dummy (${defense})`,
       defenses: Object.fromEntries(
@@ -169,11 +173,11 @@ function getTarget(npcParamId: number | undefined): Target {
         ]),
       ) as Target["defenses"],
       physicalNegation: { standard, slash, strike, pierce },
+      hp: getEnemyStats(dummy, ngPlus, false).hp,
     };
   }
-  const [phys, mag, fire, lightning, holy] = getEnemyStats(enemy, ngPlus, false).defense.map(
-    Math.round,
-  );
+  const stats = getEnemyStats(enemy, ngPlus, false);
+  const [phys, mag, fire, lightning, holy] = stats.defense.map(Math.round);
   const [standard, slash, strike, pierce, magN, fireN, lightningN, holyN] = enemy.negation.map(
     Math.round,
   );
@@ -188,6 +192,8 @@ function getTarget(npcParamId: number | undefined): Target {
     } as Target["defenses"],
     physicalNegation: { standard, slash, strike, pierce },
     ...(enemy.criticalDamageRate && { criticalDamageRate: enemy.criticalDamageRate }),
+    hp: stats.hp,
+    ...(enemy.hpBurnDamageRate && { hpBurnDamageRate: enemy.hpBurnDamageRate }),
   };
 }
 
@@ -318,6 +324,8 @@ function predict(
     defenses: target.defenses,
     physicalNegation: target.physicalNegation,
     criticalDamageRate: target.criticalDamageRate,
+    enemyHp: target.hp,
+    hpBurnDamageRate: target.hpBurnDamageRate,
     limits: {
       maxLevels: 0,
       minGainPerLevel: null,
@@ -374,7 +382,8 @@ function predict(
             ]),
         );
         return {
-          damage: hit.damage,
+          // with its percentage of max HP damage, if any (e.g. Poison Moth Flight's poisoned bonus)
+          damage: hit.damage + (hit.hpDamage?.damage ?? 0),
           stance: Math.round(hit.stance * 100) / 100,
           status,
           frame,

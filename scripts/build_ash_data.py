@@ -1412,7 +1412,7 @@ CONDITIONAL_HP_DAMAGE = {
 # ticks of 75, tested in game: 3062 in all), and Maliketh's Black Blade's Destined Death 6850 (the
 # same with 6865's lowered max HP). Attack rows' effects count too: the Godslayer's Greatsword's The
 # Queen's Black Flame swings apply 855, the same as 835 (tested in game: 1575 of black flame after
-# each; on the Boss Arena mod's NG+1 dummy, 519488 max HP, 21 ticks of 520 after each), and Maliketh's Black Blade's Destined Death swings 860. Each hit's effect counts in full.
+# each; on the Boss Arena mod's NG+1 dummy, then 519488 max HP, 21 ticks of 520 after each), and Maliketh's Black Blade's Destined Death swings 860. Each hit's effect counts in full.
 HP_DAMAGE_EFFECTS = {835: "Black flame", 855: "Black flame", 860: "Destined Death", 6845: "Destined Death", 6850: "Destined Death"}
 
 # Max HP multipliers for hits' percentage of max HP damage from other hits' effects, by AtkId:
@@ -1921,6 +1921,9 @@ HIT_TIME_FITS = {
     ("Fires of Slumber", ""): [59 / 60, 84 / 60, 140 / 60, 84 / 60],
     # Deadly Poison Spray's cloud's first tick, 40 frames after L2 (TICK_ROWS)
     ("Deadly Poison Spray", ""): [38 / 60],
+    # Poison Moth Flight's poisoned bonus lands 2 frames after its hit, 76 frames after its animation
+    # starts (measured in game on a Quality Smithscript Dagger +25, log 2026-11-27 19-08-03)
+    ("Poison Moth Flight", "Poisoned target"): [None, 76 / 60],
     # Wall of Sparks's explosion lands 137 frames after L2 tapped (ANIMATION_SEQUENCES), 174 charged
     # Swift Slash's vacuum hits the dummy 60 frames after L2 tapped, 84 charged, about 24 frames after
     # its slash (36 and 61: 3-4 frames after its window opens, here 32 and 58). Measured in game on a
