@@ -4365,36 +4365,52 @@ describe("Ashes of War", () => {
   it("matches Scattershot Throw in game", () => {
     // 4 daggers a throw, 960; it can be chain thrown, but one throw is counted. Tested in game on a
     // Blood Smithscript Dagger +25 with 99 in every stat on the training dummy: 240 each, with 2.4
-    // stance and 35 blood loss
-    const weapon = getWeapon("Blood Smithscript Dagger");
+    // stance and 35 blood loss. Also on a Keen Smithscript Dagger +25, one-handed, on the NG+1 dummy
+    // (144.4; er-logger 2026-11-27 20-26-28, 4 throws): 324 each with 2.4 stance, all 4 hitting 1-3
+    // frames after the window opening at animation frame 48 (52 for the chain throw, 40010), 49-53
+    // frames after L2 (50 here); 32 stamina; the chain throw's animation started 68 frames after the
+    // first's (68 here). The dummy took pierce ×1.3 by then (its negations were set in the mod on
+    // 2026-11-26)
     expect(
       getAshChoices(ashes)
         .filter(({ value }) => value.startsWith("Scattershot Throw"))
         .map(({ value }) => value),
     ).toEqual(["Scattershot Throw"]);
-    const result = getAshAttack(ashes, movesets, weapon, "Scattershot Throw", false);
-    if (!("attack" in result)) throw new Error(result.unavailableReason);
-    const { attackSteps } = optimizeBuild({
-      weapon,
-      regularUpgradeLevel: 25,
-      twoHanding: false,
-      startLevel: 9,
-      currentLevel: 9,
-      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
-      bonusAttributes: noBonus,
-      objective: "totalAttack",
-      defenses: Object.fromEntries(
-        allDamageTypes.map((damageType) => [damageType, { defense: 123.2, negation: 0 }]),
-      ),
-      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
-      limits: { ...noLimits, maxLevels: 0 },
-      attack: result.attack,
-    });
+    const build = (weaponName: string, defense: number, pierceNegation = 0) => {
+      const weapon = getWeapon(weaponName);
+      const result = getAshAttack(ashes, movesets, weapon, "Scattershot Throw", false);
+      if (!("attack" in result)) throw new Error(result.unavailableReason);
+      const { attackSteps } = optimizeBuild({
+        weapon,
+        regularUpgradeLevel: 25,
+        twoHanding: false,
+        startLevel: 9,
+        currentLevel: 9,
+        attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+        bonusAttributes: noBonus,
+        objective: "totalAttack",
+        defenses: Object.fromEntries(
+          allDamageTypes.map((damageType) => [damageType, { defense, negation: 0 }]),
+        ),
+        physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: pierceNegation },
+        limits: { ...noLimits, maxLevels: 0 },
+        attack: result.attack,
+      });
+      return { attack: result.attack, steps: attackSteps! };
+    };
     expect(
-      attackSteps!.map((step) =>
+      build("Blood Smithscript Dagger", 123.2).steps.map((step) =>
         step.map((hit) => [hit.damage, hit.stance, hit.status[AttackPowerType.BLEED]]),
       ),
     ).toEqual([[0, 0, 0, 0].map(() => [240, 2.4, expect.closeTo(35.2, 1)])]);
+    const keen = build("Keen Smithscript Dagger", 144.4, -30);
+    expect(keen.steps.map((step) => step.map((hit) => [hit.damage, hit.stance]))).toEqual([
+      [0, 0, 0, 0].map(() => [324, 2.4]),
+    ]);
+    expect(keen.attack.stamina).toEqual([32]);
+    const [step] = keen.attack.stepTimes!;
+    expect(step.hitTimes!.map((time) => Math.round(time! * 60))).toEqual([50, 50, 50, 50]);
+    expect(Math.round(step.cycle! * 60)).toBe(68);
   });
 
   it("matches Shield Bash in game", () => {
