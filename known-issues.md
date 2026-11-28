@@ -6,7 +6,6 @@
   spot (mounted R1 #2, mounted R2, mounted charged R2) are counted without it.
 - **Attacks that need extra movement:** time-scaled numbers are questionable for any attack that
   needs another action first, such as jumping, rolling, backstepping, running, or buffing.
-- **Untimed attacks:** Carian Retaliation hasn't been timed yet.
 - **Charging hits:** hits during a charged attack's charge, such as a thrusting shield's held
   mounted R2, aren't included.
 - **Feint attacks:** the attacks that follow a cancelled charged R2 aren't included. The motion

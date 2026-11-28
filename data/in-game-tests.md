@@ -144,15 +144,6 @@ scripts' comments; then remove them from here. `scripts/predict.ts` gives the ca
   frames after it, five tries), where the calculator gives 42 for both. The two hits also land 1–2
   frames apart (+45/+47, +45/+46), not together. Jumping R1 matched: 476 + 476, +36 and +37 (calculated 36).
 
-## Not timed
-
-Nothing to compare yet; measure from the press.
-
-- Carian Retaliation's cancels after a successful parry: the calculator uses the animation's own
-  (L2 52 frames from the press, roll 52), but in log 2026-11-27 14-55-41 the animation lasted at
-  least 143 frames after a parry (until a hit interrupted it) and 66 after a miss. Its swords' hit
-  times (122 and 125 frames into the animation) are from that one parry, whose moment isn't known.
-
 ## Not modeled
 
 - Charging hits: hits during a charged attack's charge, before its main hit. A Magic Carian
