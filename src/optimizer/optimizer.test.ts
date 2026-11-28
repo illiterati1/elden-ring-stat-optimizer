@@ -4688,6 +4688,54 @@ describe("Ashes of War", () => {
     ]);
   });
 
+  it("matches Spinning Slash on a light greatsword in game", () => {
+    // Keen Milady +25, one handed, 99 in every stat, on the NG+1 training dummy (log 2026-11-27
+    // 20-57-36): it plays the skill's 40000 and 40010, not the spears' 40300 and 40310 (its
+    // wepmotionOneHandId is a spear's, 3, but its wepmotionBothHandId 10). From each animation's
+    // start: #1 582 (15.95 stance) at 38 (36 here, its window opening), stamina 14 at 35-36; #2 299
+    // (4.95) at 17 and 615 (15.95) at 44-45, stamina 9 at 16 and 14 at 44; each next L2's animation
+    // 47-48 frames after #1's, and 92 after #2's
+    const weapon = getWeapon("Keen Milady");
+    const result = getAshAttack(
+      ashes,
+      movesets,
+      weapon,
+      withFollowUp("Spinning Slash", " chain"),
+      false,
+    );
+    if (!("attack" in result)) throw new Error(result.unavailableReason);
+    const { attack } = result;
+    const frames = (time: number) => Math.round(time * 60);
+    const [first, second] = attack.stepTimes!;
+    expect(first.hits.map((hit) => frames(hit - first.lead))).toEqual([36]);
+    expect(second.hits.map((hit) => frames(hit - second.lead))).toEqual([16, 44]);
+    expect(attack.cycleTimes!.map(frames)).toEqual([48, 92]);
+    expect(attack.stamina).toEqual([14, 23]);
+    const steps = optimizeBuild({
+      weapon,
+      regularUpgradeLevel: 25,
+      twoHanding: false,
+      startLevel: 9,
+      currentLevel: 9,
+      attributes: { str: 99, dex: 99, int: 99, fai: 99, arc: 99 },
+      bonusAttributes: noBonus,
+      objective: "totalAttack",
+      defenses: Object.fromEntries(
+        allDamageTypes.map((damageType) => [damageType, { defense: 144.4, negation: 0 }]),
+      ),
+      physicalNegation: { standard: 0, slash: 0, strike: 0, pierce: 0 },
+      limits: { ...noLimits, maxLevels: 0 },
+      attack,
+    }).attackSteps!.map((step) => step.map((hit) => [hit.damage, hit.stance]));
+    expect(steps).toEqual([
+      [[582, 15.95]],
+      [
+        [299, 4.95],
+        [615, 15.95],
+      ],
+    ]);
+  });
+
   it("lists each version of a weapon's fixed skill", () => {
     const variants = (name: string) =>
       getAshAttacks(ashes, movesets, getWeapon(name), "Lion's Claw", false).map(

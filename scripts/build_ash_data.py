@@ -1608,10 +1608,14 @@ def parse_rest(rest):
 # Blade, Sword Dance, Wild Strikes, and Ice Spear). Each part of a skill (its main attack, or a
 # follow-up or chain step) is an animation from 40000 (chain steps 40010, 40020, ...), with "Lacking
 # FP" versions 5 later (left out). Some weapon classes have their own, 100s apart: a weapon's
-# wepmotionOneHandId times 100 (e.g. 40200 for greatswords, tested in game: a Claymore's Sword Dance;
-# 40300 for spears), and twinblades' 42400 (a guess: Sword Dance's has the twinblade's rows; without one, a twinblade
-# uses its wepmotionOneHandId's, 40300: tested in game, Double Slash, see useAshes.ts getPartTiming), or else
-# 40000's (e.g. Ice Spear on a Short Spear, tested in game).
+# wepmotionBothHandId's last digit times 100 (e.g. 40200 for greatswords, 12, tested in game: a
+# Claymore's Sword Dance; 40300 for spears, 13), and twinblades' 42400 (a guess: Sword Dance's has the
+# twinblade's rows; without one, a twinblade uses its wepmotionBothHandId's, 40300: tested in game,
+# Double Slash, see useAshes.ts getPartTiming), or else 40000's (e.g. Ice Spear on a Short Spear,
+# tested in game). Not wepmotionOneHandId's: light greatswords' is 3, as spears', but their
+# wepmotionBothHandId is 10, and a Keen Milady one handed plays Spinning Slash's 40000 and 40010
+# (er-logger 2026-11-27 20-57-36), not its 40300 and 40310. Heavy thrusting swords' are the same as
+# light greatswords' (3 and 10), and greatbows' 3 and 14.
 SKILL_ANIMATION_FILE_BASE = 600
 SKILL_ANIMATIONS = (40000, 45000)
 LACKING_FP_ANIMATION = 5
@@ -2080,7 +2084,7 @@ def get_skill_range(row):
     """@returns which of a skill's animation ranges a weapon uses (see SKILL_ANIMATION_FILE_BASE)"""
     if int(row["wepType"]) == TWINBLADE_TYPE:
         return TWINBLADE_SKILL_RANGE
-    return int(row["wepmotionOneHandId"]) * 100
+    return int(row["wepmotionBothHandId"]) % 10 * 100
 
 
 def hit_signature(motion_values, flat):
