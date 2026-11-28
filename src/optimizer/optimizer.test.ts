@@ -4688,14 +4688,40 @@ describe("Ashes of War", () => {
     ]);
   });
 
-  it("matches Spinning Slash on a light greatsword in game", () => {
+  it.each([
     // Keen Milady +25, one handed, 99 in every stat, on the NG+1 training dummy (log 2026-11-27
     // 20-57-36): it plays the skill's 40000 and 40010, not the spears' 40300 and 40310 (its
     // wepmotionOneHandId is a spear's, 3, but its wepmotionBothHandId 10). From each animation's
     // start: #1 582 (15.95 stance) at 38 (36 here, its window opening), stamina 14 at 35-36; #2 299
     // (4.95) at 17 and 615 (15.95) at 44-45, stamina 9 at 16 and 14 at 44; each next L2's animation
     // 47-48 frames after #1's, and 92 after #2's
-    const weapon = getWeapon("Keen Milady");
+    {
+      name: "Keen Milady",
+      stamina: [14, 23],
+      damage: [
+        [[582, 15.95]],
+        [
+          [299, 4.95],
+          [615, 15.95],
+        ],
+      ],
+    },
+    // Keen Warped Axe +25, the same way (log 2026-11-27 20-58-37): 40000 and 40010 too. #1 718
+    // (14.5) at 37-38 (36 here), stamina 18 at 36; #2 372 (4.5) at 17 and 757 (14.5) at 44-45,
+    // stamina 12 at 16 and 18 at 44; the next L2's animation 48 frames after #1's, 92 after #2's
+    {
+      name: "Keen Warped Axe",
+      stamina: [18, 30],
+      damage: [
+        [[718, 14.5]],
+        [
+          [372, 4.5],
+          [757, 14.5],
+        ],
+      ],
+    },
+  ])("matches Spinning Slash on a $name in game", ({ name, stamina, damage }) => {
+    const weapon = getWeapon(name);
     const result = getAshAttack(
       ashes,
       movesets,
@@ -4710,7 +4736,7 @@ describe("Ashes of War", () => {
     expect(first.hits.map((hit) => frames(hit - first.lead))).toEqual([36]);
     expect(second.hits.map((hit) => frames(hit - second.lead))).toEqual([16, 44]);
     expect(attack.cycleTimes!.map(frames)).toEqual([48, 92]);
-    expect(attack.stamina).toEqual([14, 23]);
+    expect(attack.stamina).toEqual(stamina);
     const steps = optimizeBuild({
       weapon,
       regularUpgradeLevel: 25,
@@ -4727,13 +4753,7 @@ describe("Ashes of War", () => {
       limits: { ...noLimits, maxLevels: 0 },
       attack,
     }).attackSteps!.map((step) => step.map((hit) => [hit.damage, hit.stance]));
-    expect(steps).toEqual([
-      [[582, 15.95]],
-      [
-        [299, 4.95],
-        [615, 15.95],
-      ],
-    ]);
+    expect(steps).toEqual(damage);
   });
 
   it("lists each version of a weapon's fixed skill", () => {
