@@ -1696,6 +1696,13 @@ CANCEL_FITS = {
     # frames in instead, both its spins landing, and the roll starts at that end's roll cancel (42),
     # 127 and 129 frames after L2
     ("Spinning Strikes", ""): {"roll": (128 - 2) / 60},
+    # Storm Assault (622040300) has two roll windows (ChrActionFlag 26), from 70 and 84 (30 fps; the
+    # second with an early window from 82), but only the second works in game: B mashed through it
+    # (Quality Banished Knight's Halberd +25, log 2026-11-27 22-05-25), released 135 and 148 frames
+    # into the animation without a roll, then at 160, rolling at 162; another cast's roll, released
+    # at 162, came at 164. Why the first window doesn't count isn't known: the two have the same
+    # params
+    ("Storm Assault", ""): {"roll": 162 / 60},
     # Divine Beast Frost Stomp charged, L2 still held, is used again 125 frames into its animation,
     # where its L2 cancel says 150 (er-logger, 2026-11-26 17-24-12, a Keen Clayman's Harpoon +25: the
     # recast's charge animation, 883040000, 127 frames after the press)

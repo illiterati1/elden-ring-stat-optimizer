@@ -5380,8 +5380,9 @@ describe("Ashes of War", () => {
     // dummy (log 2026-11-27 22-05-25, four casts): 238 with 5 stance and 1828 with 20; 10 stamina at
     // the whirlwind's window, then 20 at the thrust's; the whirlwind 49 frames after L2 (5 after its
     // window opens, as it grows: HIT_TIME_FITS) and the thrust 107 (106 here). L2 buffered in it
-    // started the next cast 197 frames after the last press (196 here). Rolls released 162 and 160
-    // frames in came out 2 frames later, so its roll opens by then (142 here, not tested sooner)
+    // started the next cast 197 frames after the last press (196 here). Rolls (B mashed) came out
+    // 164 frames after L2 (164 here: its second roll window, CANCEL_FITS), none released at 137 or
+    // 150
     const timing = getAshAttack(
       ashes,
       movesets,
@@ -5397,7 +5398,7 @@ describe("Ashes of War", () => {
       cycles: cycleTimes!.map(frames),
       rolls: stepTimes!.map((step) => frames(step.roll!)),
       stamina,
-    }).toEqual({ hits: [[49, 106]], cycles: [196], rolls: [142], stamina: [30] });
+    }).toEqual({ hits: [[49, 106]], cycles: [196], rolls: [164], stamina: [30] });
     const build = (
       buffs: BuffEffect[] = [],
       twoHanding = false,
